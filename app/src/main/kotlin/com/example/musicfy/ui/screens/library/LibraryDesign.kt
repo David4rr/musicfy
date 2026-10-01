@@ -379,6 +379,8 @@ fun LibraryWideCard(
     modifier: Modifier = Modifier,
     /** a card that opens a playlist page (Liked, Downloaded...) grows into it, as from Home */
     sharedElementKey: String? = null,
+    /** a cover of the list's own in place of the collage (Liked songs); it fills the modifier given */
+    art: (@Composable (Modifier) -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -393,13 +395,23 @@ fun LibraryWideCard(
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
-        LibraryQuadCollage(
-            covers = covers,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 14.dp)
-                .size(84.dp),
-        )
+        if (art != null) {
+            art(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 14.dp)
+                    .size(84.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+        } else {
+            LibraryQuadCollage(
+                covers = covers,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 14.dp)
+                    .size(84.dp),
+            )
+        }
 
         Column(
             modifier = Modifier

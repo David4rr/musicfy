@@ -613,8 +613,11 @@ fun HomeScreen(
     }
     val haptic = LocalHapticFeedback.current
 
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    // read only where they're used - inside each card, track row and the hero - never out here: a
+    // play/pause or a new song used to recompose the whole of Home, every row and card on screen,
+    // which landed as a hitch whenever the track changed mid-scroll
+    val isPlayingState = playerConnection.isEffectivelyPlaying.collectAsState()
+    val mediaMetadataState = playerConnection.mediaMetadata.collectAsState()
 
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsState()
     val keepListening by viewModel.keepListening.collectAsState()
@@ -793,9 +796,14 @@ fun HomeScreen(
 
     val heroScrollProgressProvider = remember { { heroScrollProgress } }
 
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val scrollToTop =
-        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+    // Home's own entry, the one a tap on its tab flags (onTabTapped only does that while Home is the
+    // current page). Following the current entry instead recomposed all of Home on every navigation,
+    // right in the heavy first frame of each page opening over it
+    val backStackEntry = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+        as? androidx.navigation.NavBackStackEntry
+    val scrollToTop = remember(backStackEntry) {
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)
+    }?.collectAsState()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
@@ -837,7 +845,7 @@ fun HomeScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onListeningBreak() }
 
     val playSong: (Song) -> Unit = { song ->
-        if (song.id == mediaMetadata?.id) {
+        if (song.id == mediaMetadataState.value?.id) {
             playerConnection.togglePlayPause()
         } else {
             playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
@@ -893,11 +901,11 @@ fun HomeScreen(
             thumbnailUrl = playlist?.thumbnails?.firstOrNull() ?: localItem.thumbnailUrl,
             circular = localItem is Artist,
             isActive = when (localItem) {
-                is Song -> localItem.id == mediaMetadata?.id
-                is Album -> localItem.id == mediaMetadata?.album?.id
+                is Song -> localItem.id == mediaMetadataState.value?.id
+                is Album -> localItem.id == mediaMetadataState.value?.album?.id
                 else -> false
             },
-            isPlaying = isPlaying,
+            isPlaying = isPlayingState.value,
             sharedElementKey = when (localItem) {
                 is Album -> "album-${localItem.id}"
                 is Playlist -> "playlist-${localItem.id}"
@@ -945,8 +953,8 @@ fun HomeScreen(
             },
             thumbnailUrl = item.thumbnail,
             circular = item is ArtistItem,
-            isActive = item.id in listOf(mediaMetadata?.album?.id, mediaMetadata?.id),
-            isPlaying = isPlaying,
+            isActive = item.id in listOf(mediaMetadataState.value?.album?.id, mediaMetadataState.value?.id),
+            isPlaying = isPlayingState.value,
             sharedElementKey = when (item) {
                 is AlbumItem -> "album-${item.id}"
                 is PlaylistItem -> "playlist-${item.id}"
@@ -1011,13 +1019,13 @@ fun HomeScreen(
             videoId = video.item.id,
             fallbackThumbnailUrl = video.item.thumbnail,
             width = width,
-            isActive = video.item.id == mediaMetadata?.id,
-            isPlaying = isPlaying,
+            isActive = video.item.id == mediaMetadataState.value?.id,
+            isPlaying = isPlayingState.value,
             modifier = Modifier.combinedClickable(
                 interactionSource = null,
                 indication = HomeCardHighlight,
                 onClick = {
-                    if (video.item.id == mediaMetadata?.id) {
+                    if (video.item.id == mediaMetadataState.value?.id) {
                         playerConnection.togglePlayPause()
                     } else {
                         playerConnection.playQueue(
@@ -1158,7 +1166,7 @@ fun HomeScreen(
                 item(key = "hero") {
                     HeroCarousel(
                         keepListening = keepListening,
-                        lastPlayedSong = mediaMetadata ?: lastPlayedSong,
+                        lastPlayedSong = mediaMetadataState.value ?: lastPlayedSong,
                         dailyDiscover = dailyDiscover,
                         playerConnection = playerConnection,
                         navController = navController,
@@ -1230,8 +1238,8 @@ fun HomeScreen(
                                             thumbnailUrl = song.song.thumbnailUrl,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadata?.id,
-                                            isPlaying = isPlaying,
+                                            isActive = song.id == mediaMetadataState.value?.id,
+                                            isPlaying = isPlayingState.value,
                                             rank = index + 1,
                                             onClick = { playSong(song) },
                                             onLongClick = { showSongMenu(song) },
@@ -1261,8 +1269,8 @@ fun HomeScreen(
                                             thumbnailUrl = song.song.thumbnailUrl,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadata?.id,
-                                            isPlaying = isPlaying,
+                                            isActive = song.id == mediaMetadataState.value?.id,
+                                            isPlaying = isPlayingState.value,
                                             onClick = { playSong(song) },
                                             onLongClick = { showSongMenu(song) },
                                             onMoreClick = { showSongMenu(song) },
@@ -1551,8 +1559,8 @@ fun HomeScreen(
                                             thumbnailUrl = song.song.thumbnailUrl,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadata?.id,
-                                            isPlaying = isPlaying,
+                                            isActive = song.id == mediaMetadataState.value?.id,
+                                            isPlaying = isPlayingState.value,
                                             onClick = { playSong(song) },
                                             onLongClick = { showSongMenu(song) },
                                             onMoreClick = { showSongMenu(song) },

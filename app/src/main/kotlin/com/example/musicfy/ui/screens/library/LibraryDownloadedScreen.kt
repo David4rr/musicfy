@@ -34,6 +34,7 @@ import androidx.navigation.NavController
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.ProfilePicUriKey
+import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.navigateToTab
 import com.example.musicfy.ui.screens.search.SearchAvatar
@@ -184,6 +185,7 @@ fun LibraryDownloadedScreen(
                         covers = likedSongs.map { it.song.thumbnailUrl },
                         onClick = { navController.navigate("auto_playlist/liked") },
                         sharedElementKey = "playlist-liked",
+                        art = { LikedCover(it) },
                         modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
