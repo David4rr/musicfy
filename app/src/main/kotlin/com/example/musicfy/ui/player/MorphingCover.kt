@@ -337,6 +337,17 @@ fun MorphingCover(
     onDoubleTapCover: ((androidx.compose.ui.geometry.Offset) -> Unit)? = null,
 
     onArtBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
+
+    /** The player studio's hold on the art: where it's measured, and the layer that moves it into the editor. */
+    studioArtModifier: Modifier = Modifier,
+    /** The editor's top bar frosts the cover, so the glass keeps capturing while it's up. */
+    glassActiveInEdit: () -> Boolean = { false },
+    /**
+     * Another player style is the live one and draws the whole open player itself. Only the mini
+     * player's part of this stays: the thumbnail, which fades out as the sheet opens. The flagship's
+     * backdrop, canvas, video and their clocks don't run at all.
+     */
+    alternateStyle: Boolean = false,
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
@@ -384,7 +395,7 @@ fun MorphingCover(
         }
     }
 
-    val isDiscStyle = coverStyle.isDisc
+    val isDiscStyle = coverStyle.isDisc && !alternateStyle
 
     // Without blur the seam can't soften the edge-to-edge cover's bottom into the backdrop, so the
     // cover fades its own bottom edge out instead - picture, canvas and video alike.
@@ -399,7 +410,7 @@ fun MorphingCover(
     val trackIsVideo = !disableVideoAutoplay &&
         currentMetadata?.id == trackInfo.mediaId &&
         currentMetadata?.isVideoSong == true
-    val playVideoBackground = forceVideoBackground || playVideoPref || trackIsVideo
+    val playVideoBackground = !alternateStyle && (forceVideoBackground || playVideoPref || trackIsVideo)
     var videoInfo by remember(trackInfo.mediaId) { mutableStateOf<OfficialMusicVideo?>(null) }
     LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground, trackIsVideo) {
         val mediaId = trackInfo.mediaId
@@ -580,8 +591,8 @@ fun MorphingCover(
         }
     }
 
-    val warpClockActive by remember(editMode) {
-        derivedStateOf { !editMode && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
+    val warpClockActive by remember(editMode, alternateStyle) {
+        derivedStateOf { !alternateStyle && !editMode && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
     }
     val warpTimeState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     LaunchedEffect(warpClockActive) {
@@ -633,7 +644,7 @@ fun MorphingCover(
 
     Box(
         modifier = modifier
-            .glassRoot(glassState, isActive = { !editMode })
+            .glassRoot(glassState, isActive = { !editMode || glassActiveInEdit() })
             .press3D(
                 maxTilt = 6f,
                 pressedScale = 0.97f,
@@ -680,7 +691,7 @@ fun MorphingCover(
             }
         }
 
-        if (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
+        if (!alternateStyle && (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT)) {
             val showBackdrop by remember { derivedStateOf { progressProvider() > 0.02f } }
             if (showBackdrop) {
                 val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
@@ -733,7 +744,12 @@ fun MorphingCover(
             label = "pauseSaturation"
         )
 
-        if (trackInfo.thumbnailUrl != null || isDiscStyle) {
+        // behind another style the cover is only the mini player's thumbnail: gone once the sheet is
+        // a third of the way open, where the style itself starts to show
+        val artShown by remember(alternateStyle) {
+            derivedStateOf { !alternateStyle || progressProvider() < 0.42f }
+        }
+        if (artShown && (trackInfo.thumbnailUrl != null || isDiscStyle)) {
             Box(
                 modifier = Modifier
                     .morphLayout(
@@ -743,8 +759,10 @@ fun MorphingCover(
                         element = MorphElement.ART,
                         lyricsProgressProvider = lyricsProgressProvider,
                     )
+                    .then(studioArtModifier)
                     .graphicsLayer {
                         val p = progressProvider()
+                        if (alternateStyle) alpha = (1f - p / 0.4f).coerceIn(0f, 1f)
 
                         translationX = coverSwipeX.floatValue
                         scaleX = animatedPauseScale
@@ -887,7 +905,7 @@ fun MorphingCover(
                 )
 
                 var canvasArtwork by remember(trackInfo.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
-                val canvasEnabled by rememberPreference(CanvasThumbnailAnimationKey, defaultValue = true)
+                val canvasEnabled = rememberPreference(CanvasThumbnailAnimationKey, defaultValue = true).value && !alternateStyle
                 val canvasWifiOnly by rememberPreference(CanvasWifiOnlyKey, defaultValue = true)
                 LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, canvasEnabled, canvasWifiOnly) {
                     val mediaId = trackInfo.mediaId
@@ -1259,20 +1277,23 @@ private fun PlayerBackdropCrossfade(
     // with, so the cover's gradient stays up under the video rather than fading to a bare surface.
     val blurAvailable = rememberCoverBlurAvailable()
     val isVideoActive = playVideoBackground && videoInfo != null && blurAvailable
-    val videoAlpha by animateFloatAsState(
+    val videoAlpha = animateFloatAsState(
         targetValue = if (isVideoActive) 1f else 0f,
         animationSpec = tween(durationMillis = 650, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "videoBackdropAlphaFade"
     )
 
-    val lp = lyricsProgressProvider()
-    val effectiveVideoAlpha = (videoAlpha * (1f - lp)).coerceIn(0f, 1f)
+    // Read in the layers, not here: the lyrics progress moves on every frame of a page opening or
+    // closing, and read in composition it recomposed the whole backdrop on each of them
+    val currentLyricsProgress = androidx.compose.runtime.rememberUpdatedState(lyricsProgressProvider)
+    val effectiveVideoAlpha = { (videoAlpha.value * (1f - currentLyricsProgress.value())).coerceIn(0f, 1f) }
+    val videoShown by remember { derivedStateOf { effectiveVideoAlpha() > 0.005f } }
 
     Box(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = 1f - effectiveVideoAlpha }
+                .graphicsLayer { alpha = 1f - effectiveVideoAlpha() }
         ) {
             if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
                 // One instance for every song: these styles ease between songs themselves (the
@@ -1297,12 +1318,12 @@ private fun PlayerBackdropCrossfade(
         }
 
         // The video backdrop fades in on top when there is a video, and dissolves when lyrics open.
-        if (effectiveVideoAlpha > 0.005f) {
+        if (videoShown) {
             VideoBackdropBlur(
                 glassState = videoGlassState,
                 modifier = Modifier
                     .requiredSize(maxWidth, maxHeight)
-                    .graphicsLayer { alpha = effectiveVideoAlpha }
+                    .graphicsLayer { alpha = effectiveVideoAlpha() }
             )
         }
     }

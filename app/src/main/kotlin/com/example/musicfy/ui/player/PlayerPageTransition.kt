@@ -3,6 +3,7 @@
 package com.example.musicfy.ui.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -96,6 +97,26 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
         private set
 
     /**
+     * The page being built before it starts to grow: mounted (invisible - at the card's size, its
+     * rows still faded out) for a couple of frames ahead of the open spring. Building a page of
+     * lyrics or the queue is its heaviest moment, and as the spring's first frames it made the
+     * open jump a third of the way at once instead of growing.
+     */
+    var preparing by mutableStateOf(PlayerPage.NONE)
+        private set
+
+    /**
+     * True for a couple of frames as a page starts closing, while what the player shows again is
+     * built first - the card deck a page's immersive mode put away. Built as the close's first
+     * frames, it made the shrink and the controls' slide back in jump.
+     */
+    var preparingClose by mutableStateOf(false)
+        private set
+
+    /** Whether closing has something to build first; the player sets this. */
+    var closeNeedsPreparing: () -> Boolean = { false }
+
+    /**
      * The page [page] was switched to from, when it was opened over the other one rather than from
      * the player - where a swipe down ([back]) returns to. NONE when it grew out of the player.
      */
@@ -152,7 +173,20 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
                     queue.snapTo(0f)
                     linked = target
                 }
-                header.animateTo(1f, OpenSpring)
+                if (header.value < 0.001f) {
+                    // From rest: build the page first - one frame composes and lays it out, the
+                    // next has it drawn - then grow it, so the spring starts on light frames
+                    preparing = target
+                    try {
+                        withFrameNanos { }
+                        withFrameNanos { }
+                        header.animateTo(1f, OpenSpring)
+                    } finally {
+                        preparing = PlayerPage.NONE
+                    }
+                } else {
+                    header.animateTo(1f, OpenSpring)
+                }
             } else {
                 // From the other page: the header stays, the pages trade places.
                 if (linked != PlayerPage.NONE) {
@@ -186,10 +220,25 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
     }
 
     fun close() {
-        page = PlayerPage.NONE
-        previous = PlayerPage.NONE
+        // The page stays put while the deck is built, so the controls don't start sliding in yet
+        val prepare = page != PlayerPage.NONE && closeNeedsPreparing()
+        if (!prepare) {
+            page = PlayerPage.NONE
+            previous = PlayerPage.NONE
+        }
         job?.cancel()
         job = scope.launch {
+            if (prepare) {
+                preparingClose = true
+                try {
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    page = PlayerPage.NONE
+                    previous = PlayerPage.NONE
+                } finally {
+                    preparingClose = false
+                }
+            }
             if (linked == PlayerPage.NONE) {
                 // Closed in the middle of a switch: the page more in view goes back into the card.
                 linked = if (lyrics.value >= queue.value) PlayerPage.LYRICS else PlayerPage.QUEUE
