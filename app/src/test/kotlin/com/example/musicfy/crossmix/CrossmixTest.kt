@@ -136,11 +136,43 @@ class CrossmixTest {
         val plan = CrossmixPlanner.plan(
             CrossmixTrackInput("a", 200_000L, outgoingTrack, null),
             CrossmixTrackInput("b", 0L, nearTempoTrack, null),
-            recentStyles = emptyList(),
         )
         if (plan.beatMatched) {
             // 126 laid on 128: the incoming plays 128/126 faster
             assertEquals(128.0 / 126.0, plan.inSpeed.toDouble(), 0.01)
+        }
+    }
+
+    @Test
+    fun `the same two songs always get the same mix`() {
+        val plans = (0 until 4).map {
+            CrossmixPlanner.plan(
+                CrossmixTrackInput("out", 200_000L, outgoingTrack, null),
+                CrossmixTrackInput("in", 0L, nearTempoTrack, null),
+            )
+        }
+        assertTrue(plans.distinct().size == 1)
+        // and the ids don't come into it: only the music does
+        val renamed = CrossmixPlanner.plan(
+            CrossmixTrackInput("other", 200_000L, outgoingTrack, null),
+            CrossmixTrackInput("names", 0L, nearTempoTrack, null),
+        )
+        assertEquals(plans.first(), renamed)
+    }
+
+    @Test
+    fun `songs that belong together run into each other without a stunt`() {
+        val plan = CrossmixPlanner.plan(
+            CrossmixTrackInput("a", 200_000L, outgoingTrack, null),
+            CrossmixTrackInput("b", 0L, nearTempoTrack, null),
+        )
+        if (plan.beatMatched) {
+            val stunts = setOf(
+                CrossmixStyle.Backspin, CrossmixStyle.RewindWash, CrossmixStyle.TapeStop,
+                CrossmixStyle.PowerDown, CrossmixStyle.DropCut, CrossmixStyle.ThunderDrop,
+            )
+            assertFalse(plan.style.label, plan.style in stunts)
+            assertFalse(plan.style.label, plan.style.entersAtEnd)
         }
     }
 
@@ -150,9 +182,60 @@ class CrossmixTest {
             CrossmixTrackInput("x", 240_000L, null, null),
             CrossmixTrackInput("y", 0L, null, null),
         )
-        assertEquals(CrossmixStyle.SilkBlend, plan.style)
+        assertEquals(CrossmixStyle.Dampen, plan.style)
         assertTrue(plan.outStartMs >= 240_000L - CrossmixPlanner.MaxLeadMs)
         assertTrue(plan.outMediaAt(plan.lengthBeats.toFloat()) <= 240_000.0)
+    }
+
+    /** synced lyrics with a sung line every [everyMs], from [fromMs] to [toMs] */
+    private fun lrc(fromMs: Long, toMs: Long, everyMs: Long = 3_000L): String = buildString {
+        var t = fromMs
+        while (t < toMs) {
+            val minutes = t / 60_000
+            val seconds = (t % 60_000) / 1_000
+            val hundredths = (t % 1_000) / 10
+            append("[%02d:%02d.%02d] la la la\n".format(minutes, seconds, hundredths))
+            t += everyMs
+        }
+    }
+
+    @Test
+    fun `two songs that sing all the way through never have both voices out in front`() {
+        // the outgoing song sings to its last second, the next one from its first
+        val plan = CrossmixPlanner.plan(
+            CrossmixTrackInput("sing-out", 200_000L, outgoingTrack, lrc(0L, 200_000L)),
+            CrossmixTrackInput("sing-in", 0L, nearTempoTrack, lrc(0L, 150_000L)),
+        )
+        val dealtWith = plan.yieldVocals || plan.style.entersAtEnd ||
+            plan.style == CrossmixStyle.FarAway || plan.style == CrossmixStyle.Dampen
+        assertTrue("${plan.style.label} lays one voice straight over the other", dealtWith)
+    }
+
+    @Test
+    fun `the vocal yield leaves both songs untouched outside the transition`() {
+        val p = FxParams()
+        for (style in CrossmixStyle.entries) for (length in style.lengths) for (variation in 0 until 2) {
+            val name = "${style.label} $length/$variation"
+            style.evaluate(CrossmixRole.Outgoing, -2f, length.toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Outgoing, -2f, length.toFloat(), variation, p)
+            assertEquals("$name out gain before", 1f, p.gain, 1e-4f)
+            assertTrue("$name out space before", p.pan == 0f && p.width == 1f && p.reverbSend == 0f && p.highCutHz >= 19_000f)
+
+            style.evaluate(CrossmixRole.Incoming, -0.25f, length.toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Incoming, -0.25f, length.toFloat(), variation, p)
+            assertEquals("$name in before entry", 0f, p.gain, 0f)
+            assertEquals("$name in room before entry", 0f, p.reverbSend, 0f)
+
+            style.evaluate(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), variation, p)
+            assertTrue("$name out gain after", p.gain < 1e-3f)
+            assertEquals("$name out still feeding the room", 0f, p.reverbSend, 0f)
+
+            style.evaluate(CrossmixRole.Incoming, length + 8f, length.toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Incoming, length + 8f, length.toFloat(), variation, p)
+            assertEquals("$name in gain after", 1f, p.gain, 1e-3f)
+            assertTrue("$name in space after", abs(p.pan) < 1e-3f && abs(p.width - 1f) < 1e-3f && p.highCutHz >= 19_000f)
+        }
     }
 
     // -- styles: every transition must start and end clean ----------------------------------

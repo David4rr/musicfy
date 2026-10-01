@@ -23,6 +23,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
+import com.example.musicfy.constants.CrossmixTestToolsKey
 import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.HapticFocus
 import com.example.musicfy.constants.HapticFocusKey
@@ -58,6 +59,12 @@ fun ExperimentalSettingsScreen(navController: NavController) {
         defaultValue = false,
     )
 
+    val (crossmixTestTools, onCrossmixTestToolsChange) = rememberPreference(
+        CrossmixTestToolsKey,
+        defaultValue = false,
+    )
+    val crossmixTools = crossmixTestItems(isVisible = crossmixTestTools)
+
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -78,6 +85,23 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                             onClick = { navController.navigate(com.example.musicfy.ui.screens.settings.importsync.ImportSyncRoute) }
                         )
                     )
+                    add(
+                        SettingsItem(
+                            title = { Text("Crossmix test tools") },
+                            highlightKey = "Crossmix test tools",
+                            descriptionText = "Live status and a button that jumps to just before the next mix; also shown in Crossmix",
+                            icon = painterResource(R.drawable.graphic_eq),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onCrossmixTestToolsChange(!crossmixTestTools) },
+                            trailingContent = {
+                                AppSwitch(
+                                    checked = crossmixTestTools,
+                                    onCheckedChange = onCrossmixTestToolsChange,
+                                )
+                            }
+                        )
+                    )
+                    crossmixTools.forEach { add(it.copy(isSubOption = true)) }
                     add(
                         SettingsItem(
                             title = { Text("Force 1500 px YouTube blur") },

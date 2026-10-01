@@ -22,6 +22,9 @@ class CrashHandler private constructor(
         try {
             val crashLog = buildCrashLog(throwable)
             Timber.e(throwable, "App crashed")
+            // Timber isn't planted in release builds, and the process is killed right after: without
+            // this a release crash left nothing behind at all. Log.e is kept by R8.
+            android.util.Log.e("MusicfyCrash", crashLog)
 
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(1)

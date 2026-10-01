@@ -61,7 +61,7 @@ object CoverThemeColor {
     }
 
     // keep the hue, cap the lightness so white text always reads, and never fall to flat black
-    private fun darken(argb: Int): Int {
+    internal fun darken(argb: Int): Int {
         val hsl = FloatArray(3)
         ColorUtils.colorToHSL(argb, hsl)
         hsl[1] = (hsl[1] * 0.9f).coerceAtMost(0.62f)
