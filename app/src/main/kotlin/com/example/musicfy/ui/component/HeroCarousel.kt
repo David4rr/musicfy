@@ -14,6 +14,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.spring
@@ -133,7 +134,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.hypot
+import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.platform.LocalDensity
 import kotlin.random.Random
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -163,6 +169,15 @@ private val HeroSectionTuck = 7.dp
 // a full-width slide is what made two covers look stacked on each other mid-swipe
 private const val HeroMediaTravel = 0.18f
 private const val HeroTextTravel = 0.42f
+// the switch wipe: feather width as a share of the hero, how far the outgoing fade trails the
+// incoming edge (in feathers), and the blur a page has at a full page away
+private const val HeroWipeFeather = 0.55f
+private const val HeroWipeTrail = 0.25f
+private val HeroSwitchBlur = 18.dp
+// how far right of the hero the wipe's circle is centred, in widths, when fully curved (a swipe),
+// and the floor the curve eases down to for a straight edge
+private const val HeroWipeCurveReach = 0.6f
+private const val HeroWipeFlat = 0.04f
 private val HeroSlideEasing = CubicBezierEasing(0.32f, 0f, 0.15f, 1f)
 private const val HeroSlideMillis = 1150
 private const val HeroAdvanceMillis = 5500L
@@ -578,6 +593,25 @@ private fun HeroPager(
         }
     }
 
+    // a playing canvas repaints the hero, and both blur bands with it, on every video frame. while
+    // Home is receding behind an opened playlist, or coming back from one, that lands on top of the
+    // transition and makes it stutter, so the video holds still until Home has settled. coming back,
+    // the player isn't even built until then: Home is composed fresh on the way back.
+    val navTransition = LocalNavAnimatedContentScope.current?.transition
+    // held as state and read only where it's used: read up here, the start of every page transition
+    // recomposed the whole carousel and each page in it, right in the transition's heaviest frame
+    val navSettledState = remember(navTransition) {
+        derivedStateOf {
+            navTransition == null ||
+                (navTransition.currentState == EnterExitState.Visible && navTransition.targetState == EnterExitState.Visible)
+        }
+    }
+    // the same goes for the gacha's drift and the auto-advance: Home sinking back behind a page, or
+    // the player sliding up over it, keeps the app in one cached picture, and any of them moving
+    // made that whole picture render again for every one of its frames
+    val obscured = com.example.musicfy.LocalAppContentObscured.current
+    val heroHeld = remember(obscured, navSettledState) { { !navSettledState.value || obscured.value } }
+
     if (!isSingleItem) {
         val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
         LaunchedEffect(pagerState, items.size, isDragged, gacha.phase) {
@@ -589,8 +623,9 @@ private fun HeroPager(
                 // rolled it stays until you swipe on
                 if (onGacha && gacha.phase != GachaPhase.Idle) return@LaunchedEffect
                 delay(if (onGacha) HeroAdvanceMillis * 2 else HeroAdvanceMillis)
-                // scrolled away, there's nothing to show the next card to
-                if (heroScrollProgressProvider() > HeroStillFrom) continue
+                // scrolled away, there's nothing to show the next card to; mid-transition or under
+                // the player nobody's looking either
+                if (heroScrollProgressProvider() > HeroStillFrom || heroHeld()) continue
                 pagerState.animateScrollToPage(
                     pagerState.currentPage + 1,
                     animationSpec = tween(HeroSlideMillis, easing = HeroSlideEasing),
@@ -611,23 +646,26 @@ private fun HeroPager(
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
     val edgeBlur = !disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-    // a playing canvas repaints the hero, and both blur bands with it, on every video frame. while
-    // Home is receding behind an opened playlist, or coming back from one, that lands on top of the
-    // transition and makes it stutter, so the video holds still until Home has settled. coming back,
-    // the player isn't even built until then: Home is composed fresh on the way back.
-    val navTransition = LocalNavAnimatedContentScope.current?.transition
-    val navSettled by remember(navTransition) {
-        derivedStateOf {
-            navTransition == null ||
-                (navTransition.currentState == EnterExitState.Visible && navTransition.targetState == EnterExitState.Visible)
-        }
-    }
     var canvasAttached by remember { mutableStateOf(false) }
-    LaunchedEffect(navSettled) {
-        if (navSettled) canvasAttached = true
+    LaunchedEffect(navSettledState) {
+        snapshotFlow { navSettledState.value }.first { it }
+        canvasAttached = true
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // a swipe bows the wipe's edge round, an auto-advance keeps it straight. it's set as soon as a
+    // finger lands and held through the fling until the pager settles, eased so grabbing a card
+    // mid-advance bends the edge instead of snapping it
+    var userSwipe by remember { mutableStateOf(false) }
+    val dragging by pagerState.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(dragging) { if (dragging) userSwipe = true }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.isScrollInProgress }.collect { if (!it) userSwipe = false }
+    }
+    val wipeCurve by animateFloatAsState(if (userSwipe) 1f else 0f, tween(260), label = "heroWipeCurve")
+
+    // the hero animates nearly all the time (video, gacha drift, the switch); bounded, that only
+    // ever repaints the hero instead of the whole screen and every glass surface sampling it
+    Box(modifier = Modifier.fillMaxSize().damageBoundary()) {
         HorizontalPager(
             state = pagerState,
             // no swiping off a reel that's still spinning
@@ -640,6 +678,9 @@ private fun HeroPager(
                     state = gacha,
                     pageOffset = { pagerState.offsetOf(page) },
                     isResultPlaying = isPlaying && gacha.result != null && nowPlaying?.id == gacha.result?.id,
+                    wipeCurve = { wipeCurve },
+                    transitionBlur = edgeBlur,
+                    held = heroHeld,
                     onShown = { sounds.prepare() },
                     onRoll = { roll() },
                 )
@@ -648,9 +689,10 @@ private fun HeroPager(
                     item = item,
                     pageOffset = { pagerState.offsetOf(page) },
                     isThisPlaying = isPlaying && nowPlaying?.id == item.mediaId,
+                    wipeCurve = { wipeCurve },
                     isPagerMoving = { pagerState.isScrollInProgress },
                     canvasAttached = canvasAttached,
-                    canvasMayPlay = navSettled,
+                    canvasMayPlay = { navSettledState.value },
                     edgeBlur = edgeBlur,
                     heroScrollProgressProvider = heroScrollProgressProvider,
                     onPrimaryClick = {
@@ -674,21 +716,19 @@ private fun PagerState.offsetOf(page: Int): Float =
 private fun HeroPage(
     item: HeroCarouselItem,
     pageOffset: () -> Float,
+    wipeCurve: () -> Float,
     isThisPlaying: Boolean,
     isPagerMoving: () -> Boolean,
     canvasAttached: Boolean,
-    canvasMayPlay: Boolean,
+    canvasMayPlay: () -> Boolean,
     edgeBlur: Boolean,
     heroScrollProgressProvider: () -> Float,
     onPrimaryClick: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .heroPageCrossfade(pageOffset)
-    ) {
+    HeroWipePage(pageOffset = pageOffset, curve = wipeCurve, blur = edgeBlur) {
         HeroMedia(
             item = item,
+            modifier = Modifier.heroMediaDrift(pageOffset),
             edgeBlur = edgeBlur,
             isPagerMoving = isPagerMoving,
             canvasAttached = canvasAttached,
@@ -719,29 +759,218 @@ private fun HeroPage(
     }
 }
 
-// pages to the right fade in over the current one; the page underneath stays opaque, so the
-// crossfade never dips through to black
-private fun Modifier.heroPageCrossfade(pageOffset: () -> Float): Modifier = graphicsLayer {
-    val d = pageOffset()
-    alpha = 1f - d.coerceIn(0f, 1f)
-    translationX = -d * size.width * (1f - HeroMediaTravel)
+// a feathered wipe sweeps across the hero from the side the next page comes in on: the incoming
+// page goes 0 -> 100% behind the edge, the outgoing one 100 -> 0% just trailing it, so the seam
+// only dims a touch and never shows black. both are blurred by how far they are from settling, so
+// the new cover sharpens into place while the old one smears out.
+// the edge is the rim of a circle growing in from the right: so far off it's a straight line when
+// the hero advances by itself, close enough to bow round under your finger when you swipe.
+// pages are pinned to the viewport while this runs ([heroMediaDrift] does the sliding inside them):
+// a page's own border on screen showed as a hard line wherever it crossed the feather.
+//
+// a settled page draws itself straight. while the wipe has something to do to it, the page is only
+// recorded, and [HeroWipeCopy] beside it draws that recording masked and blurred: from a half-size
+// copy once the blur is wide enough to hide the difference, and only across the part of the hero
+// the mask leaves. both pages used to render the whole hero offscreen at full size every frame of
+// the switch, blur all of it and erase most of it again.
+@Composable
+private fun HeroWipePage(
+    pageOffset: () -> Float,
+    curve: () -> Float,
+    blur: Boolean,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val blurPx = if (blur) with(LocalDensity.current) { HeroSwitchBlur.toPx() } else 0f
+    val pageLayer = rememberGraphicsLayer()
+    val sourceEdge = remember { HeroWipeEdge() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val d = pageOffset()
+                translationX = -d * size.width
+                // this close to a whole page away, an incoming page is entirely past the edge and
+                // an outgoing one sits under the settled page in front. drawn plainly there (the
+                // wipe had already let go of it), the next cover flashed over the hero for the
+                // first frames of every advance, and the old one at the end of a swipe back
+                alpha = if (abs(d) >= HeroWipeHidden) 0f else 1f
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .drawWithContent {
+                    if (sourceEdge.update(pageOffset(), size, curve(), blurPx)) {
+                        pageLayer.record { this@drawWithContent.drawContent() }
+                    } else {
+                        drawContent()
+                    }
+                },
+            content = content,
+        )
+        // a sibling of the recorded page, never inside it, so the recording can't contain itself
+        HeroWipeCopy(pageLayer = pageLayer, pageOffset = pageOffset, curve = curve, blurPx = blurPx)
+    }
+}
+
+/** how far from settled a page has to be before the wipe touches it, and where it's hidden outright */
+private const val HeroWipeSettled = 0.001f
+private const val HeroWipeHidden = 0.999f
+
+/** where the wipe's edge is on one page, worked out again each frame it moves */
+private class HeroWipeEdge {
+    var incoming = false
+    var centerX = 0f
+    var centerY = 0f
+    /** incoming: opaque inside this radius. outgoing: gone inside it */
+    var inner = 0f
+    /** incoming: gone outside this radius. outgoing: untouched outside it */
+    var outer = 0f
+    var blur = 0f
+
+    /**
+     * the edge for a page [d] pages from settled on a hero of [size]. true while the wipe changes
+     * anything about the page: it erases some of it, or blurs it by more than half a pixel. outside
+     * that the page as it is looks exactly the same, so it's drawn plainly.
+     */
+    fun update(d: Float, size: Size, curve: Float, blurPx: Float): Boolean {
+        val a = abs(d)
+        if (a < HeroWipeSettled || a >= HeroWipeHidden) return false
+        val w = size.width
+        val feather = w * HeroWipeFeather
+        // both pages of the pair agree on where the edge is: progress 0 -> 1 as the right-hand
+        // page takes over, whichever way the swipe runs
+        val progress = if (d > 0f) 1f - d else -d
+        val off = w * HeroWipeCurveReach / curve.coerceIn(HeroWipeFlat, 1f)
+        centerX = w + off
+        centerY = size.height / 2f
+        // from the incoming page's feather just touching the right edge, to it being opaque over
+        // the far corner
+        val from = off - feather
+        val to = hypot(centerX, centerY)
+        val r = from + (to - from) * progress
+        incoming = d > 0f
+        if (incoming) {
+            // opaque inside the circle, gone a feather outside it
+            inner = r
+            outer = r + feather
+        } else {
+            // its fade trails the incoming one's by a quarter feather
+            inner = r - feather * HeroWipeTrail
+            outer = inner + feather
+        }
+        blur = a * blurPx
+        // the farthest point from the centre is the left corners, the nearest the right edge's middle
+        val erases = if (incoming) inner < to else outer > off
+        return erases || blur > 0.5f
+    }
+}
+
+/**
+ * the wipe's picture of a page: the recording, masked by the edge (DstOut, so it has a buffer of its
+ * own), then blurred. the mask goes on before the blur, as it did when the page's own layer did both.
+ * columns the mask clears completely are never drawn, and the mask itself only covers the feather.
+ */
+@Composable
+private fun HeroWipeCopy(
+    pageLayer: GraphicsLayer,
+    pageOffset: () -> Float,
+    curve: () -> Float,
+    blurPx: Float,
+) {
+    val edge = remember { HeroWipeEdge() }
+    DownscaledBlur(
+        radius = {
+            val a = abs(pageOffset())
+            if (a < HeroWipeSettled || a >= HeroWipeHidden) 0f else BlurEffectCache.effectiveRadius(a * blurPx)
+        },
+        tileMode = Shader.TileMode.CLAMP,
+        mask = null,
+        offscreen = { abs(pageOffset()) in HeroWipeSettled..HeroWipeHidden },
+        modifier = Modifier.fillMaxSize(),
+    ) { fullSize ->
+        if (!edge.update(pageOffset(), fullSize, curve(), blurPx)) return@DownscaledBlur
+        val w = fullSize.width
+        val h = fullSize.height
+        val halfH = h / 2f
+        // the first column a circle of radius [radius] covers from top to bottom
+        fun fullyInside(radius: Float): Float =
+            if (radius > halfH) min(w, edge.centerX - sqrt(radius * radius - halfH * halfH)) else w
+        val left: Float
+        val right: Float
+        val maskLeft: Float
+        val maskRight: Float
+        if (edge.incoming) {
+            // nothing of it left of the outer circle; solid where the inner one spans the height
+            left = (edge.centerX - edge.outer).coerceAtLeast(0f)
+            right = w
+            maskLeft = left
+            maskRight = fullyInside(edge.inner)
+        } else {
+            // gone where the inner circle spans the height; untouched left of the outer one
+            left = 0f
+            right = fullyInside(edge.inner)
+            maskLeft = (edge.centerX - edge.outer).coerceAtLeast(0f)
+            maskRight = right
+        }
+        if (right <= left) return@DownscaledBlur
+        clipRect(left, 0f, right, h) { drawLayer(pageLayer) }
+        if (maskRight > maskLeft) {
+            val center = Offset(edge.centerX, edge.centerY)
+            val stops = if (edge.incoming) {
+                featherStops(edge.inner / edge.outer, inside = Color.Transparent, outside = Color.Black)
+            } else {
+                featherStops(edge.inner / edge.outer, inside = Color.Black, outside = Color.Transparent)
+            }
+            drawRect(
+                brush = Brush.radialGradient(*stops, center = center, radius = edge.outer),
+                topLeft = Offset(maskLeft, 0f),
+                size = Size(maskRight - maskLeft, h),
+                blendMode = BlendMode.DstOut,
+            )
+        }
+    }
+}
+
+// smoothstep across the feather instead of a straight ramp: a linear one has a visible crease
+// where it meets the flat part on either end
+private fun featherStops(start: Float, inside: Color, outside: Color): Array<Pair<Float, Color>> {
+    val s = start.coerceIn(0f, 0.999f)
+    return Array(FeatherEase.size) { i ->
+        val t = i / (FeatherEase.size - 1f)
+        (s + (1f - s) * t) to lerp(inside, outside, FeatherEase[i])
+    }
+}
+
+private val FeatherEase = floatArrayOf(0f, 0.104f, 0.352f, 0.648f, 0.896f, 1f)
+
+// the slide itself, inside a pinned page: the media drifts the way it used to, zoomed by just
+// enough to keep its edges off screen, so it settles from a slight push-in
+private fun Modifier.heroMediaDrift(pageOffset: () -> Float): Modifier = graphicsLayer {
+    val d = pageOffset().coerceIn(-1f, 1f)
+    val scale = 1f + 2f * HeroMediaTravel * abs(d)
+    scaleX = scale
+    scaleY = scale
+    translationX = d * size.width * HeroMediaTravel
 }
 
 // text drifts further than the cover and is gone by half way, so the outgoing and incoming
 // titles never sit on top of each other
 private fun Modifier.heroTextDrift(pageOffset: () -> Float): Modifier = graphicsLayer {
     val d = pageOffset()
-    translationX = d * size.width * HeroTextTravel
+    translationX = d * size.width * (HeroTextTravel + HeroMediaTravel)
     alpha = (1f - abs(d) * 1.9f).coerceIn(0f, 1f)
 }
 
 @Composable
 private fun HeroMedia(
     item: HeroCarouselItem,
+    modifier: Modifier = Modifier,
     edgeBlur: Boolean,
     isPagerMoving: () -> Boolean,
     canvasAttached: Boolean,
-    canvasMayPlay: Boolean,
+    canvasMayPlay: () -> Boolean,
     heroScrollProgressProvider: () -> Float,
 ) {
     val context = LocalContext.current
@@ -790,7 +1019,7 @@ private fun HeroMedia(
     }
     val mediaLayer = rememberGraphicsLayer()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         // the page's media is recorded once and drawn again, blurred, into the edge bands below.
         // they're siblings of this box, never inside it, so the layer can't end up drawing itself.
         Box(
@@ -818,7 +1047,7 @@ private fun HeroMedia(
                     fallbackUrl = null,
                     // also held while the open player covers Home: it kept decoding and drawing
                     // frames under it. It picks up where it was once Home shows again.
-                    isPlaying = canvasMayPlay && heroAtRest && !isPagerMoving() &&
+                    isPlaying = canvasMayPlay() && heroAtRest && !isPagerMoving() &&
                         !com.example.musicfy.LocalAppContentObscured.current.value,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -867,39 +1096,41 @@ private fun BoxScope.HeroBlurBand(
     }
 }
 
-/** the Figma dim (the cover sits at 64% on black) and the top and bottom gradients */
+/**
+ * the Figma dim (the cover sits at 64% on black) and the top and bottom gradients, as one gradient.
+ * black at a over black at b is black at 1 - (1 - a)(1 - b), and that's linear in each, so folding
+ * the dim into the gradients' stops gives the same picture: one pass over the hero instead of three
+ * (it's under every frame of the hero's video, the scroll-away and the switch)
+ */
 @Composable
 private fun BoxScope.HeroScrims() {
     Box(
         modifier = Modifier
             .matchParentSize()
             .drawWithCache {
-                val h = size.height
-                val topEnd = h * 0.463f
-                val bottomStart = h * 0.533f
-                val bottomEnd = h * 0.989f
-                val top = Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.86f),
-                    0.475f to Color.Black.copy(alpha = 0.59f),
-                    1f to Color.Transparent,
+                val topEnd = 0.463f
+                val bottomStart = 0.533f
+                val bottomEnd = 0.989f
+                val scrim = Brush.verticalGradient(
+                    0f to heroScrimBlack(0.86f),
+                    0.475f * topEnd to heroScrimBlack(0.59f),
+                    topEnd to heroScrimBlack(0f),
+                    bottomStart to heroScrimBlack(0f),
+                    bottomStart + 0.457f * (bottomEnd - bottomStart) to heroScrimBlack(0.59f),
+                    bottomEnd to heroScrimBlack(1f),
+                    1f to heroScrimBlack(1f),
                     startY = 0f,
-                    endY = topEnd,
+                    endY = size.height,
                 )
-                val bottom = Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    0.457f to Color.Black.copy(alpha = 0.59f),
-                    1f to Color.Black,
-                    startY = bottomStart,
-                    endY = bottomEnd,
-                )
-                onDrawBehind {
-                    drawRect(Color.Black.copy(alpha = 0.36f))
-                    drawRect(top, size = Size(size.width, topEnd))
-                    drawRect(bottom, topLeft = Offset(0f, bottomStart), size = Size(size.width, h - bottomStart))
-                }
+                onDrawBehind { drawRect(scrim) }
             }
     )
 }
+
+private const val HeroDim = 0.36f
+
+/** black at [gradient], over the 36% dim */
+private fun heroScrimBlack(gradient: Float): Color = Color.Black.copy(alpha = 1f - (1f - HeroDim) * (1f - gradient))
 
 /** label, title and pill, sitting on the hero's bottom left like the Figma */
 @Composable
@@ -1257,6 +1488,154 @@ private fun easedShade(height: Float, alphaAt: (Float) -> Float): android.graphi
     return android.graphics.LinearGradient(0f, 0f, 0f, height, colors, positions, Shader.TileMode.CLAMP)
 }
 
+/**
+ * the gacha card's colour field in one pass: the wash from the deep colour up to the lit one, three
+ * blooms drifting through it (the covers above and below the pointer, and a turn of the lit hue), the wandering light under the text
+ * and the glow behind the big cover, all over a slow warp so the colours flow round each other.
+ * One opaque fill instead of three blended gradients over the whole card, and dithered so the
+ * long ramps don't band.
+ */
+private const val GachaMeshShader = """
+uniform float2 size;
+uniform float time;
+uniform float2 washFrom;
+uniform float2 washDir;
+uniform float3 wander;
+uniform float3 glow;
+uniform float glowCore;
+uniform float3 bloomA;
+uniform float3 bloomB;
+uniform float3 bloomC;
+layout(color) uniform half4 washA;
+layout(color) uniform half4 washB;
+layout(color) uniform half4 washC;
+layout(color) uniform half4 lit;
+layout(color) uniform half4 accentA;
+layout(color) uniform half4 accentB;
+layout(color) uniform half4 accentC;
+
+// a light falling from core at the centre to mid at knee, then out to nothing, darkening as it
+// fades the way the old gradients' transparent-black outer stop did
+float3 light(float3 col, float3 tint, float d, float core, float mid, float knee) {
+    float dd = clamp(d, 0.0, 1.0);
+    float a;
+    float3 rgb;
+    if (dd < knee) {
+        a = mix(core, mid, dd / knee);
+        rgb = tint;
+    } else {
+        float u = (dd - knee) / (1.0 - knee);
+        a = mid * (1.0 - u);
+        rgb = tint * (1.0 - u);
+    }
+    return col * (1.0 - a) + rgb * a;
+}
+
+half4 main(float2 p) {
+    float2 uv = p / size;
+    float2 q = p + float2(
+        sin(uv.y * 4.2 + time * 0.38) + 0.5 * sin(uv.x * 6.3 - time * 0.21),
+        cos(uv.x * 3.6 - time * 0.31) + 0.5 * cos(uv.y * 5.1 + time * 0.27)
+    ) * size.x * 0.03;
+
+    float s = clamp(dot(q - washFrom, washDir) / dot(washDir, washDir), 0.0, 1.0);
+    float3 col = s < 0.5
+        ? mix(float3(washA.rgb), float3(washB.rgb), s * 2.0)
+        : mix(float3(washB.rgb), float3(washC.rgb), s * 2.0 - 1.0);
+
+    float bc = 1.0 - smoothstep(0.0, 1.0, length(q - bloomC.xy) / bloomC.z);
+    col = mix(col, float3(accentC.rgb), bc * 0.4);
+    float ba = 1.0 - smoothstep(0.0, 1.0, length(q - bloomA.xy) / bloomA.z);
+    col = mix(col, float3(accentA.rgb), ba * 0.62);
+    float bb = 1.0 - smoothstep(0.0, 1.0, length(q - bloomB.xy) / bloomB.z);
+    col = mix(col, float3(accentB.rgb), bb * 0.55);
+
+    col = light(col, float3(lit.rgb), length(q - wander.xy) / wander.z, 0.32, 0.1, 0.5);
+    col = light(col, float3(lit.rgb), length(p - glow.xy) / glow.z, glowCore, 0.32, 0.45);
+
+    float n = fract(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+    col += (n - 0.5) / 255.0;
+    return half4(half3(col), 1.0);
+}
+"""
+
+@androidx.annotation.RequiresApi(33)
+private fun createGachaMesh(): Any = createAgslShader(GachaMeshShader)
+
+private val GachaHsv = FloatArray(3)
+
+/** [color] turned round the colour wheel by [degrees], its saturation and value scaled */
+private fun shiftHue(color: Color, degrees: Float, saturation: Float, value: Float): Int {
+    android.graphics.Color.colorToHSV(color.toArgb(), GachaHsv)
+    GachaHsv[0] = (GachaHsv[0] + degrees).mod(360f)
+    GachaHsv[1] = (GachaHsv[1] * saturation).coerceIn(0f, 0.9f)
+    GachaHsv[2] = (GachaHsv[2] * value).coerceIn(0f, 1f)
+    return android.graphics.Color.HSVToColor(GachaHsv)
+}
+
+@androidx.annotation.RequiresApi(33)
+private fun drawGachaMesh(
+    canvas: android.graphics.Canvas,
+    shader: Any,
+    paint: android.graphics.Paint,
+    width: Float,
+    height: Float,
+    lit: Color,
+    deep: Color,
+    above: Color,
+    below: Color,
+    washFromX: Float,
+    washDirX: Float,
+    washDirY: Float,
+    wanderX: Float,
+    wanderY: Float,
+    wanderR: Float,
+    glowX: Float,
+    glowY: Float,
+    glowR: Float,
+    glowCore: Float,
+    time: Float,
+) {
+    shader.setAgslUniform("size", width, height)
+    shader.setAgslUniform("time", time)
+    shader.setAgslUniform("washFrom", washFromX, 0f)
+    shader.setAgslUniform("washDir", washDirX, washDirY)
+    shader.setAgslUniform("wander", wanderX, wanderY, wanderR)
+    shader.setAgslUniform("glow", glowX, glowY, glowR)
+    shader.setAgslUniform("glowCore", glowCore)
+    // the blooms keep to the middle band of the card, the part the top and bottom shading leaves
+    shader.setAgslUniform(
+        "bloomA",
+        width * (0.3f + 0.16f * sin(time * 0.17f + 0.7f)),
+        height * (0.4f + 0.08f * kotlin.math.cos(time * 0.23f)),
+        width * 0.68f,
+    )
+    shader.setAgslUniform(
+        "bloomB",
+        width * (0.72f + 0.12f * sin(time * 0.13f + 2.1f)),
+        height * (0.64f + 0.07f * sin(time * 0.29f + 0.4f)),
+        width * 0.72f,
+    )
+    shader.setAgslUniform(
+        "bloomC",
+        width * (0.55f + 0.2f * sin(time * 0.11f + 4.2f)),
+        height * (0.24f + 0.06f * kotlin.math.cos(time * 0.19f + 1.1f)),
+        width * 0.6f,
+    )
+    shader.setAgslColorUniform("washA", lerp(deep, lit, 0.55f).toArgb())
+    shader.setAgslColorUniform("washB", lerp(deep, lit, 0.22f).toArgb())
+    shader.setAgslColorUniform("washC", deep.toArgb())
+    shader.setAgslColorUniform("lit", lit.toArgb())
+    // the neighbouring covers' colours, lifted to sit with the lit one; a cover that's the same hue
+    // as the one under the pointer gets turned a little round the wheel, so there's always a second
+    // and third colour in the field
+    shader.setAgslColorUniform("accentA", shiftHue(above, 26f, 1.05f, 0.95f))
+    shader.setAgslColorUniform("accentB", shiftHue(below, -22f, 1.1f, 1.45f))
+    shader.setAgslColorUniform("accentC", shiftHue(lit, 48f, 1f, 0.85f))
+    paint.shader = shader.asAgslPaintShader()
+    canvas.drawRect(0f, 0f, width, height, paint)
+}
+
 private enum class GachaPhase { Idle, Rolling, Landed }
 
 @Stable
@@ -1359,6 +1738,10 @@ private fun GachaPage(
     state: GachaState,
     pageOffset: () -> Float,
     isResultPlaying: Boolean,
+    wipeCurve: () -> Float,
+    transitionBlur: Boolean,
+    /** Home is mid-transition or under the player: the card holds still */
+    held: () -> Boolean,
     onShown: () -> Unit,
     onRoll: () -> Unit,
 ) {
@@ -1382,11 +1765,15 @@ private fun GachaPage(
     // read only while drawing, so a new frame redraws the card without recomposing it
     val light = remember { mutableStateOf(GachaDefaultTint.light) }
     val deep = remember { mutableStateOf(GachaDefaultTint.deep) }
+    // the covers just above and just below the pointer: their colours drift through the field too,
+    // so it shifts colour as the reel turns instead of being one cover's wash
+    val above = remember { mutableStateOf(GachaDefaultTint.light) }
+    val below = remember { mutableStateOf(GachaDefaultTint.deep) }
     val clock = remember { mutableFloatStateOf(0f) }
     val speed = remember { mutableFloatStateOf(0f) }
 
-    // nor does one hidden under the open player
-    val obscured = com.example.musicfy.LocalAppContentObscured.current
+    // nor does one hidden under the player or behind a page that's opening
+    val currentHeld by androidx.compose.runtime.rememberUpdatedState(held)
     LaunchedEffect(state) {
         var lastNanos = 0L
         var lastReel = state.reel.value
@@ -1394,9 +1781,9 @@ private fun GachaPage(
         var wasBusy = false
         while (isActive) {
             // the pager keeps its neighbours composed; a card off to the side doesn't need frames
-            if (abs(pageOffset()) >= 0.999f || obscured.value) {
+            if (abs(pageOffset()) >= 0.999f || currentHeld()) {
                 lastNanos = 0L
-                snapshotFlow { abs(pageOffset()) < 0.999f && !obscured.value }.first { it }
+                snapshotFlow { abs(pageOffset()) < 0.999f && !currentHeld() }.first { it }
                 continue
             }
             withFrameNanos { now ->
@@ -1411,13 +1798,18 @@ private fun GachaPage(
 
                 // the colours under the pointer, blended between the two covers either side of it.
                 // the background trails them a little, so a fast spin washes rather than flashes
+                var aboveTarget = GachaDefaultTint.light
+                var belowTarget = GachaDefaultTint.deep
                 val target = if (count == 0) {
                     GachaDefaultTint
                 } else {
                     val base = floor(reel).toInt()
                     val between = reel - base
-                    val from = state.tints[state.candidates[base.mod(count)].id] ?: GachaDefaultTint
-                    val to = state.tints[state.candidates[(base + 1).mod(count)].id] ?: from
+                    fun tintAt(offset: Int) = state.tints[state.candidates[(base + offset).mod(count)].id]
+                    val from = tintAt(0) ?: GachaDefaultTint
+                    val to = tintAt(1) ?: from
+                    aboveTarget = lerp((tintAt(-1) ?: from).light, from.light, between)
+                    belowTarget = lerp(to.deep, (tintAt(2) ?: to).deep, between)
                     GachaTint(lerp(from.light, to.light, between), lerp(from.deep, to.deep, between))
                 }
                 val busy = speed.floatValue > 0.05f || state.burst.value > 0f
@@ -1430,6 +1822,8 @@ private fun GachaPage(
                     val follow = 1f - exp(-step / 0.22f)
                     light.value = settle(light.value, target.light, follow)
                     deep.value = settle(deep.value, target.deep, follow)
+                    above.value = settle(above.value, aboveTarget, follow)
+                    below.value = settle(below.value, belowTarget, follow)
                     clock.floatValue += step
                 }
                 wasBusy = busy
@@ -1439,20 +1833,16 @@ private fun GachaPage(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .heroPageCrossfade(pageOffset)
-            .clipToBounds()
-    ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    HeroWipePage(pageOffset = pageOffset, curve = wipeCurve, blur = transitionBlur) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().heroMediaDrift(pageOffset)) {
             val unit = maxHeight / GachaDesignHeight
             val focus = unit * GachaFocusSize
             val coverShape = RoundedCornerShape(unit * GachaCornerRadius)
             val count = candidates.size
 
             // the wash, the glows and the win ring. Its own layer, so its per-frame redraw doesn't
-            // re-record the reel or the shading. The gradients are built once at unit size and only
+            // re-record the reel or the shading. On Android 13+ the whole field is one shader pass
+            // (see GachaMeshShader); below that the gradients are built once at unit size and only
             // re-coloured when the colours actually move; position and size change through each
             // shader's matrix, so an idle card allocates nothing per frame.
             Box(
@@ -1466,6 +1856,8 @@ private fun GachaPage(
                         val overhangPx = (unit * GachaOverhang).toPx()
                         val glowX = w + overhangPx - focusPx / 2f
                         val glowY = (unit * GachaCenterY).toPx()
+                        val mesh: Any? = if (Build.VERSION.SDK_INT >= 33) createGachaMesh() else null
+                        val meshPaint = android.graphics.Paint()
                         val washPaint = android.graphics.Paint().apply { isDither = true }
                         val wanderPaint = android.graphics.Paint().apply { isDither = true }
                         val glowPaint = android.graphics.Paint().apply { isDither = true }
@@ -1491,48 +1883,75 @@ private fun GachaPage(
                                 val x0 = w * 0.85f + sway
                                 val dx = (w * 0.15f - sway) - x0
                                 val dy = h
-                                // a similarity transform keeps the unit gradient's bands at right angles
-                                values[0] = dx; values[1] = -dy; values[2] = x0
-                                values[3] = dy; values[4] = dx; values[5] = 0f
-                                values[6] = 0f; values[7] = 0f; values[8] = 1f
-                                matrix.setValues(values)
-                                washPaint.shader = wash.shader(
-                                    lerp(dark, lit, 0.55f).toArgb(),
-                                    lerp(dark, lit, 0.22f).toArgb(),
-                                    dark.toArgb(),
-                                    matrix,
-                                )
-                                native.drawRect(0f, 0f, w, h, washPaint)
-
                                 // a second light wandering on the left, under the text
                                 val wanderX = w * (0.18f + 0.08f * sin(t * 0.23f))
                                 val wanderY = h * (0.55f + 0.1f * sin(t * 0.31f + 1.3f))
                                 val wanderR = w * 0.7f
-                                matrix.setScale(wanderR, wanderR)
-                                matrix.postTranslate(wanderX, wanderY)
-                                wanderPaint.shader = wander.shader(
-                                    lit.copy(alpha = 0.32f).toArgb(),
-                                    lit.copy(alpha = 0.1f).toArgb(),
-                                    Color.Transparent.toArgb(),
-                                    matrix,
-                                )
-                                native.drawCircle(wanderX, wanderY, wanderR, wanderPaint)
-
                                 // the glow behind the big cover: breathing at rest, swelling with the
                                 // spin, flaring on a win
                                 val breathe = 0.05f * sin(t * 1.4f)
                                 val flare = if (win > 0f) sin(win * PI.toFloat()) * 0.55f else 0f
                                 val glowR = focusPx * (1.05f + breathe + rush * 0.35f + flare)
                                 val glowY2 = glowY + sin(t * 0.8f) * focusPx * 0.04f
-                                matrix.setScale(glowR, glowR)
-                                matrix.postTranslate(glowX, glowY2)
-                                glowPaint.shader = glow.shader(
-                                    lit.copy(alpha = (0.75f + rush * 0.2f).coerceAtMost(1f)).toArgb(),
-                                    lit.copy(alpha = 0.32f).toArgb(),
-                                    Color.Transparent.toArgb(),
-                                    matrix,
-                                )
-                                native.drawCircle(glowX, glowY2, glowR, glowPaint)
+                                val glowCore = (0.75f + rush * 0.2f).coerceAtMost(1f)
+
+                                if (mesh != null && Build.VERSION.SDK_INT >= 33) {
+                                    drawGachaMesh(
+                                        canvas = native,
+                                        shader = mesh,
+                                        paint = meshPaint,
+                                        width = w,
+                                        height = h,
+                                        lit = lit,
+                                        deep = dark,
+                                        above = above.value,
+                                        below = below.value,
+                                        washFromX = x0,
+                                        washDirX = dx,
+                                        washDirY = dy,
+                                        wanderX = wanderX,
+                                        wanderY = wanderY,
+                                        wanderR = wanderR,
+                                        glowX = glowX,
+                                        glowY = glowY2,
+                                        glowR = glowR,
+                                        glowCore = glowCore,
+                                        time = t,
+                                    )
+                                } else {
+                                    // a similarity transform keeps the unit gradient's bands at right angles
+                                    values[0] = dx; values[1] = -dy; values[2] = x0
+                                    values[3] = dy; values[4] = dx; values[5] = 0f
+                                    values[6] = 0f; values[7] = 0f; values[8] = 1f
+                                    matrix.setValues(values)
+                                    washPaint.shader = wash.shader(
+                                        lerp(dark, lit, 0.55f).toArgb(),
+                                        lerp(dark, lit, 0.22f).toArgb(),
+                                        dark.toArgb(),
+                                        matrix,
+                                    )
+                                    native.drawRect(0f, 0f, w, h, washPaint)
+
+                                    matrix.setScale(wanderR, wanderR)
+                                    matrix.postTranslate(wanderX, wanderY)
+                                    wanderPaint.shader = wander.shader(
+                                        lit.copy(alpha = 0.32f).toArgb(),
+                                        lit.copy(alpha = 0.1f).toArgb(),
+                                        Color.Transparent.toArgb(),
+                                        matrix,
+                                    )
+                                    native.drawCircle(wanderX, wanderY, wanderR, wanderPaint)
+
+                                    matrix.setScale(glowR, glowR)
+                                    matrix.postTranslate(glowX, glowY2)
+                                    glowPaint.shader = glow.shader(
+                                        lit.copy(alpha = glowCore).toArgb(),
+                                        lit.copy(alpha = 0.32f).toArgb(),
+                                        Color.Transparent.toArgb(),
+                                        matrix,
+                                    )
+                                    native.drawCircle(glowX, glowY2, glowR, glowPaint)
+                                }
 
                                 // the win: a ring that leaves the winner and fades as it grows
                                 if (win > 0f && win < 1f) {

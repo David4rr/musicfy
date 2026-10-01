@@ -56,6 +56,8 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
          */
         val calibrationMs: Double,
         val calibrationNanos: Long,
+        /** the two songs would sing over each other: the outgoing voice is dampened and drawn away */
+        val yieldVocals: Boolean = false,
     )
 
     @Volatile private var script: Script? = null
@@ -140,6 +142,7 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         // anything but 16-bit mono or stereo (a 5.1 file, say) passes straight by: the processor
         // steps out of the chain, and Crossmix sees it can't render this track and doesn't try
         supported = inputAudioFormat.encoding == C.ENCODING_PCM_16BIT && inputAudioFormat.channelCount in 1..2
+        format = "${inputAudioFormat.sampleRate} Hz, ${inputAudioFormat.channelCount} ch, encoding ${inputAudioFormat.encoding}"
         if (!supported) {
             sampleRate = 0
             return AudioProcessor.AudioFormat.NOT_SET
@@ -151,6 +154,16 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
     }
 
     @Volatile private var supported = true
+
+    /** the format the renderer was last set up for, for the log when it can't be mixed */
+    @Volatile var format = "not set up yet"
+        private set
+
+    /** the renderer has been set up for this side's track (a paused player can be READY before) */
+    val configured: Boolean get() = sampleRate > 0 || !supported
+
+    /** set up for a format it can't mix (5.1, float...): the track plays through untouched */
+    val unsupported: Boolean get() = !supported
 
     /** whether this side can play a transition: its track is a format the renderer handles */
     val canRender: Boolean get() = supported && sampleRate > 0
@@ -344,6 +357,7 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                     if (s.role == CrossmixRole.Outgoing) params.gain = 1f
                 } else {
                     s.style.evaluate(s.role, beat, s.lengthBeats, s.variation, params)
+                    if (s.yieldVocals) s.style.yieldVocals(s.role, beat, s.lengthBeats, s.variation, params)
                     currentBeat = beat
                     if (beat >= -0.5f) scriptHeard = true
                 }
