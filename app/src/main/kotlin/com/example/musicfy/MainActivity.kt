@@ -229,24 +229,14 @@ import javax.inject.Inject
 private const val BackgroundZoomOnExpand = true
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-/**
- * Marker recording that the setup wizard has run on *this* install.
- *
- * It lives in no-backup storage on purpose. Android Auto Backup restores our DataStore onto
- * a fresh install, which brings back setupCompleted and the saved username - so a brand new
- * install would skip onboarding entirely and greet a user who never went through it. Settings
- * still restore as before; only the "have we onboarded here" answer is install-local.
- */
+
 private const val SETUP_MARKER_FILE = "setup_wizard_completed"
 
 private fun hasOnboardedOnThisInstall(context: android.content.Context): Boolean {
     if (runCatching { java.io.File(context.noBackupFilesDir, SETUP_MARKER_FILE).exists() }.getOrDefault(false)) {
         return true
     }
-    // Installs that predate the marker cannot prove they onboarded, and we must not drag every
-    // existing user back through the wizard on update. An in-place update is the proof we need:
-    // a restored backup always lands on a first install, where firstInstallTime and
-    // lastUpdateTime are the same moment. Backfill so this only ever runs once.
+
     if (isUpgradedInstall(context)) {
         markOnboardedOnThisInstall(context)
         return true
@@ -554,12 +544,7 @@ class MainActivity : ComponentActivity() {
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
                 val cutoutInsets = WindowInsets.displayCutout
-                // The space the system bars take when shown, not what they take right now. The
-                // player hides the navigation bar while it's expanded, and laying the app out
-                // against the bars' current size turned that hide - and the show at the start of
-                // every close - into an inset animation the whole app recomposed and re-laid out
-                // for, frame by frame. It also moved the player sheet's collapsed bound mid-close,
-                // which rebuilt the sheet's state and restarted its spring on every frame of it.
+
                 @OptIn(ExperimentalLayoutApi::class)
                 val windowsInsets = WindowInsets.systemBarsIgnoringVisibility
                 val bottomInset = with(density) { windowsInsets.getBottom(density).toDp() }
@@ -1178,8 +1163,14 @@ class MainActivity : ComponentActivity() {
                                         }
                                 ) {
 
+                                    // from the moment the player starts to open, not only once it's
+                                    // all the way up. While the sheet moves, the app behind is kept
+                                    // in one cached layer (above); anything still animating in it -
+                                    // the hero's video, the gacha's drift, the playing bars - made
+                                    // that whole layer render again on each of its frames, all
+                                    // through the open and the close
                                     val appContentObscured = remember(playerBottomSheetState) {
-                                        derivedStateOf { playerBottomSheetState.isExpanded }
+                                        derivedStateOf { playerBottomSheetState.progress > 0.001f }
                                     }
                                     SharedTransitionLayout {
                                     CompositionLocalProvider(

@@ -24,6 +24,8 @@ val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val Enable26RecapKey = booleanPreferencesKey("enable26Recap")
 /** Opens the monthly recap even before the 3rd or with fewer than 10 songs played (Experimental). */
 val ForceMonthlyRecapKey = booleanPreferencesKey("forceMonthlyRecap")
+/** Shows Crossmix's live status and a "Test on this song" button (Experimental). */
+val CrossmixTestToolsKey = booleanPreferencesKey("crossmixTestTools")
 val MiniPlayerOutlineKey = booleanPreferencesKey("miniPlayerOutline")
 val DensityScaleKey = floatPreferencesKey("density_scale_factor")
 val CustomDensityScaleKey = floatPreferencesKey("custom_density_scale_value")
@@ -210,6 +212,8 @@ val PlaylistSongSortTypeKey = stringPreferencesKey("playlistSongSortType")
 val PlaylistSongSortDescendingKey = booleanPreferencesKey("playlistSongSortDescending")
 val AutoPlaylistSongSortTypeKey = stringPreferencesKey("autoPlaylistSongSortType")
 val AutoPlaylistSongSortDescendingKey = booleanPreferencesKey("autoPlaylistSongSortDescending")
+val LikedSongSortTypeKey = stringPreferencesKey("likedSongSortType")
+val LikedSongSortDescendingKey = booleanPreferencesKey("likedSongSortDescending")
 val ArtistSortTypeKey = stringPreferencesKey("artistSortType")
 val ArtistSortDescendingKey = booleanPreferencesKey("artistSortDescending")
 val AlbumSortTypeKey = stringPreferencesKey("albumSortType")
@@ -308,6 +312,15 @@ enum class SongSortType {
 enum class PlaylistSongSortType {
     CUSTOM,
     CREATE_DATE,
+    NAME,
+    ARTIST,
+    PLAY_TIME,
+}
+
+/** Liked songs' own sort: the song sorts plus the order things were imported in, by service. */
+enum class LikedSongSortType {
+    CREATE_DATE,
+    IMPORT_ORDER,
     NAME,
     ARTIST,
     PLAY_TIME,
@@ -445,18 +458,49 @@ enum class PlayerCoverStyle {
 }
 
 /**
- * Whole-player presets, picked from the style selector reached by long-pressing the player.
+ * Whole-player presets, picked in the player selector (hold the player, or "edit player").
  *
- * Every style can be edited; the editor adapts to whichever one is active.
+ * Only the flagship [DEFAULT] style can be edited; the other three are complete designs of their
+ * own, each of which can be turned sideways from its menu.
  */
-enum class PlayerStyle(val displayName: String) {
-    DEFAULT("Default"),
-    LYRICS_ABSTRACT("Lyrics abstract"),
-    SIMPLE("Simple"),
-    SIMPLE_COMPACT("Simple compact"),
+enum class PlayerStyle(val displayName: String, val selectorName: String) {
+    DEFAULT("Flagship", "Default"),
+    POSTER("Poster", "Poster"),
+    TIMELINE("Timeline", "Timeline"),
+    LYRICS("Lyrics", "Lyrics stage");
+
+    val editable: Boolean get() = this == DEFAULT
+
+    companion object {
+        /** the styles these replaced, so a stored choice lands on its nearest successor */
+        fun fromStored(name: String?): PlayerStyle? = when (name) {
+            "SIMPLE", "SIMPLE_COMPACT" -> TIMELINE
+            "LYRICS_ABSTRACT" -> LYRICS
+            else -> null
+        }
+    }
 }
 
 val PlayerStyleKey = stringPreferencesKey("playerStyle")
+
+/** whether [style] is shown turned sideways (its content rotated a quarter turn) */
+fun playerStyleRotatedKey(style: PlayerStyle) = booleanPreferencesKey("playerStyleRotated_${style.name}")
+
+/** what the timestamp at the right of the seek bar shows */
+enum class PlayerEndTimestamp { END_TIME, TIME_LEFT }
+
+val PlayerEndTimestampKey = stringPreferencesKey("playerEndTimestamp")
+
+/** the four actions in the player's chevron menu, top to bottom, as action names joined by commas */
+val PlayerMenuSlotsKey = stringPreferencesKey("playerMenuSlots")
+
+/** the action of the round button beside the chevron (a like, out of the box) */
+val PlayerSideButtonKey = stringPreferencesKey("playerSideButton")
+
+/** what the disc's label shows */
+enum class DiscLabelContent { CUSTOM, MUSIC_NAME, ARTIST_NAME, ALBUM_NAME, MUSIC_AND_ARTIST, NONE }
+
+val DiscLabelContentKey = stringPreferencesKey("discLabelContent")
 
 val SeekBarStyleKey = stringPreferencesKey("seekBarStyle")
 
