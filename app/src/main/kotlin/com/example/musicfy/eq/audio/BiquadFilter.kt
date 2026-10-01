@@ -3,167 +3,159 @@
 package com.example.musicfy.eq.audio
 
 import com.example.musicfy.eq.data.FilterType
+import com.example.musicfy.eq.data.ParametricEQBand
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.log10
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.math.sqrt
 
-class BiquadFilter(
-    private val sampleRate: Int,
-    private val frequency: Double,
-    private val gain: Double,
-    private val q: Double = 1.41,
-    private val filterType: FilterType = FilterType.PK
-) {
+/**
+ * RBJ cookbook biquads, shared by the audio thread (coefficients) and the equalizer's graphs
+ * (magnitude response), so what the curve shows is exactly what the processor plays.
+ *
+ * Coefficients are normalised (a0 = 1) and packed as b0, b1, b2, a1, a2.
+ */
+object Biquad {
 
-    private var a0 = 0.0
-    private var a1 = 0.0
-    private var a2 = 0.0
-    private var b0 = 0.0
-    private var b1 = 0.0
-    private var b2 = 0.0
+    const val Stride = 5
 
-    private var x1L = 0.0
-    private var x2L = 0.0
-    private var y1L = 0.0
-    private var y2L = 0.0
+    /** the gain a band can be dragged to, either way */
+    const val MaxGainDb = 12.0
 
-    private var x1R = 0.0
-    private var x2R = 0.0
-    private var y1R = 0.0
-    private var y2R = 0.0
+    fun coefficients(band: ParametricEQBand, sampleRate: Int, out: DoubleArray, offset: Int = 0) =
+        coefficients(band.filterType, band.frequency, band.gain, band.q, sampleRate, out, offset)
 
-    init {
-        calculateCoefficients()
-    }
+    fun coefficients(
+        type: FilterType,
+        frequency: Double,
+        gainDb: Double,
+        quality: Double,
+        sampleRate: Int,
+        out: DoubleArray,
+        offset: Int = 0,
+    ) {
+        val nyquistSafe = frequency.coerceIn(10.0, sampleRate * 0.49)
+        val omega = 2.0 * PI * nyquistSafe / sampleRate
+        val sinW = sin(omega)
+        val cosW = cos(omega)
+        val q = quality.coerceIn(0.05, 30.0)
+        val alpha = sinW / (2.0 * q)
+        val a = 10.0.pow(gainDb / 40.0)
 
-    private fun calculateCoefficients() {
-        when (filterType) {
-            FilterType.PK -> calculatePeakingCoefficients()
-            FilterType.LSC -> calculateLowShelfCoefficients()
-            FilterType.HSC -> calculateHighShelfCoefficients()
-            else -> {
-
-                calculatePeakingCoefficients()
+        val b0: Double
+        val b1: Double
+        val b2: Double
+        val a0: Double
+        val a1: Double
+        val a2: Double
+        when (type) {
+            FilterType.PK -> {
+                b0 = 1.0 + alpha * a
+                b1 = -2.0 * cosW
+                b2 = 1.0 - alpha * a
+                a0 = 1.0 + alpha / a
+                a1 = -2.0 * cosW
+                a2 = 1.0 - alpha / a
+            }
+            FilterType.LSC -> {
+                val twoSqrtAAlpha = 2.0 * kotlin.math.sqrt(a) * alpha
+                b0 = a * ((a + 1) - (a - 1) * cosW + twoSqrtAAlpha)
+                b1 = 2.0 * a * ((a - 1) - (a + 1) * cosW)
+                b2 = a * ((a + 1) - (a - 1) * cosW - twoSqrtAAlpha)
+                a0 = (a + 1) + (a - 1) * cosW + twoSqrtAAlpha
+                a1 = -2.0 * ((a - 1) + (a + 1) * cosW)
+                a2 = (a + 1) + (a - 1) * cosW - twoSqrtAAlpha
+            }
+            FilterType.HSC -> {
+                val twoSqrtAAlpha = 2.0 * kotlin.math.sqrt(a) * alpha
+                b0 = a * ((a + 1) + (a - 1) * cosW + twoSqrtAAlpha)
+                b1 = -2.0 * a * ((a - 1) + (a + 1) * cosW)
+                b2 = a * ((a + 1) + (a - 1) * cosW - twoSqrtAAlpha)
+                a0 = (a + 1) - (a - 1) * cosW + twoSqrtAAlpha
+                a1 = 2.0 * ((a - 1) - (a + 1) * cosW)
+                a2 = (a + 1) - (a - 1) * cosW - twoSqrtAAlpha
+            }
+            FilterType.LPQ -> {
+                b0 = (1.0 - cosW) / 2.0
+                b1 = 1.0 - cosW
+                b2 = (1.0 - cosW) / 2.0
+                a0 = 1.0 + alpha
+                a1 = -2.0 * cosW
+                a2 = 1.0 - alpha
+            }
+            FilterType.HPQ -> {
+                b0 = (1.0 + cosW) / 2.0
+                b1 = -(1.0 + cosW)
+                b2 = (1.0 + cosW) / 2.0
+                a0 = 1.0 + alpha
+                a1 = -2.0 * cosW
+                a2 = 1.0 - alpha
             }
         }
+        out[offset] = b0 / a0
+        out[offset + 1] = b1 / a0
+        out[offset + 2] = b2 / a0
+        out[offset + 3] = a1 / a0
+        out[offset + 4] = a2 / a0
     }
 
-    private fun calculatePeakingCoefficients() {
-        val A = 10.0.pow(gain / 40.0)
-        val omega = 2.0 * PI * frequency / sampleRate
-        val sinOmega = sin(omega)
-        val cosOmega = cos(omega)
-        val alpha = sinOmega / (2.0 * q)
-
-        b0 = 1.0 + alpha * A
-        b1 = -2.0 * cosOmega
-        b2 = 1.0 - alpha * A
-        a0 = 1.0 + alpha / A
-        a1 = -2.0 * cosOmega
-        a2 = 1.0 - alpha / A
-
-        b0 /= a0
-        b1 /= a0
-        b2 /= a0
-        a1 /= a0
-        a2 /= a0
-        a0 = 1.0
+    /** |H| in dB at [frequency] for the packed coefficients at [offset] */
+    fun magnitudeDb(c: DoubleArray, offset: Int, frequency: Double, sampleRate: Int): Double {
+        val w = 2.0 * PI * frequency / sampleRate
+        val cos1 = cos(w)
+        val cos2 = cos(2.0 * w)
+        return magnitudeDb(c, offset, cos1, cos2)
     }
 
-    private fun calculateLowShelfCoefficients() {
-        val A = sqrt(10.0.pow(gain / 20.0))
-        val omega = 2.0 * PI * frequency / sampleRate
-        val sinOmega = sin(omega)
-        val cosOmega = cos(omega)
-        val S = 1.0
-        val alpha = sinOmega / 2.0 * sqrt((A + 1.0 / A) * (1.0 / S - 1.0) + 2.0)
-        val sqrtA = sqrt(A)
-
-        val aPlusOne = A + 1.0
-        val aMinusOne = A - 1.0
-        val twoSqrtAAlpha = 2.0 * sqrtA * alpha
-
-        b0 = A * (aPlusOne - aMinusOne * cosOmega + twoSqrtAAlpha)
-        b1 = 2.0 * A * (aMinusOne - aPlusOne * cosOmega)
-        b2 = A * (aPlusOne - aMinusOne * cosOmega - twoSqrtAAlpha)
-        a0 = aPlusOne + aMinusOne * cosOmega + twoSqrtAAlpha
-        a1 = -2.0 * (aMinusOne + aPlusOne * cosOmega)
-        a2 = aPlusOne + aMinusOne * cosOmega - twoSqrtAAlpha
-
-        b0 /= a0
-        b1 /= a0
-        b2 /= a0
-        a1 /= a0
-        a2 /= a0
-        a0 = 1.0
+    /** the same with cos(w) and cos(2w) already worked out, for curves drawn over many bands */
+    fun magnitudeDb(c: DoubleArray, offset: Int, cos1: Double, cos2: Double): Double {
+        val b0 = c[offset]
+        val b1 = c[offset + 1]
+        val b2 = c[offset + 2]
+        val a1 = c[offset + 3]
+        val a2 = c[offset + 4]
+        val num = b0 * b0 + b1 * b1 + b2 * b2 + 2.0 * (b0 * b1 + b1 * b2) * cos1 + 2.0 * b0 * b2 * cos2
+        val den = 1.0 + a1 * a1 + a2 * a2 + 2.0 * (a1 + a1 * a2) * cos1 + 2.0 * a2 * cos2
+        return 10.0 * log10(max(num, 1e-20) / max(den, 1e-20))
     }
 
-    private fun calculateHighShelfCoefficients() {
-        val A = sqrt(10.0.pow(gain / 20.0))
-        val omega = 2.0 * PI * frequency / sampleRate
-        val sinOmega = sin(omega)
-        val cosOmega = cos(omega)
-        val S = 1.0
-        val alpha = sinOmega / 2.0 * sqrt((A + 1.0 / A) * (1.0 / S - 1.0) + 2.0)
-        val sqrtA = sqrt(A)
+    /** whether a band changes the sound at all: a 0 dB peak or shelf is a straight line */
+    fun isAudible(band: ParametricEQBand): Boolean = band.enabled && when (band.filterType) {
+        FilterType.LPQ, FilterType.HPQ -> true
+        else -> kotlin.math.abs(band.gain) >= 0.05
+    }
+}
 
-        val aPlusOne = A + 1.0
-        val aMinusOne = A - 1.0
-        val twoSqrtAAlpha = 2.0 * sqrtA * alpha
+/**
+ * Sums the response of a set of bands at many frequencies, cheaply: the cosines for each
+ * frequency are worked out once and the coefficients once per band.
+ */
+class ResponseCurve(val frequencies: DoubleArray, private val sampleRate: Int = 48_000) {
+    private val cos1 = DoubleArray(frequencies.size) { cos(2.0 * PI * frequencies[it] / sampleRate) }
+    private val cos2 = DoubleArray(frequencies.size) { cos(4.0 * PI * frequencies[it] / sampleRate) }
+    private val scratch = DoubleArray(Biquad.Stride)
 
-        b0 = A * (aPlusOne + aMinusOne * cosOmega + twoSqrtAAlpha)
-        b1 = -2.0 * A * (aMinusOne + aPlusOne * cosOmega)
-        b2 = A * (aPlusOne + aMinusOne * cosOmega - twoSqrtAAlpha)
-        a0 = aPlusOne - aMinusOne * cosOmega + twoSqrtAAlpha
-        a1 = 2.0 * (aMinusOne - aPlusOne * cosOmega)
-        a2 = aPlusOne - aMinusOne * cosOmega - twoSqrtAAlpha
-
-        b0 /= a0
-        b1 /= a0
-        b2 /= a0
-        a1 /= a0
-        a2 /= a0
-        a0 = 1.0
+    /** adds [band]'s response into [into] (dB) */
+    fun accumulate(band: ParametricEQBand, into: DoubleArray) {
+        if (!Biquad.isAudible(band)) return
+        Biquad.coefficients(band, sampleRate, scratch)
+        for (i in frequencies.indices) into[i] += Biquad.magnitudeDb(scratch, 0, cos1[i], cos2[i])
     }
 
-    fun processSample(input: Double): Double {
-        val output = b0 * input + b1 * x1L + b2 * x2L - a1 * y1L - a2 * y2L
-
-        x2L = x1L
-        x1L = input
-        y2L = y1L
-        y1L = output
-
-        return output
+    fun response(bands: List<ParametricEQBand>, into: DoubleArray = DoubleArray(frequencies.size)): DoubleArray {
+        into.fill(0.0)
+        bands.forEach { accumulate(it, into) }
+        return into
     }
 
-    fun processStereo(inputLeft: Double, inputRight: Double): Pair<Double, Double> {
-
-        val outputLeft = b0 * inputLeft + b1 * x1L + b2 * x2L - a1 * y1L - a2 * y2L
-        x2L = x1L
-        x1L = inputLeft
-        y2L = y1L
-        y1L = outputLeft
-
-        val outputRight = b0 * inputRight + b1 * x1R + b2 * x2R - a1 * y1R - a2 * y2R
-        x2R = x1R
-        x1R = inputRight
-        y2R = y1R
-        y1R = outputRight
-
-        return Pair(outputLeft, outputRight)
-    }
-
-    fun reset() {
-        x1L = 0.0
-        x2L = 0.0
-        y1L = 0.0
-        y2L = 0.0
-        x1R = 0.0
-        x2R = 0.0
-        y1R = 0.0
-        y2R = 0.0
+    companion object {
+        /** [count] frequencies spread evenly on a log scale between [from] and [to] Hz */
+        fun logSpaced(count: Int, from: Double = 20.0, to: Double = 20_000.0): DoubleArray {
+            val lo = log10(from)
+            val hi = log10(to)
+            return DoubleArray(count) { 10.0.pow(lo + (hi - lo) * it / (count - 1)) }
+        }
     }
 }

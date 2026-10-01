@@ -1609,6 +1609,14 @@ interface DatabaseDao {
     @Query("SELECT DISTINCT songId FROM imported_song")
     fun importedSongIds(): List<String>
 
+    /** Where each liked song was imported from, for Liked songs' import order. A song from two services has two rows. */
+    @Query("SELECT imported_song.* FROM imported_song JOIN song ON song.id = imported_song.songId WHERE song.liked")
+    fun likedImportSources(): Flow<List<ImportedSong>>
+
+    /** The covers of the songs liked last, which Liked songs' own cover is coloured from. */
+    @Query("SELECT thumbnailUrl FROM song WHERE liked AND thumbnailUrl IS NOT NULL ORDER BY likedDate DESC LIMIT 4")
+    fun likedCovers(): Flow<List<String>>
+
     @Update
     fun update(artist: ArtistEntity)
 
