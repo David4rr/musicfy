@@ -221,6 +221,21 @@ class PlayerConnection(
 
     val waitingForNetworkConnection = service.waitingForNetworkConnection
 
+    /** Crossmix has the next song playing over the end of this one */
+    val isCrossmixing = service.crossmixMixing
+
+    /** asks the player to open, then open its studio (the selector); from "Customize player" in settings */
+    val studioRequests = kotlinx.coroutines.flow.MutableStateFlow(0L)
+
+    fun requestPlayerStudio() {
+        studioRequests.value = System.nanoTime()
+    }
+
+    /** Crossmix's last decision, for its test tools */
+    val crossmixStatus = service.crossmixStatus
+
+    fun testCrossmix() = service.testCrossmix()
+
     var onSkipPrevious: (() -> Unit)? = null
     var onSkipNext: (() -> Unit)? = null
 
