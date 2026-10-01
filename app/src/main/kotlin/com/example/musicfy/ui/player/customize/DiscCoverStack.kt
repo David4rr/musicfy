@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -35,7 +36,22 @@ fun DiscCoverStack(
 ) {
     val (rotatingEnabled) = rememberPreference(DiscRotatingAnimationKey, defaultValue = true)
     val (realistic) = rememberPreference(DiscRealisticModeKey, defaultValue = true)
-    val (discName) = rememberPreference(DiscNameKey, defaultValue = "")
+    val (customName) = rememberPreference(DiscNameKey, defaultValue = "")
+    val labelContent by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.DiscLabelContentKey,
+        com.example.musicfy.constants.DiscLabelContent.CUSTOM,
+    )
+    val track = com.example.musicfy.LocalPlayerConnection.current?.uiState?.trackInfo?.collectAsState()?.value
+    // what the label says, as chosen in the cover editor
+    val discName = when (labelContent) {
+        com.example.musicfy.constants.DiscLabelContent.CUSTOM -> customName
+        com.example.musicfy.constants.DiscLabelContent.MUSIC_NAME -> track?.title.orEmpty()
+        com.example.musicfy.constants.DiscLabelContent.ARTIST_NAME -> track?.artist.orEmpty()
+        com.example.musicfy.constants.DiscLabelContent.ALBUM_NAME -> track?.album.orEmpty()
+        com.example.musicfy.constants.DiscLabelContent.MUSIC_AND_ARTIST ->
+            listOfNotNull(track?.title, track?.artist).filter { it.isNotBlank() }.joinToString(" · ")
+        com.example.musicfy.constants.DiscLabelContent.NONE -> ""
+    }
 
     val skip = rememberDiscSkipState(
         mediaId = mediaId,
