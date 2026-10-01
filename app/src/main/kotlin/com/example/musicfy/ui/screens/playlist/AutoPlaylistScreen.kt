@@ -4,7 +4,13 @@ package com.example.musicfy.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +49,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -50,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -70,27 +79,36 @@ import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.LastPlayedLikedSongsTimeKey
+import com.example.musicfy.constants.LikedSongSortDescendingKey
+import com.example.musicfy.constants.LikedSongSortType
+import com.example.musicfy.constants.LikedSongSortTypeKey
 import com.example.musicfy.constants.SongSortDescendingKey
 import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.constants.SongSortTypeKey
 import com.example.musicfy.constants.YtmSyncKey
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.extensions.toMediaItem
+import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.playback.ExoDownloadService
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
 import com.example.musicfy.ui.component.EmptyPlaceholder
+import com.example.musicfy.ui.component.LikedCover
+import com.example.musicfy.ui.component.LikedCoverColors
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.SwipeActionsBox
 import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.rememberLikedCoverColors
 import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.component.detail.featuredArtistsOf
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
 import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
 import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
 import com.example.musicfy.ui.component.detail.PlaylistHeader
+import com.example.musicfy.ui.component.detail.PlaylistInset
 import com.example.musicfy.ui.component.detail.PlaylistSortControl
+import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
 import com.example.musicfy.ui.component.detail.PlaylistTrackBones
 import com.example.musicfy.ui.component.detail.PlaylistTrackRow
 import com.example.musicfy.ui.component.detail.playlistCoverHeight
@@ -99,6 +117,8 @@ import com.example.musicfy.ui.component.revealOnAppear
 import com.example.musicfy.ui.menu.AutoPlaylistMenu
 import com.example.musicfy.ui.menu.SelectionSongMenu
 import com.example.musicfy.ui.menu.SongMenu
+import com.example.musicfy.ui.screens.library.ImportSourceIcon
+import com.example.musicfy.ui.screens.setup.onboarding.SquircleShape
 import com.example.musicfy.ui.utils.backToMain
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.makeTimeString
@@ -134,7 +154,8 @@ fun AutoPlaylistScreen(
         else -> viewModel.playlist
     }
 
-    val songs by viewModel.likedSongs.collectAsState(null)
+    val content by viewModel.content.collectAsState()
+    val songs = content?.songs
     val revealSeen = rememberRevealSeenState()
 
     var isSearching by remember { mutableStateOf(false) }
@@ -181,6 +202,9 @@ fun AutoPlaylistScreen(
 
     val (sortType, onSortTypeChange) = rememberEnumPreference(SongSortTypeKey, SongSortType.CREATE_DATE)
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
+    // Liked songs sorts on its own, with import order on top of the song sorts
+    val (likedSortType, onLikedSortTypeChange) = rememberEnumPreference(LikedSongSortTypeKey, LikedSongSortType.CREATE_DATE)
+    val (likedSortDescending, onLikedSortDescendingChange) = rememberPreference(LikedSongSortDescendingKey, true)
 
     val downloadUtil = LocalDownloadUtil.current
     var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
@@ -249,12 +273,18 @@ fun AutoPlaylistScreen(
         )
     }
 
+    fun matchesQuery(song: Song) = query.text.isEmpty() ||
+        song.song.title.contains(query.text, true) ||
+        song.artists.any { it.name.contains(query.text, true) }
+
     val filteredSongs = remember(songs, query) {
-        if (query.text.isEmpty()) songs ?: emptyList()
-        else songs?.filter { song ->
-            song.song.title.contains(query.text, true) ||
-                song.artists.any { it.name.contains(query.text, true) }
-        } ?: emptyList()
+        songs?.filter(::matchesQuery) ?: emptyList()
+    }
+    // import order: the same songs under a small heading per service
+    val filteredSections = remember(content, query) {
+        content?.sections.orEmpty()
+            .map { section -> section.copy(songs = section.songs.filter(::matchesQuery)) }
+            .filter { it.songs.isNotEmpty() }
     }
 
     LaunchedEffect(filteredSongs) {
@@ -292,9 +322,17 @@ fun AutoPlaylistScreen(
         )
     }
 
+    val isLiked = viewModel.playlist == "liked"
+    val likedCoverColors = if (isLiked) rememberLikedCoverColors() else null
+
     PlaylistDetailScaffold(
         sharedElementKey = "playlist-${viewModel.playlist}",
         coverUrl = coverUrl,
+        // Liked songs has a cover of its own, the one its cards show, instead of its first song's
+        cover = if (isLiked) {
+            { modifier -> LikedCover(modifier, heartSize = 0.3f, heartAlignment = BiasAlignment(0f, -0.28f)) }
+        } else null,
+        coverThemeColor = likedCoverColors?.let(LikedCoverColors::theme),
         lazyListState = state,
         onBackClick = { navController.navigateUp() },
         onBackLongClick = { navController.backToMain() },
@@ -437,32 +475,48 @@ fun AutoPlaylistScreen(
                     },
                     onShuffleClick = { playAll(current.shuffled()) },
                     sortControl = {
-                        PlaylistSortControl(
-                            current = sortType,
-                            descending = sortDescending,
-                            options = SongSortType.entries,
-                            label = { type ->
-                                stringResource(
+                        if (isLiked) {
+                            PlaylistSortControl(
+                                current = likedSortType,
+                                descending = likedSortDescending,
+                                options = LikedSongSortType.entries,
+                                label = { type ->
                                     when (type) {
-                                        SongSortType.CREATE_DATE -> R.string.sort_by_create_date
-                                        SongSortType.NAME -> R.string.sort_by_name
-                                        SongSortType.ARTIST -> R.string.sort_by_artist
-                                        SongSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        LikedSongSortType.CREATE_DATE -> stringResource(R.string.sort_by_create_date)
+                                        LikedSongSortType.IMPORT_ORDER -> "Import order"
+                                        LikedSongSortType.NAME -> stringResource(R.string.sort_by_name)
+                                        LikedSongSortType.ARTIST -> stringResource(R.string.sort_by_artist)
+                                        LikedSongSortType.PLAY_TIME -> stringResource(R.string.sort_by_play_time)
                                     }
-                                )
-                            },
-                            onSelect = onSortTypeChange,
-                            onToggleDirection = { onSortDescendingChange(!sortDescending) },
-                        )
+                                },
+                                onSelect = onLikedSortTypeChange,
+                                onToggleDirection = { onLikedSortDescendingChange(!likedSortDescending) },
+                            )
+                        } else {
+                            PlaylistSortControl(
+                                current = sortType,
+                                descending = sortDescending,
+                                options = SongSortType.entries,
+                                label = { type ->
+                                    stringResource(
+                                        when (type) {
+                                            SongSortType.CREATE_DATE -> R.string.sort_by_create_date
+                                            SongSortType.NAME -> R.string.sort_by_name
+                                            SongSortType.ARTIST -> R.string.sort_by_artist
+                                            SongSortType.PLAY_TIME -> R.string.sort_by_play_time
+                                        }
+                                    )
+                                },
+                                onSelect = onSortTypeChange,
+                                onToggleDirection = { onSortDescendingChange(!sortDescending) },
+                            )
+                        }
                     },
                 )
             }
         }
 
-        itemsIndexed(
-            items = filteredSongs,
-            key = { _, song -> song.id },
-        ) { index, song ->
+        val trackRow: @Composable LazyItemScope.(Int, Song) -> Unit = { index, song ->
             val onCheckedChange: (Boolean) -> Unit = {
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
@@ -513,6 +567,28 @@ fun AutoPlaylistScreen(
                         { Checkbox(checked = song.id in selection, onCheckedChange = onCheckedChange) }
                     } else null,
                 )
+            }
+        }
+
+        if (filteredSections.isEmpty()) {
+            itemsIndexed(
+                items = filteredSongs,
+                key = { _, song -> song.id },
+            ) { index, song -> trackRow(index, song) }
+        } else {
+            filteredSections.forEach { section ->
+                item(key = "source_${section.source?.key ?: "musicfy"}") {
+                    LikedSourceSeparator(
+                        source = section.source,
+                        modifier = Modifier
+                            .animateItem()
+                            .revealOnAppear(key = "source_${section.source?.key ?: "musicfy"}", seenState = revealSeen),
+                    )
+                }
+                itemsIndexed(
+                    items = section.songs,
+                    key = { _, song -> song.id },
+                ) { index, song -> trackRow(index, song) }
             }
         }
 
@@ -619,6 +695,53 @@ private fun AutoPlaylistSearchBar(
             containerColor = MaterialTheme.colorScheme.surface
         )
     )
+}
+
+/**
+ * the small line above each service's songs in Liked songs' import order: its app icon, its name,
+ * then a hairline across. the ones liked here get Musicfy's own.
+ */
+@Composable
+private fun LikedSourceSeparator(source: ImportSource?, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = PlaylistInset, end = PlaylistInset, top = 14.dp, bottom = 4.dp),
+    ) {
+        if (source != null) {
+            ImportSourceIcon(source, size = 14.dp)
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(14.dp)
+                    .clip(SquircleShape)
+                    .background(colorResource(R.color.ic_launcher_background)),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_musicfy_mark),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(9.dp),
+                )
+            }
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = source?.label?.replaceFirstChar { it.uppercase() } ?: "Musicfy",
+            style = PlaylistStatsStyle,
+            color = Color.White.copy(alpha = 0.62f),
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f)),
+        )
+    }
 }
 
 enum class PlaylistType {
