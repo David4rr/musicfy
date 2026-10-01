@@ -24,6 +24,8 @@ import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.animation.EnterExitState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -58,14 +60,23 @@ fun PlayingIndicator(
 ) {
     val levels = remember(bars) { List(bars) { Animatable(0.3f + 0.4f * Random.nextFloat()) } }
     // Holds still while the player covers the app: the bars bounce forever otherwise, drawing a
-    // frame every few milliseconds behind it.
+    // frame every few milliseconds behind it. Likewise while the page it's on is opening, closing
+    // or sinking behind another: that page is one cached picture then, and bars moving in it made
+    // the whole page render again for every one of their frames.
     val obscured = com.example.musicfy.LocalAppContentObscured.current
+    val navTransition = LocalNavAnimatedContentScope.current?.transition
+    val held = remember(obscured, navTransition) {
+        derivedStateOf {
+            obscured.value || (navTransition != null &&
+                (navTransition.currentState != EnterExitState.Visible || navTransition.targetState != EnterExitState.Visible))
+        }
+    }
 
     LaunchedEffect(levels) {
         levels.forEach { level ->
             launch {
                 while (true) {
-                    if (obscured.value) snapshotFlow { obscured.value }.first { !it }
+                    if (held.value) snapshotFlow { held.value }.first { !it }
                     level.animateTo(
                         targetValue = 0.22f + Random.nextFloat() * 0.78f,
                         animationSpec = tween(
@@ -78,7 +89,9 @@ fun PlayingIndicator(
         }
     }
 
-    Canvas(modifier = modifier.width(barWidth * bars + spacing * (bars - 1))) {
+    // the bars move on every frame for as long as a song plays: bounded, that repaints these few
+    // pixels instead of the whole screen and the nav bar's and mini player's glass along with it
+    Canvas(modifier = modifier.width(barWidth * bars + spacing * (bars - 1)).damageBoundary()) {
         val w = barWidth.toPx()
         val gap = spacing.toPx()
         val radius = CornerRadius(w / 2f)

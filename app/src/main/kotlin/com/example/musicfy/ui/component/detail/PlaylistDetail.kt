@@ -266,6 +266,13 @@ fun PlaylistDetailScaffold(
      * cover, like the Library's search capsule, and the theme colour sinks to black down the page
      */
     roundCapsule: Boolean = false,
+    /**
+     * a cover drawn in code instead of [coverUrl]'s picture (Liked songs). it fills the modifier
+     * it's given; the backdrop and the small copy in the collapsed bar both draw it
+     */
+    cover: (@Composable (Modifier) -> Unit)? = null,
+    /** the theme colour for a drawn [cover], which has no picture to sample one from */
+    coverThemeColor: Color? = null,
     content: LazyListScope.() -> Unit,
 ) {
     // the tapped card's cover comes first: the screen grows out of that image, so it has to be
@@ -273,7 +280,8 @@ fun PlaylistDetailScaffold(
     val handedCover = remember(sharedElementKey) { containerTransformCover(sharedElementKey) }
     val coverUrl = handedCover ?: coverUrl
 
-    val themeColor by rememberCoverThemeColor(coverUrl)
+    val sampledThemeColor by rememberCoverThemeColor(if (cover != null) null else coverUrl)
+    val themeColor = if (cover != null) coverThemeColor else sampledThemeColor
     val background = animateColorAsState(
         targetValue = themeColor ?: MaterialTheme.colorScheme.background,
         animationSpec = tween(600),
@@ -346,6 +354,7 @@ fun PlaylistDetailScaffold(
             if (showCover) {
                 PlaylistCoverBackdrop(
                     coverUrl = coverUrl,
+                    cover = cover,
                     coverHeight = coverHeight,
                     scrollProgress = { scrollProgress.value },
                     background = background,
@@ -367,6 +376,7 @@ fun PlaylistDetailScaffold(
                 glassState = glassState,
                 morph = { morph.value },
                 coverUrl = coverUrl,
+                cover = cover,
                 background = background,
                 onBackClick = onBackClick,
                 onBackLongClick = onBackLongClick,
@@ -387,6 +397,7 @@ private const val CoverSoftBy = 0.55f
 @Composable
 private fun PlaylistCoverBackdrop(
     coverUrl: String?,
+    cover: (@Composable (Modifier) -> Unit)?,
     coverHeight: Dp,
     scrollProgress: () -> Float,
     background: State<Color>,
@@ -403,8 +414,9 @@ private fun PlaylistCoverBackdrop(
     // picture alone goes soft instead: a copy blurred once, small and off the main thread, that
     // the scroll crossfades to
     val frameBlur = rememberCoverBlurAvailable()
-    val softRequest = remember(coverUrl, frameBlur) {
-        if (frameBlur) {
+    val softRequest = remember(coverUrl, frameBlur, cover != null) {
+        // a drawn cover is soft already
+        if (frameBlur || cover != null) {
             null
         } else {
             ImageRequest.Builder(context)
@@ -422,34 +434,38 @@ private fun PlaylistCoverBackdrop(
             .fillMaxWidth()
             .height(coverHeight),
     ) {
-        if (softRequest != null) {
+        if (cover != null) {
+            cover(Modifier.fillMaxSize())
+        } else {
+            if (softRequest != null) {
+                AsyncImage(
+                    model = softRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // skipped entirely until the scroll starts revealing it
+                        .graphicsLayer { alpha = if (scrollProgress() > 0f) 1f else 0f },
+                )
+            }
             AsyncImage(
-                model = softRequest,
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    // skipped entirely until the scroll starts revealing it
-                    .graphicsLayer { alpha = if (scrollProgress() > 0f) 1f else 0f },
+                    .then(
+                        if (softRequest != null) {
+                            Modifier.graphicsLayer {
+                                alpha = 1f - smoothstep(0f, CoverSoftBy, scrollProgress())
+                                compositingStrategy = CompositingStrategy.ModulateAlpha
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
             )
         }
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (softRequest != null) {
-                        Modifier.graphicsLayer {
-                            alpha = 1f - smoothstep(0f, CoverSoftBy, scrollProgress())
-                            compositingStrategy = CompositingStrategy.ModulateAlpha
-                        }
-                    } else {
-                        Modifier
-                    }
-                ),
-        )
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -479,6 +495,7 @@ private fun PlaylistTopBar(
     glassState: GlassState,
     morph: () -> Float,
     coverUrl: String?,
+    cover: (@Composable (Modifier) -> Unit)?,
     background: State<Color>,
     onBackClick: () -> Unit,
     onBackLongClick: () -> Unit,
@@ -519,6 +536,7 @@ private fun PlaylistTopBar(
                 morph = morph,
                 glassState = glassState,
                 coverUrl = coverUrl,
+                cover = cover,
                 tint = background.value,
                 onBackClick = onBackClick,
                 onBackLongClick = onBackLongClick,
@@ -561,6 +579,7 @@ private fun BackPill(
     morph: () -> Float,
     glassState: GlassState,
     coverUrl: String?,
+    cover: (@Composable (Modifier) -> Unit)?,
     tint: Color,
     onBackClick: () -> Unit,
     onBackLongClick: () -> Unit,
@@ -630,29 +649,34 @@ private fun BackPill(
         }
 
         val showMini by remember { derivedStateOf { morph() > 0.02f } }
-        if (showMini && !coverUrl.isNullOrEmpty()) {
-            AsyncImage(
-                model = coverUrl.resize(240, 240),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .offset(x = 56.dp)
-                    .graphicsLayer {
-                        // starts tucked under the back button, small, and springs out to its slot;
-                        // the spring overshoots a touch, so it lands with a little give
-                        val m = morph()
-                        translationX = with(density) { (-45).dp.toPx() } * (1f - m)
-                        val s = 0.35f + 0.65f * m
-                        scaleX = s
-                        scaleY = s
-                        alpha = m.coerceIn(0f, 1f)
-                        shape = miniShape
-                        clip = true
-                    }
-                    .size(37.dp)
-                    .clickable(onClick = onMiniCoverClick)
-            )
+        if (showMini && (cover != null || !coverUrl.isNullOrEmpty())) {
+            val miniModifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = 56.dp)
+                .graphicsLayer {
+                    // starts tucked under the back button, small, and springs out to its slot;
+                    // the spring overshoots a touch, so it lands with a little give
+                    val m = morph()
+                    translationX = with(density) { (-45).dp.toPx() } * (1f - m)
+                    val s = 0.35f + 0.65f * m
+                    scaleX = s
+                    scaleY = s
+                    alpha = m.coerceIn(0f, 1f)
+                    shape = miniShape
+                    clip = true
+                }
+                .size(37.dp)
+                .clickable(onClick = onMiniCoverClick)
+            if (cover != null) {
+                cover(miniModifier)
+            } else {
+                AsyncImage(
+                    model = coverUrl?.resize(240, 240),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = miniModifier,
+                )
+            }
         }
     }
 }

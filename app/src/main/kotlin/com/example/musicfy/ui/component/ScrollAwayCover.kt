@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -85,24 +87,35 @@ fun ScrollAwayCover(
                 val p = progress()
                 if (p > 0f) {
                     drawRect(Color.Black.copy(alpha = CoverDim * p))
+                    // the dissolve only changes its bottom band: above it the gradient is solid,
+                    // and DstIn with solid is nothing, so only the band is drawn
                     val clear = 0.1f + 0.45f * smoothstep(0f, 0.8f, p)
+                    val top = size.height * (1f - clear)
                     drawRect(
                         brush = Brush.verticalGradient(
                             0f to Color.Black,
-                            (1f - clear) to Color.Black,
                             1f to Color.Transparent,
+                            startY = top,
+                            endY = size.height,
                         ),
+                        topLeft = Offset(0f, top),
+                        size = Size(size.width, size.height - top),
                         blendMode = BlendMode.DstIn,
                     )
                 }
             },
     ) {
-        // the sharp frame. it sits on its own layer and never reads the scroll, so scrolling
-        // doesn't record it again (which would make the soft copy blur again)
+        // the sharp frame. it sits on its own layer and never reads the scroll while drawing, so
+        // scrolling doesn't record it again (which would make the soft copy blur again). once the
+        // scroll has it moving, that layer keeps its own buffer: the dim and the dissolve above
+        // redraw on every frame of the scroll, and they'd otherwise draw the whole frame (picture,
+        // glass bands, scrims, text) again underneath each time instead of one cached picture
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer()
+                .graphicsLayer {
+                    compositingStrategy = if (progress() > 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+                }
                 .then(
                     if (frameBlur) {
                         Modifier.drawWithContent {
