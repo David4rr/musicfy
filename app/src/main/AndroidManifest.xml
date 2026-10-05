@@ -34,6 +34,10 @@
         <intent>
             <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
         </intent>
+        <!-- source modules installed as their own app (modules/SourceModules.kt) -->
+        <intent>
+            <action android:name="com.example.musicfy.SOURCE_MODULE" />
+        </intent>
     </queries>
     <application
         android:name=".App"

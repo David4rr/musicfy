@@ -1391,7 +1391,6 @@ val SubSettingsRoutes = setOf(
     "appearance_settings",
     "playback_settings",
     "experimental_settings",
-    "advanced_audio_settings",
     "cipher_settings",
     "playback_diagnostics",
     "musicfy_settings",
@@ -1403,6 +1402,14 @@ val SubSettingsRoutes = setOf(
     "youtube_sync",
     "stats",
     "developer_space",
+    // Audio Lab keeps the bar, as in its designs
+    "audio_lab",
+    "equalizer",
+    "audio_fx",
+    "audio_quality",
+    "crossmix_settings",
+    "modules",
+    "module/{id}",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }

@@ -257,6 +257,8 @@ val AlbumCanvasEnabledKey = booleanPreferencesKey("albumCanvasEnabled")
 val UpdatePromptSnoozedAtKey = longPreferencesKey("update_prompt_snoozed_at")
 
 val ShowStreamSourceToastKey = booleanPreferencesKey("show_stream_source_toast")
+/** A song a source module or Monochrome can't play falls back to YouTube, and one nothing can play is skipped. */
+val ForcePlaybackKey = booleanPreferencesKey("forcePlayback")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
 val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist")
@@ -455,21 +457,29 @@ enum class PlayerCoverStyle {
     DISC_BIG_FULL,
     DISC_BIG_LABEL,
     DISC_ALBUM,
+    /** the Turntable player's own: a big record and its arm. Not offered on the flagship. */
+    TURNTABLE,
 }
 
 /**
  * Whole-player presets, picked in the player selector (hold the player, or "edit player").
  *
- * Only the flagship [DEFAULT] style can be edited; the other three are complete designs of their
- * own, each of which can be turned sideways from its menu.
+ * The flagship [DEFAULT] can be edited, and [TURNTABLE] (the flagship around a record player) has
+ * its disc label; the other three are complete designs of their own, each of which can be turned
+ * sideways from its menu.
  */
 enum class PlayerStyle(val displayName: String, val selectorName: String) {
     DEFAULT("Flagship", "Default"),
+    /** the flagship with a record player for its cover, whose arm is the seek bar */
+    TURNTABLE("Turntable", "Turntable"),
     POSTER("Poster", "Poster"),
     TIMELINE("Timeline", "Timeline"),
     LYRICS("Lyrics", "Lyrics stage");
 
-    val editable: Boolean get() = this == DEFAULT
+    val editable: Boolean get() = this == DEFAULT || this == TURNTABLE
+
+    /** drawn by the flagship's own player (cover, controls, card), not a design of its own */
+    val flagshipFamily: Boolean get() = this == DEFAULT || this == TURNTABLE
 
     companion object {
         /** the styles these replaced, so a stored choice lands on its nearest successor */
@@ -625,6 +635,10 @@ val SwipeThumbnailKey = booleanPreferencesKey("swipeThumbnail")
 val RotatingThumbnailKey = booleanPreferencesKey("rotatingThumbnail")
 val CanvasThumbnailAnimationKey = booleanPreferencesKey("canvasThumbnailAnimation")
 val CanvasWifiOnlyKey = booleanPreferencesKey("canvasWifiOnly")
+/** The player's format badge beside the title (OPUS, AAC, FLAC...) */
+val ShowFormatBadgeKey = booleanPreferencesKey("showFormatBadge")
+/** The badge also says the stream's sample rate */
+val ShowFormatSampleRateKey = booleanPreferencesKey("showFormatSampleRate")
 val SwipeSensitivityKey = floatPreferencesKey("swipeSensitivity")
 
 enum class SearchSource {

@@ -27,7 +27,7 @@ extensions.configure<ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = 71
-        versionName = "7.1.4 build#1133"
+        versionName = "7.9.9 build#1140"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -385,6 +385,9 @@ dependencies {
     implementation(project(":providers:artistvideo"))
     implementation(project(":providers:applecanvas"))
     implementation(project(":providers:paxsenixlyrics"))
+    implementation(project(":modules:api"))
+    implementation(project(":modules:applemusic"))
+    implementation(project(":modules:monochrome"))
 
 
     implementation(libs.ktor.client.core)
