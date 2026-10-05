@@ -148,9 +148,13 @@ import com.example.musicfy.db.entities.RelatedSongMap
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.di.DownloadCache
 import com.example.musicfy.di.PlayerCache
+import com.example.musicfy.eq.AudioFxService
+import com.example.musicfy.eq.AudioLabStore
 import com.example.musicfy.eq.EqualizerService
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
-import com.example.musicfy.eq.data.EQProfileRepository
+import com.example.musicfy.eq.audio.LoudnessAudioProcessor
+import com.example.musicfy.eq.audio.ReverbAudioProcessor
+import com.example.musicfy.eq.audio.SpatialAudioProcessor
 import com.example.musicfy.extensions.SilentHandler
 import com.example.musicfy.extensions.collect
 import com.example.musicfy.extensions.collectLatest
@@ -191,6 +195,7 @@ import com.example.musicfy.utils.ScrobbleManager
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.YTPlayerUtils
 import com.example.musicfy.constants.ShowStreamSourceToastKey
+import com.example.musicfy.constants.ForcePlaybackKey
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
 import com.example.musicfy.utils.reportException
@@ -213,6 +218,7 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -253,8 +259,16 @@ class MusicService :
     @Inject
     lateinit var equalizerService: EqualizerService
 
+    /** Audio Lab: owns the equalizer and Audio FX settings and pushes them to the processors live */
     @Inject
-    lateinit var eqProfileRepository: EQProfileRepository
+    lateinit var audioLab: AudioLabStore
+
+    @Inject
+    lateinit var audioFx: AudioFxService
+
+    /** source modules (Apple Music): asked for a stream before YouTube */
+    @Inject
+    lateinit var sourceModules: com.example.musicfy.modules.SourceModules
 
     @Inject
     lateinit var widgetManager: MusicfyWidgetManager
@@ -374,11 +388,13 @@ class MusicService :
     @Inject
     @DownloadCache
     lateinit var downloadCache: SimpleCache
-    private lateinit var amazonStreamFetcher: com.example.musicfy.playback.custom.AmazonStreamFetcher
-    private lateinit var monochromeStreamFetcher: com.example.musicfy.playback.custom.MonochromeStreamFetcher
-    private lateinit var monochromePlaybackStreamFetcher: com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher
-    @Volatile private var streamDebugToastsEnabled = true
     private val resolvedStreamSources = java.util.concurrent.ConcurrentHashMap<String, String>()
+    // Force playback: for each song, the providers that already failed on it, passed over next time
+    private val failedSources = java.util.concurrent.ConcurrentHashMap<String, MutableSet<String>>()
+    // which provider each song was last handed to (a module id, or "youtube")
+    private val resolvedSourceIds = java.util.concurrent.ConcurrentHashMap<String, String>()
+    /** what each song is playing as, by media id, for the player's format badge */
+    val streamFacts = MutableStateFlow<Map<String, StreamFacts>>(emptyMap())
     private var lastAnnouncedSourceMediaId: String? = null
     lateinit var player: ExoPlayer
         private set
@@ -420,6 +436,7 @@ class MusicService :
     val playerFlow = _playerFlow.asStateFlow()
 
     private val playerSilenceProcessors = HashMap<Player, SilenceDetectorAudioProcessor>()
+    private val playerReplayGain = HashMap<Player, com.example.musicfy.eq.audio.ReplayGainTags>()
     // each player's equaliser, so it's unregistered when that player goes (crossfades make many)
     private val playerEqProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
     private val playerCrossmixProcessors = HashMap<Player, CrossmixTransitionAudioProcessor>()
@@ -553,51 +570,6 @@ class MusicService :
                     setSmallIcon(R.drawable.musicfy_notification)
                 },
         )
-        val turnstileSolver = com.example.musicfy.playback.custom.TurnstileSolver(this)
-        amazonStreamFetcher = com.example.musicfy.playback.custom.AmazonStreamFetcher(
-            dataStore = dataStore,
-            database = database,
-            httpClient = OkHttpClient.Builder()
-                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .build(),
-            turnstileSolver = turnstileSolver,
-            onStatusUpdate = { message ->
-                if (streamDebugToastsEnabled) {
-                    Handler(Looper.getMainLooper()).post {
-                        Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        )
-        monochromeStreamFetcher = com.example.musicfy.playback.custom.MonochromeStreamFetcher(
-            dataStore = dataStore,
-            database = database,
-            httpClient = OkHttpClient.Builder()
-                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .build()
-        )
-        monochromePlaybackStreamFetcher = com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher(
-            dataStore = dataStore,
-            database = database,
-            httpClient = OkHttpClient.Builder()
-                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .build(),
-            turnstileSolver = turnstileSolver,
-            onStatusUpdate = { message ->
-                if (streamDebugToastsEnabled) {
-                    Handler(Looper.getMainLooper()).post {
-                        Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        )
-
         player = createExoPlayer()
         player.addListener(this@MusicService)
         sleepTimer = SleepTimer(scope, player)
@@ -608,14 +580,6 @@ class MusicService :
                 .distinctUntilChanged()
                 .collect { enabled ->
                     hapticAudioProcessor.enabled = enabled
-                }
-        }
-
-        scope.launch {
-            dataStore.data.map { it[com.example.musicfy.constants.EnableStreamDebugToastsKey] ?: true }
-                .distinctUntilChanged()
-                .collect { enabled ->
-                    streamDebugToastsEnabled = enabled
                 }
         }
 
@@ -685,20 +649,12 @@ class MusicService :
 
         initializeCast()
 
+        // Audio FX's speed and pitch, on whichever player is playing. The equalizer and effects need
+        // nothing here: the store hands them to the processors live, with no seek or reload.
         scope.launch {
-            eqProfileRepository.activeProfile.collect { profile ->
-                if (profile != null) {
-                    val result = equalizerService.applyProfile(profile)
-                    if (result.isSuccess && player.playbackState == Player.STATE_READY && player.isPlaying) {
-
-                        player.seekTo(player.currentPosition)
-                    }
-                } else {
-                    equalizerService.disable()
-                    if (player.playbackState == Player.STATE_READY && player.isPlaying) {
-                        player.seekTo(player.currentPosition)
-                    }
-                }
+            audioLab.playback.collect { settings ->
+                val params = PlaybackParameters(settings.speed, settings.pitch)
+                if (player.playbackParameters != params) player.playbackParameters = params
             }
         }
 
@@ -740,33 +696,28 @@ class MusicService :
                     Timber.tag("MusicService").i("QUALITY CHANGED: $oldQuality -> $newQuality")
 
                     val mediaId = player.currentMediaItem?.mediaId ?: return@collect
+                    // a downloaded song plays its own file, and that download is the user's to keep:
+                    // the new quality applies to what's streamed from here on
+                    if (isFullyDownloaded(mediaId)) return@collect
                     val currentPosition = player.currentPosition
-                    val wasPlaying = player.isPlaying
+                    val wasPlaying = player.playWhenReady
                     val currentIndex = player.currentMediaItemIndex
 
                     Timber.tag("MusicService").i("RELOADING STREAM: $mediaId at position ${currentPosition}ms")
 
                     songUrlCache.remove(mediaId)
-
-                    runBlocking(Dispatchers.IO) {
-                        try {
-                            playerCache.removeResource(mediaId)
-                            downloadCache.removeResource(mediaId)
-                            Timber.tag("MusicService").d("Cleared player and download cache for $mediaId")
-                        } catch (e: Exception) {
-                            Timber.tag("MusicService").e(e, "Failed to clear cache for $mediaId")
-                        }
-                    }
-
                     bypassCacheForQualityChange.add(mediaId)
-                    Timber.tag("MusicService").d("Set bypass cache flag for $mediaId")
 
+                    // stop first: the loader holds the cached spans it's reading, and dropping them
+                    // under it blocked the main thread
                     player.stop()
+                    withContext(Dispatchers.IO) {
+                        runCatching { playerCache.removeResource(mediaId) }
+                            .onFailure { Timber.tag("MusicService").e(it, "Failed to clear cache for $mediaId") }
+                    }
                     player.seekTo(currentIndex, currentPosition)
                     player.prepare()
-                    if (wasPlaying) {
-                        player.play()
-                    }
+                    player.playWhenReady = wasPlaying
                 }
         }
 
@@ -867,7 +818,10 @@ class MusicService :
                 .distinctUntilChanged(),
         ) { format, normalizeAudio ->
             format to normalizeAudio
-        }.collectLatest(scope) { (format, normalizeAudio) -> setupLoudnessEnhancer()}
+        }.collectLatest(scope) { (format, normalizeAudio) ->
+            audioFx.normalize = normalizeAudio
+            setupLoudnessEnhancer()
+        }
 
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
@@ -978,7 +932,7 @@ class MusicService :
             val enabled = mode != CrossmixMode.OFF
             val duration = when (mode) {
                 CrossmixMode.AUTO_CROSSFADE -> 5f
-                CrossmixMode.MANUAL_CROSSFADE -> (prefs[CrossfadeDurationKey] ?: 5f).coerceIn(2f, 30f)
+                CrossmixMode.MANUAL_CROSSFADE -> (prefs[CrossfadeDurationKey] ?: 5f).coerceIn(1f, 30f)
                 CrossmixMode.CROSSMIX -> (prefs[CrossfadeDurationKey] ?: 12f).coerceIn(8f, 20f)
                 CrossmixMode.OFF -> prefs[CrossfadeDurationKey] ?: 5f
             }
@@ -1094,6 +1048,13 @@ class MusicService :
     private fun createExoPlayer(publish: Boolean = true): ExoPlayer {
         val eqProcessor = CustomEqualizerAudioProcessor()
         equalizerService.addAudioProcessor(eqProcessor)
+        // this player's song's ReplayGain, read from its file's tags when its tracks change
+        val replayGain = com.example.musicfy.eq.audio.ReplayGainTags()
+        val fxProcessors = arrayOf<androidx.media3.common.audio.AudioProcessor>(
+            SpatialAudioProcessor(audioFx),
+            ReverbAudioProcessor(audioFx),
+            LoudnessAudioProcessor(audioFx),
+        )
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
         val crossmixProcessor = CrossmixTransitionAudioProcessor()
@@ -1152,7 +1113,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, hapticAudioProcessor, crossmixProcessor))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain))
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
@@ -1167,6 +1128,15 @@ class MusicService :
             .setDeviceVolumeControlEnabled(true)
             .build()
 
+        player.addListener(object : Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                replayGain.update(tracks)
+                val mediaId = player.currentMediaItem?.mediaId
+                val format = StreamFacts.selectedAudio(tracks)
+                if (mediaId != null && format != null) recordDecodedFormat(mediaId, format)
+            }
+        })
+        playerReplayGain[player] = replayGain
         playerSilenceProcessors[player] = silenceProcessor
         playerCrossmixProcessors[player] = crossmixProcessor
         playerEqProcessors[player] = eqProcessor
@@ -2292,7 +2262,11 @@ class MusicService :
                     dataStore.data.map { it[AudioNormalizationKey] ?: true }.first()
                 }
 
-                if (normalizeAudio && currentMediaId != null) {
+                // YouTube's loudness numbers describe YouTube's stream: a song from a module plays
+                // another master, and evens out by its own ReplayGain in the sink instead
+                val fromModule = currentMediaId != null &&
+                    resolvedSourceIds[currentMediaId].let { it != null && it != com.example.musicfy.modules.SourceModules.YouTubeId }
+                if (normalizeAudio && currentMediaId != null && !fromModule) {
                     val format = withContext(Dispatchers.IO) {
                         database.format(currentMediaId).first()
                     }
@@ -2752,6 +2726,8 @@ class MusicService :
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}")
         reportException(error)
 
+        if (mediaId != null && forceFallBack(mediaId)) return
+
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
             Timber.tag(TAG).w("Song $mediaId has exceeded retry limit, skipping")
             markSongAsFailed(mediaId)
@@ -2799,7 +2775,7 @@ class MusicService :
             return
         }
 
-        if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
+        if (dataStore.get(AutoSkipNextOnErrorKey, false) || dataStore.get(ForcePlaybackKey, false)) {
             Timber.tag(TAG).d("Auto-skipping to next track due to unrecoverable error")
             skipOnError()
         } else {
@@ -3009,7 +2985,8 @@ class MusicService :
     }
 
     private fun handleFinalFailure() {
-        if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
+        player.currentMediaItem?.mediaId?.let { if (forceFallBack(it, includeYouTube = true)) return }
+        if (dataStore.get(AutoSkipNextOnErrorKey, false) || dataStore.get(ForcePlaybackKey, false)) {
             Timber.tag(TAG).d("All recovery attempts exhausted, auto-skipping to next track")
             skipOnError()
         } else {
@@ -3198,7 +3175,14 @@ class MusicService :
 
     private fun createDataSourceFactory(): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
-            val mediaId = dataSpec.key ?: error("No media id")
+            // a stream a source module or backend resolved to a real URL (an HLS playlist, given
+            // as a data: URI when the module rewrote it, and its segments) carries no media id:
+            // it's fetched as it is
+            val mediaId = dataSpec.key ?: run {
+                val scheme = dataSpec.uri.scheme
+                if (scheme == "https" || scheme == "http" || scheme == "data") return@Factory dataSpec
+                error("No media id")
+            }
 
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
@@ -3325,7 +3309,49 @@ class MusicService :
         if (lastAnnouncedSourceMediaId == mediaId) return
         val source = resolvedStreamSources[mediaId] ?: return
         lastAnnouncedSourceMediaId = mediaId
-        Toast.makeText(this, "Playing from $source", Toast.LENGTH_SHORT).show()
+        showBanner("Playing from $source")
+    }
+
+    /**
+     * The app's top banner (the one "Added to playlist" uses), with the song's cover. Only while
+     * Musicfy is on screen: one raised in the background would greet the user later, for a song
+     * that's long gone.
+     */
+    private fun showBanner(text: String) {
+        val visible = androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.currentState
+            .isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        if (!visible) return
+        com.example.musicfy.ui.component.TopToaster.show(
+            text = text,
+            thumbnail = player.currentMediaItem?.mediaMetadata?.artworkUri?.toString(),
+        )
+    }
+
+    /**
+     * Force playback: a song that failed from one provider starts again from the next one in the
+     * order, where it left off. YouTube's own errors get YouTube's recoveries first (a stale URL is
+     * refreshed, a cipher retried) and only come here once those are spent, via [handleFinalFailure].
+     */
+    private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false): Boolean {
+        if (!dataStore.get(ForcePlaybackKey, false)) return false
+        val failed = resolvedSourceIds[mediaId] ?: return false
+        if (failed == com.example.musicfy.modules.SourceModules.YouTubeId && !includeYouTube) return false
+        val skip = failedSources.getOrPut(mediaId) { java.util.concurrent.ConcurrentHashMap.newKeySet() }
+        if (!skip.add(failed)) return false
+        val next = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) } ?: return false
+        Timber.tag(TAG).i("Force playback: $mediaId failed from $failed, trying $next")
+        android.util.Log.i("SourceModules", "Force playback: ${sourceModules.nameOf(failed)} failed on $mediaId, trying ${sourceModules.nameOf(next)}")
+        resolvedStreamSources.remove(mediaId)
+        songUrlCache.remove(mediaId)
+        val index = player.currentMediaItemIndex
+        val position = player.currentPosition
+        val wasPlaying = player.playWhenReady
+        showBanner("${sourceModules.nameOf(failed)} couldn't play this · trying ${sourceModules.nameOf(next)}")
+        player.stop()
+        player.seekTo(index, position)
+        player.prepare()
+        player.playWhenReady = wasPlaying
+        return true
     }
 
     private fun createMediaSourceFactory(): androidx.media3.exoplayer.source.MediaSource.Factory {
@@ -3348,64 +3374,7 @@ class MusicService :
                         }
                         factory
                     },
-                    fetcherAction = { mediaId ->
-                        val enableMonochrome = kotlinx.coroutines.runBlocking {
-                            dataStore.data.first()[com.example.musicfy.constants.EnableMonochromeBackendKey] ?: false
-                        }
-                        Timber.tag("StreamFetch").d("fetcherAction entered for $mediaId, enableMonochrome=$enableMonochrome")
-                        if (!enableMonochrome) return@DynamicResolvingMediaSource null
-
-                        var result: com.example.musicfy.playback.custom.CustomStreamResult? = null
-                        try {
-                            val monochromePlaybackResult = monochromePlaybackStreamFetcher.fetchStreamUrl(mediaId)
-                            if (monochromePlaybackResult != null) {
-                                result = monochromePlaybackResult
-                                Timber.d("Found stream on Monochrome Playback")
-                            }
-                        } catch (e: Exception) {
-                            Timber.w(e, "Monochrome Playback fetch failed")
-                        }
-
-                        if (result == null) {
-                            try {
-                                val amazonResult = amazonStreamFetcher.fetchStreamUrl(mediaId)
-                                if (amazonResult != null) result = amazonResult
-                            } catch (e: Exception) {
-                                Timber.w(e, "Amazon fetch failed")
-                            }
-                        }
-
-                        if (result == null) {
-                            try {
-                                val monochromeResult = monochromeStreamFetcher.fetchStreamUrl(mediaId)
-                                if (monochromeResult != null) {
-                                    result = monochromeResult
-                                    Timber.d("Found stream on Monochrome")
-                                }
-                            } catch (e: Exception) {
-                                Timber.w(e, "Monochrome fetch failed")
-                            }
-                        }
-
-                        if (result == null) {
-                            // Returning null lets DynamicResolvingMediaSource fall through to
-                            // the normal YouTube path. Users who only ever want lossless can
-                            // turn the fallback off and get a hard failure instead.
-                            val fallbackToYouTube = kotlinx.coroutines.runBlocking {
-                                dataStore.data.first()[com.example.musicfy.constants.MonochromeFallbackToYouTubeKey] ?: true
-                            }
-                            if (!fallbackToYouTube) {
-                                throw androidx.media3.common.PlaybackException(
-                                    "Monochrome could not serve this track",
-                                    null,
-                                    androidx.media3.common.PlaybackException.ERROR_CODE_REMOTE_ERROR
-                                )
-                            }
-                            Timber.tag("StreamFetch").i("No Monochrome stream for $mediaId, falling back to YouTube")
-                            return@DynamicResolvingMediaSource null
-                        }
-                        result
-                    },
+                    fetcherAction = { mediaId -> routeStream(mediaId) },
                     onSourceResolved = { mediaId, source ->
                         resolvedStreamSources[mediaId] = source
                         Handler(Looper.getMainLooper()).post {
@@ -3421,9 +3390,11 @@ class MusicService :
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,
+        fxProcessors: Array<androidx.media3.common.audio.AudioProcessor>,
         silenceProcessor: SilenceDetectorAudioProcessor,
         hapticProcessor: HapticAudioProcessor,
         crossmixProcessor: CrossmixTransitionAudioProcessor,
+        replayGain: com.example.musicfy.eq.audio.ReplayGainTags,
     ) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -3437,8 +3408,11 @@ class MusicService :
                 .setAudioProcessorChain(
                     DefaultAudioSink.DefaultAudioProcessorChain(
 
+                        // Audio Lab first (equalizer, then spatial, reverb, loudness), so Crossmix
+                        // blends the two songs as they're heard
                         arrayOf(
                             eqProcessor,
+                            *fxProcessors,
                             silenceProcessor,
                             hapticProcessor,
                             crossmixProcessor,
@@ -3446,7 +3420,7 @@ class MusicService :
                         SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                         SonicAudioProcessor(),
                     ),
-                ).build(), crossmixProcessor)
+                ).build(), crossmixProcessor, audioFx, replayGain)
         }
 
     override fun onPlaybackStatsReady(
@@ -3594,6 +3568,7 @@ class MusicService :
         player.removeListener(this)
         player.removeListener(sleepTimer)
         playerSilenceProcessors.remove(player)
+        playerReplayGain.remove(player)
 
         player.release()
         discordUpdateJob?.cancel()
@@ -3892,6 +3867,97 @@ class MusicService :
         playerEqProcessors.remove(player)?.let { equalizerService.removeAudioProcessor(it) }
     }
 
+    /**
+     * The decoder's format for [mediaId]. A module's own codec name stands (it knows its encode
+     * better than the container says: HE-AAC reads as plain AAC there); otherwise the decoder's
+     * format is the whole story, YouTube's record filling in what it leaves out.
+     */
+    private fun recordDecodedFormat(mediaId: String, format: androidx.media3.common.Format) {
+        val codec = StreamFacts.codecOf(format.sampleMimeType, format.codecs)
+        val sampleRate = format.sampleRate.takeIf { it > 0 }
+        streamFacts.update { all ->
+            val old = all[mediaId]
+            val merged = if (old?.fromModule == true) {
+                old.copy(codec = old.codec ?: codec, sampleRate = sampleRate ?: old.sampleRate)
+            } else StreamFacts(codec = codec, sampleRate = sampleRate)
+            // HE-AAC's container can give its core's rate; the decoder plays it at twice that
+            val facts = if (merged.codec == "HE-AAC" && (merged.sampleRate ?: 0) in 1..24_000) {
+                merged.copy(sampleRate = merged.sampleRate!! * 2)
+            } else merged
+            if (facts == old) all else all + (mediaId to facts)
+        }
+    }
+
+    /** [mediaId] goes to YouTube: whatever a module said about it last time no longer holds */
+    private fun forgetModuleFacts(mediaId: String) {
+        streamFacts.update { all -> if (all[mediaId]?.fromModule == true) all - mediaId else all }
+    }
+
+    /**
+     * Where [mediaId] plays from: the first provider in the order (Settings → Audio Quality) that
+     * is switched on, hasn't already failed on this song, and has it. Null hands it to YouTube.
+     * With every provider spent, it throws, so the song is skipped rather than retried forever.
+     */
+    private suspend fun routeStream(mediaId: String): com.example.musicfy.playback.custom.CustomStreamResult? {
+        val skip = failedSources[mediaId].orEmpty()
+        // songs that only YouTube has (and the common case of YouTube first) need no lookup
+        val first = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) }
+        if (first == com.example.musicfy.modules.SourceModules.YouTubeId) {
+            resolvedSourceIds[mediaId] = first
+            forgetModuleFacts(mediaId)
+            return null
+        }
+        val song = database.song(mediaId).first()
+        val track = song?.let {
+            com.example.musicfy.module.TrackQuery(
+                title = it.song.title,
+                artists = it.artists.map { a -> a.name },
+                album = it.song.albumName ?: it.album?.title,
+                durationMs = it.song.duration.takeIf { d -> d > 0 }?.times(1000L),
+            )
+        }
+        return when (val route = sourceModules.route(track, skip)) {
+            is com.example.musicfy.modules.SourceModules.Route.Module -> {
+                val stream = route.stream
+                resolvedSourceIds[mediaId] = route.module.info.id
+                streamFacts.update { it + (mediaId to StreamFacts(codec = stream.codec, fromModule = true)) }
+                Timber.tag("StreamFetch").i("$mediaId plays from ${route.module.info.name}: ${stream.matched.title} · ${stream.qualityLabel}")
+                com.example.musicfy.playback.custom.CustomStreamResult(
+                    streamUrl = stream.url,
+                    isHls = stream.format == com.example.musicfy.module.StreamFormat.Hls,
+                    isDash = stream.format == com.example.musicfy.module.StreamFormat.Dash,
+                    source = "${route.module.info.name} · ${stream.qualityLabel}",
+                    widevineLicense = (stream.drm as? com.example.musicfy.module.StreamDrm.Widevine)?.license,
+                )
+            }
+            com.example.musicfy.modules.SourceModules.Route.YouTube -> {
+                resolvedSourceIds[mediaId] = com.example.musicfy.modules.SourceModules.YouTubeId
+                forgetModuleFacts(mediaId)
+                null
+            }
+            com.example.musicfy.modules.SourceModules.Route.Exhausted -> {
+                if (com.example.musicfy.modules.SourceModules.YouTubeId !in skip) {
+                    // YouTube is in the order after providers that don't have it: it plays there
+                    resolvedSourceIds[mediaId] = com.example.musicfy.modules.SourceModules.YouTubeId
+                    forgetModuleFacts(mediaId)
+                    null
+                } else throw androidx.media3.common.PlaybackException(
+                    "No provider could play this song",
+                    null,
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+                )
+            }
+        }
+    }
+
+    /** every byte of the song is in the download cache */
+    private fun isFullyDownloaded(mediaId: String): Boolean = runCatching {
+        val length = androidx.media3.datasource.cache.ContentMetadata.getContentLength(
+            downloadCache.getContentMetadata(mediaId)
+        )
+        length > 0 && downloadCache.isCached(mediaId, 0, length)
+    }.getOrDefault(false)
+
     /** what the Crossmix director needs from the service: players, the session, the queue */
     private inner class CrossmixHost : CrossmixDirector.Host {
         override val currentPlayer: ExoPlayer get() = player
@@ -3977,6 +4043,7 @@ class MusicService :
             }
             playerCrossmixProcessors.remove(outgoing)
             playerSilenceProcessors.remove(outgoing)
+            playerReplayGain.remove(outgoing)
             unregisterEqualizer(outgoing)
             if (fadingPlayer === outgoing) fadingPlayer = null
             fadingLoudnessEnhancer?.runCatching { release() }
@@ -3991,6 +4058,7 @@ class MusicService :
             }
             playerCrossmixProcessors.remove(incoming)
             playerSilenceProcessors.remove(incoming)
+            playerReplayGain.remove(incoming)
             unregisterEqualizer(incoming)
         }
 

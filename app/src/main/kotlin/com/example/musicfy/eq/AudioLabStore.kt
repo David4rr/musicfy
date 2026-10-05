@@ -5,8 +5,14 @@ package com.example.musicfy.eq
 import android.content.Context
 import androidx.core.content.edit
 import com.example.musicfy.eq.audio.Biquad
+import com.example.musicfy.eq.audio.LoudnessParams
+import com.example.musicfy.eq.audio.ReplayGainMode
+import com.example.musicfy.eq.audio.ReplayGainParams
 import com.example.musicfy.eq.audio.ResponseCurve
 import com.example.musicfy.eq.audio.ReverbParams
+import com.example.musicfy.eq.audio.SpatialMode
+import com.example.musicfy.eq.audio.SpatialParams
+import com.example.musicfy.eq.audio.VolumeCurve
 import com.example.musicfy.eq.autoeq.AutoEqTuning
 import com.example.musicfy.eq.autoeq.HeadphoneForm
 import com.example.musicfy.eq.data.EQProfileRepository
@@ -30,6 +36,11 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
+import kotlin.math.pow
+
+/** what Sonic, the player's speed stage, can do */
+const val MinSpeed = 0.1f
+const val MaxSpeed = 8f
 
 /** A headphone correction picked from the AutoEq database, with the filters it came to. */
 @Serializable
@@ -94,16 +105,73 @@ data class ReverbSettings(
     )
 }
 
+@Serializable
+data class LoudnessSettings(
+    val enabled: Boolean = false,
+    val boostDb: Float = 4f,
+    val compression: Float = 0.3f,
+) {
+    fun toParams() = LoudnessParams(enabled, boostDb, compression)
+}
+
+@Serializable
+data class SpatialSettings(
+    val enabled: Boolean = false,
+    val mode: SpatialMode = SpatialMode.Crossfeed,
+    val cutoffHz: Float = 700f,
+    val feedDb: Float = 4.5f,
+    val speakerAngle: Float = 30f,
+    val amount: Float = 1f,
+    /** Dolby Atmos / surround rendered binaurally by Musicfy rather than by the device */
+    val surround: Boolean = false,
+    /** both ears hear the whole mix */
+    val mono: Boolean = false,
+) {
+    fun toParams() = SpatialParams(enabled, mode, cutoffHz, feedDb, speakerAngle, amount, surround, mono)
+}
+
+/** "Even out songs" for files that carry ReplayGain (Monochrome's FLACs, many local files) */
+@Serializable
+data class NormalizeSettings(
+    val replayGainMode: ReplayGainMode = ReplayGainMode.Track,
+    val preampDb: Float = 3f,
+) {
+    fun toParams() = ReplayGainParams(replayGainMode, preampDb)
+}
+
+@Serializable
+data class PlaybackSettings(
+    val speed: Float = 1f,
+    /** off: pitch follows speed, like a record played fast or slow */
+    val preservePitch: Boolean = true,
+    /** semitones, while pitch is preserved */
+    val pitchSemitones: Float = 0f,
+) {
+    val pitch: Float
+        get() = if (preservePitch) 2f.pow(pitchSemitones / 12f) else speed
+
+    val isNormal: Boolean get() = speed == 1f && pitch == 1f
+}
+
+@Serializable
+data class VolumeSettings(
+    val enabled: Boolean = false,
+    val exponent: Float = 2f,
+    val limit: Float = 1f,
+) {
+    fun toCurve() = VolumeCurve(enabled, exponent, limit)
+}
+
 /**
  * Everything Audio Lab sets, in one place: the equalizer (curve, presets, headphone correction)
- * and the reverb. Each change goes straight to the players' processors, live, and is saved a
- * moment later, so a slider can be dragged freely.
+ * and Audio FX (reverb, loudness, spatial, speed and pitch, volume curve). Each change goes
+ * straight to the players, live, and is saved a moment later, so a slider can be dragged freely.
  */
 @Singleton
 class AudioLabStore @Inject constructor(
     @ApplicationContext context: Context,
     private val equalizerService: EqualizerService,
-    private val reverbService: ReverbService,
+    private val audioFx: AudioFxService,
     private val legacyProfiles: EQProfileRepository,
 ) {
     private val prefs = context.getSharedPreferences("audio_lab", Context.MODE_PRIVATE)
@@ -124,10 +192,55 @@ class AudioLabStore @Inject constructor(
     private val _presets = MutableStateFlow(load<List<EqPreset>>("presets") ?: emptyList())
     val presets: StateFlow<List<EqPreset>> = _presets.asStateFlow()
 
+    private val _loudness = MutableStateFlow(load("loudness") ?: LoudnessSettings())
+    val loudness: StateFlow<LoudnessSettings> = _loudness.asStateFlow()
+
+    private val _spatial = MutableStateFlow(load("spatial") ?: SpatialSettings())
+    val spatial: StateFlow<SpatialSettings> = _spatial.asStateFlow()
+
+    /** MusicService applies this to whichever player is playing */
+    private val _playback = MutableStateFlow(load("playback") ?: PlaybackSettings())
+    val playback: StateFlow<PlaybackSettings> = _playback.asStateFlow()
+
+    private val _volume = MutableStateFlow(load("volume") ?: VolumeSettings())
+    val volume: StateFlow<VolumeSettings> = _volume.asStateFlow()
+
+    private val _normalize = MutableStateFlow(load("normalize") ?: NormalizeSettings())
+    val normalize: StateFlow<NormalizeSettings> = _normalize.asStateFlow()
+
     init {
         migrateLegacyEqualizer()
         pushEq()
-        pushReverb()
+        pushFx()
+    }
+
+    fun updateLoudness(transform: (LoudnessSettings) -> LoudnessSettings) {
+        _loudness.update(transform)
+        pushFx()
+        scheduleSave()
+    }
+
+    fun updateSpatial(transform: (SpatialSettings) -> SpatialSettings) {
+        _spatial.update(transform)
+        pushFx()
+        scheduleSave()
+    }
+
+    fun updatePlayback(transform: (PlaybackSettings) -> PlaybackSettings) {
+        _playback.update { transform(it).let { s -> s.copy(speed = s.speed.coerceIn(MinSpeed, MaxSpeed)) } }
+        scheduleSave()
+    }
+
+    fun updateNormalize(transform: (NormalizeSettings) -> NormalizeSettings) {
+        _normalize.update(transform)
+        pushFx()
+        scheduleSave()
+    }
+
+    fun updateVolume(transform: (VolumeSettings) -> VolumeSettings) {
+        _volume.update(transform)
+        pushFx()
+        scheduleSave()
     }
 
     fun updateEq(transform: (EqSettings) -> EqSettings) {
@@ -138,7 +251,7 @@ class AudioLabStore @Inject constructor(
 
     fun updateReverb(transform: (ReverbSettings) -> ReverbSettings) {
         _reverb.update(transform)
-        pushReverb()
+        pushFx()
         scheduleSave()
     }
 
@@ -183,8 +296,13 @@ class AudioLabStore @Inject constructor(
 
     private fun pushEq() = equalizerService.apply(design(_eq.value))
 
-    private fun pushReverb() {
-        reverbService.params = _reverb.value.toParams()
+    private fun pushFx() {
+        audioFx.reverb = _reverb.value.toParams()
+        audioFx.loudness = _loudness.value.toParams()
+        audioFx.spatial = _spatial.value.toParams()
+        audioFx.replayGain = _normalize.value.toParams()
+        val curve = _volume.value.toCurve()
+        if (curve != audioFx.volumeCurve) audioFx.volumeCurve = curve
     }
 
     private fun scheduleSave() {
@@ -194,6 +312,11 @@ class AudioLabStore @Inject constructor(
             prefs.edit {
                 putString("eq", json.encodeToString(EqSettings.serializer(), _eq.value))
                 putString("reverb", json.encodeToString(ReverbSettings.serializer(), _reverb.value))
+                putString("loudness", json.encodeToString(LoudnessSettings.serializer(), _loudness.value))
+                putString("spatial", json.encodeToString(SpatialSettings.serializer(), _spatial.value))
+                putString("playback", json.encodeToString(PlaybackSettings.serializer(), _playback.value))
+                putString("volume", json.encodeToString(VolumeSettings.serializer(), _volume.value))
+                putString("normalize", json.encodeToString(NormalizeSettings.serializer(), _normalize.value))
                 putString(
                     "presets",
                     json.encodeToString(kotlinx.serialization.builtins.ListSerializer(EqPreset.serializer()), _presets.value),

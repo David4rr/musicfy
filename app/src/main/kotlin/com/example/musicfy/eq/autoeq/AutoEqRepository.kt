@@ -94,18 +94,6 @@ class AutoEqRepository @Inject constructor(
         }
     }
 
-    /** results whose name contains every word typed, best first: names that start with it lead */
-    fun search(all: List<AutoEqModel>, query: String): List<AutoEqModel> {
-        val q = normalize(query)
-        if (q.isBlank()) return all
-        val words = q.split(' ').filter { it.isNotEmpty() }
-        // "wh1000" finds "WH-1000XM5" too: punctuation and spaces don't have to be typed
-        val compact = q.replace(" ", "")
-        return all.filter { model ->
-            words.all { model.searchKey.contains(it) } || model.compactKey.contains(compact)
-        }.sortedBy { if (it.searchKey.startsWith(q) || it.compactKey.startsWith(compact)) 0 else 1 }
-    }
-
     suspend fun measurement(entry: AutoEqEntry): AutoEqMeasurement = withContext(Dispatchers.IO) {
         val folder = entry.path.substringAfterLast('/')
         val base = "$ResultsBase/" + entry.path.split('/').joinToString("/") { Uri.encode(it) }
@@ -134,6 +122,18 @@ class AutoEqRepository @Inject constructor(
         private const val ResultsBase = "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results"
         private const val IndexMaxAgeMs = 7L * 24 * 60 * 60 * 1000
 
+        /** results whose name contains every word typed, best first: names that start with it lead */
+        fun search(all: List<AutoEqModel>, query: String): List<AutoEqModel> {
+            val q = normalize(query)
+            if (q.isBlank()) return all
+            val words = q.split(' ').filter { it.isNotEmpty() }
+            // "wh1000" finds "WH-1000XM5" too: punctuation and spaces don't have to be typed
+            val compact = q.replace(" ", "")
+            return all.filter { model ->
+                words.all { model.searchKey.contains(it) } || model.compactKey.contains(compact)
+            }.sortedBy { if (it.searchKey.startsWith(q) || it.compactKey.startsWith(compact)) 0 else 1 }
+        }
+
         /** `- [Name](./source/rig/Name) by Source on Rig`; the name and path can hold brackets */
         internal fun parseIndex(text: String): List<AutoEqModel> {
             val entries = ArrayList<AutoEqEntry>(9000)
@@ -144,7 +144,7 @@ class AutoEqRepository @Inject constructor(
                 val pathEnd = line.indexOf(") by ", nameEnd)
                 if (pathEnd < 0) return@forEach
                 val name = line.substring(3, nameEnd)
-                val path = Uri.decode(line.substring(nameEnd + 4, pathEnd))
+                val path = percentDecode(line.substring(nameEnd + 4, pathEnd))
                 val by = line.substring(pathEnd + 5).trim()
                 val on = by.indexOf(" on ")
                 val source = if (on >= 0) by.substring(0, on) else by
@@ -186,6 +186,27 @@ class AutoEqRepository @Inject constructor(
             )
         }
     }
+}
+
+/** %XX escapes back to UTF-8 text; a literal '+' stays a plus (unlike URLDecoder) */
+internal fun percentDecode(text: String): String {
+    if ('%' !in text) return text
+    val bytes = java.io.ByteArrayOutputStream(text.length)
+    var i = 0
+    while (i < text.length) {
+        val ch = text[i]
+        if (ch == '%' && i + 2 <= text.lastIndex) {
+            val hex = text.substring(i + 1, i + 3).toIntOrNull(16)
+            if (hex != null) {
+                bytes.write(hex)
+                i += 3
+                continue
+            }
+        }
+        bytes.write(ch.toString().toByteArray(Charsets.UTF_8))
+        i++
+    }
+    return bytes.toString(Charsets.UTF_8.name())
 }
 
 /** lowercase letters and digits, runs of anything else folded into one space */
