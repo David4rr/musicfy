@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -26,6 +27,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -329,6 +332,17 @@ private fun TextRow(title: String, description: String, key: androidx.datastore.
 @Composable
 private fun LabelField(key: androidx.datastore.preferences.core.Preferences.Key<String>, placeholder: String) {
     var stored by rememberPreference(key, defaultValue = "")
+    // Typed into a value of its own and saved on every change. Bound to the preference straight,
+    // the field got the old text back between keystrokes (the save comes back asynchronously),
+    // its cursor jumped to the start and the letters went in backwards.
+    var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(stored, androidx.compose.ui.text.TextRange(stored.length))) }
+    var focused by remember { mutableStateOf(false) }
+    // the saved label arriving (or changed elsewhere) while it isn't being typed in
+    androidx.compose.runtime.LaunchedEffect(stored, focused) {
+        if (!focused && stored != field.text) {
+            field = androidx.compose.ui.text.input.TextFieldValue(stored, androidx.compose.ui.text.TextRange(stored.length))
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -336,14 +350,20 @@ private fun LabelField(key: androidx.datastore.preferences.core.Preferences.Key<
             .background(Color.White.copy(alpha = 0.08f))
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        if (stored.isEmpty()) Text(placeholder, color = Color.White.copy(alpha = 0.4f), style = studioText(StudioType.Body))
+        if (field.text.isEmpty()) Text(placeholder, color = Color.White.copy(alpha = 0.4f), style = studioText(StudioType.Body))
         BasicTextField(
-            value = stored,
-            onValueChange = { stored = it.take(40) },
+            value = field,
+            onValueChange = { next ->
+                val text = next.text.take(40)
+                field = if (text == next.text) next else next.copy(text = text, selection = androidx.compose.ui.text.TextRange(text.length))
+                if (text != stored) stored = text
+            },
             singleLine = true,
             textStyle = studioText(StudioType.Body).copy(color = Color.White),
             cursorBrush = SolidColor(Color.White),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focused = it.isFocused },
         )
     }
 }

@@ -687,6 +687,7 @@ fun HomeScreen(
     }
     val homePage by viewModel.homePage.collectAsState()
     val dailyDiscover by viewModel.dailyDiscover.collectAsState()
+    val similarRecommendations by viewModel.similarRecommendations.collectAsState()
     val communityPlaylists by viewModel.communityPlaylists.collectAsState()
     val recentlyPlayed by viewModel.recentlyPlayed.collectAsState()
     val mostPlayedSongsForHome by viewModel.mostPlayedSongsForHome.collectAsState()
@@ -1176,6 +1177,9 @@ fun HomeScreen(
                         gachaPool = gachaPool,
                         starterItems = starterItems,
                         playlistPicks = playlistPicks,
+                        similarRecommendations = similarRecommendations,
+                        onRepeat = mostPlayedSongsForHome,
+                        forgottenFavorites = forgottenFavorites,
                         modifier = Modifier.launchRise(order = 1),
                     )
                 }

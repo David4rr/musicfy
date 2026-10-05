@@ -305,10 +305,6 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.recap.StatsScreen(navController = navController)
     }
 
-    composable("advanced_audio_settings") {
-        com.example.musicfy.ui.screens.settings.AdvancedAudioSettingsScreen(navController = navController)
-    }
-
     composable("cipher_settings") {
         com.example.musicfy.ui.screens.settings.CipherSettingsScreen(navController = navController)
     }
@@ -386,6 +382,42 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("equalizer") {
         com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
+    }
+
+    composable("audio_lab") {
+        com.example.musicfy.ui.screens.audiolab.AudioLabScreen(navController = navController)
+    }
+
+    composable("audio_fx") {
+        com.example.musicfy.ui.screens.audiolab.AudioFxScreen(navController = navController)
+    }
+
+    composable("audio_quality") {
+        com.example.musicfy.ui.screens.audiolab.AudioQualityScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.modules.ModulesRoute) {
+        com.example.musicfy.ui.screens.settings.modules.ModulesScreen(navController = navController)
+    }
+
+    composable(
+        route = com.example.musicfy.ui.screens.settings.modules.ModuleRoutePattern,
+        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+    ) { entry ->
+        com.example.musicfy.ui.screens.settings.modules.ModuleScreen(
+            navController = navController,
+            id = entry.arguments?.getString("id").orEmpty(),
+        )
+    }
+
+    composable(
+        route = com.example.musicfy.ui.screens.settings.modules.ModuleSignInRoutePattern,
+        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+    ) { entry ->
+        com.example.musicfy.ui.screens.settings.modules.ModuleSignInScreen(
+            navController = navController,
+            id = entry.arguments?.getString("id").orEmpty(),
+        )
     }
 
     composable(

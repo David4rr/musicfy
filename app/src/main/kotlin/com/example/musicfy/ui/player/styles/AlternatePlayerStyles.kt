@@ -71,7 +71,7 @@ fun AlternatePlayerStyle(
         PlayerStyle.POSTER -> PosterPlayerStyle(actions, modifier, preview)
         PlayerStyle.TIMELINE -> TimelinePlayerStyle(actions, modifier, preview)
         PlayerStyle.LYRICS -> LyricsPlayerStyle(actions, modifier, preview)
-        PlayerStyle.DEFAULT -> Unit
+        PlayerStyle.DEFAULT, PlayerStyle.TURNTABLE -> Unit
     }
 }
 
