@@ -35,24 +35,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.PlaybackParameters
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import com.example.musicfy.LocalPlayerConnection
+import com.example.musicfy.di.AudioLabEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import kotlin.math.abs
+import kotlin.math.log2
 
 private val CardSurface = MenuRowSurface
 
 @Composable
 fun PlaybackSpeedSheet(onDismiss: () -> Unit) {
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val player = playerConnection.player
+    LocalPlayerConnection.current ?: return
+    // the same speed and pitch as Audio FX: the service applies them to whichever player plays
+    val context = LocalContext.current
+    val store = remember(context) {
+        EntryPointAccessors.fromApplication(context.applicationContext, AudioLabEntryPoint::class.java).audioLabStore()
+    }
+    val playback by store.playback.collectAsState()
 
-    val speed = remember { mutableFloatStateOf(player.playbackParameters.speed) }
-    val pitch = remember { mutableFloatStateOf(player.playbackParameters.pitch) }
+    val speed = remember { mutableFloatStateOf(playback.speed) }
+    val pitch = remember { mutableFloatStateOf(playback.pitch) }
 
     fun apply() {
-        player.playbackParameters = PlaybackParameters(
-            speed.floatValue.coerceIn(0.25f, 3f),
-            pitch.floatValue.coerceIn(0.25f, 3f),
-        )
+        val s = speed.floatValue.coerceIn(0.25f, 3f)
+        val p = pitch.floatValue.coerceIn(0.25f, 3f)
+        store.updatePlayback {
+            if (abs(p - it.pitch) < 0.001f) it.copy(speed = s)
+            else it.copy(speed = s, preservePitch = true, pitchSemitones = (12f * log2(p)).coerceIn(-12f, 12f))
+        }
     }
 
     MenuSheetSurface(onDismiss = onDismiss, halfDetent = 0.46f, fullDetent = 0.46f) { _ ->

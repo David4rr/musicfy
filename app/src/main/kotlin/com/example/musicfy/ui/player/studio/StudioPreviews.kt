@@ -2,6 +2,7 @@ package com.example.musicfy.ui.player.studio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -69,7 +70,6 @@ internal fun CoverArt(
             style = style,
             artworkUrl = trackInfo.thumbnailUrl,
             mediaId = trackInfo.mediaId,
-            queueIndex = queueIndex,
             isPlaying = isPlaying,
             spinActive = true,
             editMode = true,
@@ -97,12 +97,17 @@ internal fun CoverArt(
  * card when another style is the live one.
  */
 @Composable
-internal fun FlagshipPreview(modifier: Modifier = Modifier) {
+internal fun FlagshipPreview(
+    modifier: Modifier = Modifier,
+    /** the Turntable: the flagship around a record player, its arm for the seek bar */
+    turntable: Boolean = false,
+) {
     val connection = LocalPlayerConnection.current ?: return
     val track by connection.uiState.trackInfo.collectAsState()
     val transport by connection.uiState.transportState.collectAsState()
     val queue by connection.uiState.queueState.collectAsState()
-    val coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
+    val flagshipCover by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
+    val coverStyle = if (turntable) PlayerCoverStyle.TURNTABLE else flagshipCover
     val backgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.COVER_GRADIENT)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -132,7 +137,8 @@ internal fun FlagshipPreview(modifier: Modifier = Modifier) {
         ) {
             SongInfoRow()
             Spacer(Modifier.height(10.dp))
-            PlayerProgressSlider()
+            // the Turntable's arm is its seek bar: the bar's room is kept, empty
+            if (turntable) Box(Modifier.graphicsLayer { alpha = 0f }) { PlayerProgressSlider(active = false) } else PlayerProgressSlider()
             Spacer(Modifier.height(22.dp))
             PlayerTransportRow()
         }

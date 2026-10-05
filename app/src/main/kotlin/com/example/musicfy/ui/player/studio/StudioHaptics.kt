@@ -48,10 +48,12 @@ private fun Context.managerVibrator(): Vibrator? =
     (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
 
 /**
- * A hold anywhere under this, held still for the long-press time, calls [onHold] - over buttons,
- * the seek bar, empty space alike. It watches from the outside (the initial pass), so nothing under
- * it has to give way; once it fires, the rest of that touch is the hold's, so the button it began
- * on doesn't also get a tap when the finger lifts.
+ * A hold on the background under this, held still for the long-press time, calls [onHold]. A
+ * touch something under it takes for itself - a button, the seek bar, the record, the arm - is
+ * that thing's: holding those opens nothing (the user's call, 2026-10-12). It watches from the
+ * outside (the initial pass), so nothing under it has to give way, and checks the same touch
+ * again once everything under it has seen it; once it fires, the rest of that touch is the
+ * hold's.
  */
 fun androidx.compose.ui.Modifier.holdAnywhere(enabled: () -> Boolean, onHold: () -> Unit): androidx.compose.ui.Modifier =
     pointerInput(Unit) {
@@ -60,6 +62,9 @@ fun androidx.compose.ui.Modifier.holdAnywhere(enabled: () -> Boolean, onHold: ()
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             if (!enabled()) return@awaitEachGesture
+            // the same touch after everything under it has had it: taken means not background
+            val seen = awaitPointerEvent(PointerEventPass.Final).changes.firstOrNull { it.id == down.id }
+            if (seen == null || seen.isConsumed) return@awaitEachGesture
             // null: the time ran out with the finger still down and still
             val ended = withTimeoutOrNull(timeout) {
                 var released = false

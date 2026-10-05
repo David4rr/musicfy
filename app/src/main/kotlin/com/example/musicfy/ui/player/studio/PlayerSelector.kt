@@ -137,7 +137,8 @@ fun PlayerSelectorOverlay(
     studio: PlayerStudioState,
     styles: List<PlayerStyle>,
     onSet: (Int) -> Unit,
-    onEdit: () -> Unit,
+    /** the editor for the focused style (its index) */
+    onEdit: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val shown by remember(studio) { derivedStateOf { studio.selector.value > 0.0005f || studio.stage == StudioStage.SELECTOR } }
@@ -255,6 +256,8 @@ fun PlayerSelectorOverlay(
                         if (index != studio.livePage) {
                             if (style == PlayerStyle.DEFAULT) {
                                 FlagshipPreview()
+                            } else if (style == PlayerStyle.TURNTABLE) {
+                                FlagshipPreview(turntable = true)
                             } else {
                                 AlternatePlayerStyle(style = style, actions = previewActions, preview = true, modifier = Modifier.fillMaxSize())
                             }
@@ -370,7 +373,7 @@ fun PlayerSelectorOverlay(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (style?.editable == true) {
-                        CardButton("Edit", enabled = active, onClick = onEdit, modifier = Modifier.weight(1f))
+                        CardButton("Edit", enabled = active, onClick = { onEdit(focused) }, modifier = Modifier.weight(1f))
                     }
                     CardButton("Set", enabled = active, onClick = { currentOnSet(focused) }, modifier = Modifier.weight(1f))
                 }

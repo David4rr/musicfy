@@ -414,11 +414,20 @@ private fun CoverEditor(
             }
         }
 
-        // the disc's label: tap it for what it says
+        // the disc's label: tap it for what it says. With an album card in front of the disc, the
+        // card is the target: the disc's middle is under it
         if (coverStyle.isDisc) {
             val art = parts.anchors.cover.value
             if (art.width > 0f) {
-                val radius = art.width * 0.2f
+                val card = remember(coverStyle) { com.example.musicfy.ui.player.customize.discGeometryFor(coverStyle).albumCard }
+                val target = if (card != null) {
+                    val side = minOf(art.width, art.height) * card.side
+                    val c = Offset(art.left + art.width * card.centerX, art.top + art.height * card.centerY)
+                    androidx.compose.ui.geometry.Rect(c.x - side / 2f, c.y - side / 2f, c.x + side / 2f, c.y + side / 2f)
+                } else {
+                    val radius = art.width * 0.2f
+                    androidx.compose.ui.geometry.Rect(art.center.x - radius, art.center.y - radius, art.center.x + radius, art.center.y + radius)
+                }
                 val pulse = rememberInfiniteTransition(label = "discLabel")
                 val beat by pulse.animateFloat(0.6f, 1f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "discLabelBeat")
                 Canvas(
@@ -429,19 +438,28 @@ private fun CoverEditor(
                             alpha = (studio.cover.value * (1f - off * 3f) * (1f - studio.backdrop.value * 4f)).coerceIn(0f, 1f)
                         },
                 ) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.8f * beat),
-                        radius = radius,
-                        center = art.center,
-                        style = Stroke(width = TileStroke.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 12f))),
-                    )
+                    val stroke = Stroke(width = TileStroke.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(16f, 12f)))
+                    val color = Color.White.copy(alpha = 0.8f * beat)
+                    if (card != null) {
+                        // just inside the card's own rounded corners
+                        val inset = TileStroke.toPx() * 2f
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(target.left + inset, target.top + inset),
+                            size = androidx.compose.ui.geometry.Size(target.width - inset * 2, target.height - inset * 2),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(target.width * 0.06f),
+                            style = stroke,
+                        )
+                    } else {
+                        drawCircle(color = color, radius = target.width / 2f, center = target.center, style = stroke)
+                    }
                 }
                 with(density) {
                     Box(
                         modifier = Modifier
-                            .offset((art.center.x - radius).toDp(), (art.center.y - radius).toDp())
-                            .size((radius * 2).toDp())
-                            .clip(CircleShape)
+                            .offset(target.left.toDp(), target.top.toDp())
+                            .size(target.width.toDp(), target.height.toDp())
+                            .clip(if (card != null) RoundedCornerShape((target.width * 0.06f).toDp()) else CircleShape)
                             .clickable(enabled = active && !inBackdrop) { studio.openSheet(StudioSheet.DISC_LABEL) },
                     )
                 }
