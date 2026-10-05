@@ -32,6 +32,11 @@ include(":providers:artistvideo")
 include(":providers:applecanvas")
 include(":providers:paxsenixlyrics")
 
+// source modules: built in today, written so each can ship as its own APK later
+include(":modules:api")
+include(":modules:applemusic")
+include(":modules:monochrome")
+
 
 // local newpipe extractor
 //includeBuild("../NewPipeExtractor") {
