@@ -693,7 +693,7 @@ object YTPlayerUtils {
 
         val effectiveQuality = when (audioQuality) {
             AudioQuality.AUTO -> if (networkMetered) AudioQuality.MEDIUM else AudioQuality.HIGH
-            // Lossless and Atmos tiers are served by the Monochrome backend; when
+            // Lossless and Atmos tiers were Monochrome's (a source module now); when
             // YouTube is the source we still want its best available stream.
             AudioQuality.LOSSLESS, AudioQuality.HI_RES_LOSSLESS, AudioQuality.DOLBY_ATMOS -> AudioQuality.HIGH
             else -> audioQuality

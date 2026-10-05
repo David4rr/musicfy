@@ -78,13 +78,29 @@ private val SettingsIndex = listOf(
     SettingsEntry("High quality bloom", "Appearance", "appearance_settings", "lyrics bloom quality extra soft pass"),
     SettingsEntry("Always enable Youtube background", "Appearance", "appearance_settings", "youtube video background canvas"),
     SettingsEntry("Enable animated canvas", "Appearance", "appearance_settings", "canvas animation spotify looping visual"),
+    SettingsEntry("Audio format badge", "Appearance", "appearance_settings", "format codec opus aac flac badge title quality"),
+    SettingsEntry("Show sample rate", "Appearance", "appearance_settings", "sample rate khz hz format badge quality"),
     SettingsEntry("Blur", "Appearance", "appearance_settings", "blur glass performance lag strength"),
     SettingsEntry("Animation", "Appearance", "appearance_settings", "element blur animator transition animation"),
 
+    // Audio Lab
+    SettingsEntry("Audio Lab", "Audio Lab", "audio_lab", "sound effects equalizer fx quality"),
+    SettingsEntry("Crossfade", "Audio Lab", "crossmix_settings", "crossmix automix transition gapless blend"),
+    SettingsEntry("Equalizer", "Audio Lab", "equalizer", "eq bass treble band parametric graph autoeq headphones correction preset"),
+    SettingsEntry("AutoEQ", "Audio Lab", "equalizer", "headphones earbuds correction harman database model"),
+    SettingsEntry("Audio Quality", "Audio Lab", "audio_quality", "bitrate stream high low lossless hi-res flac monochrome"),
+    SettingsEntry("Reverb", "Audio Lab", "audio_fx", "room hall echo space fx effect"),
+    SettingsEntry("Loudness", "Audio Lab", "audio_fx", "boost louder compressor limiter night mode fx"),
+    SettingsEntry("Spatial audio", "Audio Lab", "audio_fx", "crossfeed binaural hrtf virtual speakers 3d headphones"),
+    SettingsEntry("Dolby Atmos", "Audio Lab", "audio_fx", "atmos spatial surround 3d immersive"),
+    SettingsEntry("Playback speed", "Audio Lab", "audio_fx", "tempo pitch slowed nightcore preserve pitch"),
+    SettingsEntry("Exponential volume", "Audio Lab", "audio_fx", "volume curve logarithmic limit"),
+    SettingsEntry("Modules", "Modules", "modules", "apple music source module plugin extension stream subscription"),
+    SettingsEntry("Apple Music", "Modules", "module/applemusic", "apple music itunes subscription stream aac"),
+    SettingsEntry("Monochrome", "Modules", "module/monochrome", "monochrome lossless flac hi-res tidal"),
+    SettingsEntry("Provider order", "Audio Lab", "audio_quality", "source order apple music monochrome youtube priority"),
+
     // Audio
-    SettingsEntry("CrossMix", "Audio", "crossmix_settings", "automix crossfade transition gapless"),
-    SettingsEntry("Equalizer", "Audio", "equalizer", "eq bass treble 10 band"),
-    SettingsEntry("Audio Quality", "Audio", "audio_settings", "bitrate stream high low lossless"),
     SettingsEntry("Skip Silence", "Audio", "audio_settings", "silence trim gap interval"),
     SettingsEntry("Audio Normalization", "Audio", "audio_settings", "loudness volume gain balance"),
 
@@ -102,10 +118,11 @@ private val SettingsIndex = listOf(
     SettingsEntry("Import & sync", "Experimental", "experimental_settings", "import spotify apple music deezer tidal tunemymusic csv youtube sync export backup transfer"),
     SettingsEntry("Big disc cover styles", "Experimental", "experimental_settings", "disc vinyl cover"),
     SettingsEntry("Music haptics", "Experimental", "experimental_settings", "vibration haptic"),
-    SettingsEntry("Advanced audio settings", "Experimental", "experimental_settings", "monochrome lossless hi-res atmos"),
     SettingsEntry("Cipher", "Experimental", "experimental_settings", "player script signature refresh"),
     SettingsEntry("Playback diagnostics", "Experimental", "experimental_settings", "logs potoken stream client debug"),
     SettingsEntry("Repeat initial setup", "Experimental", "experimental_settings", "onboarding wizard setup"),
+    SettingsEntry("Show where songs play from", "Experimental", "experimental_settings", "source banner toast apple music monochrome youtube"),
+    SettingsEntry("Force playback", "Experimental", "experimental_settings", "fallback skip error stream failed youtube"),
 )
 
 private data class RecommendedSetting(
@@ -127,7 +144,7 @@ private val RecommendedOptions = listOf(
     ),
     RecommendedSetting(
         title = "Configure Crossfade settings",
-        breadcrumb = "settings>audio",
+        breadcrumb = "settings>audio lab",
         iconRes = R.drawable.linear_scale,
         onClick = { nav ->
             nav.navigate("crossmix_settings")
@@ -135,7 +152,7 @@ private val RecommendedOptions = listOf(
     ),
     RecommendedSetting(
         title = "Configure Equalizer settings",
-        breadcrumb = "settings>audio",
+        breadcrumb = "settings>audio lab",
         iconRes = R.drawable.equalizer,
         onClick = { nav ->
             nav.navigate("equalizer")
@@ -395,6 +412,18 @@ fun MusicfySettingsScreen(navController: NavController) {
                             title = "Audio",
                             iconRes = R.drawable.graphic_eq,
                             onClick = { navController.navigate("audio_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = "Audio Lab",
+                            iconRes = R.drawable.equalizer,
+                            onClick = { navController.navigate("audio_lab") }
+                        )
+
+                        CategoryBubble(
+                            title = "Modules",
+                            iconRes = R.drawable.library_add,
+                            onClick = { navController.navigate("modules") }
                         )
 
                         CategoryBubble(
