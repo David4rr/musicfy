@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.player
 
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -224,6 +225,8 @@ internal val LyricsHeaderArtX = 36.dp
 internal val LyricsHeaderArtTopFromStatusBar = 28.dp
 
 private val SquaredCoverCornerRadius = 22.dp
+
+private val TurntableDim = Color.Black.copy(alpha = 0.58f)
 
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
@@ -561,6 +564,11 @@ fun MorphingCover(
         derivedStateOf { !editMode && progressProvider() > 0.98f && lyricsProgressProvider() < 0.02f }
     }
     val currentPlayerConnection by androidx.compose.runtime.rememberUpdatedState(playerConnection)
+    // On a record the swipe runs the row of records instead (see DiscCarousel): the record goes
+    // with the finger and the next comes in behind it, the arm and the room staying put.
+    val discCarousel = remember { com.example.musicfy.ui.player.customize.DiscCarousel() }
+    val swipesDisc by androidx.compose.runtime.rememberUpdatedState(isDiscStyle)
+    val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(coverStyle)
 
     val collapsedBoundPx = with(density) { collapsedBound.toPx() }
 
@@ -654,6 +662,8 @@ fun MorphingCover(
     ) {
 
         val navBackdropGlassState = LocalGlassState.current ?: remember { GlassState() }
+        // outside the mount check, so the wash keeps its place while the pill comes and goes
+        val pillAccentWash = com.example.musicfy.ui.component.rememberChromeAccentWash()
         val pillMountedHolder = remember { booleanArrayOf(true) }
         val isPillMounted by remember {
             derivedStateOf {
@@ -684,6 +694,7 @@ fun MorphingCover(
                     blurRadius = { GlassChromeBlurRadius },
                     tint = containerColor.copy(alpha = 0.65f),
                     foundationColor = containerColor,
+                    accentWash = pillAccentWash,
 
                     tileMode = android.graphics.Shader.TileMode.CLAMP,
                     modifier = Modifier.fillMaxSize()
@@ -715,7 +726,11 @@ fun MorphingCover(
                         trackInfo = trackInfo,
                         backgroundStyle = backgroundStyle,
                         pureBlack = pureBlack,
-                        playVideoBackground = playVideoBackground,
+                        // The video's backdrop is its reflection under a full-width video, so only
+                        // the edge-to-edge cover has one. The squared cover's reflection covered a
+                        // strip below it, and the discs play no video at all - both faded the
+                        // cover's colours out for a bare grey surface on every song with a video.
+                        playVideoBackground = playVideoBackground && coverStyle == PlayerCoverStyle.EDGE_TO_EDGE,
                         videoInfo = videoInfo,
                         videoGlassState = videoGlassState,
                         maxWidth = maxWidth,
@@ -726,12 +741,25 @@ fun MorphingCover(
                         lyricsProgressProvider = lyricsProgressProvider,
                         modifier = Modifier.fillMaxSize()
                     )
+                    // the Turntable sits in a dim room: the cover's colours only as a glow
+                    if (coverStyle == PlayerCoverStyle.TURNTABLE) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(TurntableDim)
+                        )
+                    }
                 }
             }
         }
 
         val isEdgeToEdge = coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
-        val targetPauseScale = if (isPlaying) (if (isEdgeToEdge) 1.05f else 1.0f) else (if (isEdgeToEdge) 1.0f else 0.94f)
+        // a record player stays put when paused: the record stops, the arm says where it is
+        val targetPauseScale = when {
+            coverStyle == PlayerCoverStyle.TURNTABLE -> 1.0f
+            isPlaying -> if (isEdgeToEdge) 1.05f else 1.0f
+            else -> if (isEdgeToEdge) 1.0f else 0.94f
+        }
         val animatedPauseScale by animateFloatAsState(
             targetValue = targetPauseScale,
             animationSpec = tween(400, easing = FastOutSlowInEasing),
@@ -764,7 +792,7 @@ fun MorphingCover(
                         val p = progressProvider()
                         if (alternateStyle) alpha = (1f - p / 0.4f).coerceIn(0f, 1f)
 
-                        translationX = coverSwipeX.floatValue
+                        if (!isDiscStyle) translationX = coverSwipeX.floatValue
                         scaleX = animatedPauseScale
                         scaleY = animatedPauseScale
                         // A colour filter on a layer forces it offscreen - the whole cover rendered
@@ -792,17 +820,28 @@ fun MorphingCover(
 
                         if (longPressEnabled && (onLongPressCover != null || onDoubleTapCover != null)) {
                             Modifier
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onLongPress = { currentOnLongPress?.invoke() },
-                                        onDoubleTap = { position ->
-                                            val coordinates = artCoordinates[0]
-                                            val onDoubleTap = currentOnDoubleTap
-                                            if (coordinates != null && coordinates.isAttached && onDoubleTap != null) {
-                                                onDoubleTap(coordinates.localToRoot(position))
-                                            }
-                                        },
-                                    )
+                                .pointerInput(isDiscStyle) {
+                                    val likeAt: (Offset) -> Unit = { position ->
+                                        val coordinates = artCoordinates[0]
+                                        val onDoubleTap = currentOnDoubleTap
+                                        if (coordinates != null && coordinates.isAttached && onDoubleTap != null) {
+                                            onDoubleTap(coordinates.localToRoot(position))
+                                        }
+                                    }
+                                    if (isDiscStyle) {
+                                        // a record isn't the background: holding it opens nothing,
+                                        // and a touch beside it (the room round a big record) is
+                                        // left for the player's own hold
+                                        detectDiscDoubleTap(
+                                            onDisc = { p -> com.example.musicfy.ui.player.customize.isOnDisc(currentCoverStyle, androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()), p) },
+                                            onDoubleTap = likeAt,
+                                        )
+                                    } else {
+                                        detectTapGestures(
+                                            onLongPress = { currentOnLongPress?.invoke() },
+                                            onDoubleTap = likeAt,
+                                        )
+                                    }
                                 }
                                 // Same layer as the detector, so its tap positions convert exactly.
                                 .onGloballyPositioned { artCoordinates[0] = it }
@@ -829,6 +868,27 @@ fun MorphingCover(
                                 change.consume()
                                 travelled += over
                             } ?: return@awaitEachGesture
+
+                            if (swipesDisc) {
+                                // the row of records under the finger, one to one
+                                val player = currentPlayerConnection?.player
+                                val boxSize = androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat())
+                                val hasPrevious = player?.hasPreviousMediaItem() == true
+                                val hasNext = player?.hasNextMediaItem() == true
+                                discCarousel.startDrag(coverSwipeScope)
+                                velocityTracker.resetTracking()
+                                velocityTracker.addPointerInputChange(slopped)
+                                discCarousel.dragTo(coverSwipeScope, travelled, boxSize, hasPrevious, hasNext)
+                                val completed = horizontalDrag(slopped.id) { change ->
+                                    change.consume()
+                                    velocityTracker.addPointerInputChange(change)
+                                    travelled += change.positionChange().x
+                                    discCarousel.dragTo(coverSwipeScope, travelled, boxSize, hasPrevious, hasNext)
+                                }
+                                val velocity = if (completed) velocityTracker.calculateVelocity().x else 0f
+                                discCarousel.release(coverSwipeScope, if (completed) travelled else 0f, velocity, boxSize, flingPx, player)
+                                return@awaitEachGesture
+                            }
 
                             settleJob?.cancel()
                             velocityTracker.resetTracking()
@@ -977,10 +1037,10 @@ fun MorphingCover(
                         style = coverStyle,
                         artworkUrl = trackInfo.thumbnailUrl,
                         mediaId = trackInfo.mediaId,
-                        queueIndex = queueState.currentIndex,
                         isPlaying = isPlaying,
                         spinActive = discSpinActive,
                         editMode = editMode,
+                        carousel = discCarousel,
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { alpha = discWeight(progressProvider, lyricsProgressProvider) },
@@ -1539,4 +1599,28 @@ private fun Modifier.liquidWarpEffect(
     shader.setAgslUniform("time", time())
     renderEffect = agslRenderEffect(shader, "image").asComposeRenderEffect()
     clip = true
+}
+
+/**
+ * A double tap on the record (for the like); a touch that lands beside it - the room round a big
+ * record - is left untouched, so the player's hold sees background there. No hold on the record
+ * itself: it isn't the background.
+ */
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectDiscDoubleTap(
+    onDisc: (Offset) -> Boolean,
+    onDoubleTap: (Offset) -> Unit,
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown()
+        if (!onDisc(down.position)) return@awaitEachGesture
+        down.consume()
+        val up = waitForUpOrCancellation() ?: return@awaitEachGesture
+        up.consume()
+        val second = withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) { awaitFirstDown() } ?: return@awaitEachGesture
+        if ((second.position - down.position).getDistance() > viewConfiguration.touchSlop * 4f) return@awaitEachGesture
+        second.consume()
+        val secondUp = waitForUpOrCancellation() ?: return@awaitEachGesture
+        secondUp.consume()
+        onDoubleTap(secondUp.position)
+    }
 }

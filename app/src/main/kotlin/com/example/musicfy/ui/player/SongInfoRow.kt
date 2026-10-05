@@ -60,6 +60,14 @@ import androidx.media3.common.Player
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerHorizontalPadding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import com.example.musicfy.constants.ShowFormatBadgeKey
+import com.example.musicfy.constants.ShowFormatSampleRateKey
+import com.example.musicfy.utils.rememberPreference
 private data class SongDisplayInfo(
     val mediaId: String,
     val title: String,
@@ -106,6 +114,9 @@ fun SongInfoRow(
         }
     }
 
+    val (showFormatBadge) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
+    val (showSampleRate) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
+
     val songDisplay = remember(trackInfo.mediaId, trackInfo.title, trackInfo.artist) {
         SongDisplayInfo(
             mediaId = trackInfo.mediaId,
@@ -134,11 +145,15 @@ fun SongInfoRow(
                     } else Modifier
                 )
 
+                // Only the last few dp fade here, softening what slides past the edge on a song
+                // change; each line fades its own overflow, so the format badge after the title
+                // stays crisp.
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
+                    val edge = (TitleEdgeFade.toPx() / size.width).coerceIn(0f, 1f)
                     val fade = Brush.horizontalGradient(
                         0f to Color.Black,
-                        0.82f to Color.Black,
+                        (1f - edge) to Color.Black,
                         1f to Color.Transparent,
                     )
                     onDrawWithContent {
@@ -179,17 +194,40 @@ fun SongInfoRow(
                 modifier = Modifier.fillMaxWidth()
             ) { targetSong ->
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = targetSong.title,
-                        style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = Color.White,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
-                    )
+                    // each song keeps its own badge through the slide
+                    val facts by remember(targetSong.mediaId) {
+                        playerConnection.streamFacts(targetSong.mediaId)
+                    }.collectAsState(initial = null)
+                    val badge = if (showFormatBadge) streamBadgeText(facts, showSampleRate) else null
+                    // what the badge said, so it can still say it while it leaves
+                    val lastBadge = remember { arrayOfNulls<String>(1) }
+                    if (badge != null) lastBadge[0] = badge
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        // A long title gives way to the badge: it ends short of it, fades out where
+                        // it's cut and scrolls by, as it did against the buttons.
+                        FadingOverflowText(
+                            text = targetSong.title,
+                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        AnimatedVisibility(
+                            visible = badge != null,
+                            enter = fadeIn(tween(220)) + expandHorizontally(tween(280, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
+                            exit = fadeOut(tween(160)) + shrinkHorizontally(tween(240, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Spacer(Modifier.width(8.dp))
+                                StreamFormatBadge(text = badge ?: lastBadge[0].orEmpty())
+                                // clear of the row's edge fade
+                                Spacer(Modifier.width(TitleEdgeFade))
+                            }
+                        }
+                    }
                     if (targetSong.artist.isNotBlank()) {
                         Text(
                             text = targetSong.artist,
@@ -199,6 +237,7 @@ fun SongInfoRow(
                             color = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .trailingFade()
                                 .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
                         )
                     }
@@ -276,6 +315,51 @@ fun SongInfoRow(
     }
 }
 
+/** How much of the song info's right edge fades, softening what slides past it. */
+private val TitleEdgeFade = 10.dp
+
+/** The song info's old fade: its last 18%, transparent at the edge; [cut] says when it applies. */
+private fun Modifier.trailingFade(cut: (shownWidth: Float) -> Boolean = { true }): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithCache {
+        val fade = Brush.horizontalGradient(
+            0f to Color.Black,
+            0.82f to Color.Black,
+            1f to Color.Transparent,
+        )
+        onDrawWithContent {
+            drawContent()
+            if (cut(size.width)) drawRect(brush = fade, blendMode = BlendMode.DstIn)
+        }
+    }
+
+/**
+ * One line that scrolls by once when it doesn't fit, fading where it's cut. A title that fits
+ * isn't faded at all, so whatever sits right after it (the format badge) meets its last letter.
+ */
+@Composable
+internal fun FadingOverflowText(
+    text: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    // The marquee lays the text out at its full width, wider than it's shown when it's cut. Read
+    // while drawing, so a new width redraws the fade without recomposing.
+    var fullWidth by remember { mutableIntStateOf(0) }
+    Text(
+        text = text,
+        style = style,
+        maxLines = 1,
+        softWrap = false,
+        color = color,
+        onTextLayout = { fullWidth = it.size.width },
+        modifier = modifier
+            .trailingFade { shown -> fullWidth > shown + 0.5f }
+            .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp),
+    )
+}
+
 /** Shared with the lyrics page, so its repeat/like pair matches the player's exactly. */
 @Composable
 fun PressScaleActionButton(
@@ -287,6 +371,7 @@ fun PressScaleActionButton(
     boldIcon: Boolean = false,
     badgeText: String? = null,
     hasShadow: Boolean = false,
+    size: androidx.compose.ui.unit.Dp = 34.dp,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -299,7 +384,7 @@ fun PressScaleActionButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(34.dp)
+            .size(size)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .then(
                 if (hasShadow) Modifier.shadow(elevation = 6.dp, shape = CircleShape, clip = false)

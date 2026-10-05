@@ -186,6 +186,33 @@ val GlassChromeColor = Color(0xFF0F0F12)
 /** Backdrop blur for that chrome, heavier than the 24f default so it reads as properly frosted. */
 const val GlassChromeBlurRadius = 48f
 
+/** how strongly a coloured page's accent washes over the chrome glass, over its usual dark tint */
+private const val ChromeAccentWash = 0.55f
+
+/**
+ * the open page's accent (a coloured playlist or artist) as a wash for the nav pill and the mini
+ * player. it eases in and out by itself, and it's only read while drawing: a page change repaints
+ * the chrome, never recomposes it
+ */
+@Composable
+fun rememberChromeAccentWash(): () -> Color {
+    val accent = com.example.musicfy.LocalDetailAccentColor.current
+    val wash = remember { androidx.compose.animation.Animatable(Color.Transparent) }
+    LaunchedEffect(accent) {
+        // fading out keeps the page's hue instead of greying through transparent black
+        var hue = Color.Black
+        androidx.compose.runtime.snapshotFlow { accent.value }.collect { color ->
+            if (color != null) hue = color
+            if (wash.value.alpha == 0f) wash.snapTo(hue.copy(alpha = 0f))
+            wash.animateTo(
+                hue.copy(alpha = if (color != null) ChromeAccentWash else 0f),
+                androidx.compose.animation.core.tween(500),
+            )
+        }
+    }
+    return remember(wash) { { wash.value } }
+}
+
 /**
  * How far below full resolution a glass surface draws what's under it before blurring.
  *
@@ -358,6 +385,8 @@ fun GlassPillBackground(
      * offscreen layer of its own around the glass.
      */
     mask: Brush? = null,
+    /** a colour laid over [tint], read only while drawing so it can animate without recomposing */
+    accentWash: (() -> Color)? = null,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
@@ -394,6 +423,10 @@ fun GlassPillBackground(
         }
         if (tint != Color.Transparent) {
             drawRect(color = tint, size = fullSize)
+        }
+        val wash = accentWash?.invoke()
+        if (wash != null && wash.alpha > 0f) {
+            drawRect(color = wash, size = fullSize)
         }
     }
 }

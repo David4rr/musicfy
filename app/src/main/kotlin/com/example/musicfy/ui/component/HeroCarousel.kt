@@ -112,6 +112,7 @@ import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.db.entities.LocalItem
 import com.example.musicfy.models.MediaMetadata
+import com.example.musicfy.models.SimilarRecommendation
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.playback.queues.YouTubeQueue
@@ -127,6 +128,7 @@ import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
+import com.music.innertube.models.YTItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -273,18 +275,101 @@ data class DiscoverItem(
     override val albumTitle: String? = (item.recommendation as? SongItem)?.album?.name
     override val opensPage: Boolean = item.recommendation !is SongItem
 
-    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
-        when (val rec = item.recommendation) {
-            is SongItem -> playerConnection.playQueue(
-                YouTubeQueue(
-                    rec.endpoint ?: WatchEndpoint(videoId = rec.id),
-                    rec.toMediaMetadata()
-                )
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) =
+        playOrOpen(item.recommendation, playerConnection, navController)
+}
+
+private fun playOrOpen(rec: YTItem, playerConnection: PlayerConnection, navController: NavController) {
+    when (rec) {
+        is SongItem -> playerConnection.playQueue(
+            YouTubeQueue(
+                rec.endpoint ?: WatchEndpoint(videoId = rec.id),
+                rec.toMediaMetadata()
             )
-            is AlbumItem -> navController.navigate("album/${rec.id}")
-            is ArtistItem -> navController.navigate("artist/${rec.id}")
-            is PlaylistItem -> navController.navigate("online_playlist/${rec.id}")
+        )
+        is AlbumItem -> navController.navigate("album/${rec.id}")
+        is ArtistItem -> navController.navigate("artist/${rec.id}")
+        is PlaylistItem -> navController.navigate("online_playlist/${rec.id}")
+        else -> Unit
+    }
+}
+
+/**
+ * a pick from Home's related rows, worded by what it grew out of: "Because you listen to" an artist,
+ * "Similar to" a song, "Because you played" an album. built from rows Home already loaded, so no fetch
+ */
+data class RelatedPickItem(
+    val recommendation: YTItem,
+    val reason: HeroLabel,
+) : HeroCarouselItem {
+    override fun label(isPlaying: Boolean): HeroLabel = if (isPlaying) HeroLabel("Now playing") else reason
+    override val mainText: String = recommendation.title
+    override val subText: String = (recommendation as? SongItem)?.artists?.joinToString(", ") { it.name } ?: ""
+    override val thumbnailUrl: String? = recommendation.thumbnail
+    override val mediaId: String? = recommendation.id
+    override val songTitle: String? = recommendation.title
+    override val artistName: String? = (recommendation as? SongItem)?.artists?.joinToString { it.name } ?: ""
+    override val albumTitle: String? = (recommendation as? SongItem)?.album?.name
+    override val opensPage: Boolean = recommendation !is SongItem
+
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) =
+        playOrOpen(recommendation, playerConnection, navController)
+}
+
+/** one of your own songs brought back with a reason of its own: "On repeat", "Back in rotation" */
+data class ListeningPickItem(val item: MediaMetadata, val reason: String) : HeroCarouselItem {
+    override fun label(isPlaying: Boolean): HeroLabel = HeroLabel(if (isPlaying) "Now playing" else reason)
+    override val mainText: String = item.title
+    override val subText: String = item.artists.joinToString(", ") { it.name }
+    override val thumbnailUrl: String? = item.thumbnailUrl
+    override val mediaId: String? = item.id
+    override val songTitle: String? = item.title
+    override val artistName: String? = item.artists.joinToString { it.name }
+    override val albumTitle: String? = item.album?.title
+
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
+        playerConnection.playQueue(YouTubeQueue(WatchEndpoint(videoId = item.id), item))
+    }
+}
+
+/**
+ * the extra cards, one per related row (its first song, else its first anything) plus a song on
+ * repeat and a forgotten favourite. a row about an artist leads, since that's the most personal
+ */
+private fun extraHeroPicks(
+    similar: List<SimilarRecommendation>?,
+    onRepeat: List<com.example.musicfy.db.entities.Song>?,
+    forgotten: List<com.example.musicfy.db.entities.Song>?,
+): List<HeroCarouselItem> = buildList {
+    similar.orEmpty()
+        .sortedBy { if (it.title is com.example.musicfy.db.entities.Artist) 0 else 1 }
+        .take(4)
+        .forEach { row ->
+            val pick = row.items.firstOrNull { it is SongItem && !it.thumbnail.isNullOrEmpty() }
+                ?: row.items.firstOrNull { !it.thumbnail.isNullOrEmpty() }
+                ?: return@forEach
+            val seed = row.title
+            val reason = when (seed) {
+                is com.example.musicfy.db.entities.Artist ->
+                    HeroLabel("Because you listen to", seed.thumbnailUrl, seed.title, roundCover = true)
+                is com.example.musicfy.db.entities.Album -> HeroLabel("Because you played", seed.thumbnailUrl, seed.title)
+                else -> HeroLabel("Similar to", seed.thumbnailUrl, seed.title)
+            }
+            add(RelatedPickItem(pick, reason))
         }
+    onRepeat?.firstOrNull { !it.thumbnailUrl.isNullOrEmpty() }?.let {
+        add(ListeningPickItem(it.toMediaMetadata(), "On repeat"))
+    }
+    forgotten?.firstOrNull { !it.thumbnailUrl.isNullOrEmpty() }?.let {
+        add(ListeningPickItem(it.toMediaMetadata(), "Back in rotation"))
+    }
+}
+
+/** [a] and [b] taken in turns, so the extra kinds are spread through the hero instead of piled at the end */
+private fun <T> interleave(a: List<T>, b: List<T>): List<T> = buildList(a.size + b.size) {
+    for (i in 0 until maxOf(a.size, b.size)) {
+        a.getOrNull(i)?.let { add(it) }
+        b.getOrNull(i)?.let { add(it) }
     }
 }
 
@@ -423,9 +508,19 @@ fun HeroCarousel(
     gachaPool: List<MediaMetadata> = emptyList(),
     starterItems: List<HeroCarouselItem> = emptyList(),
     playlistPicks: List<PlaylistPickItem> = emptyList(),
+    similarRecommendations: List<SimilarRecommendation>? = null,
+    onRepeat: List<com.example.musicfy.db.entities.Song>? = null,
+    forgottenFavorites: List<com.example.musicfy.db.entities.Song>? = null,
 ) {
     val showGacha = gachaPool.size >= GachaMinPool
-    val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover, showGacha, starterItems, playlistPicks) {
+    // only the first song of each list is used, so a reload that reshuffles the tails doesn't
+    // rebuild the pager
+    val extras = remember(
+        similarRecommendations?.map { it.title.id to it.items.firstOrNull()?.id },
+        onRepeat?.firstOrNull()?.id,
+        forgottenFavorites?.firstOrNull()?.id,
+    ) { extraHeroPicks(similarRecommendations, onRepeat, forgottenFavorites) }
+    val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover, showGacha, starterItems, playlistPicks, extras) {
         buildList {
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
 
@@ -433,10 +528,15 @@ fun HeroCarousel(
             // buried behind the recommendations, most people never got that far
             if (showGacha) add(GachaItem)
 
-            val discover = dailyDiscover?.take(5).orEmpty()
+            val discover = dailyDiscover?.take(4).orEmpty()
             val reasons = discoverReasons(discover)
-            discover.forEachIndexed { index, item ->
-                add(DiscoverItem(item, reasons[index]))
+            val discoverCards = discover.mapIndexed { index, item -> DiscoverItem(item, reasons[index]) }
+            // a pick already on the hero (the song playing, a daily discover) isn't put forward twice
+            val shown = HashSet<String>()
+            lastPlayedSong?.id?.let(shown::add)
+            interleave(discoverCards, extras).forEach { card ->
+                val id = card.mediaId
+                if (id == null || shown.add(id)) add(card)
             }
 
             // the user's own playlists between the recommendations, a couple at a time
@@ -445,7 +545,7 @@ fun HeroCarousel(
             val regular = count { it !is GachaItem }
             if (regular < 5) {
                 keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
-                    ?.filter { song -> none { it is KeepListeningItem && it.mediaId == song.id } }
+                    ?.filter { song -> none { it.mediaId == song.id } }
                     ?.take(5 - regular)
                     ?.forEach { song ->
                         add(KeepListeningItem(song.toMediaMetadata(), isLastPlayed = false))

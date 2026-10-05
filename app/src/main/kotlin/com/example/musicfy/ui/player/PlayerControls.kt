@@ -80,14 +80,14 @@ fun PlayerControls(
 }
 
 /** Holding next plays this much faster, holding previous this much slower, until let go. */
-private const val HoldFastFactor = 2f
-private const val HoldSlowFactor = 0.5f
+internal const val HoldFastFactor = 2f
+internal const val HoldSlowFactor = 0.5f
 
 /**
  * Temporary speed while a skip button is held. Relative to the speed the user set (and keeping
  * their pitch), and always put back exactly as it was on release.
  */
-private class HoldSpeed(private val player: androidx.media3.exoplayer.ExoPlayer) {
+internal class HoldSpeed(private val player: androidx.media3.exoplayer.ExoPlayer) {
     private var saved: androidx.media3.common.PlaybackParameters? = null
 
     fun start(factor: Float) {

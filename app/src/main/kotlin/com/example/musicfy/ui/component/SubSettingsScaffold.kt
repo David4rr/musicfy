@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,6 +91,8 @@ fun SubSettingsScaffold(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     searchBar: (@Composable () -> Unit)? = null,
+    /** the page this one sits under, written beside the back button ("‹ Audio Lab") */
+    backLabel: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
@@ -201,6 +204,23 @@ fun SubSettingsScaffold(
                     contentDescription = "Back",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
+                )
+            }
+
+            if (backLabel != null) {
+                // gives way to the title, which slides into this spot as the page collapses
+                Text(
+                    text = backLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .padding(top = HeaderTopPadding, start = BackButtonSize + 10.dp)
+                        .height(BackButtonSize)
+                        .wrapContentHeight(Alignment.CenterVertically)
+                        .graphicsLayer { alpha = (1f - collapseProgress * 2.5f).coerceIn(0f, 1f) }
+                        .clickable(onClick = onBack)
                 )
             }
 

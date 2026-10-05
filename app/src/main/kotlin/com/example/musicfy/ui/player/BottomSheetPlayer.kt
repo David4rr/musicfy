@@ -122,6 +122,9 @@ private val ControlsDrawShift = 64.dp
 /** Small upward nudge for the seek bar and its timestamps, so they sit off the controls below. */
 private val SeekBarLift = 6.dp
 
+/** the Turntable's controls stand this far above the card, as in its frame */
+private val TurntableControlsLift = 44.dp
+
 /** The queue page's third button (autoplay) and the gap above it, on top of the lyrics pair. */
 private val QueueButtonExtraHeight = 41.dp
 
@@ -273,7 +276,10 @@ fun BottomSheetPlayer(
         com.example.musicfy.constants.PlayerStyleKey,
         com.example.musicfy.constants.PlayerStyle.DEFAULT,
     )
-    val controlsDrawShift = if (coverStyle == PlayerCoverStyle.EDGE_TO_EDGE) ControlsDrawShift else 0.dp
+    // the Turntable is the flagship around a record player, whatever cover the flagship is set to
+    val isTurntable = playerStyle == com.example.musicfy.constants.PlayerStyle.TURNTABLE
+    val shownCoverStyle = if (isTurntable) PlayerCoverStyle.TURNTABLE else coverStyle
+    val controlsDrawShift = if (shownCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE) ControlsDrawShift else 0.dp
     var backgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         PlayerBackgroundStyle.COVER_GRADIENT,
@@ -419,6 +425,9 @@ fun BottomSheetPlayer(
     // switching pages crossfades the content under a header that stays put.
     val lyricsPageProgress by remember { derivedStateOf { transition.lyricsProgress.coerceIn(0f, 1f) } }
     val queuePageProgress by remember { derivedStateOf { transition.queueProgress.coerceIn(0f, 1f) } }
+    // the Turntable's pages: lyrics or queue, whichever is opening
+    val turntablePageProgress by remember { derivedStateOf { maxOf(lyricsPageProgress, queuePageProgress) } }
+    val turntablePageUp by remember { derivedStateOf { turntablePageProgress >= 0.5f } }
     // Also while the page is being built, just before it grows (PlayerPageTransition.preparing)
     val lyricsPageMounted by remember {
         derivedStateOf { lyricsPageProgress > 0.001f || transition.preparing == PlayerPage.LYRICS }
@@ -456,7 +465,7 @@ fun BottomSheetPlayer(
             studioParts.height = with(density) { screenHeight.toPx() }
             studioParts.statusTop = with(density) { studioStatusTop.toPx() }
             studioParts.density = density
-            studioParts.fullCover = coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
+            studioParts.fullCover = shownCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE
         }
         val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
         val horizontalOffsetProvider = remember(state) { { state.horizontalOffset } }
@@ -486,7 +495,7 @@ fun BottomSheetPlayer(
                 private fun distance() = (morph.cardRect?.top ?: (screenHeightPx * 0.85f)).coerceAtLeast(1f)
 
                 /** The alternate styles and the editor draw and handle their own screen. */
-                private fun owned() = currentPlayerStyle == PlayerStyle.DEFAULT && !studio.engaged
+                private fun owned() = currentPlayerStyle.flagshipFamily && !studio.engaged
 
                 /** [start] (root) is on or below the seek bar, with the controls actually showing. */
                 private fun inControlStrip(start: Offset): Boolean {
@@ -613,7 +622,7 @@ fun BottomSheetPlayer(
                 .then(
                     if (!state.isExpanded) Modifier else Modifier.holdAnywhere(
                         enabled = {
-                            state.isExpanded && currentPlayerStyle == PlayerStyle.DEFAULT && !studio.engaged &&
+                            state.isExpanded && currentPlayerStyle.flagshipFamily && !studio.engaged &&
                                 transition.page == PlayerPage.NONE && !showExpandMenu && !showActionMenu
                         },
                         onHold = holdToStudio,
@@ -640,15 +649,15 @@ fun BottomSheetPlayer(
                     lyricsProgressProvider = { lyricsProgress },
                     forceVideoBackground = seeVideo,
                     modifier = Modifier.fillMaxSize(),
-                    coverStyle = coverStyle,
+                    coverStyle = shownCoverStyle,
                     backgroundStyle = backgroundStyle,
                     editMode = studioEngaged,
                     // the editor's top bar frosts what's under it, so the glass keeps capturing there
                     glassActiveInEdit = { studio.stage >= StudioStage.EDIT && studio.selector.value < 0.01f },
                     // another style draws the open player itself: none of the flagship runs behind it
-                    alternateStyle = playerStyle != PlayerStyle.DEFAULT,
+                    alternateStyle = !playerStyle.flagshipFamily,
                     onLongPressCover = holdToStudio,
-                    studioArtModifier = if (playerStyle == PlayerStyle.DEFAULT) {
+                    studioArtModifier = if (playerStyle.flagshipFamily) {
                         Modifier
                             .then(Modifier.studioAnchor(studioAnchors) { it.cover })
                             .then(Modifier.studioCoverLayer(studioParts))
@@ -660,7 +669,7 @@ fun BottomSheetPlayer(
                     },
                     onArtBoundsChanged = { coverArtRect = it },
                 )
-                if (playerStyle == PlayerStyle.DEFAULT) MorphingSongInfo(
+                if (playerStyle.flagshipFamily) MorphingSongInfo(
                     trackInfo = trackInfo,
                     lyricsProgressProvider = { lyricsProgress },
                     sourceRectProvider = { songInfoSourceRect },
@@ -669,7 +678,7 @@ fun BottomSheetPlayer(
                     targetY = statusBarTopInset + 38.dp,
                 )
                 // Above the title after a like, moving with it into the lyrics/queue header.
-                if (playerStyle == PlayerStyle.DEFAULT) LikedLabel(
+                if (playerStyle.flagshipFamily) LikedLabel(
                     likeCount = likeBurst.likeCount,
                     mixing = playerConnection.isCrossmixing.collectAsState().value,
                     sourceRectProvider = { songInfoSourceRect },
@@ -690,7 +699,7 @@ fun BottomSheetPlayer(
             // Alternate styles replace the player outright rather than drawing over it, so none
             // of the default composition - blur, morphing cover, controls - runs while one is
             // active.
-            if (playerStyle != com.example.musicfy.constants.PlayerStyle.DEFAULT) {
+            if (!playerStyle.flagshipFamily) {
                 // The alternate styles draw their own full screen, which meant they also swallowed
                 // the player's own gestures - there was no way to close them or reach the editor.
                 // Both live here so every style gets them for free.
@@ -738,7 +747,8 @@ fun BottomSheetPlayer(
                     .onGloballyPositioned { studioAnchors.root = it },
             )
 
-            SeamBlur(
+            // the Turntable's record isn't a cover to soften into the backdrop
+            if (!isTurntable) SeamBlur(
                 glassState = morphingGlassState,
                 progressProvider = progressProvider,
                 trackInfo = trackInfo,
@@ -843,13 +853,15 @@ fun BottomSheetPlayer(
                     .fillMaxWidth()
                     .padding(bottom = belowControls + transportGap.coerceAtLeast(0.dp))
                     .graphicsLayer {
-                        alpha = 1f - controlsHidden
+                        // the Turntable shows its own controls; these (with the seek bar) come up
+                        // only as the lyrics or the queue open, which run off the seek bar
+                        alpha = (1f - controlsHidden) * (if (isTurntable) turntablePageProgress else 1f)
 
                         translationY = controlsHidden * size.height * 0.55f
                     }
 
                     .then(
-                        if (controlsInert) {
+                        if (controlsInert || (isTurntable && !turntablePageUp)) {
                             Modifier.pointerInput(Unit) {
                                 awaitPointerEventScope {
                                     while (true) {
@@ -896,8 +908,8 @@ fun BottomSheetPlayer(
                             // Only while the sheet is up: during a slide the title's root position
                             // moves every frame, and the header morph that reads it recomposed with
                             // it. Its place on the sheet itself doesn't change.
-                            onTitlePositioned = { if (state.isExpanded) songInfoSourceRect = it },
-                            onChevronPositioned = { chevronButtonRect = it },
+                            onTitlePositioned = { if (state.isExpanded && !isTurntable) songInfoSourceRect = it },
+                            onChevronPositioned = { if (!isTurntable) chevronButtonRect = it },
                             isExpandMenuOpen = showExpandMenu,
                             hideChevron = lyricsMounted,
                             onToggleExpandMenu = { showExpandMenu = !showExpandMenu },
@@ -1062,6 +1074,34 @@ fun BottomSheetPlayer(
                 )
             }
 
+            // The Turntable's own controls, as its frame lays them out, above the card. They give
+            // way to the flagship's (with the seek bar) while a page is up.
+            if (isTurntable) {
+                TurntableControls(
+                    isExpandMenuOpen = showExpandMenu,
+                    onToggleExpandMenu = { showExpandMenu = !showExpandMenu },
+                    hideChevron = lyricsMounted,
+                    onTitlePositioned = { if (state.isExpanded) songInfoSourceRect = it },
+                    onChevronPositioned = { chevronButtonRect = it },
+                    likeBurst = likeBurst,
+                    onSongInfoClick = { if (!studioEngaged) showSongDetails = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = belowControls + TurntableControlsLift)
+                        .graphicsLayer {
+                            alpha = (1f - controlsHidden) * (1f - turntablePageProgress)
+                            translationY = controlsHidden * size.height * 0.55f
+                        }
+                        .then(
+                            if (controlsInert || turntablePageUp) Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                }
+                            } else Modifier
+                        ),
+                )
+            }
+
             // the editor's tiles: inside the sheet, so they shrink and grow with it
             EditTiles(studioParts)
         }
@@ -1155,17 +1195,27 @@ fun BottomSheetPlayer(
                 studio.livePage = index
                 studio.go(StudioStage.PLAYER)
             },
-            onEdit = {
-                val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
-                if (playerStyle != PlayerStyle.DEFAULT) onPlayerStyleChange(PlayerStyle.DEFAULT)
-                studio.livePage = index
-                studio.go(StudioStage.EDIT)
+            onEdit = { focused ->
+                if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
+                    // its one edit is the disc label: back to the player, with the label's sheet
+                    if (playerStyle != PlayerStyle.TURNTABLE) onPlayerStyleChange(PlayerStyle.TURNTABLE)
+                    studio.livePage = focused
+                    studio.go(StudioStage.PLAYER)
+                    studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                } else {
+                    val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
+                    if (playerStyle != PlayerStyle.DEFAULT) onPlayerStyleChange(PlayerStyle.DEFAULT)
+                    studio.livePage = index
+                    studio.go(StudioStage.EDIT)
+                }
             },
         )
-        if (playerStyle == PlayerStyle.DEFAULT) {
+        if (playerStyle.flagshipFamily) {
             val (showBigDiscStyles) = rememberPreference(com.example.musicfy.constants.ShowBigDiscStylesKey, defaultValue = false)
             val coverStyles = remember(showBigDiscStyles, coverStyle) {
                 PlayerCoverStyle.entries.filter { style ->
+                    style != PlayerCoverStyle.TURNTABLE
+                }.filter { style ->
                     showBigDiscStyles || !(style == PlayerCoverStyle.DISC_BIG_FULL || style == PlayerCoverStyle.DISC_BIG_LABEL) || style == coverStyle
                 }
             }
@@ -1183,7 +1233,7 @@ fun BottomSheetPlayer(
                 com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
             )
             val artworkPalette = com.example.musicfy.ui.theme.ArtworkPalette.from(com.example.musicfy.LocalArtworkColor.current)
-            StudioEditOverlay(
+            if (playerStyle == PlayerStyle.DEFAULT) StudioEditOverlay(
                 parts = studioParts,
                 glassState = morphingGlassState,
                 capture = studioCapture,
@@ -1200,7 +1250,7 @@ fun BottomSheetPlayer(
             )
             StudioSheets(
                 studio = studio,
-                coverStyle = coverStyle,
+                coverStyle = shownCoverStyle,
                 buttonStyle = buttonStyle,
                 onButtonStyle = { buttonStyle = it },
                 seekBarStyle = seekBarStyle,
@@ -1320,6 +1370,12 @@ private fun ExpandMenuOverlay(
             chevronBottomDp + 48.dp
         }
 
+        // A chevron on the screen's left (the Turntable's) opens the menu the other way round:
+        // the buttons up from it on its own line, their names to their right.
+        val fromLeft = chevronRect != null && chevronRect.center.x < with(density) { screenWidth.toPx() } / 2f
+        val chevronStartDp = with(density) { (chevronRect?.left ?: 0f).toDp() }
+        val chevronSizeDp = with(density) { (chevronRect?.width ?: 0f).toDp() }.coerceAtLeast(34.dp)
+
         // Right edge of the chevron actually tapped, not an assumed padding - the lyrics-page
         // chevron and the song-info one don't share an exact x.
         val chevronEndDp = if (chevronRect != null) {
@@ -1361,10 +1417,20 @@ private fun ExpandMenuOverlay(
             // Menu items placed directly ON TOP of the chevron:
             Column(
                 modifier = modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = chevronEndDp, bottom = menuBottomDp),
+                    .then(
+                        if (fromLeft) {
+                            // the 34dp buttons centred over the chevron
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = chevronStartDp + (chevronSizeDp - 34.dp) / 2, bottom = menuBottomDp)
+                        } else {
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = chevronEndDp, bottom = menuBottomDp)
+                        }
+                    ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.End
+                horizontalAlignment = if (fromLeft) Alignment.Start else Alignment.End
             ) {
                 menuItems.forEachIndexed { index, item ->
                     val p = itemProgress[index].value
@@ -1396,6 +1462,7 @@ private fun ExpandMenuOverlay(
                                 }
                                 .padding(MenuItemBlurRoom)
                         ) {
+                            val label: @Composable () -> Unit = {
                             androidx.compose.material3.Text(
                                 text = item.first,
                                 color = Color.White,
@@ -1408,14 +1475,16 @@ private fun ExpandMenuOverlay(
                                         blurRadius = 8f
                                     )
                                 ),
-                                modifier = Modifier.padding(end = 4.dp)
+                                modifier = Modifier.padding(start = if (fromLeft) 4.dp else 0.dp, end = if (fromLeft) 0.dp else 4.dp)
                             )
+                            }
 
                             val action = slots[index]
                             val isToggled = isActive(action)
                             val iconTint = if (isToggled) Color.White else Color.White.copy(alpha = 0.85f)
                             val containerColor = if (isToggled) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.16f)
 
+                            if (!fromLeft) label()
                             PressScaleActionButton(
                                 icon = item.second,
                                 tint = iconTint,
@@ -1434,6 +1503,7 @@ private fun ExpandMenuOverlay(
                                     }
                                 }
                             )
+                            if (fromLeft) label()
                         }
                     }
                 }
@@ -1442,8 +1512,17 @@ private fun ExpandMenuOverlay(
             // Chevron rendered ON TOP of the dim background, directly tappable, zoomed out & rotated 180°:
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = chevronEndDp, bottom = chevronBottomDp)
+                    .then(
+                        if (fromLeft) {
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(start = chevronStartDp, bottom = chevronBottomDp)
+                        } else {
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = chevronEndDp, bottom = chevronBottomDp)
+                        }
+                    )
             ) {
                 PressScaleActionButton(
                     icon = R.drawable.expand_less,
@@ -1451,6 +1530,8 @@ private fun ExpandMenuOverlay(
                     containerColor = overlayChevronBgColor,
                     onClick = onDismiss,
                     hasShadow = false,
+                    // over the Turntable's chevron exactly, its own size
+                    size = if (fromLeft) chevronSizeDp else 34.dp,
                     modifier = Modifier.graphicsLayer {
                         rotationZ = chevronRotation
                         scaleX = chevronScale
