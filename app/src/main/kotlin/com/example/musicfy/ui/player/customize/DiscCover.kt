@@ -3,6 +3,7 @@
 package com.example.musicfy.ui.player.customize
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +39,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.em
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
@@ -67,7 +75,15 @@ data class DiscGeometry(
     val plateRotation: Float,
 
     val albumCard: AlbumCard? = null,
+
+    /**
+     * the centre's height as a fraction of the box's width instead of [centerY]'s height. Such a
+     * record is laid out entirely in the box's width - its size too - and exactly where it says,
+     * even where it runs past the box's edges (the Turntable's arm is placed the same way).
+     */
+    val centerYByWidth: Float? = null,
 ) {
+    val byWidth: Boolean get() = centerYByWidth != null
     @Immutable
     data class AlbumCard(val centerX: Float, val centerY: Float, val side: Float)
 }
@@ -123,9 +139,11 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
         plateRotation = -8f,
     )
 
+    // the disc and the album both inside the box: the disc used to start left of it, and the
+    // parent clipped its left edge flat
     PlayerCoverStyle.DISC_ALBUM -> DiscGeometry(
-        diameter = 0.86f,
-        centerX = 0.40f,
+        diameter = 0.82f,
+        centerX = 0.43f,
         centerY = 0.5f,
         art = 0.40f,
         spindle = 0.12f,
@@ -134,7 +152,25 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
         plateWidth = 0.28f,
         plateHeight = 0.11f,
         plateRotation = -60f,
-        albumCard = DiscGeometry.AlbumCard(centerX = 0.66f, centerY = 0.5f, side = 0.68f),
+        albumCard = DiscGeometry.AlbumCard(centerX = 0.665f, centerY = 0.5f, side = 0.64f),
+    )
+
+    // the record on its player: big, running off the left edge, its top up at the screen's, the
+    // arm reaching in from the top right corner (a size up and a step up-left from the frame, as
+    // the user drew it)
+    PlayerCoverStyle.TURNTABLE -> DiscGeometry(
+        diameter = 1.406f,
+        centerX = 0.162f,
+        centerY = 0.5f,
+        art = 0.526f,
+        // no pin through the middle: on a record this size it read as a ball on the cover
+        spindle = 0f,
+        plateOffsetX = 0f,
+        plateOffsetY = 0f,
+        plateWidth = 0f,
+        plateHeight = 0f,
+        plateRotation = 0f,
+        centerYByWidth = 0.703f,
     )
 
     PlayerCoverStyle.EDGE_TO_EDGE, PlayerCoverStyle.SQUARED -> DiscGeometry(
@@ -151,90 +187,83 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
     )
 }
 
-private val PlatterBlack = Color(0xFF121114)
+private val PlatterBlack = Color(0xFF0B0B0D)
 private val PlatterEdge = Color(0xFF2A2830)
-
-private fun grooveBrush(radius: Float): Brush {
-    val stops = ArrayList<Pair<Float, Color>>(GrooveBands * 2 + 2)
-
-    stops.add(0f to Color.Transparent)
-    stops.add(GrooveInner to Color.Transparent)
-    for (band in 0 until GrooveBands) {
-        val t = GrooveInner + (1f - GrooveInner) * (band / GrooveBands.toFloat())
-        val next = GrooveInner + (1f - GrooveInner) * ((band + 0.5f) / GrooveBands)
-        stops.add(t to Color.White.copy(alpha = 0.035f))
-        stops.add(next to Color.Black.copy(alpha = 0.30f))
-    }
-    stops.add(1f to Color.Black.copy(alpha = 0.22f))
-    return Brush.radialGradient(
-        colorStops = stops.toTypedArray(),
-        center = Offset(radius, radius),
-        radius = radius,
-    )
-}
-
-private const val GrooveBands = 44
-private const val GrooveInner = 0.34f
-
-private fun sheenBrush(radius: Float): Brush = Brush.sweepGradient(
-    0.00f to Color.White.copy(alpha = 0.00f),
-    0.08f to Color.White.copy(alpha = 0.13f),
-    0.16f to Color.White.copy(alpha = 0.00f),
-    0.50f to Color.White.copy(alpha = 0.00f),
-    0.58f to Color.White.copy(alpha = 0.09f),
-    0.66f to Color.White.copy(alpha = 0.00f),
-    1.00f to Color.White.copy(alpha = 0.00f),
-    center = Offset(radius, radius),
-)
+/** under the label's picture until it loads */
+private val LabelFallback = Color(0xFF27303B)
 
 @Composable
 fun DiscCover(
     style: PlayerCoverStyle,
     artworkUrl: String?,
     discName: String,
+    /** the album's cover for the album card; the song's own artwork when there's none */
+    albumArtworkUrl: String? = artworkUrl,
     realistic: Boolean,
     editMode: Boolean,
     rotationProvider: () -> Float,
     modifier: Modifier = Modifier,
+    /**
+     * keeps the record's surface in a layer of its own, drawn once. Every record in the row keeps
+     * one: drawn fresh each frame of a slide, the surface's gradients cost a weak GPU a frame.
+     */
+    cacheSurface: Boolean = true,
+    /** shared by a row of records, so the letters of their names are laid out once between them */
+    textMeasurer: androidx.compose.ui.text.TextMeasurer? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val geometry = remember(style) { discGeometryFor(style) }
 
     BoxWithConstraints(modifier = modifier) {
-        val boxSide = min(maxWidth.value, maxHeight.value)
+        val boxSide = if (geometry.byWidth) maxWidth.value else min(maxWidth.value, maxHeight.value)
         val discSide = boxSide * geometry.diameter
         val discSidePx = with(density) { discSide.dp.toPx() }
         val radiusPx = discSidePx / 2f
 
         val discLeft = maxWidth.value * geometry.centerX - discSide / 2f
-        val discTop = maxHeight.value * geometry.centerY - discSide / 2f
+        val discTop = (geometry.centerYByWidth?.let { maxWidth.value * it } ?: (maxHeight.value * geometry.centerY)) - discSide / 2f
         val discLeftPx = with(density) { discLeft.dp.toPx() }
         val discTopPx = with(density) { discTop.dp.toPx() }
 
-        val grooves = remember(radiusPx) { grooveBrush(radiusPx) }
-        val sheen = remember(radiusPx) { sheenBrush(radiusPx) }
-
         val platterModifier = Modifier
+            // a record bigger than the box would otherwise be centred on it, off where it says
+            .then(if (geometry.byWidth) Modifier.wrapContentSize(Alignment.TopStart, unbounded = true) else Modifier)
             .requiredSize(discSide.dp)
             .offset { IntOffset(discLeftPx.toInt(), discTopPx.toInt()) }
 
-        Box(
-            modifier = platterModifier
-                .graphicsLayer {
-                    rotationZ = rotationProvider()
-
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
+        // A soft shadow under the record lifts it off the deck.
+        if (realistic) {
+            Canvas(modifier = platterModifier) {
                 val r = size.minDimension / 2f
                 val center = Offset(size.width / 2f, size.height / 2f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.86f to Color.Black.copy(alpha = 0.55f),
+                        1f to Color.Transparent,
+                        center = center + Offset(0f, r * 0.035f),
+                        radius = r * 1.09f,
+                    ),
+                    radius = r * 1.09f,
+                    center = center + Offset(0f, r * 0.035f),
+                )
+            }
+        }
 
+        // The record, still: its grooves are circles and its light doesn't move, so only the
+        // label (and what's printed round it) turns. It's drawn at the screen's resolution into a
+        // layer of its own, once; the label turning over it never redraws it.
+        Canvas(
+            modifier = platterModifier.then(
+                if (realistic && cacheSurface) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier
+            )
+        ) {
+            val r = size.minDimension / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+            if (realistic) {
+                drawVinyl(center, r, geometry.art)
+            } else {
                 drawCircle(color = PlatterBlack, radius = r, center = center)
-                if (realistic) {
-                    drawCircle(brush = grooves, radius = r, center = center)
-                }
                 drawCircle(
                     color = PlatterEdge,
                     radius = r - StrokeHairline.toPx() / 2f,
@@ -242,36 +271,35 @@ fun DiscCover(
                     style = Stroke(width = StrokeHairline.toPx()),
                 )
             }
+        }
 
-            if (artworkUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(artworkUrl.resize(1200, 1200))
-                        .allowHardware(true)
-                        .crossfade(300)
-                        .size(CoilSize(1200, 1200))
-                        .precision(Precision.INEXACT)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size((discSide * geometry.art).dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape),
-                )
-            }
-
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val r = size.minDimension / 2f
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val spindleR = r * geometry.spindle
-                drawCircle(color = SpindleFill, radius = spindleR, center = center)
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.10f),
-                    radius = spindleR,
-                    center = center,
-                    style = Stroke(width = StrokeHairline.toPx()),
-                )
+        val labelSide = (discSide * geometry.art).dp
+        Box(
+            modifier = platterModifier
+                .graphicsLayer { rotationZ = rotationProvider() }
+        ) {
+            // the label: the cover itself, round
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(labelSide)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(LabelFallback),
+            ) {
+                if (artworkUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(artworkUrl.resize(1200, 1200))
+                            .allowHardware(true)
+                            .crossfade(300)
+                            .size(CoilSize(1200, 1200))
+                            .precision(Precision.INEXACT)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             DiscNamePlate(
@@ -279,27 +307,64 @@ fun DiscCover(
                 editMode = editMode,
                 discSide = discSide,
                 geometry = geometry,
+                measurer = textMeasurer,
             )
         }
 
-        if (realistic) {
-            Canvas(modifier = platterModifier) {
+        // Over the turning label, and still: paper takes the light softly, its edge sits a hair
+        // below the vinyl, and the spindle is a polished pin through the middle.
+        Canvas(modifier = platterModifier) {
+            val r = size.minDimension / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val labelR = r * geometry.art
+            if (realistic) {
                 drawCircle(
-                    brush = sheen,
-                    radius = size.minDimension / 2f,
-                    center = Offset(size.width / 2f, size.height / 2f),
+                    brush = Brush.radialGradient(
+                        0f to Color.White.copy(alpha = 0.10f),
+                        1f to Color.Transparent,
+                        center = center + Offset(-labelR * 0.35f, -labelR * 0.45f),
+                        radius = labelR * 1.1f,
+                    ),
+                    radius = labelR,
+                    center = center,
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0.82f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.45f),
+                        center = center,
+                        radius = labelR,
+                    ),
+                    radius = labelR,
+                    center = center,
+                )
+            }
+            if (geometry.spindle > 0f) {
+                val spindleR = r * geometry.spindle.coerceAtMost(0.045f)
+                drawCircle(color = Color.Black.copy(alpha = 0.5f), radius = spindleR * 1.35f, center = center + Offset(spindleR * 0.15f, spindleR * 0.3f))
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0f to Color(0xFFE9EAEE),
+                        0.45f to Color(0xFF8D9096),
+                        1f to Color(0xFF2B2C30),
+                        center = center + Offset(-spindleR * 0.35f, -spindleR * 0.4f),
+                        radius = spindleR * 1.3f,
+                    ),
+                    radius = spindleR,
+                    center = center,
                 )
             }
         }
 
         val card = geometry.albumCard
-        if (card != null && artworkUrl != null) {
+        val cardArt = albumArtworkUrl ?: artworkUrl
+        if (card != null && cardArt != null) {
             val side = boxSide * card.side
             val cardLeftPx = with(density) { (maxWidth.value * card.centerX - side / 2f).dp.toPx() }
             val cardTopPx = with(density) { (maxHeight.value * card.centerY - side / 2f).dp.toPx() }
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(artworkUrl.resize(1200, 1200))
+                    .data(cardArt.resize(1200, 1200))
                     .allowHardware(true)
                     .crossfade(300)
                     .size(CoilSize(1200, 1200))
@@ -316,51 +381,102 @@ fun DiscCover(
     }
 }
 
-private val SpindleFill = Color(0xFF3A383F)
 private val StrokeHairline = 1.dp
 
+/**
+ * The disc's label, printed the way a CD's is: in capitals, spaced out, all the way round the
+ * ring between the artwork and the rim, repeated to close the circle. It sits inside the platter's
+ * turning layer, so it spins with the disc and is drawn once, not every frame. Nothing is cut off:
+ * a long name just takes more of the ring.
+ *
+ * It's printed into the record rather than laid over it: a faint plain pass, then the letters
+ * blended as an overlay with what's under them, so they take the record's light where the sheen
+ * runs, go dim where it doesn't, and show its grooves through them.
+ */
 @Composable
 private fun BoxScope.DiscNamePlate(
     discName: String,
     editMode: Boolean,
     discSide: Float,
     geometry: DiscGeometry,
+    measurer: androidx.compose.ui.text.TextMeasurer? = null,
 ) {
     if (discName.isBlank() && !editMode) return
-
-    val density = LocalDensity.current
-    val plateW = discSide * geometry.plateWidth
-    val plateH = discSide * geometry.plateHeight
-    val offsetXPx = with(density) { (discSide * geometry.plateOffsetX).dp.toPx() }
-    val offsetYPx = with(density) { (discSide * geometry.plateOffsetY).dp.toPx() }
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .align(Alignment.Center)
-            .size(width = plateW.dp, height = plateH.dp)
-            .offset { IntOffset(offsetXPx.toInt(), offsetYPx.toInt()) }
-            .graphicsLayer { rotationZ = geometry.plateRotation }
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = if (discName.isBlank()) 0.35f else 0.22f),
-                shape = RoundedCornerShape(percent = 40),
-            ),
-    ) {
-        if (discName.isNotBlank()) {
-            Text(
-                text = discName,
-                color = Color.White.copy(alpha = 0.88f),
-                fontSize = (plateH * 0.42f).sp,
-                lineHeight = (plateH * 0.50f).sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 4.dp),
+    val ownMeasurer = rememberTextMeasurer(cacheSize = 64)
+    val measurer = measurer ?: ownMeasurer
+    // the middle of the band between the artwork's edge and the rim, a little toward the rim
+    val ringFraction = geometry.art + (1f - geometry.art) * 0.58f
+    val band = (1f - geometry.art) / 2f * discSide
+    val fontSize = (band * 0.30f).coerceIn(8f, 15f).sp
+    val style = TextStyle(
+        fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = fontSize,
+        letterSpacing = 0.22.em,
+        color = Color.White,
+    )
+    Canvas(Modifier.matchParentSize()) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val ringR = size.minDimension / 2f * ringFraction
+        if (discName.isBlank()) {
+            // editing, nothing chosen yet: where the name will go
+            drawCircle(
+                color = Color.White.copy(alpha = 0.28f),
+                radius = ringR,
+                center = center,
+                style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))),
             )
+            return@Canvas
+        }
+        val unit = discName.trim().uppercase() + "  ·  "
+        val glyphs = unit.map { measurer.measure(it.toString(), style) }
+        val unitWidth = glyphs.sumOf { it.size.width.toDouble() }.toFloat().coerceAtLeast(1f)
+        val circumference = (2 * Math.PI * ringR).toFloat()
+        val repeats = (circumference / unitWidth).toInt().coerceAtLeast(1)
+        // spread the repeats evenly so the end meets the start with no gap
+        val stretch = circumference / (unitWidth * repeats)
+        var travelled = 0f
+        repeat(repeats) {
+            for (layout in glyphs) {
+                val w = layout.size.width * stretch
+                val angle = (travelled + w / 2f) / ringR
+                rotate(Math.toDegrees(angle.toDouble()).toFloat(), center) {
+                    val at = Offset(center.x - layout.size.width / 2f, center.y - ringR - layout.size.height / 2f)
+                    drawText(layout, color = PrintBase, topLeft = at)
+                    drawText(layout, color = PrintInk, topLeft = at, blendMode = androidx.compose.ui.graphics.BlendMode.Overlay)
+                }
+                travelled += w
+            }
         }
     }
+}
+
+/** the printed name: a faint plain pass so it reads on the darkest vinyl, then the ink, overlaid */
+private val PrintBase = Color.White.copy(alpha = 0.18f)
+private val PrintInk = Color.White.copy(alpha = 0.7f)
+
+/**
+ * Where [style]'s record sits in a box [size] (centre and radius, in pixels), exactly as
+ * DiscCover lays it out - including a record wider than the box being centred on it, for the
+ * styles laid out by the box's shorter side.
+ */
+internal fun discCircleIn(style: PlayerCoverStyle, size: Size): Pair<Offset, Float> {
+    val g = discGeometryFor(style)
+    val unit = if (g.byWidth) size.width else min(size.width, size.height)
+    val side = unit * g.diameter
+    var left = size.width * g.centerX - side / 2f
+    var top = (g.centerYByWidth?.let { size.width * it } ?: (size.height * g.centerY)) - side / 2f
+    if (!g.byWidth) {
+        if (side > size.width) left -= (side - size.width) / 2f
+        if (side > size.height) top -= (side - size.height) / 2f
+    }
+    return Offset(left + side / 2f, top + side / 2f) to side / 2f
+}
+
+/** [p] lands on [style]'s record in a box [size] */
+internal fun isOnDisc(style: PlayerCoverStyle, size: Size, p: Offset): Boolean {
+    val (center, radius) = discCircleIn(style, size)
+    return (p - center).getDistance() <= radius
 }
 
 @Composable

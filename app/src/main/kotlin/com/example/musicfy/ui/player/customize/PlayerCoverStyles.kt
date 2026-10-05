@@ -24,6 +24,7 @@ val PlayerCoverStyle.usesBoxedStage: Boolean
         PlayerCoverStyle.EDGE_TO_EDGE,
         PlayerCoverStyle.DISC_BIG_FULL,
         PlayerCoverStyle.DISC_BIG_LABEL,
+        PlayerCoverStyle.TURNTABLE,
         -> false
         else -> true
     }
@@ -43,6 +44,7 @@ val PlayerCoverStyle.displayName: String
         PlayerCoverStyle.DISC_BIG_FULL -> "Disc Music - inside - big"
         PlayerCoverStyle.DISC_BIG_LABEL -> "Disc Music - label - big"
         PlayerCoverStyle.DISC_ALBUM -> "Disc + album Music"
+        PlayerCoverStyle.TURNTABLE -> "Turntable"
     }
 
 sealed interface CoverOption {
