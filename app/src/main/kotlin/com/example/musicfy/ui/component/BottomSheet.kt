@@ -1,6 +1,7 @@
 // BottomSheet.kt
 
 package com.example.musicfy.ui.component
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 
@@ -18,6 +19,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.example.musicfy.LocalPlayerConnection
@@ -277,13 +280,17 @@ fun BottomSheet(
                         }
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
-                            detectTapGestures(
-                                onTap = {
-                                    if (state.isCollapsed) {
-                                        coroutineScope.launch { state.expandSoft() }
-                                    }
-                                }
-                            )
+                            // A tap on the collapsed sheet opens it. Open, a touch is left alone:
+                            // taking it here would leave nothing for the player's background hold
+                            // to tell apart from a button's.
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                if (!state.isCollapsed) return@awaitEachGesture
+                                down.consume()
+                                val up = waitForUpOrCancellation() ?: return@awaitEachGesture
+                                up.consume()
+                                if (state.isCollapsed) coroutineScope.launch { state.expandSoft() }
+                            }
                         }
                         // Where the sheet's own coordinates are, so a drag's start can be handed
                         // to the swipe handler in root coordinates. Stored, not state: it is only

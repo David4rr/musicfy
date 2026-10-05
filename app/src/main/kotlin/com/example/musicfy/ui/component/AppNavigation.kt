@@ -131,7 +131,6 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "youtube_browse/" to "search_input",
     "browse/" to "search_input",
     "library/" to "library",
-    "advanced_audio_settings" to "settings",
     "cipher_settings" to "settings",
     "playback_diagnostics" to "settings",
     "musicfy_settings" to "settings",
@@ -321,6 +320,7 @@ fun AppNavigationBar(
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 
         val glassState = LocalGlassState.current ?: remember { GlassState() }
+        val accentWash = rememberChromeAccentWash()
 
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
@@ -339,6 +339,7 @@ fun AppNavigationBar(
                 blurRadius = { GlassChromeBlurRadius },
                 tint = containerColor.copy(alpha = 0.65f),
                 foundationColor = containerColor,
+                accentWash = accentWash,
 
                 tileMode = android.graphics.Shader.TileMode.CLAMP,
                 modifier = Modifier.fillMaxSize()
