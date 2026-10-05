@@ -1,6 +1,8 @@
 package com.example.musicfy.playback.custom
 
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
@@ -23,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -43,10 +44,27 @@ class DynamicResolvingMediaSource(
     private var innerMediaSource: MediaSource? = null
     private var timeline: Timeline? = null
     private var fetchError: IOException? = null
-    private val fetchScope = CoroutineScope(Dispatchers.IO + Job())
+    private var fetchScope = CoroutineScope(Dispatchers.IO + Job())
+
+    // The resolved stream's source is built and prepared on the playback thread this source was
+    // prepared on, as Media3 requires. It used to be done on main, which mostly got away with it,
+    // but a DRM session manager binds itself to the thread it's set up on, and one bound to main
+    // never decrypted anything ("DefaultDrmSessionManager accessed on the wrong thread").
+    @Volatile private var playbackHandler: Handler? = null
+    /** bumped on every prepare and release, so a resolution that finishes late is dropped */
+    private var generation = 0
 
     override fun prepareSourceInternal(mediaTransferListener: androidx.media3.datasource.TransferListener?) {
         super.prepareSourceInternal(mediaTransferListener)
+        playbackHandler = Handler(Looper.myLooper() ?: Looper.getMainLooper())
+        val gen = ++generation
+
+        // A source is released and prepared again whenever the player stops and restarts (a
+        // quality change does exactly that). Release cancels the fetch scope, and launching on a
+        // cancelled scope silently does nothing, which left the song buffering forever.
+        fetchScope.cancel()
+        fetchScope = CoroutineScope(Dispatchers.IO + Job())
+        fetchError = null
 
         fetchScope.launch {
             val mediaId = originalMediaItem.mediaId
@@ -67,11 +85,7 @@ class DynamicResolvingMediaSource(
             if (result == null) {
                 if (fetchError == null) {
 
-                    withContext(Dispatchers.Main) {
-                        val source = mediaSourceFactoryProvider(null).createMediaSource(originalMediaItem)
-                        innerMediaSource = source
-                        prepareChildSource(null, source)
-                    }
+                    prepareChild(gen, mediaSourceFactoryProvider(null), originalMediaItem)
                 }
 
                 return@launch
@@ -82,8 +96,17 @@ class DynamicResolvingMediaSource(
             if (result.isDash || result.streamUrl.endsWith(".mpd")) {
                 builder.setMimeType(MimeTypes.APPLICATION_MPD)
             }
+            if (result.isHls) builder.setMimeType(MimeTypes.APPLICATION_M3U8)
 
-            if (!result.decryptionKey.isNullOrBlank()) {
+            val widevine = result.widevineLicense
+            if (widevine != null) {
+                // a source module's Widevine stream: the device's CDM decrypts, the module licenses
+                val drmManager = WidevineDrm.sessionManager(widevine)
+                builder.setDrmConfiguration(
+                    MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID).setMultiSession(true).build()
+                )
+                prepareChild(gen, mediaSourceFactoryProvider(drmManager), builder.build())
+            } else if (!result.decryptionKey.isNullOrBlank()) {
 
                 val drmCallback = object : MediaDrmCallback {
                     override fun executeProvisionRequest(uuid: UUID, request: ExoMediaDrm.ProvisionRequest): ByteArray {
@@ -128,26 +151,18 @@ class DynamicResolvingMediaSource(
                     MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID).build()
                 )
 
-                val finalMediaItem = builder.build()
-                withContext(Dispatchers.Main) {
-                    val source = localFactory.createMediaSource(finalMediaItem)
-                    innerMediaSource = source
-                    prepareChildSource(null, source)
-                }
+                prepareChild(gen, localFactory, builder.build())
             } else {
-                val finalMediaItem = builder.build()
-                withContext(Dispatchers.Main) {
-                    val source = mediaSourceFactoryProvider(null).createMediaSource(finalMediaItem)
-                    innerMediaSource = source
-                    prepareChildSource(null, source)
-                }
+                prepareChild(gen, mediaSourceFactoryProvider(null), builder.build())
             }
         }
     }
 
-    private suspend fun createAndPrepareInnerSource(mediaItem: MediaItem, mediaTransferListener: androidx.media3.datasource.TransferListener?) {
-        withContext(Dispatchers.Main) {
-            val source = mediaSourceFactoryProvider(null).createMediaSource(mediaItem)
+    private fun prepareChild(gen: Int, factory: MediaSource.Factory, item: MediaItem) {
+        playbackHandler?.post {
+            // released, or prepared again, while the stream was being looked up
+            if (gen != generation) return@post
+            val source = factory.createMediaSource(item)
             innerMediaSource = source
             prepareChildSource(null, source)
         }
@@ -178,6 +193,8 @@ class DynamicResolvingMediaSource(
 
     override fun releaseSourceInternal() {
         super.releaseSourceInternal()
+        generation++
+        playbackHandler = null
         fetchScope.cancel()
         innerMediaSource = null
         timeline = null

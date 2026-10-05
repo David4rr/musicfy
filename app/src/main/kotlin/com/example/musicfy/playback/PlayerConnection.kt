@@ -139,6 +139,24 @@ class PlayerConnection(
             database.format(mediaMetadata?.id)
         }
 
+    /**
+     * What [mediaId] is playing as, for the format badge: the service's facts (the decoder's
+     * format, a module's codec name) with YouTube's record of its format filling in until the
+     * decoder has it, unless a module plays it, whose stream that record doesn't describe.
+     */
+    fun streamFacts(mediaId: String): kotlinx.coroutines.flow.Flow<StreamFacts?> =
+        combine(
+            service.streamFacts.map { it[mediaId] }.distinctUntilChanged(),
+            database.format(mediaId),
+        ) { live, format ->
+            val recorded = format?.takeIf { live?.fromModule != true }?.let(StreamFacts::of)
+            when {
+                live == null -> recorded
+                recorded == null -> live
+                else -> live.copy(codec = live.codec ?: recorded.codec, sampleRate = live.sampleRate ?: recorded.sampleRate)
+            }
+        }.distinctUntilChanged()
+
     val queueTitle = MutableStateFlow<String?>(null)
     val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
     val currentMediaItemIndex = MutableStateFlow(-1)

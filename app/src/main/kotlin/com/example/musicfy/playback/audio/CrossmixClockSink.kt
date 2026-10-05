@@ -3,6 +3,9 @@ package com.example.musicfy.playback.audio
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
+import com.example.musicfy.eq.AudioFxService
+import com.example.musicfy.eq.audio.ReplayGainTags
+import com.example.musicfy.eq.audio.VolumeCurve
 import java.nio.ByteBuffer
 
 /**
@@ -15,9 +18,17 @@ import java.nio.ByteBuffer
 class CrossmixClockSink(
     delegate: AudioSink,
     private val processor: CrossmixTransitionAudioProcessor,
+    private val audioFx: AudioFxService? = null,
+    /** this player's song's ReplayGain, applied as part of its volume */
+    private val replayGain: ReplayGainTags? = null,
 ) : ForwardingAudioSink(delegate) {
 
     private var lastTimestampUs = Long.MIN_VALUE
+
+    // Audio FX's volume curve shapes every volume the player is given (the slider, ducking, fades)
+    private var requestedVolume = 1f
+    private var appliedCurve: VolumeCurve? = null
+    private var appliedReplayGain = 1f
 
     override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
         // a buffer the sink couldn't take yet comes back with the same timestamp, part-consumed;
@@ -26,7 +37,27 @@ class CrossmixClockSink(
             lastTimestampUs = presentationTimeUs
             processor.onInputTimestamp(presentationTimeUs)
         }
+        // the curve or the song's ReplayGain changed: the player won't send its (unchanged)
+        // volume again
+        if (audioFx != null && (audioFx.volumeCurve !== appliedCurve || replayGainFactor() != appliedReplayGain)) applyVolume()
         return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
+    }
+
+    override fun setVolume(volume: Float) {
+        requestedVolume = volume
+        applyVolume()
+    }
+
+    private fun applyVolume() {
+        val curve = audioFx?.volumeCurve
+        appliedCurve = curve
+        appliedReplayGain = replayGainFactor()
+        super.setVolume((curve?.gain(requestedVolume) ?: requestedVolume) * appliedReplayGain)
+    }
+
+    private fun replayGainFactor(): Float {
+        val fx = audioFx ?: return 1f
+        return replayGain?.linear(fx.replayGain, fx.normalize) ?: 1f
     }
 
     override fun flush() {
