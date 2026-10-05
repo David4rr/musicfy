@@ -46,6 +46,8 @@ import com.example.musicfy.constants.LyricsMotionStyle
 import com.example.musicfy.constants.LyricsMotionStyleKey
 import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.constants.PlayVideoBackgroundKey
+import com.example.musicfy.constants.ShowFormatBadgeKey
+import com.example.musicfy.constants.ShowFormatSampleRateKey
 import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
 import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.DefaultPlayerSeekBarSlider
@@ -104,6 +106,14 @@ fun AppearanceSettingsScreen(navController: NavController) {
     val (lyricsHighBloom, onLyricsHighBloomChange) = rememberPreference(
         LyricsHighBloomKey,
         defaultValue = true
+    )
+    val (formatBadge, onFormatBadgeChange) = rememberPreference(
+        ShowFormatBadgeKey,
+        defaultValue = true
+    )
+    val (formatSampleRate, onFormatSampleRateChange) = rememberPreference(
+        ShowFormatSampleRateKey,
+        defaultValue = false
     )
     val (lyricsMotionStyle, onLyricsMotionStyleChange) = rememberEnumPreference(
         LyricsMotionStyleKey,
@@ -209,6 +219,37 @@ fun AppearanceSettingsScreen(navController: NavController) {
                         checked = lyricsHighBloom,
                         onCheckedChange = onLyricsHighBloomChange,
                         enabled = lyricsWaveAnimation,
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Audio format badge") },
+                highlightKey = "Audio format badge",
+                descriptionText = "What the song is playing as, beside its title",
+                icon = painterResource(R.drawable.graphic_eq),
+                iconShape = CircleShape,
+                onClick = { onFormatBadgeChange(!formatBadge) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = formatBadge,
+                        onCheckedChange = onFormatBadgeChange,
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Show sample rate") },
+                highlightKey = "Show sample rate",
+                descriptionText = "The stream's sample rate after its format",
+                icon = painterResource(R.drawable.speed),
+                iconShape = CircleShape,
+                isVisible = formatBadge,
+                isSubOption = true,
+                onClick = { onFormatSampleRateChange(!formatSampleRate) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = formatSampleRate,
+                        onCheckedChange = onFormatSampleRateChange,
+                        enabled = formatBadge,
                     )
                 },
             ),

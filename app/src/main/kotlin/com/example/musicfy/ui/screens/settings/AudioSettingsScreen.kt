@@ -33,7 +33,7 @@ import com.example.musicfy.utils.rememberPreference
 fun AudioSettingsScreen(navController: NavController) {
     var query by remember { mutableStateOf("") }
 
-    val (audioQuality, onAudioQualityChange) = rememberEnumPreference(
+    val (audioQuality) = rememberEnumPreference(
         AudioQualityKey,
         defaultValue = AudioQuality.AUTO
     )
@@ -56,16 +56,6 @@ fun AudioSettingsScreen(navController: NavController) {
         AudioQuality.DOLBY_ATMOS -> "Dolby Atmos"
     }
 
-    fun nextQuality(q: AudioQuality) = when (q) {
-        AudioQuality.AUTO -> AudioQuality.LOW
-        AudioQuality.LOW -> AudioQuality.MEDIUM
-        AudioQuality.MEDIUM -> AudioQuality.HIGH
-        AudioQuality.HIGH -> AudioQuality.LOSSLESS
-        AudioQuality.LOSSLESS -> AudioQuality.HI_RES_LOSSLESS
-        AudioQuality.HI_RES_LOSSLESS -> AudioQuality.DOLBY_ATMOS
-        AudioQuality.DOLBY_ATMOS -> AudioQuality.AUTO
-    }
-
     SubSettingsScaffold(
         title = "Audio",
         onBack = { navController.navigateUp() },
@@ -73,20 +63,12 @@ fun AudioSettingsScreen(navController: NavController) {
     ) {
         val pageItems = listOf(
             SettingsItem(
-                title = { Text("CrossMix") },
-                highlightKey = "CrossMix",
-                descriptionText = "Choose how tracks blend together",
-                icon = painterResource(R.drawable.linear_scale),
-                iconShape = CircleShape,
-                onClick = { navController.navigate("crossmix_settings") },
-            ),
-            SettingsItem(
-                title = { Text("Equalizer") },
-                highlightKey = "Equalizer",
-                descriptionText = "10-band parametric EQ",
+                title = { Text("Audio Lab") },
+                highlightKey = "Audio Lab",
+                descriptionText = "Equalizer, effects, crossfade and quality",
                 icon = painterResource(R.drawable.equalizer),
                 iconShape = CircleShape,
-                onClick = { navController.navigate("equalizer") },
+                onClick = { navController.navigate("audio_lab") },
             ),
             SettingsItem(
                 title = { Text("Audio Quality") },
@@ -94,7 +76,7 @@ fun AudioSettingsScreen(navController: NavController) {
                 descriptionText = qualityLabel(audioQuality),
                 icon = painterResource(R.drawable.graphic_eq),
                 iconShape = CircleShape,
-                onClick = { onAudioQualityChange(nextQuality(audioQuality)) },
+                onClick = { navController.navigate("audio_quality") },
             ),
         ).filter {
             query.isBlank() || it.highlightKey?.contains(query, ignoreCase = true) == true ||

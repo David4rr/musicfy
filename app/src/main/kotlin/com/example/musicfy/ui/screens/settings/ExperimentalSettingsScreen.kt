@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.CrossmixTestToolsKey
+import com.example.musicfy.constants.ForcePlaybackKey
+import com.example.musicfy.constants.ShowStreamSourceToastKey
 import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.HapticFocus
 import com.example.musicfy.constants.HapticFocusKey
@@ -64,6 +66,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
         defaultValue = false,
     )
     val crossmixTools = crossmixTestItems(isVisible = crossmixTestTools)
+    val (sourceBanner, onSourceBannerChange) = rememberPreference(ShowStreamSourceToastKey, defaultValue = false)
+    val (forcePlayback, onForcePlaybackChange) = rememberPreference(ForcePlaybackKey, defaultValue = false)
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -102,6 +106,32 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                         )
                     )
                     crossmixTools.forEach { add(it.copy(isSubOption = true)) }
+                    add(
+                        SettingsItem(
+                            title = { Text("Show where songs play from") },
+                            highlightKey = "Show where songs play from",
+                            descriptionText = "A banner at the top names each song's source: Apple Music, Monochrome or YouTube, and its quality",
+                            icon = painterResource(R.drawable.info),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onSourceBannerChange(!sourceBanner) },
+                            trailingContent = {
+                                AppSwitch(checked = sourceBanner, onCheckedChange = onSourceBannerChange)
+                            }
+                        )
+                    )
+                    add(
+                        SettingsItem(
+                            title = { Text("Force playback") },
+                            highlightKey = "Force playback",
+                            descriptionText = "Never stop on a song: if one provider can't play it, the next in the provider order does; if none can, it's skipped. A banner says which",
+                            icon = painterResource(R.drawable.play),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onForcePlaybackChange(!forcePlayback) },
+                            trailingContent = {
+                                AppSwitch(checked = forcePlayback, onCheckedChange = onForcePlaybackChange)
+                            }
+                        )
+                    )
                     add(
                         SettingsItem(
                             title = { Text("Force 1500 px YouTube blur") },
@@ -215,16 +245,6 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                                     }
                                 )
                             }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Advanced audio settings") },
-                            highlightKey = "Advanced audio settings",
-                            descriptionText = "Custom APIs, Hi-Res, Spatial Audio",
-                            icon = painterResource(R.drawable.tune),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { navController.navigate("advanced_audio_settings") }
                         )
                     )
                     add(
