@@ -1,4 +1,4 @@
-<img width="1582" height="669" alt="Slide 16_9 - 1" src="https://github.com/user-attachments/assets/4f3c9a47-fc47-4e5e-844d-8b5a71a39219" />
+<img width="1799" height="927" alt="Frame 116" src="https://github.com/user-attachments/assets/a18020a7-ba05-4bb4-83bb-ada35ac57338" />
 
 ---
 <div align="center">
