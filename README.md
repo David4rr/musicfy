@@ -102,8 +102,6 @@ Musicfy is an independent, unofficial project made for personal and educational 
 - **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
 - **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
 - **Kizzy** by [Kizzy-APKs](https://github.com/Kizzy-APKs) ([Repository](https://github.com/Kizzy-APKs/Kizzy)) -- For Discord RPC integration support.
-- **Kugou Music** by [Kugou](https://www.kugou.com/) -- For lyric provider support.
-- **Last.fm** by [Last.fm](https://www.lastfm.com/) -- For scrobbling and metadata provider support.
 
 ---
 
