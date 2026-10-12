@@ -6,248 +6,282 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import com.example.musicfy.eq.data.ParametricEQ
-import com.example.musicfy.eq.data.ParametricEQBand
-import timber.log.Timber
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.pow
 
+/**
+ * The equalizer: a cascade of biquads over 16-bit PCM, any channel count up to 7.1.
+ *
+ * Settings change live while a band is dragged, so a new design never resets the music: the new
+ * filters take over the old ones' state and the two are crossfaded over [FadeSeconds], which keeps
+ * every change (a preset, switching off, adding a band) free of clicks. Nothing is reset or
+ * re-seeked when a setting moves. Off, it is a plain copy.
+ */
 @UnstableApi
-@SuppressWarnings("Deprecated")
+@Suppress("DEPRECATION")
 class CustomEqualizerAudioProcessor : AudioProcessor {
 
+    private var pendingFormat = AudioProcessor.AudioFormat.NOT_SET
     private var sampleRate = 0
-    private var channelCount = 0
-    private var encoding = C.ENCODING_INVALID
-    private var isActive = false
-    private var equalizerEnabled = false
+    private var channels = 0
 
-    private var inputBuffer: ByteBuffer = EMPTY_BUFFER
+    @Volatile private var design: ParametricEQ? = null
+    @Volatile private var designVersion = 0
+    private var builtVersion = -1
+
+    private var bank: FilterBank? = null
+    private var fadingFrom: FilterBank? = null
+    private var fading = false
+    private var fadePos = 0
+    private var fadeLength = 0
+    private var snapNextDesign = true
+
+    private var work = DoubleArray(0)
+    private var fadeWork = DoubleArray(0)
+
+    private var buffer: ByteBuffer = EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = EMPTY_BUFFER
     private var inputEnded = false
+    private val tapId = System.identityHashCode(this)
 
-    private var filters: List<BiquadFilter> = emptyList()
-    private var preampGain: Double = 1.0
-    private var pendingProfile: ParametricEQ? = null
-
-    companion object {
-        private const val TAG = "CustomEqualizerAudioProcessor"
-        private val EMPTY_BUFFER: ByteBuffer = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
-    }
-
-    @Synchronized
     fun applyProfile(parametricEQ: ParametricEQ) {
-        if (sampleRate == 0) {
-
-            Timber.tag(TAG)
-                .d("Audio processor not configured yet. Storing profile as pending with ${parametricEQ.bands.size} bands")
-            pendingProfile = parametricEQ
-            return
-        }
-
-        preampGain = 10.0.pow(parametricEQ.preamp / 20.0)
-
-        createFilters(parametricEQ.bands)
-        equalizerEnabled = true
-
-        filters.forEach { it.reset() }
-
-        Timber.tag(TAG)
-            .d("Applied EQ profile with ${filters.size} bands and ${parametricEQ.preamp} dB preamp")
+        design = parametricEQ
+        designVersion++
     }
 
-    @Synchronized
     fun disable() {
-        equalizerEnabled = false
-        filters = emptyList()
-        preampGain = 1.0
-        pendingProfile = null
-        Timber.tag(TAG).d("Equalizer disabled")
+        design = null
+        designVersion++
     }
 
-    fun isEnabled(): Boolean = equalizerEnabled
-
-    private fun createFilters(bands: List<ParametricEQBand>) {
-        if (sampleRate == 0) {
-            Timber.tag(TAG).w("Cannot create filters: sample rate not set")
-            return
-        }
-
-        filters = bands
-            .filter { it.enabled && it.frequency < sampleRate / 2.0 }
-            .map { band ->
-                BiquadFilter(
-                    sampleRate = sampleRate,
-                    frequency = band.frequency,
-                    gain = band.gain,
-                    q = band.q,
-                    filterType = band.filterType
-                )
-            }
-
-        Timber.tag(TAG)
-            .d("Created ${filters.size} biquad filters from ${bands.size} bands (PK/LSC/HSC)")
-    }
+    fun isEnabled(): Boolean = design != null
 
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        sampleRate = inputAudioFormat.sampleRate
-        channelCount = inputAudioFormat.channelCount
-        encoding = inputAudioFormat.encoding
-
-        Timber.tag(TAG)
-            .d("Configured: sampleRate=$sampleRate, channels=$channelCount, encoding=$encoding")
-
-        pendingProfile?.let { profile ->
-            preampGain = 10.0.pow(profile.preamp / 20.0)
-            createFilters(profile.bands)
-            equalizerEnabled = true
-            pendingProfile = null
-            Timber.tag(TAG)
-                .d("Applied pending profile with ${filters.size} bands and ${profile.preamp} dB preamp")
+        // anything but 16-bit PCM (an encoded passthrough stream) steps out of the chain untouched
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT || inputAudioFormat.channelCount !in 1..8) {
+            pendingFormat = AudioProcessor.AudioFormat.NOT_SET
+            return AudioProcessor.AudioFormat.NOT_SET
         }
-
-        if (encoding != C.ENCODING_PCM_16BIT || channelCount > 2) {
-            val exception = AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
-            throw exception
-        }
-
-        isActive = true
+        pendingFormat = inputAudioFormat
         return inputAudioFormat
     }
 
-    override fun isActive(): Boolean = isActive
+    override fun isActive(): Boolean = pendingFormat != AudioProcessor.AudioFormat.NOT_SET
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!equalizerEnabled || filters.isEmpty()) {
+        val bytes = inputBuffer.remaining()
+        if (bytes == 0) return
+        if (channels == 0) {
+            inputBuffer.position(inputBuffer.limit())
+            return
+        }
+        val frames = bytes / (2 * channels)
+        val count = frames * channels
+        syncDesign()
 
-            val remaining = inputBuffer.remaining()
-            if (remaining == 0) return
-
-            if (outputBuffer.capacity() < remaining) {
-                outputBuffer = ByteBuffer.allocateDirect(remaining).order(ByteOrder.nativeOrder())
-            } else {
-                outputBuffer.clear()
-            }
-            outputBuffer.put(inputBuffer)
-            outputBuffer.flip()
+        val out = replaceOutputBuffer(bytes)
+        val current = bank
+        val tap = AudioTap.wanted
+        if (current == null && !fading && !tap) {
+            out.put(inputBuffer)
+            out.flip()
             return
         }
 
-        val inputSize = inputBuffer.remaining()
-        if (inputSize == 0) {
-            return
+        if (work.size < count) {
+            work = DoubleArray(count)
+            fadeWork = DoubleArray(count)
         }
+        val scale = 1.0 / 32768.0
+        for (i in 0 until count) work[i] = inputBuffer.getShort() * scale
 
-        if (outputBuffer === EMPTY_BUFFER || outputBuffer === inputBuffer) {
-
-            outputBuffer = ByteBuffer.allocateDirect(inputSize).order(ByteOrder.nativeOrder())
-        } else if (outputBuffer.capacity() < inputSize) {
-
-            outputBuffer = ByteBuffer.allocateDirect(inputSize).order(ByteOrder.nativeOrder())
-        } else {
-
-            outputBuffer.clear()
+        if (fading) {
+            System.arraycopy(work, 0, fadeWork, 0, count)
+            fadingFrom?.process(fadeWork, frames)
         }
+        current?.process(work, frames)
+        if (fading) mixFade(frames)
 
-        when (encoding) {
-            C.ENCODING_PCM_16BIT -> {
+        if (tap) AudioTap.write(tapId, work, frames, channels, sampleRate)
 
-                processAudioBuffer16Bit(inputBuffer, outputBuffer)
-            }
-            else -> {
-
-                outputBuffer.put(inputBuffer)
-            }
+        for (i in 0 until count) {
+            val s = work[i] * 32768.0
+            out.putShort(
+                when {
+                    s >= 32767.0 -> 32767
+                    s <= -32768.0 -> -32768
+                    else -> s.toInt()
+                }.toShort()
+            )
         }
-
-        outputBuffer.flip()
-
+        out.flip()
     }
 
-    private fun processAudioBuffer16Bit(input: ByteBuffer, output: ByteBuffer) {
-
-        val sampleCount = input.remaining() / 2
-
-        repeat(sampleCount / channelCount) {
-            when (channelCount) {
-                1 -> {
-
-                    val sample = input.getShort().toDouble() / 32768.0
-                    var processed = sample
-
-                    for (filter in filters) {
-                        processed = filter.processSample(processed)
-                    }
-
-                    processed *= preampGain
-
-                    val outputSample = (processed * 32768.0).coerceIn(-32768.0, 32767.0).toInt().toShort()
-                    output.putShort(outputSample)
-                }
-                2 -> {
-
-                    val leftSample = input.getShort().toDouble() / 32768.0
-                    val rightSample = input.getShort().toDouble() / 32768.0
-
-                    var processedLeft = leftSample
-                    var processedRight = rightSample
-
-                    for (filter in filters) {
-                        val (left, right) = filter.processStereo(processedLeft, processedRight)
-                        processedLeft = left
-                        processedRight = right
-                    }
-
-                    processedLeft *= preampGain
-                    processedRight *= preampGain
-
-                    val outputLeft = (processedLeft * 32768.0).coerceIn(-32768.0, 32767.0).toInt().toShort()
-                    val outputRight = (processedRight * 32768.0).coerceIn(-32768.0, 32767.0).toInt().toShort()
-
-                    output.putShort(outputLeft)
-                    output.putShort(outputRight)
-                }
-                else -> {
-
-                    repeat(channelCount) {
-                        output.putShort(input.getShort())
-                    }
-                }
+    private fun mixFade(frames: Int) {
+        var i = 0
+        val length = fadeLength.toDouble()
+        for (f in 0 until frames) {
+            val g = if (fadePos >= fadeLength) 1.0 else fadePos / length
+            for (c in 0 until channels) {
+                work[i] = fadeWork[i] + (work[i] - fadeWork[i]) * g
+                i++
             }
+            if (fadePos < fadeLength) fadePos++
         }
+        if (fadePos >= fadeLength) {
+            fading = false
+            fadingFrom = null
+        }
+    }
+
+    /** picks up a new design at a buffer boundary, crossfading from what was playing */
+    private fun syncDesign() {
+        val version = designVersion
+        if (version == builtVersion) return
+        builtVersion = version
+        val next = design?.let { FilterBank.build(it, sampleRate, channels) }
+        next?.adoptState(bank)
+        if (snapNextDesign) {
+            snapNextDesign = false
+            bank = next
+            fading = false
+            fadingFrom = null
+            return
+        }
+        if (bank == null && next == null) return
+        // mid-fade, the sound being faded in becomes the one faded from: close enough to inaudible
+        fadingFrom = bank
+        fading = true
+        fadePos = 0
+        fadeLength = (sampleRate * FadeSeconds).toInt().coerceAtLeast(1)
+        bank = next
+    }
+
+    /** one buffer, kept and reused: the chain reads each output fully before queueing more */
+    private fun replaceOutputBuffer(size: Int): ByteBuffer {
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder())
+        } else {
+            buffer.clear()
+        }
+        outputBuffer = buffer
+        return buffer
+    }
+
+    override fun queueEndOfStream() {
+        inputEnded = true
     }
 
     override fun getOutput(): ByteBuffer {
-
         val buffer = outputBuffer
         outputBuffer = EMPTY_BUFFER
         return buffer
     }
 
-    override fun isEnded(): Boolean {
-        return inputEnded && outputBuffer.remaining() == 0
-    }
+    override fun isEnded(): Boolean = inputEnded && outputBuffer === EMPTY_BUFFER
 
     @Deprecated("Deprecated in Java")
     override fun flush() {
         outputBuffer = EMPTY_BUFFER
         inputEnded = false
-
-        filters.forEach { it.reset() }
+        val format = pendingFormat
+        if (format != AudioProcessor.AudioFormat.NOT_SET &&
+            (format.sampleRate != sampleRate || format.channelCount != channels)
+        ) {
+            sampleRate = format.sampleRate
+            channels = format.channelCount
+            bank = null
+            builtVersion = -1
+        }
+        // after a seek the filters start clean, and the first design lands without a fade
+        bank?.reset()
+        fading = false
+        fadingFrom = null
+        if (bank == null) snapNextDesign = true
     }
 
     override fun reset() {
-        @Suppress("DEPRECATION")
         flush()
-        inputBuffer = EMPTY_BUFFER
+        pendingFormat = AudioProcessor.AudioFormat.NOT_SET
         sampleRate = 0
-        channelCount = 0
-        encoding = C.ENCODING_INVALID
-        isActive = false
-        filters.forEach { it.reset() }
+        channels = 0
+        bank = null
+        builtVersion = -1
+        snapNextDesign = true
     }
 
-    override fun queueEndOfStream() {
-        inputEnded = true
+    /** a cascade of biquads plus the preamp, with each band's state for every channel */
+    private class FilterBank(
+        private val count: Int,
+        private val channels: Int,
+        private val coefficients: DoubleArray,
+        private val gain: Double,
+    ) {
+        private val state = DoubleArray(count * channels * 4)
+
+        fun process(buffer: DoubleArray, frames: Int) {
+            for (k in 0 until count) {
+                val o = k * Biquad.Stride
+                val b0 = coefficients[o]
+                val b1 = coefficients[o + 1]
+                val b2 = coefficients[o + 2]
+                val a1 = coefficients[o + 3]
+                val a2 = coefficients[o + 4]
+                for (c in 0 until channels) {
+                    val s = (k * channels + c) * 4
+                    var x1 = state[s]
+                    var x2 = state[s + 1]
+                    var y1 = state[s + 2]
+                    var y2 = state[s + 3]
+                    var i = c
+                    for (f in 0 until frames) {
+                        val x = buffer[i]
+                        val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+                        x2 = x1
+                        x1 = x
+                        y2 = y1
+                        y1 = y
+                        buffer[i] = y
+                        i += channels
+                    }
+                    state[s] = x1
+                    state[s + 1] = x2
+                    state[s + 2] = y1
+                    state[s + 3] = y2
+                }
+            }
+            if (gain != 1.0) {
+                for (i in 0 until frames * channels) buffer[i] *= gain
+            }
+        }
+
+        /** starts from the filters this replaces, band for band, so the sound carries on */
+        fun adoptState(previous: FilterBank?) {
+            if (previous == null || previous.channels != channels) return
+            val shared = minOf(count, previous.count) * channels * 4
+            System.arraycopy(previous.state, 0, state, 0, shared)
+        }
+
+        fun reset() = state.fill(0.0)
+
+        companion object {
+            fun build(eq: ParametricEQ, sampleRate: Int, channels: Int): FilterBank? {
+                if (sampleRate <= 0 || channels <= 0) return null
+                val bands = eq.bands.filter { Biquad.isAudible(it) && it.frequency < sampleRate / 2.0 }
+                val gain = 10.0.pow(eq.preamp / 20.0)
+                if (bands.isEmpty() && gain == 1.0) return null
+                val coefficients = DoubleArray(bands.size * Biquad.Stride)
+                bands.forEachIndexed { index, band ->
+                    Biquad.coefficients(band, sampleRate, coefficients, index * Biquad.Stride)
+                }
+                return FilterBank(bands.size, channels, coefficients, gain)
+            }
+        }
+    }
+
+    companion object {
+        private const val FadeSeconds = 0.03
+        private val EMPTY_BUFFER: ByteBuffer = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
     }
 }

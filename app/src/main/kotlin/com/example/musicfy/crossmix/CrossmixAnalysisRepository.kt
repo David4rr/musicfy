@@ -11,6 +11,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.HttpDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -50,6 +51,7 @@ class CrossmixAnalysisRepository(
 ) {
     private val memory = ConcurrentHashMap<String, TrackAnalysis>()
     private val inFlight = ConcurrentHashMap<String, Deferred<TrackAnalysis?>>()
+    private val failures = ConcurrentHashMap<String, String>()
     private val cacheDir = File(context.cacheDir, "crossmix-analysis-v2").also { it.mkdirs() }
 
     // one quiet thread: analysis must never compete with decoding the song that's playing
@@ -72,18 +74,32 @@ class CrossmixAnalysisRepository(
         // added and leave a stale (possibly failed) result behind for every later caller
         val job = inFlight.getOrPut(key) {
             scope.async(start = CoroutineStart.LAZY) {
+                val progress = Progress()
+                val timeoutMs = if (wholeTrack) 60_000L else 40_000L
                 try {
-                    usable(read(mediaId), wholeTrack)?.also { memory[mediaId] = it }
-                        ?: withTimeoutOrNull(if (wholeTrack) 60_000L else 40_000L) {
-                            decodeAndAnalyze(uri, mediaId, wholeTrack)
-                        }?.also { analysis ->
+                    usable(read(mediaId), wholeTrack)?.also { memory[mediaId] = it; failures.remove(mediaId) }
+                        ?: (
+                            withTimeoutOrNull(timeoutMs) { decodeAndAnalyze(uri, mediaId, wholeTrack, progress) }
+                                ?: null.also {
+                                    failures[mediaId] = "timed out after ${timeoutMs / 1_000} s with " +
+                                        "${progress.decodedUs / 1_000_000} s of audio decoded"
+                                }
+                            )?.also { analysis ->
+                            failures.remove(mediaId)
+                            android.util.Log.i(
+                                "Crossmix",
+                                "analysed $mediaId: ${analysis.analyzedMs / 1_000} s of audio in " +
+                                    "${(System.currentTimeMillis() - progress.startedAt) / 1_000} s, " +
+                                    "bpm ${analysis.bpm}, ${analysis.beatsMs.size} beats, complete=${analysis.complete}",
+                            )
                             // a whole-track result answers head requests too; never overwrite it with less
                             if (memory[mediaId]?.complete != true || analysis.complete) {
                                 memory[mediaId] = analysis
                                 write(mediaId, analysis)
                             }
                         }
-                } catch (_: Throwable) {
+                } catch (error: Throwable) {
+                    failures[mediaId] = error.message ?: error.javaClass.simpleName
                     null
                 } finally {
                     inFlight.remove(key)
@@ -97,10 +113,18 @@ class CrossmixAnalysisRepository(
     /** what's already known, without decoding anything */
     fun cached(mediaId: String): TrackAnalysis? = memory[mediaId]
 
+    /** why the last analysis of [mediaId] came back empty, if it did */
+    fun lastFailure(mediaId: String): String? = failures[mediaId]
+
+    private class Progress {
+        val startedAt = System.currentTimeMillis()
+        @Volatile var decodedUs = 0L
+    }
+
     private fun usable(analysis: TrackAnalysis?, wholeTrack: Boolean): TrackAnalysis? =
         analysis?.takeIf { !wholeTrack || it.complete }
 
-    private suspend fun decodeAndAnalyze(uri: Uri, mediaId: String, wholeTrack: Boolean): TrackAnalysis? {
+    private suspend fun decodeAndAnalyze(uri: Uri, mediaId: String, wholeTrack: Boolean, progress: Progress): TrackAnalysis {
         val analyzer = StreamingTrackAnalyzer()
         val limitUs = if (wholeTrack) MaxTrackMs * 1_000L else HeadMs * 1_000L
         val source = Media3MediaDataSource(dataSourceFactory(), uri, mediaId)
@@ -110,9 +134,10 @@ class CrossmixAnalysisRepository(
             extractor.setDataSource(source)
             val track = (0 until extractor.trackCount).firstOrNull {
                 extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-            } ?: return null
+            } ?: error("no audio track in the stream")
             val format = extractor.getTrackFormat(track)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: error("no audio format")
+            val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
             extractor.selectTrack(track)
             codec = MediaCodec.createDecoderByType(mime).apply {
                 configure(format, null, null, 0)
@@ -149,7 +174,7 @@ class CrossmixAnalysisRepository(
                         sampleRate = out.intOr(MediaFormat.KEY_SAMPLE_RATE, sampleRate)
                         channels = out.intOr(MediaFormat.KEY_CHANNEL_COUNT, channels)
                         val encoding = out.intOr(MediaFormat.KEY_PCM_ENCODING, android.media.AudioFormat.ENCODING_PCM_16BIT)
-                        if (encoding != android.media.AudioFormat.ENCODING_PCM_16BIT) return null
+                        if (encoding != android.media.AudioFormat.ENCODING_PCM_16BIT) error("decoder gives PCM encoding $encoding")
                     }
                     outputIndex >= 0 -> {
                         val buffer = codec.getOutputBuffer(outputIndex)
@@ -158,14 +183,22 @@ class CrossmixAnalysisRepository(
                             buffer.limit(info.offset + info.size)
                             resampler.push(buffer.order(ByteOrder.nativeOrder()).asShortBuffer(), channels, sampleRate, analyzer)
                             lastPresentationUs = info.presentationTimeUs
+                            progress.decodedUs = lastPresentationUs
                         }
                         codec.releaseOutputBuffer(outputIndex, false)
                         if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
                     }
                 }
             }
-            val complete = reachedEnd || lastPresentationUs >= MaxTrackMs * 1_000L
+            // the end of the data counts as the end of the song only if it's where the song ends:
+            // a stream cut short must never pass for a whole analysis
+            val wholeStream = reachedEnd && (durationUs <= 0L || lastPresentationUs >= durationUs - 3_000_000L)
+            val complete = wholeStream || lastPresentationUs >= MaxTrackMs * 1_000L
+            if (wholeTrack && !complete) {
+                error("stream ended at ${lastPresentationUs / 1_000_000} s of ${durationUs / 1_000_000} s")
+            }
             return analyzer.finish(complete = wholeTrack && complete)
+                ?: error("only ${lastPresentationUs / 1_000_000} s of audio came through")
         } finally {
             codec?.runCatching { stop() }
             codec?.runCatching { release() }
@@ -200,6 +233,7 @@ class CrossmixAnalysisRepository(
                     bassWeight = input.readFloat(),
                     minor = input.readBoolean(),
                 ),
+                vocal = input.readFloatArray(),
             )
         }
     }.getOrNull()
@@ -227,6 +261,7 @@ class CrossmixAnalysisRepository(
             out.writeFloat(analysis.vibe.brightness)
             out.writeFloat(analysis.vibe.bassWeight)
             out.writeBoolean(analysis.vibe.minor)
+            out.writeFloatArray(analysis.vocal)
         }
         // written whole, then swapped in: a crash mid-write can't leave a half file to misread
         temp.renameTo(target)
@@ -253,7 +288,8 @@ class CrossmixAnalysisRepository(
     private fun MediaFormat.intOr(key: String, default: Int): Int = if (containsKey(key)) getInteger(key) else default
 
     private companion object {
-        const val CacheVersion = 2
+        // 3: analyses cut short by a one-chunk stream were stored as whole ones. 4: the voice curve
+        const val CacheVersion = 4
         const val MaxCachedArray = 200_000
         const val TimeoutUs = 10_000L
         /** the next song: two minutes of possible entry points plus room for the blend after one */
@@ -292,6 +328,11 @@ private class MonoResampler {
 /**
  * MediaExtractor reading through a Media3 data source: the player's resolving, caching source,
  * so a YouTube id becomes its stream and cached bytes are never fetched twice.
+ *
+ * The resolver hands a stream it has only just looked up back as one 512 KB chunk (the player
+ * reads in chunks too), so the end of one open is not the end of the file: reading carries on
+ * from where it stopped until the stream itself has no more. The true size comes from the
+ * response's Content-Range, or from the cache when it served the whole remainder.
  */
 @UnstableApi
 private class Media3MediaDataSource(
@@ -302,16 +343,27 @@ private class Media3MediaDataSource(
     private var source: DataSource? = null
     private var position = 0L
     private var length = C.LENGTH_UNSET.toLong()
+    private var ended = false
 
     override fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, size: Int): Int {
         if (size == 0) return 0
         if (length != C.LENGTH_UNSET.toLong() && offset >= length) return -1
-        if (source == null || offset != position) reopen(offset)
-        val current = source ?: return -1
+        if (source == null || offset != position) {
+            if (!reopen(offset)) return -1
+        }
         var total = 0
+        var reopened = false
         while (total < size) {
+            val current = source ?: break
             val read = current.read(buffer, bufferOffset + total, size - total)
-            if (read == C.RESULT_END_OF_INPUT) break
+            if (read == C.RESULT_END_OF_INPUT) {
+                // the end of this open: the end of the file, or only of the chunk it was given
+                if (length != C.LENGTH_UNSET.toLong() && position >= length) break
+                if (reopened || ended || !reopen(position)) break
+                reopened = true
+                continue
+            }
+            reopened = false
             total += read
             position += read
         }
@@ -328,13 +380,36 @@ private class Media3MediaDataSource(
         source = null
     }
 
-    private fun reopen(offset: Long) {
+    /** false once there's nothing left to open: asked past the end of the stream */
+    private fun reopen(offset: Long): Boolean {
         close()
         val next = factory.createDataSource()
         val spec = DataSpec.Builder().setUri(uri).setKey(key).setPosition(offset).build()
-        val opened = next.open(spec)
-        if (opened != C.LENGTH_UNSET.toLong() && length == C.LENGTH_UNSET.toLong()) length = offset + opened
+        val opened = try {
+            next.open(spec)
+        } catch (error: HttpDataSource.InvalidResponseCodeException) {
+            runCatching { next.close() }
+            if (error.responseCode == 416 && offset > 0) {
+                ended = true
+                if (length == C.LENGTH_UNSET.toLong()) length = offset
+                return false
+            }
+            throw error
+        }
+        val headers = next.responseHeaders
+        totalFromContentRange(headers)?.let { length = it }
+        // nothing came from the network: the cache served it, and knows how much there is
+        if (length == C.LENGTH_UNSET.toLong() && headers.isEmpty() && opened != C.LENGTH_UNSET.toLong()) {
+            length = offset + opened
+        }
         source = next
         position = offset
+        return true
+    }
+
+    private fun totalFromContentRange(headers: Map<String, List<String>>): Long? {
+        val value = headers.entries.firstOrNull { it.key.equals("Content-Range", ignoreCase = true) }
+            ?.value?.firstOrNull() ?: return null
+        return value.substringAfterLast('/', "").trim().toLongOrNull()
     }
 }

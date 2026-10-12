@@ -50,7 +50,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -102,7 +101,6 @@ import com.example.musicfy.db.entities.Album
 import com.example.musicfy.db.entities.Artist
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
-import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.MediaMetadata
 import com.example.musicfy.ui.utils.resize
@@ -1550,70 +1548,16 @@ object Icon {
     }
 }
 
+/** Liked songs' cover at a fixed size: see [LikedCover] */
 @Composable
 fun LikedSongsThumbnail(
     size: Dp,
     shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
     modifier: Modifier = Modifier,
-
-    maxCovers: Int = 9,
 ) {
-    val database = LocalDatabase.current
-    val likedSongs by database.likedSongs(SongSortType.CREATE_DATE, descending = true)
-        .collectAsState(initial = emptyList())
-
-    val topSongs = remember(likedSongs, maxCovers) {
-        likedSongs.filter { it.song.thumbnailUrl != null }.take(maxCovers)
-    }
-
-    Box(
+    LikedCover(
         modifier = modifier
             .size(size)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer),
-        contentAlignment = Alignment.Center
-    ) {
-        if (topSongs.isNotEmpty()) {
-            val columns = if (topSongs.size >= maxCovers) 3 else if (topSongs.size >= 4) 2 else 1
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        rotationZ = 15f
-                        scaleX = 1.6f
-                        scaleY = 1.6f
-                    }
-                    .blur(8.dp)
-            ) {
-                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
-                    userScrollEnabled = false,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(topSongs.size) { index ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(topSongs[index].song.thumbnailUrl?.resize(256, 256))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.aspectRatio(1f)
-                        )
-                    }
-                }
-            }
-        }
-
-        Icon(
-            painter = painterResource(R.drawable.favorite_border),
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier
-                .size(size * 0.4f)
-                .graphicsLayer {
-                    shadowElevation = 8.dp.toPx()
-                }
-        )
-    }
+            .clip(shape),
+    )
 }

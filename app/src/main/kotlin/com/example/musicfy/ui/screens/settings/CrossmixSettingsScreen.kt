@@ -14,6 +14,7 @@ import com.example.musicfy.constants.CrossfadeEnabledKey
 import com.example.musicfy.constants.CrossfadeGaplessKey
 import com.example.musicfy.constants.CrossmixMode
 import com.example.musicfy.constants.CrossmixModeKey
+import com.example.musicfy.constants.CrossmixTestToolsKey
 import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.DefaultPlayerSeekBarSlider
 import com.example.musicfy.ui.component.SettingsGroup
@@ -43,6 +44,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
         CrossfadeGaplessKey,
         defaultValue = true,
     )
+    val (testTools, _) = rememberPreference(CrossmixTestToolsKey, defaultValue = false)
 
     // Users upgrading from the previous Crossfade switch land on the equivalent manual mode.
     val selectedMode = if (storedMode == CrossmixMode.OFF && crossfadeEnabled) {
@@ -58,6 +60,8 @@ fun CrossmixSettingsScreen(navController: NavController) {
             onCrossfadeDurationChange(AutoCrossfadeDurationSeconds)
         }
     }
+
+    val crossmixTools = crossmixTestItems(isVisible = testTools && selectedMode == CrossmixMode.CROSSMIX)
 
     fun modeControl(mode: CrossmixMode): @Composable () -> Unit = {
         RadioButton(
@@ -164,7 +168,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("How it mixes") },
-                        descriptionText = "Reads each song's tempo, beats and energy, then picks one of 25 transitions: beat-matched blends, bass swaps, filter sweeps, echo outs, backspins, tape stops and more",
+                        descriptionText = "Reads each song's tempo, beats, key, energy and where its voice is, then picks the one of 27 transitions that fits: songs that belong together run into each other on the beat, others drift away into the distance or behind a wall as the next comes in, and two voices never sing over each other",
                         icon = painterResource(R.drawable.graphic_eq),
                         isSubOption = true,
                         isVisible = selectedMode == CrossmixMode.CROSSMIX,
@@ -173,7 +177,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Disable for gapless albums") },
-                        descriptionText = "Keep consecutive tracks from the same album intact",
+                        descriptionText = "Album tracks that run straight into each other play through unmixed",
                         icon = painterResource(R.drawable.album),
                         isSubOption = true,
                         isVisible = selectedMode == CrossmixMode.CROSSMIX,
@@ -186,6 +190,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
                         },
                     )
                 )
+                crossmixTools.forEach { add(it.copy(isSubOption = true)) }
             },
         )
     }

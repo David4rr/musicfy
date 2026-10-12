@@ -2,6 +2,7 @@ package com.example.musicfy.crossmix
 
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 
@@ -110,7 +111,9 @@ enum class CrossmixStyle(
     GateFade("Gate fade", true, false, intArrayOf(16, 32)),
     HarmonicGlide("Harmonic glide", true, false, intArrayOf(32, 48, 64)),
     BreakdownBridge("Breakdown bridge", false, false, intArrayOf(16, 24), tailBeats = 4),
-    ThunderDrop("Thunder drop", false, true, intArrayOf(8, 16), tailBeats = 12);
+    ThunderDrop("Thunder drop", false, true, intArrayOf(8, 16), tailBeats = 12),
+    FarAway("Fade to far", false, false, intArrayOf(16, 24, 32), tailBeats = 8),
+    Dampen("Dampen", false, false, intArrayOf(8, 16, 24), tailBeats = 6);
 
     /**
      * fills [out] for one side at transition beat [beat] of a [length]-beat transition. beat 0 is
@@ -147,11 +150,11 @@ enum class CrossmixStyle(
 
             FilterSweep -> if (outgoing) {
                 out.highCutHz = sweepDown(smooth(p), OpenHz, 260f)
-                out.resonance = 0.707f + 1.1f * sin(PI.toFloat() * p)
+                out.resonance = 0.707f + 0.55f * sin(PI.toFloat() * p)
                 out.gain = fadeOut(ramp(p, 0.7f, 1f))
             } else {
                 out.lowCutHz = sweepDown(smooth(p), 1_400f, 0f)
-                out.resonance = 0.707f + 0.6f * sin(PI.toFloat() * p)
+                out.resonance = 0.707f + 0.35f * sin(PI.toFloat() * p)
                 out.gain = fadeIn(ramp(p, 0f, 0.5f))
             }
 
@@ -379,13 +382,36 @@ enum class CrossmixStyle(
 
             BreakdownBridge -> if (outgoing) {
                 out.highCutHz = sweepDown(ramp(p, 0f, 0.35f), OpenHz, 480f)
-                out.resonance = 1.1f
+                out.resonance = 0.85f
                 out.reverbSend = 0.3f * ramp(p, 0.2f, 0.7f)
                 out.gain = fadeOut(ramp(p, 0.4f, 0.85f))
             } else {
                 out.highCutHz = sweepUp(ramp(p, 0.6f, 1f), 480f, OpenHz)
-                out.resonance = 1.1f - 0.4f * ramp(p, 0.6f, 1f)
+                out.resonance = 0.85f - 0.15f * ramp(p, 0.6f, 1f)
                 out.gain = fadeIn(ramp(p, 0.15f, 0.55f))
+            }
+
+            FarAway -> {
+                // the song drifts off into the distance to one side, getting smaller and further
+                // into the room, while the next one arrives from far off on the other and comes close
+                val side = if (variation % 2 == 0) -1f else 1f
+                if (outgoing) {
+                    out.recede(smooth(ramp(p, 0f, 0.8f)), side)
+                    out.gain *= fadeOut(ramp(p, 0.55f, 1f))
+                } else {
+                    out.gain = fadeIn(ramp(p, 0f, 0.3f))
+                    out.recede(1f - smooth(ramp(p, 0.2f, 0.95f)), -side)
+                }
+            }
+
+            Dampen -> if (outgoing) {
+                // the way Apple Music leaves a song: closed off behind a wall, muffled and small,
+                // while the next one comes in clear in front of it
+                out.recede(0.85f * smooth(ramp(p, 0f, 0.35f)), 0f, room = 0.6f)
+                out.gain *= fadeOut(ramp(p, 0.4f, 1f))
+            } else {
+                out.gain = fadeIn(ramp(p, 0f, 0.3f))
+                out.recede(0.45f * (1f - smooth(ramp(p, 0f, 0.5f))), 0f, room = 0.4f)
             }
 
             ThunderDrop -> if (outgoing) {
@@ -415,6 +441,41 @@ enum class CrossmixStyle(
             out.noiseLevel = 0f
         }
     }
+
+    /**
+     * laid over a blend whose two songs would otherwise sing over each other: as the next song
+     * comes forward the outgoing voice is dampened and drawn away, and the next arrives from a
+     * little way off, so there's only ever one voice in front. called after [evaluate].
+     */
+    fun yieldVocals(role: CrossmixRole, beat: Float, length: Float, variation: Int, out: FxParams) {
+        val p = (beat / length).coerceIn(0f, 1f)
+        val side = if (variation % 2 == 0) -1f else 1f
+        if (role == CrossmixRole.Outgoing) {
+            out.recede(0.8f * smooth(ramp(p, 0.05f, 0.5f)), side, room = 0.7f)
+            out.reverbSend *= cutAt(beat, length + 1f)
+        } else if (beat >= 0f) {
+            out.recede(0.5f * (1f - smooth(ramp(p, 0f, 0.6f))), -side, room = 0.5f)
+        }
+    }
+}
+
+/**
+ * moves the sound away from the listener by [distance] (0 where it is, 1 far off): quieter, the
+ * highs and then the voice band soaked up the way air and walls soak them up, narrower until it's
+ * a point, drawn toward [side] (-1 left, 1 right), and more of it the room than the source. the
+ * room is fed before the level drops, so the further away, the wetter. at 0 nothing changes.
+ */
+fun FxParams.recede(distance: Float, side: Float, room: Float = 1f) {
+    val d = distance.coerceIn(0f, 1f)
+    if (d <= 0f) return
+    gain *= 10f.pow(-12f * d.pow(1.25f) / 20f)
+    // a soft slope, never a whistle: blended by distance so it can't jump where it takes over
+    highCutHz = minOf(highCutHz, sweep(d.pow(0.85f), OpenHz, 950f))
+    resonance += (0.62f - resonance) * d
+    midBand *= 1f - 0.4f * d
+    width *= 1f - 0.8f * d
+    pan = (pan + side * 0.6f * d).coerceIn(-1f, 1f)
+    reverbSend = max(reverbSend, 0.3f * room * d)
 }
 
 /** a cut sitting here is open: nothing filtered */

@@ -133,12 +133,6 @@ fun SearchScreen(
         { maxOf(collapse.value, activeProgress.value) }
     }
 
-    val blurActive by remember(browseListState, activeListState) {
-        derivedStateOf {
-            !browseListState.isScrollInProgress && !activeListState.isScrollInProgress
-        }
-    }
-
     val commit: (String) -> Unit = remember(navController, pauseSearchHistory) {
         { raw ->
             val text = raw.trim()
@@ -194,7 +188,8 @@ fun SearchScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { blurActive && progressProvider() > 0.01f })
+                // recorded while scrolling too, so the bar's blur never drops out mid-scroll
+                .glassRoot(glassState, isActive = { progressProvider() > 0.01f })
         ) {
             if (showBrowse) {
                 Box(
@@ -238,7 +233,6 @@ fun SearchScreen(
             progressProvider = progressProvider,
             pureBlack = pureBlack,
             title = "Search",
-            blurActive = blurActive,
             trailing = {
                 SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigateToTab("settings") })
             },

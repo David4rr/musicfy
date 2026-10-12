@@ -149,7 +149,6 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "youtube_sync" to "settings",
     "youtube_login" to "settings",
     "account_import/" to "settings",
-    "player_customize" to "settings",
     "equalizer" to "settings",
 )
 

@@ -423,8 +423,9 @@ private fun quad(a: Offset, control: Offset, b: Offset, t: Float): Offset {
 
 /**
  * "Added to Library and Liked Songs", tiny and grey above the song title, for a moment after a
- * like. Follows the title from the player up into the lyrics/queue header the same way the title
- * itself morphs there, so it's drawn by the player rather than by either page.
+ * like; and "Mixing…" in the same place for as long as Crossmix is playing the next song over the
+ * end of this one. Follows the title from the player up into the lyrics/queue header the same way
+ * the title itself morphs there, so it's drawn by the player rather than by either page.
  */
 @Composable
 fun LikedLabel(
@@ -437,31 +438,33 @@ fun LikedLabel(
     lyricsProgressProvider: () -> Float,
     sheetProgressProvider: () -> Float,
     modifier: Modifier = Modifier,
+    /** Crossmix is mixing into the next song: "Mixing…" holds the spot meanwhile. */
+    mixing: Boolean = false,
 ) {
-    var visible by remember { mutableStateOf(false) }
+    var likeVisible by remember { mutableStateOf(false) }
     LaunchedEffect(likeCount) {
         if (likeCount > 0) {
-            visible = true
+            likeVisible = true
             delay(LabelHoldMs)
-            visible = false
+            likeVisible = false
         }
     }
-    val shown by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = if (visible) 320 else 460),
+    val likeShown by animateFloatAsState(
+        targetValue = if (likeVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (likeVisible) 320 else 460),
         label = "likedLabel",
     )
+    // a like says its piece first: the mixing note steps aside for it, then comes back
+    val mixVisible = mixing && !likeVisible
+    val mixShown by animateFloatAsState(
+        targetValue = if (mixVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = if (mixVisible) 320 else 460),
+        label = "mixingLabel",
+    )
+    val shown = maxOf(likeShown, mixShown)
     if (shown <= 0.001f) return
 
-    Text(
-        text = "Added to Library and Liked Songs",
-        fontSize = 11.sp,
-        lineHeight = 13.sp,
-        fontWeight = FontWeight.Medium,
-        // Quieter than the artist line (white at 0.7).
-        color = Color.White.copy(alpha = 0.45f),
-        maxLines = 1,
-        softWrap = false,
+    Box(
         modifier = modifier.graphicsLayer {
             val source = sourceRectProvider()
             if (source == null) {
@@ -474,7 +477,25 @@ fun LikedLabel(
             translationX = x
             // Sits just above the title, dropping in a few dp as it appears.
             translationY = top - size.height - 2.dp.toPx() - (1f - shown) * 4.dp.toPx()
-            alpha = shown * ((sheetProgressProvider() - 0.9f) / 0.1f).coerceIn(0f, 1f)
+            alpha = ((sheetProgressProvider() - 0.9f) / 0.1f).coerceIn(0f, 1f)
         },
+    ) {
+        if (likeShown > 0.001f) NoteText("Added to Library and Liked Songs", likeShown)
+        if (mixShown > 0.001f) NoteText("Mixxing…", mixShown)
+    }
+}
+
+@Composable
+private fun NoteText(text: String, shown: Float) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        lineHeight = 13.sp,
+        fontWeight = FontWeight.Medium,
+        // Quieter than the artist line (white at 0.7).
+        color = Color.White.copy(alpha = 0.45f),
+        maxLines = 1,
+        softWrap = false,
+        modifier = Modifier.graphicsLayer { alpha = shown },
     )
 }

@@ -55,6 +55,7 @@ import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.importer.account.AccountService
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.example.musicfy.ui.screens.search.SearchColors
+import com.example.musicfy.ui.component.damageBoundary
 import com.example.musicfy.ui.screens.setup.onboarding.ProviderSquircle
 import com.example.musicfy.ui.screens.setup.onboarding.SquircleShape
 import kotlin.math.ceil
@@ -178,7 +179,9 @@ private fun ProviderMarquee(modifier: Modifier = Modifier) {
         label = "providerMarqueeTravel",
     )
 
-    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(tile).clipToBounds()) {
+    // moves for as long as the Library is open: bounded, that repaints the strip and not the whole
+    // screen and both glass bars on every frame
+    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(tile).clipToBounds().damageBoundary()) {
         // Enough sets to cover the card plus the one that slides out of view.
         val sets = ceil(maxWidth / setWidth).toInt() + 1
         Row(

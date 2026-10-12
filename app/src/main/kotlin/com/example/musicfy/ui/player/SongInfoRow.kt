@@ -77,6 +77,19 @@ fun SongInfoRow(
     onChevronPositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
     /** Sends a heart flying when the like button likes the song. */
     likeBurst: LikeBurstState? = null,
+    /** What the round button beside the chevron does (set in the editor's menu); a like out of the box. */
+    sideAction: com.example.musicfy.ui.player.studio.PlayerMenuAction = com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE,
+    /** [sideAction] is on (repeat on, shuffle on, a sleep timer running...), for its highlight. */
+    sideActive: Boolean = false,
+    onSideAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit = {},
+    /** Where the two round buttons sit, for the editor, which pulls copies of them forward. */
+    onSidePlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
+    onChevronPlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
+    /** On the two round buttons themselves: the editor lifts them off the row to edit them. */
+    sideModifier: Modifier = Modifier,
+    chevronModifier: Modifier = Modifier,
+    /** A tap on the title and artist: the song's details sheet (its artists, album, about). */
+    onSongInfoClick: (() -> Unit)? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val trackInfo by playerConnection.uiState.trackInfo.collectAsState()
@@ -111,6 +124,15 @@ fun SongInfoRow(
             modifier = Modifier
                 .weight(1f)
                 .onGloballyPositioned { onTitlePositioned(it.boundsInRoot()) }
+                .then(
+                    if (onSongInfoClick != null) {
+                        Modifier.clickable(
+                            interactionSource = null,
+                            indication = null,
+                            onClick = onSongInfoClick,
+                        )
+                    } else Modifier
+                )
 
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
@@ -185,20 +207,32 @@ fun SongInfoRow(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            PressScaleActionButton(
-                icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
-                tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),
-                containerColor = if (trackInfo.liked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
-                onClick = {
-                    if (likeBurst != null) {
-                        likeBurst.likeFromButton(LikeSlot.PLAYER, trackInfo.liked, playerConnection::toggleLike)
-                    } else {
-                        playerConnection.toggleLike()
-                    }
-                },
-                hasShadow = false,
-                modifier = Modifier.likeButtonTarget(likeBurst, LikeSlot.PLAYER),
-            )
+            val sidePlaced = (onSidePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier).then(sideModifier)
+            if (sideAction == com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE) {
+                PressScaleActionButton(
+                    icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
+                    tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),
+                    containerColor = if (trackInfo.liked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
+                    onClick = {
+                        if (likeBurst != null) {
+                            likeBurst.likeFromButton(LikeSlot.PLAYER, trackInfo.liked, playerConnection::toggleLike)
+                        } else {
+                            playerConnection.toggleLike()
+                        }
+                    },
+                    hasShadow = false,
+                    modifier = sidePlaced.likeButtonTarget(likeBurst, LikeSlot.PLAYER),
+                )
+            } else {
+                PressScaleActionButton(
+                    icon = sideAction.icon,
+                    tint = if (sideActive) Color.White else Color.White.copy(alpha = 0.85f),
+                    containerColor = if (sideActive) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
+                    onClick = { onSideAction(sideAction) },
+                    hasShadow = false,
+                    modifier = sidePlaced,
+                )
+            }
             val arrowRotation by animateFloatAsState(
                 targetValue = if (isExpandMenuOpen) 180f else 0f, 
                 label = "arrowRot",
@@ -228,7 +262,9 @@ fun SongInfoRow(
                 modifier = Modifier
                     .onGloballyPositioned { coords ->
                         onChevronPositioned(coords.boundsInRoot())
+                        onChevronPlaced?.invoke(coords)
                     }
+                    .then(chevronModifier)
                     .graphicsLayer {
                         rotationZ = arrowRotation
                         scaleX = arrowScale

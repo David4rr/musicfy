@@ -41,6 +41,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.media3.common.Player
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,8 +61,18 @@ fun PlayerProgressSlider(
      * holds the last position and does nothing.
      */
     active: Boolean = true,
+    /** Where the bar and the right-hand time sit, for the editor's copies of them. */
+    onSeekBarPlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
+    onEndTimePlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
+    /** On the bar and the end time themselves: the editor lifts them off to edit them. */
+    seekBarModifier: Modifier = Modifier,
+    endTimeModifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val endTimestamp by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.PlayerEndTimestampKey,
+        com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
+    )
     val progressFlow = playerConnection.uiState.progressState
     val progress by produceState(initialValue = progressFlow.value, active) {
         if (active) progressFlow.collect { value = it }
@@ -137,6 +148,8 @@ fun PlayerProgressSlider(
                 .fillMaxWidth()
                 .height(28.dp)
                 .padding(horizontal = PlayerHorizontalPadding)
+                .then(onSeekBarPlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier)
+                .then(seekBarModifier)
         )
     }
 
@@ -167,11 +180,17 @@ fun PlayerProgressSlider(
             }
         }
         Text(
-            text = if (durationKnown && !showLoading) makeTimeString(progress.duration) else "",
+            text = when {
+                !durationKnown || showLoading -> ""
+                endTimestamp == com.example.musicfy.constants.PlayerEndTimestamp.TIME_LEFT ->
+                    "-" + makeTimeString((progress.duration - displayedPosition).coerceAtLeast(0L))
+                else -> makeTimeString(progress.duration)
+            },
             style = timeStyle,
             color = timeColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = (onEndTimePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier).then(endTimeModifier),
         )
     }
 }

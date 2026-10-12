@@ -307,6 +307,7 @@ fun PopupSheetHost(
     content: @Composable () -> Unit,
 ) {
     val active = states.firstOrNull { it.isVisible }
+    val playerSheet = LocalPlayerBottomSheetState.current
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -321,6 +322,18 @@ fun PopupSheetHost(
                     scaleY = scale
                     shape = RoundedCornerShape((28f * p).dp)
                     clip = p > 0f
+                    // While the sheet moves, the app behind is drawn once into a layer and the
+                    // zoom moves that - the same as behind the player. Zoomed live, every frame
+                    // drew the whole app again at a new scale: each image, each line of text
+                    // rasterised afresh. Not over the open player, whose backdrop animates on
+                    // every frame anyway, so a layer there would only add a pass
+                    val moving = p > 0f && p < 1f
+                    val overPlayer = (playerSheet?.progress ?: 0f) > 0.001f
+                    compositingStrategy = if (moving && !overPlayer) {
+                        androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                    } else {
+                        androidx.compose.ui.graphics.CompositingStrategy.Auto
+                    }
                 }
         ) {
             content()

@@ -396,6 +396,13 @@ class MusicService :
         CrossmixAnalysisRepository(applicationContext) { createDataSourceFactory() }
     }
     private val crossmixDirector by lazy { CrossmixDirector(scope, CrossmixHost(), crossmixAnalysisRepository) }
+    /** Crossmix is playing two songs together right now, for the player's "Mixing…" note */
+    val crossmixMixing = MutableStateFlow(false)
+    /** what Crossmix last decided, in a line, for its test tools in Experimental */
+    val crossmixStatus = MutableStateFlow("")
+
+    /** plans this song's Crossmix hand-over, then jumps to just before it: for trying mixes out */
+    fun testCrossmix() = crossmixDirector.testMix()
 
     private data class CrossfadeConfig(
         val mode: CrossmixMode,
@@ -3904,7 +3911,8 @@ class MusicService :
             incoming.volume = if (isMuted.value) 0f else playerVolume.value
             incoming.seekTo(index, positionMs)
             incoming.playWhenReady = false
-            incoming.prepare()
+            // not prepared here: the director arms its renderer first, so not even the audio it
+            // buffers while paused gets through untouched
             return incoming
         }
 
@@ -3986,21 +3994,49 @@ class MusicService :
             unregisterEqualizer(incoming)
         }
 
-        override fun allowsCrossmix(): Boolean =
-            crossfadeEnabled &&
-                crossmixMode == CrossmixMode.CROSSMIX &&
-                !isCrossfading &&
-                castConnectionHandler?.isCasting?.value != true &&
-                !sleepTimer.pauseWhenSongEnd &&
-                !(crossfadeGapless && isNextItemGapless())
+        override fun crossmixBlocker(): String? = when {
+            !crossfadeEnabled -> "Crossfade is off"
+            crossmixMode != CrossmixMode.CROSSMIX -> "Crossfade is set to ${crossmixMode.name.lowercase()}, not Crossmix"
+            isCrossfading -> "A plain crossfade is running"
+            castConnectionHandler?.isCasting?.value == true -> "Casting: Crossmix waits until you're back"
+            sleepTimer.pauseWhenSongEnd -> "The sleep timer stops after this song"
+            else -> null
+        }
+
+        // with gapless albums on, songs from one album are checked for running into each other;
+        // the director only plays them straight through when their audio really does
+        override fun albumOf(index: Int): String? {
+            if (!crossfadeGapless || index !in 0 until player.mediaItemCount) return null
+            return player.getMediaItemAt(index).mediaMetadata.albumTitle?.toString()?.takeIf { it.isNotBlank() }
+        }
+
+        override fun onStatus(status: String) {
+            crossmixStatus.value = status
+        }
 
         override fun nextIndex(): Int =
             if (player.repeatMode == REPEAT_MODE_ONE) player.currentMediaItemIndex else player.nextMediaItemIndex
 
-        override suspend fun lyrics(mediaId: String): String? =
-            withContext(Dispatchers.IO) { runCatching { database.lyrics(mediaId).first()?.lyrics }.getOrNull() }
+        // the next song's lyrics usually aren't fetched yet: fetch them now (and keep them, as the
+        // player would on opening it), since synced lines say exactly where its voice comes in
+        override suspend fun lyrics(item: MediaItem): String? = withContext(Dispatchers.IO) {
+            val stored = runCatching { database.lyrics(item.mediaId).first()?.lyrics }.getOrNull()
+            if (stored != null) return@withContext stored.takeUnless { it == LyricsEntity.LYRICS_NOT_FOUND }
+            val metadata = item.metadata ?: return@withContext null
+            val found = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                runCatching { lyricsHelper.getLyrics(metadata) }.getOrNull()
+            } ?: return@withContext null
+            runCatching {
+                database.query { upsert(LyricsEntity(id = metadata.id, lyrics = found.lyrics, provider = found.provider)) }
+            }
+            found.lyrics.takeUnless { it == LyricsEntity.LYRICS_NOT_FOUND }
+        }
 
         override fun baseParameters(): PlaybackParameters = player.playbackParameters
+
+        override fun onMixingChanged(mixing: Boolean) {
+            crossmixMixing.value = mixing
+        }
     }
 
     companion object {

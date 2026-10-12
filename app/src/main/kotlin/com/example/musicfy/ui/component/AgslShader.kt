@@ -31,6 +31,17 @@ internal fun Any.setAgslUniform(name: String, first: Float, second: Float) {
 }
 
 @RequiresApi(33)
+internal fun Any.setAgslUniform(name: String, first: Float, second: Float, third: Float) {
+    (this as RuntimeShader).setFloatUniform(name, first, second, third)
+}
+
+/** For a `layout(color) uniform half4`: [color] is an sRGB ARGB int, converted for the shader. */
+@RequiresApi(33)
+internal fun Any.setAgslColorUniform(name: String, color: Int) {
+    (this as RuntimeShader).setColorUniform(name, color)
+}
+
+@RequiresApi(33)
 internal fun agslRenderEffect(shader: Any, inputName: String): RenderEffect =
     RenderEffect.createRuntimeShaderEffect(shader as RuntimeShader, inputName)
 

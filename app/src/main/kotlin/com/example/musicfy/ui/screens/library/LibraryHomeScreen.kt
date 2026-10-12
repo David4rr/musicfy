@@ -47,6 +47,7 @@ import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue
+import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.glassRoot
@@ -231,6 +232,7 @@ fun LibraryHomeScreen(
                     covers = likedSongs.map { it.song.thumbnailUrl },
                     onClick = { navController.navigate("auto_playlist/liked") },
                     sharedElementKey = "playlist-liked",
+                    art = { LikedCover(it) },
                     modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -283,10 +285,12 @@ fun LibraryScaffold(
         // Only the list is recorded. The top bar draws this recording as its glass, so recording
         // the bar too made the node draw itself: a native stack overflow the moment a scroll
         // settled with the title collapsed. The bar stays a sibling, as on Search.
+        // Recorded while scrolling too: the bar's blur stays up through a scroll instead of
+        // dropping out and coming back when the list settles.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { !listState.isScrollInProgress && collapseProvider() > 0.01f }),
+                .glassRoot(glassState, isActive = { collapseProvider() > 0.01f }),
         ) {
             LazyColumn(
                 state = listState,
@@ -309,7 +313,6 @@ fun LibraryScaffold(
             title = title,
             subtitle = subtitle,
             titleBlockHeight = if (subtitle != null) LibraryTitleBlockHeight else 62.dp,
-            blurActive = !listState.isScrollInProgress,
             trailing = trailing,
         ) {
             SearchField(

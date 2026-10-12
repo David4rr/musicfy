@@ -2,131 +2,48 @@
 
 package com.example.musicfy.eq
 
-import android.annotation.SuppressLint
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
 import com.example.musicfy.eq.data.ParametricEQ
-import com.example.musicfy.eq.data.SavedEQProfile
-import timber.log.Timber
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Hands the current equalizer design to every player's processor (a Crossmix runs two at once).
+ * A processor added later picks up whatever is current, so a new player sounds the same.
+ */
 @Singleton
+@OptIn(UnstableApi::class)
 class EqualizerService @Inject constructor() {
 
-    @SuppressLint("UnsafeOptInUsageError")
-    private val audioProcessors = mutableListOf<CustomEqualizerAudioProcessor>()
-    private var pendingProfile: SavedEQProfile? = null
-    private var shouldDisable: Boolean = false
+    private val audioProcessors = CopyOnWriteArrayList<CustomEqualizerAudioProcessor>()
 
-    companion object {
-        private const val TAG = "EqualizerService"
-    }
+    @Volatile private var current: ParametricEQ? = null
 
-    @OptIn(UnstableApi::class)
     fun addAudioProcessor(processor: CustomEqualizerAudioProcessor) {
         audioProcessors.add(processor)
-        Timber.tag(TAG).d("Audio processor added. Total: ${audioProcessors.size}")
-
-        if (shouldDisable) {
-            processor.disable()
-
-        } else if (pendingProfile != null) {
-            val profile = pendingProfile!!
-            applyProfileToProcessor(processor, profile)
-
-        }
+        current?.let(processor::applyProfile) ?: processor.disable()
     }
 
     fun removeAudioProcessor(processor: CustomEqualizerAudioProcessor) {
         audioProcessors.remove(processor)
     }
 
-    @OptIn(UnstableApi::class)
-    fun applyProfile(profile: SavedEQProfile): Result<Unit> {
-        if (audioProcessors.isEmpty()) {
-            Timber.tag(TAG)
-                .w("No audio processors set yet. Storing profile as pending: ${profile.name}")
-            pendingProfile = profile
-            shouldDisable = false
-            return Result.success(Unit)
-        }
-
-        pendingProfile = profile
-        shouldDisable = false
-
-        var success = true
-        var lastError: Exception? = null
-
+    /** null switches the equalizer off; either way the change is live and click-free */
+    fun apply(eq: ParametricEQ?) {
+        current = eq
         audioProcessors.forEach { processor ->
-            try {
-                applyProfileToProcessor(processor, profile)
-            } catch (e: Exception) {
-                success = false
-                lastError = e
-            }
+            if (eq != null) processor.applyProfile(eq) else processor.disable()
         }
-
-        return if (success) Result.success(Unit) else Result.failure(lastError ?: Exception("Unknown error"))
     }
 
-    private fun applyProfileToProcessor(processor: CustomEqualizerAudioProcessor, profile: SavedEQProfile) {
-        val parametricEQ = ParametricEQ(
-            preamp = profile.preamp,
-            bands = profile.bands
-        )
-        processor.applyProfile(parametricEQ)
-    }
+    fun disable() = apply(null)
 
-    @OptIn(UnstableApi::class)
-    fun disable() {
-        if (audioProcessors.isEmpty()) {
-            Timber.tag(TAG).w("No audio processors set yet. Storing disable as pending")
-            shouldDisable = true
-            pendingProfile = null
-            return
-        }
-
-        shouldDisable = true
-        pendingProfile = null
-
-        audioProcessors.forEach { processor ->
-            try {
-                processor.disable()
-            } catch (e: Exception) {
-                Timber.tag(TAG).e("Failed to disable equalizer: ${e.message}")
-            }
-        }
-        Timber.tag(TAG).d("Equalizer disabled on all processors")
-    }
-
-    fun isInitialized(): Boolean {
-        return audioProcessors.isNotEmpty()
-    }
-
-    @OptIn(UnstableApi::class)
-    fun isEnabled(): Boolean {
-        return audioProcessors.any { it.isEnabled() }
-    }
-
-    fun getEqualizerInfo(): EqualizerInfo {
-        return EqualizerInfo(
-            supportsUnlimitedBands = true,
-            maxBands = Int.MAX_VALUE,
-            description = "Custom ExoPlayer AudioProcessor with biquad filters"
-        )
-    }
+    fun isEnabled(): Boolean = current != null
 
     fun release() {
-
         audioProcessors.clear()
-        Timber.tag(TAG).d("Audio processor references cleared")
     }
 }
-
-data class EqualizerInfo(
-    val supportsUnlimitedBands: Boolean,
-    val maxBands: Int,
-    val description: String
-)

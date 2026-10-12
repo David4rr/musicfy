@@ -12,13 +12,6 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * What Crossmix knows about one track. All times are milliseconds into the track.
- *
- * [energy], [bass] and [brightness] are one value per second of [analyzedMs]; [complete] is false
- * when only the opening was decoded (the next song: Crossmix only ever enters it in its first two
- * minutes, so decoding the rest would be wasted work).
- */
 data class TrackAnalysis(
     val analyzedMs: Long,
     val complete: Boolean,
@@ -36,6 +29,7 @@ data class TrackAnalysis(
     val bass: FloatArray,
     val brightness: FloatArray,
     val vibe: Vibe,
+    val vocal: FloatArray = FloatArray(0),
 ) {
     val beatMs: Float? get() = bpm?.let { 60_000f / it }
 
@@ -99,10 +93,6 @@ data class LocalGrid(val firstBeatMs: Double, val periodMs: Double, val firstInd
     private fun Double.roundToLong(): Long = kotlin.math.round(this).toLong()
 }
 
-/**
- * the feel of a track, each 0..1. energy is loudness and density, danceability how strong and
- * regular the pulse is, brightness how much top end, bassWeight how much low end.
- */
 data class Vibe(
     val energy: Float,
     val danceability: Float,
@@ -111,10 +101,6 @@ data class Vibe(
     val minor: Boolean,
 )
 
-/**
- * Tempo, beats, key, loudness and vibe from decoded audio, fed as it decodes so a whole song is
- * never held in memory: only a handful of numbers per 12 ms frame are kept.
- */
 class StreamingTrackAnalyzer {
     // the last FrameSize samples, written round and round; read oldest-first for each frame
     private val ring = FloatArray(FrameSize)
@@ -133,6 +119,9 @@ class StreamingTrackAnalyzer {
     private val rms = GrowingFloats()
     private val low = GrowingFloats()
     private val centroid = GrowingFloats()
+    private val lead = GrowingFloats()
+    private val leadShare = GrowingFloats()
+    private val tonality = GrowingFloats()
 
     /** [samples] are mono at [SampleRate] */
     fun feed(samples: FloatArray, count: Int) {
@@ -162,6 +151,7 @@ class StreamingTrackAnalyzer {
         val rmsArray = rms.toArray()
         val silence = silenceBounds(rmsArray)
         val perSecond = perSecondCurves(rmsArray, lowArray, centroid.toArray())
+        val vocal = vocalCurve(lead.toArray(), leadShare.toArray(), tonality.toArray(), rmsArray)
 
         val vibe = Vibe(
             energy = overallEnergy(rmsArray, onset),
@@ -186,7 +176,47 @@ class StreamingTrackAnalyzer {
             bass = perSecond.second,
             brightness = perSecond.third,
             vibe = vibe,
+            vocal = vocal,
         )
+    }
+
+    private fun vocalCurve(lead: FloatArray, share: FloatArray, tonal: FloatArray, rms: FloatArray): FloatArray {
+        val seconds = (lead.size / FramesPerSecondF).toInt().coerceAtLeast(1)
+        val leadDb = FloatArray(seconds)
+        val shareMean = FloatArray(seconds)
+        val tonalMean = FloatArray(seconds)
+        val quiet = FloatArray(seconds)
+        val peakRms = (rms.maxOrNull() ?: 0f).coerceAtLeast(1e-6f)
+        for (s in 0 until seconds) {
+            val from = (s * FramesPerSecondF).toInt().coerceAtMost(lead.size)
+            val to = min(lead.size, ((s + 1) * FramesPerSecondF).toInt())
+            var power = 0.0; var shareSum = 0f; var tonalSum = 0f; var level = 0f
+            for (f in from until to) { power += lead[f]; shareSum += share[f]; tonalSum += tonal[f]; level = max(level, rms[f]) }
+            val count = max(1, to - from)
+            leadDb[s] = (10.0 * log10(power / count + 1e-12)).toFloat()
+            shareMean[s] = shareSum / count
+            tonalMean[s] = tonalSum / count
+            quiet[s] = if (level < peakRms * 0.03f) 0f else 1f
+        }
+        val leadN = normalised(leadDb)
+        val shareN = normalised(shareMean)
+        val tonalN = normalised(tonalMean)
+        val raw = FloatArray(seconds) { (0.45f * leadN[it] + 0.35f * shareN[it] + 0.2f * tonalN[it]) * quiet[it] }
+        // a voice holds for phrases, not single seconds: smooth over three
+        return FloatArray(seconds) { s ->
+            val a = raw[max(0, s - 1)]; val b = raw[s]; val c = raw[min(seconds - 1, s + 1)]
+            ((a + 2f * b + c) / 4f).coerceIn(0f, 1f)
+        }
+    }
+
+    /** each value placed between this song's 20th and 95th percentile: 0 its low, 1 its high */
+    private fun normalised(values: FloatArray): FloatArray {
+        if (values.isEmpty()) return values
+        val sorted = values.sortedArray()
+        val low = sorted[(sorted.size * 0.2f).toInt().coerceAtMost(sorted.size - 1)]
+        val high = sorted[(sorted.size * 0.95f).toInt().coerceAtMost(sorted.size - 1)]
+        val span = (high - low).takeIf { it > 1e-6f } ?: return FloatArray(values.size)
+        return FloatArray(values.size) { ((values[it] - low) / span).coerceIn(0f, 1f) }
     }
 
     private fun analyzeFrame() {
@@ -203,6 +233,9 @@ class StreamingTrackAnalyzer {
         var lowEnergy = 0f
         var totalEnergy = 0f
         var weighted = 0f
+        var voiceEnergy = 0f
+        var voiceLogSum = 0f
+        var voiceBins = 0
         for (bin in 1 until Bins) {
             val magnitude = sqrt(real[bin] * real[bin] + imaginary[bin] * imaginary[bin])
             // log-compressed flux: a quiet hi-hat still registers next to a loud pad
@@ -214,21 +247,33 @@ class StreamingTrackAnalyzer {
             totalEnergy += power
             weighted += power * bin
             if (bin <= LowBins) lowEnergy += power
+            if (bin in VoiceFromBin..VoiceToBin) {
+                voiceEnergy += power
+                voiceLogSum += ln(power + 1e-10f)
+                voiceBins++
+            }
             val frequency = bin * SampleRate.toFloat() / FrameSize
             if (frequency in 55f..5_000f) {
                 val midi = (69 + 12 * (ln(frequency / 440f) / ln(2f))).roundToInt()
                 chroma[(midi % 12 + 12) % 12] += magnitude
             }
         }
-        // each band's average rise, weighted toward the low end: the kick and the bass carry the
-        // beat, while hats (noise spread over hundreds of bins, between the beats) would otherwise
-        // outvote a kick that lives in five, and put the whole grid half a beat out
+        
         var onset = 0f
         for (band in BandWeights.indices) onset += BandWeights[band] * bandRise[band] / BandBins[band]
         flux.add(onset)
         rms.add(sqrt(energy / FrameSize).toFloat())
         low.add(if (totalEnergy > 0f) lowEnergy / totalEnergy else 0f)
         centroid.add(if (totalEnergy > 0f) (weighted / totalEnergy) * SampleRate / FrameSize else 0f)
+        lead.add(voiceEnergy)
+        leadShare.add(if (totalEnergy > 0f) voiceEnergy / totalEnergy else 0f)
+        // spectral flatness of the voice band: near 1 for noise (hats, breath), low for sung notes
+        val flatness = if (voiceBins > 0 && voiceEnergy > 0f) {
+            (exp(voiceLogSum / voiceBins) / (voiceEnergy / voiceBins)).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+        tonality.add(1f - flatness)
     }
 
     /** spectral flux with its local average taken away, so only the jumps remain */
@@ -494,6 +539,9 @@ class StreamingTrackAnalyzer {
         private const val FramesPerSecondF = 22_050f / 256f
         // bins up to ~150 Hz: the kick and the bass line
         private val LowBins = (150f * FrameSize / SampleRate).roundToInt()
+        /** where a singing voice's formants and consonants sit */
+        private val VoiceFromBin = (1_000f * FrameSize / SampleRate).roundToInt()
+        private val VoiceToBin = (4_000f * FrameSize / SampleRate).roundToInt()
         // onset bands: kick and bass, low mids, mids (snare body, vocals), highs (hats, air)
         private val BandEdgesHz = floatArrayOf(160f, 600f, 3_000f)
         private val BandWeights = floatArrayOf(1f, 0.8f, 0.55f, 0.2f)

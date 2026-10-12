@@ -46,7 +46,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.example.musicfy.ui.player.studio.playHoldRamp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -85,10 +88,20 @@ import com.example.musicfy.ui.component.BottomSheet
 import com.example.musicfy.ui.component.BottomSheetState
 import com.example.musicfy.ui.component.ExpandedSwipe
 import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.player.customize.PlayerCustomizeScreen
-import com.example.musicfy.ui.player.customize.PlayerEditOverlay
-import com.example.musicfy.ui.player.customize.PlayerEditPhase
-import com.example.musicfy.ui.player.customize.PlayerEditTarget
+import com.example.musicfy.ui.player.studio.EditTiles
+import com.example.musicfy.ui.player.studio.PlayerSelectorOverlay
+import com.example.musicfy.ui.player.studio.StudioEditOverlay
+import com.example.musicfy.ui.player.studio.StudioSheets
+import com.example.musicfy.ui.player.studio.StudioStage
+import com.example.musicfy.ui.player.studio.studioAnchor
+import com.example.musicfy.ui.player.studio.studioCaptureSource
+import com.example.musicfy.ui.player.studio.studioCardLayer
+import com.example.musicfy.ui.player.studio.studioCoverLayer
+import com.example.musicfy.ui.player.studio.studioMiddleLayer
+import com.example.musicfy.ui.player.studio.studioSheetLayer
+import com.example.musicfy.ui.player.studio.studioTransportLayer
+import com.example.musicfy.ui.player.studio.studioPiece
+import com.example.musicfy.ui.player.studio.holdAnywhere
 import com.example.musicfy.ui.player.menu.PlayerActionMenu
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
@@ -115,7 +128,6 @@ private val QueueButtonExtraHeight = 41.dp
 /** Chevron, shuffle and autoplay: three 34dp buttons, 7dp apart. */
 private val QueueButtonColumnHeight = 75.dp + QueueButtonExtraHeight
 
-private const val EnterBlurRadius = 34f
 
 /** A swipe on the strip below the seek bar commits past this travel, or past [PageSwipeFling]. */
 private val PageSwipeCommit = 40.dp
@@ -195,11 +207,59 @@ fun BottomSheetPlayer(
     val (infiniteQueue) = rememberPreference(InfiniteQueueKey, defaultValue = true)
     val (showPlayerBottomCard) = rememberPreference(ShowPlayerBottomCardKey, defaultValue = true)
 
-    var editPhase by remember { mutableStateOf(PlayerEditPhase.NONE) }
+    // the player studio: the selector the player shrinks into, and the flagship's in-place editor
+    val studio = com.example.musicfy.ui.player.studio.rememberPlayerStudioState()
+    val studioAnchors = remember { com.example.musicfy.ui.player.studio.StudioAnchors() }
+    val studioParts = com.example.musicfy.ui.player.studio.rememberStudioParts(studio, studioAnchors)
+    val menuLayout = com.example.musicfy.ui.player.studio.rememberPlayerMenuLayout()
+    val studioFrame = androidx.compose.ui.graphics.rememberGraphicsLayer()
+    val studioCapture = remember(studioFrame) { com.example.musicfy.ui.player.studio.StudioCapture(studioFrame) }
+    // the middle part's pieces (side button, chevron, seek bar, end time), lifted off the player
+    // while it's edited, so the editor moves the player's own drawing of each
+    val studioPieces = com.example.musicfy.ui.player.studio.rememberStudioPieces()
+    androidx.compose.runtime.SideEffect { studioParts.pieces = studioPieces }
+    // The middle part is a camera move over a still of the player: on opening it the pieces are
+    // lifted and the rest of the player is taken as one picture (the camera waits for it, a frame
+    // or two); the live player stops drawing under it until the camera is back out.
+    LaunchedEffect(studio, studioCapture, studioPieces) {
+        androidx.compose.runtime.snapshotFlow { studio.stage == StudioStage.MIDDLE || studio.stage == StudioStage.MENU }
+            .collectLatest { inMiddle ->
+                if (!inMiddle) {
+                    androidx.compose.runtime.snapshotFlow { studio.middle.value }.first { it < 0.002f }
+                    studio.sheetCovered = false
+                    // the live player is back under the still for a frame before the pieces go home
+                    androidx.compose.runtime.withFrameNanos { }
+                    studioPieces.lifted = false
+                    studioCapture.image = null
+                    studioCapture.soft = null
+                    return@collectLatest
+                }
+                if (studioCapture.image != null) return@collectLatest
+                studio.middle.value = 0f
+                studioPieces.lifted = true
+                studioCapture.recording = true
+                androidx.compose.runtime.withFrameNanos { }
+                androidx.compose.runtime.withFrameNanos { }
+                val frame = runCatching { studioFrame.toImageBitmap() }.getOrNull()
+                studioCapture.recording = false
+                studioCapture.image = frame
+                if (frame != null) studio.sheetCovered = true
+                studio.middle.animateTo(1f)
+                if (frame != null) {
+                    studioCapture.soft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        runCatching { com.example.musicfy.ui.player.studio.softBackdrop(frame) }.getOrNull()
+                    }
+                }
+            }
+    }
+    var showPlaybackSpeed by remember { mutableStateOf(false) }
+    var showDeviceOutput by remember { mutableStateOf(false) }
 
     var showExpandMenu by remember { mutableStateOf(false) }
     var seeVideo by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
+    // The title and artist's sheet: the artists, the album, about the song
+    var showSongDetails by remember { mutableStateOf(false) }
 
     var showActionMenu by remember { mutableStateOf(false) }
     // Which surface opened the menu. The lyrics tools only appear when it came from the lyrics
@@ -208,50 +268,87 @@ fun BottomSheetPlayer(
 
     val menuReveal = remember { mutableFloatStateOf(0f) }
 
-    var showEditHint by remember { mutableStateOf(false) }
-    val coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
+    var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
     val (playerStyle, onPlayerStyleChange) = rememberEnumPreference(
         com.example.musicfy.constants.PlayerStyleKey,
         com.example.musicfy.constants.PlayerStyle.DEFAULT,
     )
     val controlsDrawShift = if (coverStyle == PlayerCoverStyle.EDGE_TO_EDGE) ControlsDrawShift else 0.dp
-    val backgroundStyle by rememberEnumPreference(
+    var backgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         PlayerBackgroundStyle.COVER_GRADIENT,
     )
+    // a style stored by the ones these replaced lands on its successor
+    val (storedPlayerStyle, onStoredPlayerStyle) = rememberPreference(com.example.musicfy.constants.PlayerStyleKey, "")
+    LaunchedEffect(storedPlayerStyle) {
+        com.example.musicfy.constants.PlayerStyle.fromStored(storedPlayerStyle)?.let { onStoredPlayerStyle(it.name) }
+    }
 
     var coverArtRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var controlsRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var bottomCardRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
 
-    LaunchedEffect(editPhase) {
-        if (editPhase != PlayerEditPhase.NONE) transition.close()
+    val studioEngaged by remember { derivedStateOf { studio.engaged } }
+    LaunchedEffect(studioEngaged) {
+        if (studioEngaged) transition.close()
     }
-
-    val enterBlur = remember { androidx.compose.animation.core.Animatable(0f) }
-    LaunchedEffect(editPhase) {
-        enterBlur.animateTo(
-            targetValue = if (editPhase == PlayerEditPhase.ENTERING) EnterBlurRadius else 0f,
-            animationSpec = tween(
-                durationMillis = 360,
-                easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f),
-            ),
+    val playerStyles = remember { com.example.musicfy.constants.PlayerStyle.entries.toList() }
+    val currentPlayerStyleForStudio by androidx.compose.runtime.rememberUpdatedState(playerStyle)
+    val openStudio: () -> Unit = remember(studio) {
+        {
+            showActionMenu = false
+            showExpandMenu = false
+            studio.open(playerStyles.indexOf(currentPlayerStyleForStudio).coerceAtLeast(0))
+        }
+    }
+    // a hold opens it with a buzz rising from soft to strong, the selector arriving on the peak
+    val studioContext = androidx.compose.ui.platform.LocalContext.current
+    val studioScope = androidx.compose.runtime.rememberCoroutineScope()
+    val holdToStudio: () -> Unit = remember(openStudio, studioContext, studioScope) {
+        var pending: kotlinx.coroutines.Job? = null
+        {
+            if (!studio.engaged && pending?.isActive != true) {
+                studioContext.playHoldRamp()
+                pending = studioScope.launch {
+                    kotlinx.coroutines.delay(com.example.musicfy.ui.player.studio.HoldRampMs)
+                    openStudio()
+                }
+            }
+        }
+    }
+    // "Customize player" in settings: the player opens, then shrinks into the selector
+    val studioRequest by playerConnection.studioRequests.collectAsState()
+    val handledStudioRequest = remember { androidx.compose.runtime.mutableLongStateOf(playerConnection.studioRequests.value) }
+    LaunchedEffect(studioRequest) {
+        if (studioRequest == handledStudioRequest.longValue) return@LaunchedEffect
+        handledStudioRequest.longValue = studioRequest
+        state.expandSoft()
+        androidx.compose.runtime.snapshotFlow { state.isExpanded }.first { it }
+        kotlinx.coroutines.delay(180)
+        openStudio()
+    }
+    val styleActions = remember(openStudio) {
+        com.example.musicfy.ui.player.styles.StyleActions(
+            onOtherMenu = {
+                // the styles that perform the lyrics get the lyrics tools too: provider, translation
+                menuFromLyrics = currentPlayerStyleForStudio == PlayerStyle.POSTER ||
+                    currentPlayerStyleForStudio == PlayerStyle.LYRICS
+                showActionMenu = true
+            },
+            onEditPlayer = openStudio,
         )
-    }
-
-    val enterBlurActive by remember {
-        derivedStateOf { editPhase == PlayerEditPhase.ENTERING || enterBlur.value > 0.01f }
     }
 
     LaunchedEffect(state.isExpanded) {
         if (!state.isExpanded) {
-            editPhase = PlayerEditPhase.NONE
+            studio.reset()
 
             showActionMenu = false
             menuReveal.floatValue = 0f
             showExpandMenu = false
             likeBurst.clear()
             showSleepTimer = false
+            showSongDetails = false
         }
     }
 
@@ -307,8 +404,7 @@ fun BottomSheetPlayer(
     var queueImmersive by remember { mutableStateOf(false) }
     val controlsHidden by animateFloatAsState(
         targetValue = if (
-            (lyricsImmersive && showLyrics) || (queueImmersive && showQueue) ||
-            editPhase == PlayerEditPhase.CUSTOMIZING
+            (lyricsImmersive && showLyrics) || (queueImmersive && showQueue)
         ) 1f else 0f,
         animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)),
         label = "lyricsControlsHide",
@@ -323,21 +419,45 @@ fun BottomSheetPlayer(
     // switching pages crossfades the content under a header that stays put.
     val lyricsPageProgress by remember { derivedStateOf { transition.lyricsProgress.coerceIn(0f, 1f) } }
     val queuePageProgress by remember { derivedStateOf { transition.queueProgress.coerceIn(0f, 1f) } }
-    val lyricsPageMounted by remember { derivedStateOf { lyricsPageProgress > 0.001f } }
-    val queuePageMounted by remember { derivedStateOf { queuePageProgress > 0.001f } }
+    // Also while the page is being built, just before it grows (PlayerPageTransition.preparing)
+    val lyricsPageMounted by remember {
+        derivedStateOf { lyricsPageProgress > 0.001f || transition.preparing == PlayerPage.LYRICS }
+    }
+    val queuePageMounted by remember {
+        derivedStateOf { queuePageProgress > 0.001f || transition.preparing == PlayerPage.QUEUE }
+    }
 
     val lyricsMounted by remember { derivedStateOf { lyricsProgress > 0.001f } }
 
+    // Counted from the moment the page is being built for its open: it then mounts already in its
+    // morphing state, instead of every row recomposing as the flag flips in the open's first frame
     val lyricsMorphing by remember {
-        derivedStateOf { lyricsProgress > 0.001f && lyricsProgress < 0.999f }
+        derivedStateOf {
+            (lyricsProgress > 0.001f && lyricsProgress < 0.999f) || transition.preparing == PlayerPage.LYRICS
+        }
     }
     val lyricsButtonMounted by remember { derivedStateOf { lyricsProgress < 0.999f } }
-    val deckMounted by remember { derivedStateOf { controlsHidden < 0.99f } }
+    // Also built just before a page closes, while the deck is still hidden (preparingClose), and
+    // kept from then on: with no page open the controls are showing or on their way back
+    val deckMounted by remember {
+        derivedStateOf { controlsHidden < 0.99f || transition.preparingClose || transition.page == PlayerPage.NONE }
+    }
+    androidx.compose.runtime.SideEffect {
+        transition.closeNeedsPreparing = { showPlayerBottomCard && controlsHidden >= 0.99f }
+    }
     val controlsInert by remember { derivedStateOf { controlsHidden > 0.99f } }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
+        val studioStatusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        androidx.compose.runtime.SideEffect {
+            studioParts.width = with(density) { screenWidth.toPx() }
+            studioParts.height = with(density) { screenHeight.toPx() }
+            studioParts.statusTop = with(density) { studioStatusTop.toPx() }
+            studioParts.density = density
+            studioParts.fullCover = coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
+        }
         val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
         val horizontalOffsetProvider = remember(state) { { state.horizontalOffset } }
 
@@ -366,8 +486,7 @@ fun BottomSheetPlayer(
                 private fun distance() = (morph.cardRect?.top ?: (screenHeightPx * 0.85f)).coerceAtLeast(1f)
 
                 /** The alternate styles and the editor draw and handle their own screen. */
-                private fun owned() = currentPlayerStyle == PlayerStyle.DEFAULT &&
-                    editPhase == PlayerEditPhase.NONE
+                private fun owned() = currentPlayerStyle == PlayerStyle.DEFAULT && !studio.engaged
 
                 /** [start] (root) is on or below the seek bar, with the controls actually showing. */
                 private fun inControlStrip(start: Offset): Boolean {
@@ -392,7 +511,8 @@ fun BottomSheetPlayer(
                             } else {
                                 PlayerSwipe.NONE
                             }
-                        inControlStrip(start) -> if (up) PlayerSwipe.OPEN_OTHER else PlayerSwipe.BACK
+                        // down closes the player, wherever it starts (canCollapseFrom)
+                        inControlStrip(start) -> if (up) PlayerSwipe.OPEN_OTHER else PlayerSwipe.NONE
                         else -> PlayerSwipe.NONE
                     }
                     if (mode == PlayerSwipe.NONE) return false
@@ -425,14 +545,48 @@ fun BottomSheetPlayer(
                     }
                 }
 
-                override fun canCollapseFrom(start: Offset): Boolean = !(owned() && inControlStrip(start))
+                // a swipe down closes the player from anywhere on it - the cover, the controls, the
+                // card - unless a page's own swipe took it first (onStart, above)
+                override fun canCollapseFrom(start: Offset): Boolean = true
+            }
+        }
+
+        // what the round buttons do: the side button by the chevron and the chevron's menu, each
+        // set to one of these in the editor
+        fun menuActionActive(action: com.example.musicfy.ui.player.studio.PlayerMenuAction): Boolean = when (action) {
+            com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE -> trackInfo.liked
+            com.example.musicfy.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> playerConnection.service.sleepTimer.isActive
+            com.example.musicfy.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo
+            com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT -> transportState.repeatMode != Player.REPEAT_MODE_OFF
+            com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE -> transportState.shuffleModeEnabled
+            else -> false
+        }
+        val onMenuAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit = { action ->
+            when (action) {
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE ->
+                    likeBurst.likeFromButton(LikeSlot.PLAYER, trackInfo.liked, playerConnection::toggleLike)
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.OTHER_MENU -> {
+                    // The lyrics tools are in this menu now (no button in the lyrics header).
+                    menuFromLyrics = showLyrics
+                    showActionMenu = true
+                }
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> showSleepTimer = true
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo = !seeVideo
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT -> playerConnection.player.toggleRepeatMode()
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE ->
+                    playerConnection.player.shuffleModeEnabled = !playerConnection.player.shuffleModeEnabled
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.LYRICS -> transition.open(PlayerPage.LYRICS)
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.QUEUE -> transition.open(PlayerPage.QUEUE)
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.SPEED -> showPlaybackSpeed = true
+                com.example.musicfy.ui.player.studio.PlayerMenuAction.OUTPUT -> showDeviceOutput = true
             }
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = menuReveal.floatValue }
+                // behind the player while it's shrunk into a card or a box, too
+                .graphicsLayer { alpha = if (studio.engaged) 1f else menuReveal.floatValue }
                 .background(Color.Black)
         )
 
@@ -451,15 +605,22 @@ fun BottomSheetPlayer(
                         clip = true
                     }
                 }
+                .then(Modifier.studioSheetLayer(studio))
+                .then(Modifier.studioCaptureSource(studioCapture))
+                // holding anywhere on the open flagship opens the studio, not just the cover and card.
+                // Only attached while open: this box is full screen and sits above the app, so a
+                // pointer handler on it took every touch meant for the app under the mini player
                 .then(
-                if (enterBlurActive) {
-                    Modifier.graphicsLayer {
-                        renderEffect = enterBlurEffect(enterBlur.value)
-                    }
-                } else Modifier
-            ),
+                    if (!state.isExpanded) Modifier else Modifier.holdAnywhere(
+                        enabled = {
+                            state.isExpanded && currentPlayerStyle == PlayerStyle.DEFAULT && !studio.engaged &&
+                                transition.page == PlayerPage.NONE && !showExpandMenu && !showActionMenu
+                        },
+                        onHold = holdToStudio,
+                    )
+                ),
 
-            isExpandable = editPhase == PlayerEditPhase.NONE,
+            isExpandable = !studioEngaged,
             isPillTransition = true,
             expandedSwipe = swipe,
             pureBlack = pureBlack,
@@ -481,16 +642,25 @@ fun BottomSheetPlayer(
                     modifier = Modifier.fillMaxSize(),
                     coverStyle = coverStyle,
                     backgroundStyle = backgroundStyle,
-                    editMode = editPhase != PlayerEditPhase.NONE,
-                    onLongPressCover = { editPhase = PlayerEditPhase.STYLE_SELECT },
+                    editMode = studioEngaged,
+                    // the editor's top bar frosts what's under it, so the glass keeps capturing there
+                    glassActiveInEdit = { studio.stage >= StudioStage.EDIT && studio.selector.value < 0.01f },
+                    // another style draws the open player itself: none of the flagship runs behind it
+                    alternateStyle = playerStyle != PlayerStyle.DEFAULT,
+                    onLongPressCover = holdToStudio,
+                    studioArtModifier = if (playerStyle == PlayerStyle.DEFAULT) {
+                        Modifier
+                            .then(Modifier.studioAnchor(studioAnchors) { it.cover })
+                            .then(Modifier.studioCoverLayer(studioParts))
+                    } else Modifier,
                     onDoubleTapCover = { position ->
-                        if (editPhase == PlayerEditPhase.NONE) {
+                        if (!studioEngaged) {
                             likeBurst.likeFromDoubleTap(position, trackInfo.liked, playerConnection::toggleLike)
                         }
                     },
                     onArtBoundsChanged = { coverArtRect = it },
                 )
-                MorphingSongInfo(
+                if (playerStyle == PlayerStyle.DEFAULT) MorphingSongInfo(
                     trackInfo = trackInfo,
                     lyricsProgressProvider = { lyricsProgress },
                     sourceRectProvider = { songInfoSourceRect },
@@ -499,8 +669,9 @@ fun BottomSheetPlayer(
                     targetY = statusBarTopInset + 38.dp,
                 )
                 // Above the title after a like, moving with it into the lyrics/queue header.
-                LikedLabel(
+                if (playerStyle == PlayerStyle.DEFAULT) LikedLabel(
                     likeCount = likeBurst.likeCount,
+                    mixing = playerConnection.isCrossmixing.collectAsState().value,
                     sourceRectProvider = { songInfoSourceRect },
                     headerTitleX = LyricsHeaderArtX + LyricsHeaderArtSize + 18.dp,
                     headerTitleY = statusBarTopInset + 38.dp,
@@ -520,56 +691,52 @@ fun BottomSheetPlayer(
             // of the default composition - blur, morphing cover, controls - runs while one is
             // active.
             if (playerStyle != com.example.musicfy.constants.PlayerStyle.DEFAULT) {
-                val stylePalette = com.example.musicfy.ui.theme.ArtworkPalette.from(
-                    com.example.musicfy.LocalArtworkColor.current
-                )
                 // The alternate styles draw their own full screen, which meant they also swallowed
                 // the player's own gestures - there was no way to close them or reach the editor.
                 // Both live here so every style gets them for free.
+                // only on the open player: collapsed into the pill, these swallowed the swipe up and
+                // the tap that open it
+                val styleOpen = state.isExpanded
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
+                        .pointerInput(styleOpen) {
+                            if (!styleOpen) return@pointerInput
                             detectVerticalDragGestures(
-                                onVerticalDrag = { change, amount ->
-                                    // Only the top strip pulls the sheet down, so a drag lower on
-                                    // the screen is still free for the style's own gestures.
-                                    if (change.position.y < size.height * 0.25f && amount > 14f) {
-                                        state.collapseSoft()
-                                    }
+                                onVerticalDrag = { _, amount ->
+                                    // a swipe down anywhere on a style closes the player, the same
+                                    // as on the flagship; the styles' own swipes are sideways
+                                    if (amount > 6f) state.collapseSoft()
                                 },
                             )
                         }
-                        .pointerInput(Unit) {
+                        .pointerInput(styleOpen) {
+                            if (!styleOpen) return@pointerInput
                             detectTapGestures(
-                                onLongPress = { editPhase = PlayerEditPhase.STYLE_SELECT },
+                                onLongPress = { holdToStudio() },
                             )
                         },
                 ) {
-                when (playerStyle) {
-                    com.example.musicfy.constants.PlayerStyle.LYRICS_ABSTRACT ->
-                        com.example.musicfy.ui.player.styles.LyricsAbstractStyle(
-                            surface = stylePalette.surface,
-                            accent = stylePalette.accent,
-                            onOpenMenu = { showActionMenu = true },
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.example.musicfy.ui.player.styles.LocalStyleInteractive provides styleOpen,
+                    ) {
+                        com.example.musicfy.ui.player.styles.AlternatePlayerStyle(
+                            style = playerStyle,
+                            actions = styleActions,
                             modifier = Modifier.fillMaxSize(),
                         )
-
-                    com.example.musicfy.constants.PlayerStyle.SIMPLE,
-                    com.example.musicfy.constants.PlayerStyle.SIMPLE_COMPACT ->
-                        com.example.musicfy.ui.player.styles.SimplePlayerStyle(
-                            compact = playerStyle == com.example.musicfy.constants.PlayerStyle.SIMPLE_COMPACT,
-                            surface = stylePalette.surface,
-                            played = stylePalette.container,
-                            onOpenMenu = { showActionMenu = true },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-
-                    com.example.musicfy.constants.PlayerStyle.DEFAULT -> Unit
-                }
+                    }
                 }
                 return@BottomSheet
             }
+
+            // what the studio measures the flagship's parts against: the sheet itself, so the
+            // sheet shrinking into a selector card doesn't move them
+            Spacer(
+                modifier = Modifier
+                    .matchParentSize()
+                    .onGloballyPositioned { studioAnchors.root = it },
+            )
 
             SeamBlur(
                 glassState = morphingGlassState,
@@ -631,13 +798,15 @@ fun BottomSheetPlayer(
                     transition = transition,
                     morph = morph,
                     onOpen = { transition.open(it) },
-                    onLongPress = { editPhase = PlayerEditPhase.STYLE_SELECT },
+                    onLongPress = holdToStudio,
 
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
 
                         .onGloballyPositioned { bottomCardRect = it.boundsInRoot() }
                         .padding(horizontal = 26.dp)
+                        .then(Modifier.studioAnchor(studioAnchors) { it.card })
+                        .then(Modifier.studioCardLayer(studioParts))
 
                         .graphicsLayer {
                             alpha = 1f - controlsHidden
@@ -646,7 +815,7 @@ fun BottomSheetPlayer(
                 )
             }
 
-            if (lyricsButtonMounted && editPhase == PlayerEditPhase.NONE) {
+            if (lyricsButtonMounted && !studioEngaged) {
                 // Removed as per request
             }
 
@@ -714,11 +883,14 @@ fun BottomSheetPlayer(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Box(
-                        modifier = Modifier.graphicsLayer {
-                            alpha = 1f - lyricsProgress
-                            // Drifts up as it hands its title to the header.
-                            translationY = -lyricsProgress * TitleRowDrift.toPx()
-                        }
+                        modifier = Modifier
+                            .studioAnchor(studioAnchors) { it.songInfo }
+                            .studioMiddleLayer(studioParts) { it.songInfo }
+                            .graphicsLayer {
+                                alpha = 1f - lyricsProgress
+                                // Drifts up as it hands its title to the header.
+                                translationY = -lyricsProgress * TitleRowDrift.toPx()
+                            }
                     ) {
                         SongInfoRow(
                             // Only while the sheet is up: during a slide the title's root position
@@ -730,6 +902,15 @@ fun BottomSheetPlayer(
                             hideChevron = lyricsMounted,
                             onToggleExpandMenu = { showExpandMenu = !showExpandMenu },
                             likeBurst = likeBurst,
+                            sideAction = menuLayout.side,
+                            sideActive = menuActionActive(menuLayout.side),
+                            onSideAction = onMenuAction,
+                            // measured only on the plain player: in the editor they're moving with it
+                            onSidePlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.sideButton, it) },
+                            onChevronPlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.chevron, it) },
+                            sideModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.SIDE),
+                            chevronModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.CHEVRON),
+                            onSongInfoClick = { if (!studioEngaged) showSongDetails = true },
                         )
                     }
 
@@ -859,47 +1040,30 @@ fun BottomSheetPlayer(
                                     lyricsBottomInset = inset
                                 }
                             }
+                            .studioAnchor(studioAnchors) { it.slider }
+                            .studioMiddleLayer(studioParts) { it.slider }
                     ) {
-                        PlayerProgressSlider(active = sheetShowing)
+                        PlayerProgressSlider(
+                            active = sheetShowing,
+                            onSeekBarPlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.seekBar, it) },
+                            onEndTimePlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.endTime, it) },
+                            seekBarModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.SEEK_BAR),
+                            endTimeModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.END_TIME),
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(transportSpacer))
 
-                PlayerTransportRow()
-            }
-
-            if (editPhase == PlayerEditPhase.SELECTING) {
-                PlayerEditOverlay(
-                    coverRect = coverArtRect,
-                    controlsRect = controlsRect,
-                    bottomCardRect = bottomCardRect,
-                    onSelect = { target ->
-
-                        if (target == PlayerEditTarget.COVER) {
-                            editPhase = PlayerEditPhase.CUSTOMIZING
-                        }
-                    },
-                    onDismiss = { editPhase = PlayerEditPhase.NONE },
-                    modifier = Modifier.fillMaxSize(),
+                PlayerTransportRow(
+                    modifier = Modifier
+                        .studioAnchor(studioAnchors) { it.transport }
+                        .studioTransportLayer(studioParts)
                 )
             }
 
-            if (editPhase == PlayerEditPhase.CUSTOMIZING) {
-                PlayerCustomizeScreen(
-
-                    onBack = {
-                        editPhase = if (showEditHint) {
-                            showEditHint = false
-                            PlayerEditPhase.NONE
-                        } else {
-                            PlayerEditPhase.SELECTING
-                        }
-                    },
-                    showLongPressHint = showEditHint,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            // the editor's tiles: inside the sheet, so they shrink and grow with it
+            EditTiles(studioParts)
         }
 
         // Above the player and its controls, so a heart can fly over everything on its way home.
@@ -908,16 +1072,9 @@ fun BottomSheetPlayer(
         ExpandMenuOverlay(
             visible = showExpandMenu,
             onDismiss = { showExpandMenu = false },
-            onOtherMenuClick = {
-                // The lyrics tools are in this menu now (no button in the lyrics header).
-                menuFromLyrics = showLyrics
-                showActionMenu = true
-            },
-            onSleepTimerClick = { showSleepTimer = true },
-            sleepTimerActive = playerConnection.service.sleepTimer.isActive,
-            seeVideo = seeVideo,
-            onSeeVideoToggle = { seeVideo = !seeVideo },
-            onRepeatClick = { playerConnection.player.toggleRepeatMode() },
+            slots = menuLayout.slots,
+            isActive = ::menuActionActive,
+            onAction = onMenuAction,
             repeatMode = transportState.repeatMode,
             chevronRect = if (showLyrics || showQueue) lyricsChevronRect ?: chevronButtonRect else chevronButtonRect,
             screenWidth = screenWidth,
@@ -946,6 +1103,24 @@ fun BottomSheetPlayer(
             )
         }
 
+        if (showSongDetails) {
+            // Opening an artist or the album leaves the player: it closes on its way to the page,
+            // the way the song menus' "view artist" does
+            com.example.musicfy.ui.player.menu.SongDetailsSheet(
+                onDismiss = { showSongDetails = false },
+                onOpenArtist = { artistId ->
+                    showSongDetails = false
+                    navController.navigate("artist/$artistId")
+                    state.collapseSoft()
+                },
+                onOpenAlbum = { albumId ->
+                    showSongDetails = false
+                    navController.navigate("album/$albumId")
+                    state.collapseSoft()
+                },
+            )
+        }
+
         if (showActionMenu) {
             PlayerActionMenu(
                 fromLyrics = menuFromLyrics,
@@ -954,31 +1129,91 @@ fun BottomSheetPlayer(
                     menuReveal.floatValue = 0f
                 },
                 onEditPlayer = {
-                    // Same destination as a long press: the style picker, with the current player
-                    // zooming back behind it. Jumping straight into the cover editor skipped the
-                    // choice of style entirely.
-                    editPhase = PlayerEditPhase.STYLE_SELECT
+                    // Same destination as a long press: the selector, the player shrinking into
+                    // its card. Jumping straight into the editor skipped the choice of style.
+                    openStudio()
                 },
                 onReveal = { menuReveal.floatValue = it },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        if (editPhase == PlayerEditPhase.STYLE_SELECT) {
-            com.example.musicfy.ui.player.customize.PlayerStyleSelector(
-                selected = playerStyle,
-                artworkUrl = trackInfo.thumbnailUrl,
-                onSelect = { onPlayerStyleChange(it) },
-                onEdit = {
-                    // Straight to "what do you want to edit" rather than dropping the user into
-                    // the cover carousel, which assumed the answer.
-                    editPhase = PlayerEditPhase.SELECTING
-                },
-                onDismiss = { editPhase = PlayerEditPhase.NONE },
-                modifier = Modifier.fillMaxSize(),
-            )
+        if (showPlaybackSpeed) {
+            com.example.musicfy.ui.player.menu.PlaybackSpeedSheet(onDismiss = { showPlaybackSpeed = false })
+        }
+        if (showDeviceOutput) {
+            com.example.musicfy.ui.player.menu.DeviceOutputSheet(onDismiss = { showDeviceOutput = false })
         }
 
+        // the player studio, over the player: the selector, the editor's header and editors, its sheets
+        PlayerSelectorOverlay(
+            studio = studio,
+            styles = playerStyles,
+            onSet = { index ->
+                val style = playerStyles[index]
+                if (style != playerStyle) onPlayerStyleChange(style)
+                studio.livePage = index
+                studio.go(StudioStage.PLAYER)
+            },
+            onEdit = {
+                val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
+                if (playerStyle != PlayerStyle.DEFAULT) onPlayerStyleChange(PlayerStyle.DEFAULT)
+                studio.livePage = index
+                studio.go(StudioStage.EDIT)
+            },
+        )
+        if (playerStyle == PlayerStyle.DEFAULT) {
+            val (showBigDiscStyles) = rememberPreference(com.example.musicfy.constants.ShowBigDiscStylesKey, defaultValue = false)
+            val coverStyles = remember(showBigDiscStyles, coverStyle) {
+                PlayerCoverStyle.entries.filter { style ->
+                    showBigDiscStyles || !(style == PlayerCoverStyle.DISC_BIG_FULL || style == PlayerCoverStyle.DISC_BIG_LABEL) || style == coverStyle
+                }
+            }
+            val backgroundStyles = remember { PlayerBackgroundStyle.entries.toList() }
+            var seekBarStyle by rememberEnumPreference(
+                com.example.musicfy.constants.SeekBarStyleKey,
+                com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
+            )
+            var buttonStyle by rememberEnumPreference(
+                com.example.musicfy.constants.ButtonStyleKey,
+                com.example.musicfy.ui.component.ButtonStyle.DEFAULT,
+            )
+            val endTimestamp by rememberEnumPreference(
+                com.example.musicfy.constants.PlayerEndTimestampKey,
+                com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
+            )
+            val artworkPalette = com.example.musicfy.ui.theme.ArtworkPalette.from(com.example.musicfy.LocalArtworkColor.current)
+            StudioEditOverlay(
+                parts = studioParts,
+                glassState = morphingGlassState,
+                capture = studioCapture,
+                coverStyles = coverStyles,
+                coverStyle = coverStyle,
+                onCoverStyle = { coverStyle = it },
+                backgroundStyles = backgroundStyles,
+                backgroundStyle = backgroundStyle,
+                onBackgroundStyle = { backgroundStyle = it },
+                menuLayout = menuLayout,
+                seekBarStyle = seekBarStyle,
+                endTimestamp = endTimestamp,
+                isMenuActionActive = ::menuActionActive,
+            )
+            StudioSheets(
+                studio = studio,
+                coverStyle = coverStyle,
+                buttonStyle = buttonStyle,
+                onButtonStyle = { buttonStyle = it },
+                seekBarStyle = seekBarStyle,
+                onSeekBarStyle = { seekBarStyle = it },
+                menuLayout = menuLayout,
+                transportColors = com.example.musicfy.ui.component.TransportColors(
+                    accent = artworkPalette.accent,
+                    onAccent = artworkPalette.onAccent,
+                    container = artworkPalette.container,
+                    onContainer = artworkPalette.onContainer,
+                ),
+            )
+        }
     }
 }
 
@@ -999,19 +1234,15 @@ private fun Modifier.blurBleedRoom(room: androidx.compose.ui.unit.Dp): Modifier 
         layout(width, height) { placeable.place(-pad, -pad) }
     }
 
-private fun enterBlurEffect(radius: Float): androidx.compose.ui.graphics.RenderEffect? =
-    com.example.musicfy.ui.component.BlurEffectCache.get(radius, android.graphics.Shader.TileMode.CLAMP)
 
 @Composable
 private fun ExpandMenuOverlay(
     visible: Boolean,
     onDismiss: () -> Unit,
-    onOtherMenuClick: () -> Unit,
-    onSleepTimerClick: () -> Unit,
-    sleepTimerActive: Boolean,
-    seeVideo: Boolean,
-    onSeeVideoToggle: () -> Unit,
-    onRepeatClick: () -> Unit,
+    /** the four actions, top to bottom, as set in the editor */
+    slots: List<com.example.musicfy.ui.player.studio.PlayerMenuAction>,
+    isActive: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Boolean,
+    onAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit,
     repeatMode: Int,
     chevronRect: androidx.compose.ui.geometry.Rect?,
     screenWidth: androidx.compose.ui.unit.Dp,
@@ -1019,14 +1250,7 @@ private fun ExpandMenuOverlay(
     controlsDrawShift: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
-    val menuItems = remember {
-        listOf(
-            "Other menu" to R.drawable.more_horiz,
-            "Sleep timer" to R.drawable.sleep_timer,
-            "See video" to R.drawable.slow_motion_video,
-            "Repeat" to R.drawable.repeat,
-        )
-    }
+    val menuItems = remember(slots) { slots.map { it.label to it.icon } }
 
     val density = LocalDensity.current
     val itemProgress = remember { List(menuItems.size) { androidx.compose.animation.core.Animatable(0f) } }
@@ -1187,12 +1411,8 @@ private fun ExpandMenuOverlay(
                                 modifier = Modifier.padding(end = 4.dp)
                             )
 
-                            val isToggled = when (index) {
-                                1 -> sleepTimerActive
-                                2 -> seeVideo
-                                3 -> repeatMode != Player.REPEAT_MODE_OFF
-                                else -> false
-                            }
+                            val action = slots[index]
+                            val isToggled = isActive(action)
                             val iconTint = if (isToggled) Color.White else Color.White.copy(alpha = 0.85f)
                             val containerColor = if (isToggled) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.16f)
 
@@ -1201,13 +1421,16 @@ private fun ExpandMenuOverlay(
                                 tint = iconTint,
                                 containerColor = containerColor,
                                 hasShadow = false,
-                                badgeText = if (index == 3 && repeatMode == Player.REPEAT_MODE_ONE) "1" else null,
+                                badgeText = if (action == com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT &&
+                                    repeatMode == Player.REPEAT_MODE_ONE
+                                ) "1" else null,
                                 onClick = {
-                                    when (index) {
-                                        0 -> { onDismiss(); onOtherMenuClick() }
-                                        1 -> { onDismiss(); onSleepTimerClick() }
-                                        2 -> { onSeeVideoToggle(); onDismiss() }
-                                        3 -> { onRepeatClick() }
+                                    when (action) {
+                                        // toggles that stay open, so the change shows on the button
+                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT,
+                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE,
+                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE -> onAction(action)
+                                        else -> { onDismiss(); onAction(action) }
                                     }
                                 }
                             )

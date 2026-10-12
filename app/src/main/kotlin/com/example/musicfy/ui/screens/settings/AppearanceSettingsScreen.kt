@@ -61,6 +61,8 @@ import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(navController: NavController) {
+    val playerConnection = com.example.musicfy.LocalPlayerConnection.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var query by remember { mutableStateOf("") }
 
     val (playVideoBackground, onPlayVideoBackgroundChange) = rememberPreference(
@@ -131,7 +133,14 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 descriptionText = "Customize player cover, background, style",
                 icon = painterResource(R.drawable.album),
                 iconShape = CircleShape,
-                onClick = { navController.navigate("player_customize") },
+                // the player is edited right where it plays: it opens and shrinks into its selector
+                onClick = {
+                    if (playerConnection?.player?.currentMediaItem != null) {
+                        playerConnection.requestPlayerStudio()
+                    } else {
+                        android.widget.Toast.makeText(context, "Play a song, then hold the player to customize it", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
             ),
             SettingsItem(
                 title = { Text("Customize lyrics tab") },

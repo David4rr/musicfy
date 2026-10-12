@@ -145,7 +145,6 @@ fun OnlineSearchResult(
     val glassState = remember { GlassState() }
     val collapse = rememberCollapseProgress(listState)
     val progressProvider = remember(collapse) { { collapse.value } }
-    val blurActive by remember(listState) { derivedStateOf { !listState.isScrollInProgress } }
 
     val selectedIndex = remember(searchFilter) {
         SearchCategories.indexOfFirst { it.second?.value == searchFilter?.value }.coerceAtLeast(0)
@@ -230,7 +229,8 @@ fun OnlineSearchResult(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { blurActive && progressProvider() > 0.01f })
+                // recorded while scrolling too, so the bar's blur never drops out mid-scroll
+                .glassRoot(glassState, isActive = { progressProvider() > 0.01f })
         ) {
             LazyColumn(
                 state = listState,
@@ -351,7 +351,6 @@ fun OnlineSearchResult(
             progressProvider = progressProvider,
             pureBlack = pureBlack,
             title = "Search",
-            blurActive = blurActive,
             trailing = {
                 SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigateToTab("settings") })
             },
