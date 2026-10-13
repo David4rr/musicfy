@@ -190,8 +190,7 @@ class CrossmixAnalysisRepository(
                     }
                 }
             }
-            // the end of the data counts as the end of the song only if it's where the song ends:
-            // a stream cut short must never pass for a whole analysis
+            
             val wholeStream = reachedEnd && (durationUs <= 0L || lastPresentationUs >= durationUs - 3_000_000L)
             val complete = wholeStream || lastPresentationUs >= MaxTrackMs * 1_000L
             if (wholeTrack && !complete) {

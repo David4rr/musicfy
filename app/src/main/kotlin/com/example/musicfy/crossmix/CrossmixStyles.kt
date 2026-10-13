@@ -459,12 +459,6 @@ enum class CrossmixStyle(
     }
 }
 
-/**
- * moves the sound away from the listener by [distance] (0 where it is, 1 far off): quieter, the
- * highs and then the voice band soaked up the way air and walls soak them up, narrower until it's
- * a point, drawn toward [side] (-1 left, 1 right), and more of it the room than the source. the
- * room is fed before the level drops, so the further away, the wetter. at 0 nothing changes.
- */
 fun FxParams.recede(distance: Float, side: Float, room: Float = 1f) {
     val d = distance.coerceIn(0f, 1f)
     if (d <= 0f) return

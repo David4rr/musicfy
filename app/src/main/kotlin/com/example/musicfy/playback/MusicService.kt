@@ -1364,9 +1364,24 @@ class MusicService :
         val reason = when {
             !isNetworkConnected.value || (e != null && isNetworkRelatedError(e)) -> "no internet connection"
             e != null && getHttpResponseCode(e) != null -> "server error ${getHttpResponseCode(e)}"
-            else -> e?.errorCodeName?.removePrefix("ERROR_CODE_")?.lowercase()?.replace('_', ' ') ?: "unknown error"
+            e != null -> plainReason(e)
+            else -> "unknown error"
         }
         com.example.musicfy.ui.component.TopToaster.error("Stream failed: $reason")
+    }
+
+    /** A readable reason from the root cause, since IO_UNSPECIFIED alone says nothing. */
+    private fun plainReason(e: PlaybackException): String {
+        val causes = generateSequence<Throwable>(e) { it.cause }.toList()
+        return when {
+            causes.any { it is java.net.SocketTimeoutException } -> "connection timed out"
+            causes.any { it is java.net.SocketException || it is java.io.EOFException } -> "connection interrupted"
+            causes.any { it is javax.net.ssl.SSLException } -> "secure connection failed"
+            causes.any { it is java.io.FileNotFoundException } -> "stream not found"
+            causes.any { it is androidx.media3.datasource.cache.Cache.CacheException } -> "cache error"
+            e.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> "stream interrupted"
+            else -> e.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')
+        }
     }
 
     private fun updateNotification() {
@@ -2752,7 +2767,7 @@ class MusicService :
 
         lastPlaybackError = error
         val mediaId = player.currentMediaItem?.mediaId
-        Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}")
+        Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}, causes=${generateSequence<Throwable>(error) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + ":" + it.message }}")
         reportException(error)
 
         if (mediaId != null && forceFallBack(mediaId)) return

@@ -1,5 +1,6 @@
 // PopupSheet.kt
-//
+// NOTES FOR LLM's
+//--------------------------------------------------------------------------------------------------------
 // The one popup/bottom-sheet primitive for the whole app. See docs/popup-sheet.skill.md
 // for the usage contract AI agents (and humans) should follow before building a new popup.
 //
@@ -34,6 +35,7 @@
 // onDelta or a NestedScrollConnection callback (see the skill doc for the two broken versions
 // that did). A suspend `animate()` call only ever drives a settle/entrance/exit - one per
 // transition, not one per pointer event.
+// -----------------------------------------------------------------------------------------------------
 
 package com.example.musicfy.ui.component
 
