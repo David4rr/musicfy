@@ -277,15 +277,22 @@ constructor(
         downloads.value = result
 
         // Offline mode holds downloads where they are rather than failing them: they carry on
-        // when it's turned off.
+        // when it's turned off. Only then - resuming whenever offline mode reads off, at every
+        // start included, would undo downloads paused for any other reason.
         scope.launch {
+            var wasOffline = false
             context.dataStore.data
                 .map { it[OfflineModeKey] ?: false }
                 .distinctUntilChanged()
                 .collect { offline ->
                     kotlinx.coroutines.withContext(Dispatchers.Main) {
-                        if (offline) downloadManager.pauseDownloads() else downloadManager.resumeDownloads()
+                        if (offline) {
+                            downloadManager.pauseDownloads()
+                        } else if (wasOffline) {
+                            downloadManager.resumeDownloads()
+                        }
                     }
+                    wasOffline = offline
                 }
         }
     }

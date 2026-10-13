@@ -16,11 +16,13 @@ import com.example.musicfy.utils.reportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -86,8 +88,9 @@ constructor(
 
         // An imported file's own lyrics, from its tags: they're the file's, and they're there
         // offline. Read before anything goes online, so offline mode still has them.
+        // Off the caller's thread: the player asks from the main one, and this reads the file.
         mediaMetadata.localUri?.let { uri ->
-            readEmbeddedLyrics(context, android.net.Uri.parse(uri))?.let { lyrics ->
+            withContext(Dispatchers.IO) { readEmbeddedLyrics(context, android.net.Uri.parse(uri)) }?.let { lyrics ->
                 return LyricsWithProvider(lyrics, EmbeddedLyrics.Provider).also { bestCache.put(mediaMetadata.id, it) }
             }
         }
@@ -106,13 +109,18 @@ constructor(
         }
 
         val providers = resolveLyricsProviders()
-        val candidates = fetchCandidates(mediaMetadata, providers)
-            .filter { it.sync != LyricsUtils.SyncKind.NONE }
-
-        if (candidates.isEmpty()) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
-
-        val best = pickBest(mediaMetadata, candidates, providers.size)
-            ?: return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
+        // YouTube's auto captions only count when nothing else has lyrics (see [eligible]), so
+        // they're only asked for then: asked every time, they cost every song YouTube requests
+        // whose answer was nearly always thrown away.
+        val (lastResort, regular) = providers.withIndex()
+            .partition { it.value.name == YouTubeCaptionsLyricsProvider.name }
+        var candidates = fetchIndexed(mediaMetadata, regular)
+        var best = pickBest(mediaMetadata, candidates, providers.size)
+        if (best == null && lastResort.isNotEmpty()) {
+            candidates = candidates + fetchIndexed(mediaMetadata, lastResort)
+            best = pickBest(mediaMetadata, candidates, providers.size)
+        }
+        if (best == null) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         val result = LyricsWithProvider(best.lyrics, best.providerName)
         bestCache.put(mediaMetadata.id, result)
         return result
@@ -143,10 +151,19 @@ constructor(
     suspend fun fetchCandidates(
         mediaMetadata: MediaMetadata,
         providers: List<LyricsProvider>? = null,
+    ): List<ProviderCandidate> =
+        fetchIndexed(mediaMetadata, (providers ?: resolveLyricsProviders()).withIndex().toList())
+
+    /**
+     * [providers] asked at once, each keeping its place in the full order. Graded on a background
+     * thread: grading parses every answer, and the player asks from the main thread.
+     */
+    private suspend fun fetchIndexed(
+        mediaMetadata: MediaMetadata,
+        providers: List<IndexedValue<LyricsProvider>>,
     ): List<ProviderCandidate> = coroutineScope {
-        val ordered = providers ?: resolveLyricsProviders()
-        ordered.mapIndexed { order, provider ->
-            async { fetchCandidate(mediaMetadata, provider, order) }
+        providers.map { (order, provider) ->
+            async(Dispatchers.Default) { fetchCandidate(mediaMetadata, provider, order) }
         }.awaitAll().filterNotNull()
     }
 

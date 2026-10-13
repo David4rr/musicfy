@@ -990,8 +990,13 @@ object LyricsUtils {
         return best.takeIf { hits * 10 >= tokens.size && hits * 2 >= runnerUp * 3 }
     }
 
-    /** Timestamps, word timings, voice tags: everything in a payload that isn't the words. */
-    private val MarkupRegex = Regex("""\[[^\]]*]|<[^>]*>|\{[^}]*}""")
+    /**
+     * Timestamps, word timings, voice tags: everything in a payload that isn't the words. Every
+     * closing bracket and brace is escaped: Android's regex engine (ICU) rejects a bare "}" that
+     * desktop Java accepts, and this is compiled when LyricsUtils first loads - a bare one made
+     * every lyrics screen, the player's included, crash on opening.
+     */
+    private val MarkupRegex = Regex("""\[[^\]]*\]|<[^>]*>|\{[^}]*\}""")
     private val NonWordRegex = Regex("""[^\p{L}'’]+""")
 
     /**

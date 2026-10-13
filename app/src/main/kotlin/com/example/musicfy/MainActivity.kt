@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.areNavigationBarsVisible
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
@@ -671,15 +672,33 @@ class MainActivity : ComponentActivity() {
                     expandedBound = maxHeight,
                 )
 
-                LaunchedEffect(playerBottomSheetState.isExpanded) {
+                // The open player hides the navigation bar: gone once the sheet sits at the top,
+                // back as soon as it heads down - not whenever it stops sitting exactly at the top
+                // (a resize it is catching up with), which brought the bar back over the open player.
+                val playerOpen = playerBottomSheetState.isExpanded
+                val playerHeadingDown = !playerBottomSheetState.isExpandedOrExpanding
+                // Back in the app (from Home, the recents, a dialog) it's hidden again: with
+                // gesture navigation a swipe from the bottom brings it back for good (see
+                // playerNavBarBehavior).
+                val windowFocused = configuration.isWindowFocused
+                LaunchedEffect(playerOpen, playerHeadingDown, windowFocused) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView.rootView)
-                    if (playerBottomSheetState.isExpanded) {
-                        controller.systemBarsBehavior =
-                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    if (playerOpen) {
+                        controller.systemBarsBehavior = window.playerNavBarBehavior()
                         controller.hide(WindowInsetsCompat.Type.navigationBars())
-                    } else {
+                    } else if (playerHeadingDown) {
                         controller.show(WindowInsetsCompat.Type.navigationBars())
                     }
+                }
+                // A bar a swipe brought back while the player stays open (Samsung's swipe-from-
+                // bottom gestures) goes away again after a moment, as the transient one does.
+                @OptIn(ExperimentalLayoutApi::class)
+                val navBarsShown = WindowInsets.areNavigationBarsVisible
+                LaunchedEffect(playerOpen, navBarsShown) {
+                    if (!playerOpen || !navBarsShown) return@LaunchedEffect
+                    delay(2_500)
+                    WindowCompat.getInsetsController(window, window.decorView.rootView)
+                        .hide(WindowInsetsCompat.Type.navigationBars())
                 }
 
                 val playerAwareWindowInsets = remember(
@@ -1507,4 +1526,25 @@ val LocalArtworkColor = androidx.compose.runtime.compositionLocalOf { DefaultThe
 
 val LocalDetailAccentColor = staticCompositionLocalOf<androidx.compose.runtime.MutableState<Color?>> {
     androidx.compose.runtime.mutableStateOf(null)
+}
+
+/**
+ * How the navigation bar hidden under the open player comes back. The transient mode (a swipe
+ * shows it over the player for a moment) is the nicer one, but with gesture navigation the system
+ * turns the back gesture off while a bar is hidden that way: the first back swipe only brought the
+ * bar in, and for many the open player looked impossible to close. The default mode keeps the
+ * back gesture working with the bar hidden, so gesture navigation gets that one; buttons (a bar
+ * you can tap) keep the transient mode. Gesture navigation is told apart by the bar having
+ * nothing tappable in it - known for certain from Android 11, where the hidden bar's insets can
+ * be read.
+ */
+private fun android.view.Window.playerNavBarBehavior(): Int {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        val tappable = androidx.core.view.ViewCompat.getRootWindowInsets(decorView)
+            ?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.tappableElement())
+        if (tappable != null && tappable.left == 0 && tappable.right == 0 && tappable.bottom == 0) {
+            return WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        }
+    }
+    return WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 }

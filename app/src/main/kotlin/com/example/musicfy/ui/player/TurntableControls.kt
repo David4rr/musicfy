@@ -220,26 +220,34 @@ private fun ChevronButton(open: Boolean, hidden: Boolean, onClick: () -> Unit, m
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.86f else 1f, spring(dampingRatio = 0.54f, stiffness = 720f), label = "ttChevronPress")
+    // Tapped on a box that holds still, the press shrinking only what's drawn: with the click on
+    // the shrinking layer, a tap near the edge was dropped on screens that report a resting
+    // finger's tremble as moves (see PressScaleActionButton).
     Box(
-        contentAlignment = Alignment.Center,
         modifier = modifier
             .size(ChevronSize)
-            .graphicsLayer {
-                scaleX = scale; scaleY = scale
-                alpha = if (open || hidden) 0f else 1f
-            }
-            .clip(CircleShape)
-            .background(PillFill)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
     ) {
-        androidx.compose.foundation.Image(
-            painter = painterResource(R.drawable.expand_less),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(Color.White.copy(alpha = 0.9f)),
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(20.dp)
-                .graphicsLayer { rotationZ = rotation },
-        )
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale; scaleY = scale
+                    alpha = if (open || hidden) 0f else 1f
+                }
+                .clip(CircleShape)
+                .background(PillFill),
+        ) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(R.drawable.expand_less),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(Color.White.copy(alpha = 0.9f)),
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = rotation },
+            )
+        }
     }
 }
 

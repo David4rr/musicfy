@@ -51,33 +51,43 @@ object EmbeddedLyrics {
         if (major != 3 && major != 4) return null
         val flags = header[5].toInt()
         val tagSize = syncsafe(header, 6)
-        if (tagSize <= 0 || tagSize > MaxTagBytes) return null
-        var tag = source.read(10, tagSize)
-        if (major == 3 && flags and 0x80 != 0) tag = deUnsync(tag)
+        if (tagSize <= 0) return null
+        // Frames are walked straight off the file, so cover art - often most of the tag, and
+        // megabytes of it - is skipped rather than read. A v2.3 tag written unsynchronised is the
+        // exception: it has to be undone as a whole before its frames can be found.
+        val tag: Source = if (major == 3 && flags and 0x80 != 0) {
+            if (tagSize > MaxTagBytes) return null
+            BytesSource(deUnsync(source.read(10, tagSize)))
+        } else {
+            SliceSource(source, 10, tagSize.toLong())
+        }
 
-        var pos = 0
+        var pos = 0L
         if (flags and 0x40 != 0) {
             // the extended header: v2.4 counts itself in its size, v2.3 doesn't
-            pos = if (major == 4) syncsafe(tag, 0) else int32(tag, 0) + 4
+            val extended = tag.read(0, 4)
+            if (extended.size < 4) return null
+            pos = if (major == 4) syncsafe(extended, 0).toLong() else int32(extended, 0).toLong() + 4
         }
         val found = ArrayList<String>()
         while (pos + 10 <= tag.size) {
-            if (tag[pos].toInt() == 0) break // padding
-            val id = String(tag, pos, 4, Charsets.ISO_8859_1)
-            val size = if (major == 4) syncsafe(tag, pos + 4) else int32(tag, pos + 4)
-            val frameFlags = (tag[pos + 8].toInt() and 0xFF shl 8) or (tag[pos + 9].toInt() and 0xFF)
+            val frameHeader = tag.read(pos, 10)
+            if (frameHeader.size < 10 || frameHeader[0].toInt() == 0) break // padding
+            val id = String(frameHeader, 0, 4, Charsets.ISO_8859_1)
+            val frameSize = if (major == 4) syncsafe(frameHeader, 4) else int32(frameHeader, 4)
+            val frameFlags = (frameHeader[8].toInt() and 0xFF shl 8) or (frameHeader[9].toInt() and 0xFF)
             val start = pos + 10
-            if (size <= 0 || start + size > tag.size) break
-            pos = start + size
+            if (frameSize <= 0 || start + frameSize > tag.size) break
+            pos = start + frameSize
 
             val compressedOrEncrypted =
                 if (major == 4) frameFlags and 0x000C != 0 else frameFlags and 0x00C0 != 0
-            if (compressedOrEncrypted || id !in LyricFrames) continue
+            if (compressedOrEncrypted || id !in LyricFrames || frameSize > MaxTagBytes) continue
             var skip = 0
             if (major == 4 && frameFlags and 0x0040 != 0 || major == 3 && frameFlags and 0x0020 != 0) skip += 1 // group id
             if (major == 4 && frameFlags and 0x0001 != 0) skip += 4 // data length indicator
-            if (skip >= size) continue
-            var body = tag.copyOfRange(start + skip, start + size)
+            if (skip >= frameSize) continue
+            var body = tag.read(start + skip, frameSize - skip)
             if (major == 4 && frameFlags and 0x0002 != 0) body = deUnsync(body)
 
             when (id) {
@@ -87,6 +97,25 @@ object EmbeddedLyrics {
             }?.let(found::add)
         }
         return pick(found)
+    }
+
+    private class BytesSource(private val bytes: ByteArray) : Source {
+        override val size: Long = bytes.size.toLong()
+
+        override fun read(position: Long, length: Int): ByteArray {
+            if (position < 0 || position >= size || length <= 0) return ByteArray(0)
+            return bytes.copyOfRange(position.toInt(), minOf(size, position + length).toInt())
+        }
+    }
+
+    /** [length] bytes of [base] from [offset], read as if they were a file of their own. */
+    private class SliceSource(private val base: Source, private val offset: Long, length: Long) : Source {
+        override val size: Long = minOf(length, (base.size - offset).coerceAtLeast(0))
+
+        override fun read(position: Long, length: Int): ByteArray {
+            if (position < 0 || position >= size || length <= 0) return ByteArray(0)
+            return base.read(offset + position, minOf(length.toLong(), size - position).toInt())
+        }
     }
 
     /** unsynchronised lyrics: encoding, language, a description, then the text */
@@ -287,7 +316,8 @@ object EmbeddedLyrics {
 
     private val LyricFrames = setOf("USLT", "SYLT", "TXXX")
     private val LyricKeys = setOf("LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS", "SYNCEDLYRICS")
-    private val LrcTimestamp = Regex("""\[\d{1,2}:\d{2}([.:]\d{1,3})?]""")
+    // closing brackets escaped: Android's regex engine is stricter than desktop Java's
+    private val LrcTimestamp = Regex("""\[\d{1,2}:\d{2}([.:]\d{1,3})?\]""")
     private const val VorbisCommentBlock = 4
     private const val MaxFlacBlocks = 64
 

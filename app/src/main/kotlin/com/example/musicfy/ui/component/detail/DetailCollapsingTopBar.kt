@@ -254,10 +254,16 @@ fun DetailCollapsingTopBar(
                         )
                         .graphicsLayer {
                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                            renderEffect = com.example.musicfy.ui.component.BlurEffectCache.get(
-                                motionBlurRadius,
-                                android.graphics.Shader.TileMode.DECAL
-                            )
+                            // DECAL is API 31: read only behind the check, or Android 11 and
+                            // older throw NoSuchFieldError here (no blur below 31 either way)
+                            renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                com.example.musicfy.ui.component.BlurEffectCache.get(
+                                    motionBlurRadius,
+                                    android.graphics.Shader.TileMode.DECAL
+                                )
+                            } else {
+                                null
+                            }
                         }
                 )
             }

@@ -592,13 +592,7 @@ private fun ArtistBubble(artist: ArtistItem, selected: Boolean, onClick: () -> U
     }
 }
 
-// ---- 9. Blur warning (weak phones only) ----
 
-/**
- * Fixed, not scrolling: the phone fills everything below the switch, down to the bottom edge, and
- * the button floats over it on a gradient and a progressive blur of the phone behind it. The blur
- * reads a recording of the content box; it sits beside that box, never inside it.
- */
 @Composable
 internal fun BlurWarningPage(
     disableBlur: Boolean,

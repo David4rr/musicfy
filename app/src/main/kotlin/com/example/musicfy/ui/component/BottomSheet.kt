@@ -80,6 +80,12 @@ private val PlayerSheetAnimationSpec = spring<Dp>(
     stiffness = 80f
 )
 
+/**
+ * How far past the touch slop a drag has to go, summed over the whole drag, before the sheet
+ * opens or closes for it - on top of the old per-move bar, which still acts as soon as it did.
+ */
+private val SheetSwipeCommit = 8.dp
+
 private val PlayerSheetHorizontalAnimationSpec = spring<Float>(
     dampingRatio = 0.92f,
     stiffness = 90f
@@ -304,6 +310,17 @@ fun BottomSheet(
                             var swipe: ExpandedSwipe? = null
                             // Where the drag began, in root coordinates.
                             var swipeStart = Offset.Zero
+                            // The whole drag so far. Each move alone used to have to pass 2px for
+                            // the sheet to act, and a screen that reports touches more often (120Hz
+                            // and up, as on newer Samsungs) splits a steady swipe into moves too
+                            // small to ever pass it: the player wouldn't swipe closed.
+                            var dragSum = Offset.Zero
+                            val commitPx = SheetSwipeCommit.toPx()
+                            // Whether this drag began on the open player (or one all but settled
+                            // open: the open spring's tail runs on for a second after it looks up).
+                            var startedOpen = false
+                            // The sheet was sent on its way by this drag: once is enough.
+                            var acted = false
 
                             detectDragGestures(
                                 onDragStart = { start ->
@@ -311,6 +328,10 @@ fun BottomSheet(
                                     totalHorizontalDrag = 0f
                                     velocityTracker.resetTracking()
                                     swipe = null
+                                    dragSum = Offset.Zero
+                                    acted = false
+                                    startedOpen = state.isExpanded ||
+                                        (state.isExpandedOrExpanding && state.progress > 0.9f)
                                     val coordinates = sheetCoordinates[0]
                                     swipeStart = if (coordinates != null && coordinates.isAttached) {
                                         coordinates.localToRoot(start)
@@ -320,6 +341,10 @@ fun BottomSheet(
                                 },
                                 onDrag = { change, dragAmount ->
                                     velocityTracker.addPointerInputChange(change)
+                                    dragSum += dragAmount
+                                    val vertical = abs(dragSum.y) > abs(dragSum.x)
+                                    val pulledUp = vertical && dragSum.y < -commitPx
+                                    val pulledDown = vertical && dragSum.y > commitPx
 
                                     val claimed = swipe ?: currentSwipe?.takeIf { handler ->
                                         state.isExpanded && handler.onStart(swipeStart, dragAmount)
@@ -333,13 +358,15 @@ fun BottomSheet(
                                         val resistance = 1f - (kotlin.math.abs(state.horizontalOffset) / (size.width / 2f)).coerceIn(0f, 0.8f)
                                         state.horizontalOffset += dragAmount.x * resistance
                                     } else {
-                                        if (dragAmount.y < -2f && state.isCollapsed) {
+                                        if ((dragAmount.y < -2f || pulledUp) && state.isCollapsed) {
                                             state.expandSoft()
                                             change.consume()
                                         } else if (
-                                            dragAmount.y > 2f && state.isExpanded &&
+                                            !acted && startedOpen && (dragAmount.y > 2f || pulledDown) &&
+                                            !state.isCollapsed &&
                                             currentSwipe?.canCollapseFrom(swipeStart) != false
                                         ) {
+                                            acted = true
                                             state.collapseSoft()
                                             change.consume()
                                         } else if (dragAmount.y > 2f && state.isCollapsed && onDismiss != null) {
@@ -462,6 +489,14 @@ class BottomSheetState(
     private val animatable: Animatable<Dp, AnimationVector1D>,
     private val onAnchorChanged: (Int) -> Unit,
     val collapsedBound: Dp,
+    /** How far a list pulled past its top drags the sheet closed, px (see the nested scroll). */
+    private val collapsePullPx: Float = 24f,
+    /**
+     * Where the sheet was last sent ([expandedAnchor], [collapsedAnchor], [dismissedAnchor]). Kept
+     * by [rememberBottomSheetState] across the new states it makes when the bounds change, so it
+     * holds through a resize, while the value catches up with the new bounds.
+     */
+    private val anchor: () -> Int = { -1 },
 ) : DraggableState by draggableState {
     val dismissedBound: Dp
         get() = animatable.lowerBound!!
@@ -482,6 +517,14 @@ class BottomSheetState(
     val isExpanded by derivedStateOf {
         value == animatable.upperBound
     }
+
+    /**
+     * Open, or on its way there. [isExpanded] only holds once the open spring has settled to the
+     * exact pixel - a good second after the player looks open - and it drops whenever the window's
+     * height changes under it, until the sheet has caught up. What the open player's own state
+     * hangs on (its menus, whether a swipe down closes it) goes by this, so neither is lost then.
+     */
+    val isExpandedOrExpanding by derivedStateOf { anchor() == expandedAnchor }
 
     val progress by derivedStateOf {
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
@@ -590,10 +633,14 @@ class BottomSheetState(
     val preUpPostDownNestedScrollConnection
         get() = object : NestedScrollConnection {
             var isTopReached = false
+            // Pulled past the list's top so far, summed: a fast screen hands the pull over in
+            // moves too small to pass the per-move bar one at a time (see the sheet's own drag).
+            var pulled = 0f
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (isExpanded && available.y < 0) {
                     isTopReached = false
+                    pulled = 0f
                 }
                 return Offset.Zero
             }
@@ -606,10 +653,14 @@ class BottomSheetState(
                 if (!isTopReached) {
                     isTopReached = consumed.y == 0f && available.y > 0
                 }
+                if (isTopReached && source == NestedScrollSource.UserInput && available.y > 0f) {
+                    pulled += available.y
+                }
 
                 return if (
                     collapseOnNestedOverscroll && isTopReached &&
-                    source == NestedScrollSource.UserInput && available.y > 3f
+                    source == NestedScrollSource.UserInput &&
+                    (available.y > 3f || (available.y > 0f && pulled > collapsePullPx))
                 ) {
                     collapseSoft()
                     available
@@ -629,6 +680,7 @@ class BottomSheetState(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 isTopReached = false
+                pulled = 0f
                 return Velocity.Zero
             }
         }
@@ -678,7 +730,9 @@ fun rememberBottomSheetState(
             onAnchorChanged = { previousAnchor = it },
             coroutineScope = coroutineScope,
             animatable = animatable,
-            collapsedBound = collapsedBound
+            collapsedBound = collapsedBound,
+            collapsePullPx = with(density) { SheetSwipeCommit.toPx() },
+            anchor = { previousAnchor },
         )
     }
 }

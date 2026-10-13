@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -381,58 +382,67 @@ fun PressScaleActionButton(
         label = "pressScaleActionButton"
     )
 
+    // The tap is taken on a box that holds still; the press only shrinks what's drawn inside it.
+    // With the click on the shrinking layer, its bounds shrank under a resting finger, and on
+    // screens that report the finger's slightest tremble as a move, a tap near the button's edge
+    // read as sliding off it and was dropped - the chevron that wouldn't open on some phones.
     Box(
-        contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .then(
-                if (hasShadow) Modifier.shadow(elevation = 6.dp, shape = CircleShape, clip = false)
-                else Modifier
-            )
-            .clip(CircleShape)
-            .background(containerColor)
             .clickable(
                 indication = null,
                 interactionSource = interactionSource,
                 onClick = onClick
             )
     ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .then(
+                    if (hasShadow) Modifier.shadow(elevation = 6.dp, shape = CircleShape, clip = false)
+                    else Modifier
+                )
+                .clip(CircleShape)
+                .background(containerColor)
+        ) {
 
-        if (boldIcon) {
+            if (boldIcon) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(tint),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .offset(x = 0.45.dp)
+                )
+            }
             androidx.compose.foundation.Image(
                 painter = painterResource(icon),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(tint),
-                modifier = Modifier
-                    .size(18.dp)
-                    .offset(x = 0.45.dp)
+                modifier = Modifier.size(18.dp)
             )
-        }
-        androidx.compose.foundation.Image(
-            painter = painterResource(icon),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(tint),
-            modifier = Modifier.size(18.dp)
-        )
-        if (badgeText != null) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 1.dp, y = 1.dp)
-                    .size(12.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(tint)
-            ) {
-                Text(
-                    text = badgeText,
-                    color = Color.Black,
-                    fontSize = 7.sp,
-                    lineHeight = 7.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
+            if (badgeText != null) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 1.dp, y = 1.dp)
+                        .size(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(tint)
+                ) {
+                    Text(
+                        text = badgeText,
+                        color = Color.Black,
+                        fontSize = 7.sp,
+                        lineHeight = 7.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
         }
     }

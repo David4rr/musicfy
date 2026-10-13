@@ -4,16 +4,17 @@ package com.example.musicfy.lyrics
 
 import android.content.Context
 import android.net.Uri
-import java.io.FileInputStream
+import android.os.ParcelFileDescriptor
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 
 /** The lyrics in the file at [uri], as [EmbeddedLyrics.find] reads them; null when none or unreadable. */
 fun readEmbeddedLyrics(context: Context, uri: Uri): String? = runCatching {
-    context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
-        FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-            EmbeddedLyrics.find(ChannelSource(channel))
-        }
+    val descriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return@runCatching null
+    // the stream owns the descriptor and closes it once, with the channel: closing the raw file
+    // descriptor and the ParcelFileDescriptor separately is a double close Android can abort on
+    ParcelFileDescriptor.AutoCloseInputStream(descriptor).channel.use { channel ->
+        EmbeddedLyrics.find(ChannelSource(channel))
     }
 }.getOrNull()
 

@@ -345,8 +345,11 @@ fun BottomSheetPlayer(
         )
     }
 
-    LaunchedEffect(state.isExpanded) {
-        if (!state.isExpanded) {
+    // Keyed on where the sheet is headed, not on it sitting exactly at the top: that drops when
+    // the window's height changes under the open player, until the sheet catches up, and each
+    // drop shut the chevron's menu as it opened.
+    LaunchedEffect(state.isExpandedOrExpanding) {
+        if (!state.isExpandedOrExpanding) {
             studio.reset()
 
             showActionMenu = false
@@ -705,17 +708,33 @@ fun BottomSheetPlayer(
                 // Both live here so every style gets them for free.
                 // only on the open player: collapsed into the pill, these swallowed the swipe up and
                 // the tap that open it
-                val styleOpen = state.isExpanded
+                // also through the open spring's last stretch, which runs on after it looks open
+                val styleOpen by remember(state) {
+                    derivedStateOf { state.isExpanded || (state.isExpandedOrExpanding && state.progress > 0.9f) }
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(styleOpen) {
                             if (!styleOpen) return@pointerInput
+                            val closePx = 8.dp.toPx()
+                            var pulled = 0f
+                            var closing = false
                             detectVerticalDragGestures(
+                                onDragStart = {
+                                    pulled = 0f
+                                    closing = false
+                                },
                                 onVerticalDrag = { _, amount ->
                                     // a swipe down anywhere on a style closes the player, the same
-                                    // as on the flagship; the styles' own swipes are sideways
-                                    if (amount > 6f) state.collapseSoft()
+                                    // as on the flagship; the styles' own swipes are sideways. Summed
+                                    // too: a fast screen splits a steady swipe into moves too small
+                                    // to pass the per-move bar one at a time.
+                                    pulled += amount
+                                    if (!closing && (amount > 6f || pulled > closePx)) {
+                                        closing = true
+                                        state.collapseSoft()
+                                    }
                                 },
                             )
                         }
@@ -1129,7 +1148,7 @@ fun BottomSheetPlayer(
             onDispose { state.collapseOnNestedOverscroll = true }
         }
 
-        if ((showQueue || showLyrics) && state.isExpanded) {
+        if ((showQueue || showLyrics) && state.isExpandedOrExpanding) {
             // Composed only while a page is open on the expanded player, so it registers after -
             // and wins over - the sheet's own back handler: back shrinks the page into its card
             // first, then collapses the player. Not while collapsed: the page is remembered then,

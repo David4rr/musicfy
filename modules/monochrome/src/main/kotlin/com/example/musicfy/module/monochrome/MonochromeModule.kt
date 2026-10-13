@@ -82,10 +82,19 @@ class MonochromeModule : SourceModule {
             AccountState.SignedIn("No account needed · server reachable")
         } else {
             val reason = "Monochrome's server didn't answer (${response?.code ?: "offline"})"
-            host.storage.set("unreachable", reason)
-            host.storage.set("unreachable_at", System.currentTimeMillis().toString())
+            markUnreachable(reason)
             AccountState.Expired(reason)
         }
+    }
+
+    /**
+     * The server didn't answer: playback passes the module over for [UnreachableRetryMs], then
+     * tries it again. Set by a song's lookup as well as by a check, so a server that's down costs
+     * one song a wait for its timeout, not every song.
+     */
+    private fun markUnreachable(reason: String) {
+        host.storage.set("unreachable", reason)
+        host.storage.set("unreachable_at", System.currentTimeMillis().toString())
     }
 
     override fun signOut() {
@@ -111,6 +120,7 @@ class MonochromeModule : SourceModule {
                 host.http(HttpRequest("$Base/search/tracks?q=${enc(query)}&limit=8", headers = headers))
             }.getOrElse {
                 report(DiagnosticStep("Find the song", false, "Monochrome's server didn't answer"))
+                markUnreachable("Monochrome's server didn't answer")
                 return ResolveResult.Unavailable("Monochrome's server didn't answer")
             }
             if (!response.ok) {

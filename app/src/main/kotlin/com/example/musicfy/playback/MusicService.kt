@@ -4032,14 +4032,15 @@ class MusicService :
         }
         if (file != null) {
             forgetModuleFacts(mediaId)
-            return com.example.musicfy.playback.custom.CustomStreamResult(streamUrl = file, source = "This device")
+            // announced as "Playing from this device"
+            return com.example.musicfy.playback.custom.CustomStreamResult(streamUrl = file, source = "this device")
         }
         if (isFullyDownloaded(mediaId)) {
             forgetModuleFacts(mediaId)
             // the same item: the data source finds the download under its media id
             return com.example.musicfy.playback.custom.CustomStreamResult(
                 streamUrl = uri?.toString() ?: mediaId,
-                source = "Downloaded",
+                source = "your downloads",
             )
         }
         return null

@@ -10,10 +10,18 @@ package com.example.musicfy.ui.screens.settings
 import com.example.musicfy.ui.component.BlurEffectCache
 import com.example.musicfy.ui.component.rememberDeviceTilt
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -98,6 +106,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -149,6 +158,7 @@ import com.example.musicfy.ui.screens.settings.devspace.DevAvatar
 import com.example.musicfy.ui.screens.settings.devspace.rememberDevCounts
 import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
 import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
+import com.example.musicfy.ui.screens.donate.showDonateSheet
 import com.example.musicfy.ui.screens.update.UpdateHeadline
 import com.example.musicfy.ui.screens.update.rememberUpdateState
 import com.example.musicfy.ui.screens.update.showUpdateSheet
@@ -898,16 +908,132 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
                 }
             }
             Spacer(Modifier.width(10.dp))
+            VersionCapsule(update = updateHeadline != null, onAbout = onAbout)
+        }
+    }
+}
+
+/** What the version card's capsule cycles through, one every [CapsuleCycleMs], when there's no update. */
+private enum class CapsuleAction(val label: String) {
+    ABOUT("About app"),
+    STAR("Star the repo!"),
+    DONATE("Donate me!"),
+    REPORT_BUG("Report bug!"),
+}
+
+private const val CapsuleCycleMs = 3_000L
+
+/**
+ * The version card's capsule. With an update waiting it just says "Update". Otherwise it takes
+ * turns at About app, Star the repo!, Donate me! and Report bug!, each label popping in - the
+ * capsule squashes and springs back past its size while the new word grows in on a bounce and the
+ * capsule's width springs to fit it - and a tap does what it says. The rest of the card still
+ * opens About.
+ */
+@Composable
+private fun VersionCapsule(update: Boolean, onAbout: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val popup = LocalZoomOutOverlayState.current
+    var action by remember { mutableStateOf(CapsuleAction.ABOUT) }
+    LaunchedEffect(update) {
+        action = CapsuleAction.ABOUT
+        if (update) return@LaunchedEffect
+        while (true) {
+            delay(CapsuleCycleMs)
+            action = CapsuleAction.entries[(action.ordinal + 1) % CapsuleAction.entries.size]
+        }
+    }
+    val shown = if (update) "Update" else action.label
+
+    // the pop: a quick squash, then a spring that carries past full size and settles
+    val pop = remember { Animatable(1f) }
+    var popped by remember { mutableStateOf(false) }
+    LaunchedEffect(shown) {
+        // not on first showing - only when the label actually changes
+        if (!popped) {
+            popped = true
+            return@LaunchedEffect
+        }
+        pop.animateTo(0.86f, tween(durationMillis = 90, easing = FastOutSlowInEasing))
+        pop.animateTo(1f, spring(dampingRatio = 0.38f, stiffness = 520f))
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = pop.value
+                scaleY = pop.value
+            }
+            .clip(CircleShape)
+            .background(Color(0xFF4D4D4D))
+            .clickable {
+                when {
+                    update || action == CapsuleAction.ABOUT -> onAbout()
+                    action == CapsuleAction.STAR -> context.openCapsuleUrl(com.example.musicfy.core.updater.GithubRepoUrl)
+                    action == CapsuleAction.DONATE -> popup.showDonateSheet()
+                    else -> context.openCapsuleUrl(bugReportUrl())
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        AnimatedContent(
+            targetState = shown,
+            transitionSpec = {
+                // the new word grows in on a bounce as the old one shrinks away
+                val enter = scaleIn(
+                    animationSpec = spring(dampingRatio = 0.45f, stiffness = 420f),
+                    initialScale = 0.35f,
+                ) + fadeIn(tween(durationMillis = 160))
+                val exit = scaleOut(
+                    animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
+                    targetScale = 0.35f,
+                ) + fadeOut(tween(durationMillis = 120))
+                // and the capsule's width springs to fit it, overshooting a touch
+                (enter togetherWith exit) using SizeTransform(clip = false) { _, _ ->
+                    spring(
+                        dampingRatio = 0.6f,
+                        stiffness = 380f,
+                        visibilityThreshold = IntSize.VisibilityThreshold,
+                    )
+                }
+            },
+            contentAlignment = Alignment.Center,
+            label = "versionCapsule",
+        ) { label ->
             Text(
-                if (updateHeadline != null) "Update" else "About app",
+                label,
                 style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White),
                 maxLines = 1,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color(0xFF4D4D4D))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                softWrap = false,
             )
         }
+    }
+}
+
+/** A new GitHub issue, already holding the version and device so the report says where it happened. */
+private fun bugReportUrl(): String {
+    val body = buildString {
+        appendLine("**What happened?**")
+        appendLine()
+        appendLine()
+        appendLine("**Steps to make it happen again**")
+        appendLine()
+        appendLine()
+        appendLine("---")
+        appendLine("App version: ${BuildConfig.VERSION_NAME}")
+        appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+        append("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+    }
+    return "${com.example.musicfy.core.updater.GithubRepoUrl}/issues/new?labels=bug&body=${android.net.Uri.encode(body)}"
+}
+
+private fun android.content.Context.openCapsuleUrl(url: String) {
+    runCatching {
+        startActivity(
+            android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 }
 

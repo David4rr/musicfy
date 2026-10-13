@@ -247,7 +247,15 @@ fun SubSettingsScaffold(
                         translationY = lerp(ExpandedTitleTop.toPx(), collapsedTop, p)
 
                         val blurPx = sin(p.coerceIn(0f, 1f) * PI.toFloat()) * TitleMorphMaxBlurPx
-                        renderEffect = BlurEffectCache.get(blurPx, android.graphics.Shader.TileMode.DECAL)
+                        // DECAL is API 31. The argument is read before BlurEffectCache.get can
+                        // return early, so naming it outside this check threw NoSuchFieldError on
+                        // Android 11 and older the first time the header drew: every settings
+                        // page crashed on opening. Below 31 there's no blur either way.
+                        renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                            BlurEffectCache.get(blurPx, android.graphics.Shader.TileMode.DECAL)
+                        } else {
+                            null
+                        }
                     }
             )
         }

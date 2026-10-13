@@ -52,5 +52,6 @@ internal fun timedTextToLrc(json: String): String {
     return lines.joinToString("\n")
 }
 
-private val SoundLabel = Regex("""\[[^\]]*]""")
+// the closing bracket escaped: Android's regex engine is stricter than desktop Java's
+private val SoundLabel = Regex("""\[[^\]]*\]""")
 private val Whitespace = Regex("""\s+""")

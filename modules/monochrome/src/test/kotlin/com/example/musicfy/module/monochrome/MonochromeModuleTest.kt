@@ -100,6 +100,24 @@ class MonochromeModuleTest {
     }
 
     @Test
+    fun `a lookup the server doesn't answer passes the module over for a while`() = runBlocking {
+        val (module, _) = module { throw java.io.IOException("no route to host") }
+        assertTrue(module.resolve(eastside, emptyMap()) is ResolveResult.Unavailable)
+        assertTrue(module.accountState() is AccountState.Expired)
+    }
+
+    @Test
+    fun `an old unreachable mark is tried again`() {
+        val (module, host) = module()
+        host.storage.set("unreachable", "Monochrome's server didn't answer")
+        host.storage.set("unreachable_at", (System.currentTimeMillis() - 11 * 60 * 1000).toString())
+        assertTrue(module.accountState() is AccountState.SignedIn)
+        // a mark from before marks had a time is old too
+        host.storage.set("unreachable_at", null)
+        assertTrue(module.accountState() is AccountState.SignedIn)
+    }
+
+    @Test
     fun `a 24-bit 96 kHz file reads as Hi-Res`() {
         // STREAMINFO for 96000 Hz, 2 channels, 24 bits: rate 0x17700 -> 0x17 0x70 0x0., then (ch-1)=1, (bits-1)=23
         val streamInfo = ByteArray(18).also {
