@@ -103,7 +103,16 @@ Musicfy is an independent, unofficial project made for personal and educational 
 - **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
 - **Kizzy** by [Kizzy-APKs](https://github.com/Kizzy-APKs) ([Repository](https://github.com/Kizzy-APKs/Kizzy)) -- For Discord RPC integration support.
 ---
+## Star History
+
+<a href="https://www.star-history.com/?repos=realidkroo%2Fmusicfy&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&legend=top-left" />
+ </picture>
+</a>
 
 <div align="center">
-  <sub>star the repo!</sub>
+  <sub>star the repo plssss!</sub>
 </div>
