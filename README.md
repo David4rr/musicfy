@@ -101,6 +101,7 @@ Musicfy is an independent, unofficial project made for personal and educational 
 - **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
 - **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
 - **Monochrome Music** by [monochrome](https://github.com/monochrome) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
+- **Auto Eq** ([Web](https://autoeq.app)) -- The equalizer database
 
 ---
 ## Star History
