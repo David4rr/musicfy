@@ -80,6 +80,10 @@ private class Effective(val quality: AudioQuality, val title: String, val format
 @Composable
 fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel = hiltViewModel()) {
     val (stored, onQuality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
+    val (downloadQuality, onDownloadQuality) = rememberEnumPreference(
+        com.example.musicfy.constants.DownloadQualityKey,
+        defaultValue = com.example.musicfy.constants.DownloadQuality.HIGH,
+    )
     // the tiers Monochrome used to serve from here belong to its module now
     val quality = if (stored.usesMonochrome) AudioQuality.HIGH else stored
     val entries by modules.entries.collectAsState()
@@ -174,6 +178,24 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
                 }
             }
         }
+
+        // what downloads are saved as, apart from what plays: Lossless downloads Monochrome's FLAC
+        // whatever the provider order says, since a download is kept
+        Spacer(Modifier.height(18.dp))
+        LabSectionLabel("Downloads")
+        LabCard(padding = 14.dp) {
+            com.example.musicfy.constants.DownloadQuality.entries.forEach { option ->
+                QualityRow(option.title, option.description, selected = downloadQuality == option, enabled = true) {
+                    onDownloadQuality(option)
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        Text(
+            "For songs downloaded from now on. Downloads already made stay as they are.",
+            fontFamily = InterFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = LabColors.Secondary,
+            modifier = Modifier.padding(top = 10.dp, start = 6.dp),
+        )
 
         Spacer(Modifier.height(18.dp))
         LabSectionLabel("Provider order")

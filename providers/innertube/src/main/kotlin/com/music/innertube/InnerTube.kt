@@ -70,6 +70,10 @@ class InnerTube {
 
     var useLoginForBrowse: Boolean = false
 
+    /** Offline mode: every request fails at once with [OfflineModeException], none goes out. */
+    @Volatile
+    var offline: Boolean = false
+
     @OptIn(ExperimentalSerializationApi::class)
     private fun createClient() = HttpClient(OkHttp) {
         expectSuccess = true
@@ -182,6 +186,7 @@ class InnerTube {
         factor: Double = 2.0,
         block: suspend () -> T,
     ): T {
+        if (offline) throw OfflineModeException()
         var currentDelay = initialDelay
         var attempt = 0
         while (true) {
@@ -391,6 +396,17 @@ class InnerTube {
                     )
                 )
             )
+        }
+    }
+
+    /**
+     * One caption track's cues in YouTube's JSON timed-text format. [baseUrl] comes from a player
+     * response made as [client], and the request goes out as that client too.
+     */
+    suspend fun timedText(baseUrl: String, client: YouTubeClient) = withRetry {
+        httpClient.get(baseUrl) {
+            url.parameters["fmt"] = "json3"
+            userAgent(client.userAgent)
         }
     }
 

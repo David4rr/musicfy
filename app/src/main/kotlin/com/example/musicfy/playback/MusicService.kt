@@ -400,6 +400,10 @@ class MusicService :
     private val resolvedStreamSources = java.util.concurrent.ConcurrentHashMap<String, String>()
     // Force playback: for each song, the providers that already failed on it, passed over next time
     private val failedSources = java.util.concurrent.ConcurrentHashMap<String, MutableSet<String>>()
+    // when each song's first failure above was, so they're forgotten after FailedSourceMemoryMs
+    private val failedSourcesAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    /** the request headers each source module stream needs, by its cache key */
+    private val moduleStreamHeaders = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
     // which provider each song was last handed to (a module id, or "youtube")
     private val resolvedSourceIds = java.util.concurrent.ConcurrentHashMap<String, String>()
     /** what each song is playing as, by media id, for the player's format badge */
@@ -787,14 +791,17 @@ class MusicService :
                     .first() == null
             ) {
                 val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
-                database.query {
-                    upsert(
-                        LyricsEntity(
-                            id = mediaMetadata.id,
-                            lyrics = lyricsWithProvider.lyrics,
-                            provider = lyricsWithProvider.provider,
-                        ),
-                    )
+                // offline: nothing was found because nothing was asked; try again when online
+                if (lyricsWithProvider.provider != com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider) {
+                    database.query {
+                        upsert(
+                            LyricsEntity(
+                                id = mediaMetadata.id,
+                                lyrics = lyricsWithProvider.lyrics,
+                                provider = lyricsWithProvider.provider,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -1625,6 +1632,8 @@ class MusicService :
     }
 
     private fun isInfiniteQueueEnabled(): Boolean {
+        // its songs come from YouTube radios
+        if (com.example.musicfy.utils.OfflineMode.isOn) return false
         val stored = dataStore.get(InfiniteQueueKey, true)
         val pending = pendingInfiniteQueue ?: return stored
         if (pending == stored) pendingInfiniteQueue = null
@@ -1636,7 +1645,7 @@ class MusicService :
      * e.g. the first request on a fresh install failed. Each retry waits twice as long as the last.
      */
     private fun scheduleRunwayRetry(generation: Int) {
-        if (runwayRetries >= MAX_RUNWAY_RETRIES) return
+        if (runwayRetries >= MAX_RUNWAY_RETRIES || com.example.musicfy.utils.OfflineMode.isOn) return
         val canGrow = (dataStore.get(AutoLoadMoreKey, true) && currentQueue.hasNextPage()) ||
             (isInfiniteQueueEnabled() && player.repeatMode == REPEAT_MODE_OFF)
         if (!canGrow) return
@@ -1778,6 +1787,8 @@ class MusicService :
 
     /** Returns the next batch of songs and whether they came from the infinite queue, or null if there's nothing to add. */
     private suspend fun loadMoreQueueItems(): Pair<List<MediaItem>, Boolean>? {
+        // a queue's next page and the infinite queue are both online
+        if (com.example.musicfy.utils.OfflineMode.isOn) return null
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideos = dataStore.get(HideVideoSongsKey, false)
 
@@ -2779,6 +2790,24 @@ class MusicService :
             return
         }
 
+        // Offline mode refused a song that isn't on the device before anything went out. Nothing
+        // to retry or recover - and the recovery below clears the song's cache, which is what
+        // offline playback plays from - so straight on to the next song that is on the device.
+        if (com.example.musicfy.utils.OfflineMode.isOn &&
+            generateSequence<Throwable>(error) { it.cause }.any { it is com.music.innertube.OfflineModeException }
+        ) {
+            val next = nextOfflineIndex()
+            if (next != C.INDEX_UNSET) {
+                player.seekTo(next, C.TIME_UNSET)
+                player.prepare()
+                if (castConnectionHandler?.isCasting?.value != true) player.play()
+            } else {
+                player.pause()
+                showBanner("Offline mode: nothing after this is on your device")
+            }
+            return
+        }
+
         lastPlaybackError = error
         val mediaId = player.currentMediaItem?.mediaId
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}, causes=${generateSequence<Throwable>(error) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + ":" + it.message }}")
@@ -3145,6 +3174,8 @@ class MusicService :
     }
 
     private fun updateDiscordRPC(song: Song, showFeedback: Boolean = false) {
+        // offline mode: no status goes to Discord
+        if (com.example.musicfy.utils.OfflineMode.isOn) return
         val useDetails = dataStore.get(DiscordUseDetailsKey, false)
         val advancedMode = dataStore.get(DiscordAdvancedModeKey, false)
 
@@ -3232,6 +3263,19 @@ class MusicService :
                 error("No media id")
             }
 
+            // A source module's stream (Monochrome's FLAC file) goes out as the module gave it. It
+            // used to carry the bare media id, so everything below took it for a YouTube song and
+            // swapped in YouTube's stream - a cached YouTube url, or a fresh one - whenever the FLAC
+            // wasn't already in the cache: the song played as Opus with a FLAC badge until the
+            // decoder said otherwise.
+            if (mediaId.startsWith(ModuleCacheKeyPrefix)) {
+                // offline mode switched on mid-song: the rest of it isn't fetched either
+                if (com.example.musicfy.utils.OfflineMode.isOn) throw com.music.innertube.OfflineModeException()
+                return@Factory dataSpec.withRequestHeaders(
+                    dataSpec.httpRequestHeaders + moduleStreamHeaders[mediaId].orEmpty()
+                )
+            }
+
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
             val scheme = dataSpec.uri.scheme
@@ -3249,6 +3293,10 @@ class MusicService :
                     return@Factory dataSpec
                 }
 
+                // Offline mode: what isn't on the device isn't fetched, not even from a url
+                // already in hand. onPlayerError moves on to the next song that is.
+                if (com.example.musicfy.utils.OfflineMode.isOn) throw com.music.innertube.OfflineModeException()
+
                 songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let { cached ->
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec
@@ -3258,6 +3306,8 @@ class MusicService :
             } else {
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
             }
+
+            if (com.example.musicfy.utils.OfflineMode.isOn) throw com.music.innertube.OfflineModeException()
 
             Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality")
             val playbackData = runBlocking(Dispatchers.IO) {
@@ -3384,8 +3434,10 @@ class MusicService :
         if (!dataStore.get(ForcePlaybackKey, false)) return false
         val failed = resolvedSourceIds[mediaId] ?: return false
         if (failed == com.example.musicfy.modules.SourceModules.YouTubeId && !includeYouTube) return false
+        recentFailures(mediaId)
         val skip = failedSources.getOrPut(mediaId) { java.util.concurrent.ConcurrentHashMap.newKeySet() }
         if (!skip.add(failed)) return false
+        failedSourcesAt.putIfAbsent(mediaId, System.currentTimeMillis())
         val next = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) } ?: return false
         Timber.tag(TAG).i("Force playback: $mediaId failed from $failed, trying $next")
         android.util.Log.i("SourceModules", "Force playback: ${sourceModules.nameOf(failed)} failed on $mediaId, trying ${sourceModules.nameOf(next)}")
@@ -3422,7 +3474,7 @@ class MusicService :
                         }
                         factory
                     },
-                    fetcherAction = { mediaId -> routeStream(mediaId) },
+                    fetcherAction = { mediaId -> deviceStream(mediaItem) ?: routeStream(mediaId) },
                     onSourceResolved = { mediaId, source ->
                         resolvedStreamSources[mediaId] = source
                         Handler(Looper.getMainLooper()).post {
@@ -3497,7 +3549,8 @@ class MusicService :
         }
 
         if (playbackStats.totalPlayTimeMs >= historyDurationMs &&
-            dataStore.get(com.example.musicfy.constants.YtReportPlaysKey, true)
+            dataStore.get(com.example.musicfy.constants.YtReportPlaysKey, true) &&
+            !com.example.musicfy.utils.OfflineMode.isOn
         ) {
             CoroutineScope(Dispatchers.IO).launch {
                 val playbackUrl = database.format(mediaItem.mediaId).first()?.playbackUrl
@@ -3946,8 +3999,57 @@ class MusicService :
      * is switched on, hasn't already failed on this song, and has it. Null hands it to YouTube.
      * With every provider spent, it throws, so the song is skipped rather than retried forever.
      */
+    /**
+     * The providers that failed on [mediaId] lately. They're forgotten after [FailedSourceMemoryMs]:
+     * remembered for good, one slow answer from Monochrome sent the song to YouTube every time
+     * after, until the app was closed.
+     */
+    private fun recentFailures(mediaId: String): Set<String> {
+        val at = failedSourcesAt[mediaId]
+        if (at != null && System.currentTimeMillis() - at > FailedSourceMemoryMs) {
+            failedSources.remove(mediaId)
+            failedSourcesAt.remove(mediaId)
+        }
+        return failedSources[mediaId].orEmpty()
+    }
+
+    /**
+     * The song's own file, or its download, when it has one - so it never goes looking for a copy
+     * online. Every song used to be routed through the source modules, which find songs by title
+     * and artist: with a module ahead of YouTube in the order, an imported file or a downloaded
+     * song played that module's online stream instead, and otherwise it was announced as playing
+     * from YouTube Music.
+     */
+    private suspend fun deviceStream(mediaItem: androidx.media3.common.MediaItem): com.example.musicfy.playback.custom.CustomStreamResult? {
+        val mediaId = mediaItem.mediaId
+        val uri = mediaItem.localConfiguration?.uri
+        val file = when {
+            uri?.scheme == "content" || uri?.scheme == "file" -> uri.toString()
+            // an imported file queued from somewhere that only had its id - a search result, a
+            // pinned tile, a radio - would otherwise be looked up on YouTube by that id
+            mediaId.startsWith("LOCAL_") -> database.song(mediaId).first()?.song?.localUri
+            else -> null
+        }
+        if (file != null) {
+            forgetModuleFacts(mediaId)
+            return com.example.musicfy.playback.custom.CustomStreamResult(streamUrl = file, source = "This device")
+        }
+        if (isFullyDownloaded(mediaId)) {
+            forgetModuleFacts(mediaId)
+            // the same item: the data source finds the download under its media id
+            return com.example.musicfy.playback.custom.CustomStreamResult(
+                streamUrl = uri?.toString() ?: mediaId,
+                source = "Downloaded",
+            )
+        }
+        return null
+    }
+
     private suspend fun routeStream(mediaId: String): com.example.musicfy.playback.custom.CustomStreamResult? {
-        val skip = failedSources[mediaId].orEmpty()
+        // offline: no provider is asked; the song plays if it's cached, and is skipped if not.
+        // An imported file is never looked for online, even one whose file has gone missing.
+        if (com.example.musicfy.utils.OfflineMode.isOn || mediaId.startsWith("LOCAL_")) return null
+        val skip = recentFailures(mediaId)
         // songs that only YouTube has (and the common case of YouTube first) need no lookup
         val first = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) }
         if (first == com.example.musicfy.modules.SourceModules.YouTubeId) {
@@ -3968,6 +4070,8 @@ class MusicService :
             is com.example.musicfy.modules.SourceModules.Route.Module -> {
                 val stream = route.stream
                 resolvedSourceIds[mediaId] = route.module.info.id
+                val cacheKey = "$ModuleCacheKeyPrefix${route.module.info.id}|$mediaId"
+                moduleStreamHeaders[cacheKey] = stream.headers
                 streamFacts.update { it + (mediaId to StreamFacts(codec = stream.codec, fromModule = true)) }
                 Timber.tag("StreamFetch").i("$mediaId plays from ${route.module.info.name}: ${stream.matched.title} · ${stream.qualityLabel}")
                 com.example.musicfy.playback.custom.CustomStreamResult(
@@ -3976,6 +4080,7 @@ class MusicService :
                     isDash = stream.format == com.example.musicfy.module.StreamFormat.Dash,
                     source = "${route.module.info.name} · ${stream.qualityLabel}",
                     widevineLicense = (stream.drm as? com.example.musicfy.module.StreamDrm.Widevine)?.license,
+                    cacheKey = cacheKey,
                 )
             }
             com.example.musicfy.modules.SourceModules.Route.YouTube -> {
@@ -3997,6 +4102,39 @@ class MusicService :
             }
         }
     }
+
+    /**
+     * The next song in play order (shuffle and repeat-all included) that plays without a
+     * connection, or [C.INDEX_UNSET] when none does.
+     */
+    private fun nextOfflineIndex(): Int {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return C.INDEX_UNSET
+        // repeat-one would only ever give back the song that just failed
+        val repeatMode = if (player.repeatMode == REPEAT_MODE_ONE) REPEAT_MODE_OFF else player.repeatMode
+        var index = player.currentMediaItemIndex
+        repeat(timeline.windowCount) {
+            index = timeline.getNextWindowIndex(index, repeatMode, player.shuffleModeEnabled)
+            if (index == C.INDEX_UNSET || index == player.currentMediaItemIndex) return C.INDEX_UNSET
+            if (playsOffline(player.getMediaItemAt(index))) return index
+        }
+        return C.INDEX_UNSET
+    }
+
+    /** An imported file, a download, or a song the player has cached whole. */
+    private fun playsOffline(item: androidx.media3.common.MediaItem): Boolean {
+        val scheme = item.localConfiguration?.uri?.scheme
+        return scheme == "content" || scheme == "file" || item.mediaId.startsWith("LOCAL_") ||
+            isFullyDownloaded(item.mediaId) || isFullyCached(item.mediaId)
+    }
+
+    /** every byte of the song is in the player's own cache, from having played it */
+    private fun isFullyCached(mediaId: String): Boolean = runCatching {
+        val length = androidx.media3.datasource.cache.ContentMetadata.getContentLength(
+            playerCache.getContentMetadata(mediaId)
+        )
+        length > 0 && playerCache.isCached(mediaId, 0, length)
+    }.getOrDefault(false)
 
     /** every byte of the song is in the download cache */
     private fun isFullyDownloaded(mediaId: String): Boolean = runCatching {
@@ -4142,6 +4280,7 @@ class MusicService :
             val found = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
                 runCatching { lyricsHelper.getLyrics(metadata) }.getOrNull()
             } ?: return@withContext null
+            if (found.provider == com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider) return@withContext null
             runCatching {
                 database.query { upsert(LyricsEntity(id = metadata.id, lyrics = found.lyrics, provider = found.provider)) }
             }
@@ -4171,6 +4310,16 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L
+
+        /**
+         * Starts the cache key of a stream a source module resolved: "module|<module id>|<media id>".
+         * Its own key keeps it apart from the song's YouTube stream, which is cached under the bare
+         * media id - see the data source factory.
+         */
+        const val ModuleCacheKeyPrefix = "module|"
+
+        /** how long a provider that failed on a song is passed over for it (Force playback) */
+        const val FailedSourceMemoryMs = 10L * 60 * 1000
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"

@@ -151,6 +151,8 @@ fun <T> LibraryEntityListScreen(
                             isPlaying = active && isPlaying,
                             round = roundThumbnails,
                             sharedElementKey = sharedElementKeyOf?.invoke(row.item),
+                            // only song lists say which song a row is
+                            songId = playingIdOf?.invoke(row.item),
                             onClick = { onClick(row.item) },
                             onLongClick = { onLongClick(row.item) },
                         )

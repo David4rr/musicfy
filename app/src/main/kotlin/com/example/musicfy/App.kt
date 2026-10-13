@@ -130,6 +130,7 @@ class App : Application(), SingletonImageLoader.Factory {
 
     private suspend fun initializeSettings() {
         val settings = dataStore.data.first()
+        com.example.musicfy.utils.OfflineMode.set(settings[OfflineModeKey] ?: false)
         val locale = Locale.getDefault()
         val languageTag = locale.language
 
@@ -194,6 +195,13 @@ class App : Application(), SingletonImageLoader.Factory {
     }
 
     private fun observeSettingsChanges() {
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[OfflineModeKey] ?: false }
+                .distinctUntilChanged()
+                .collect { com.example.musicfy.utils.OfflineMode.set(it) }
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
                 .map { it[VisitorDataKey] }

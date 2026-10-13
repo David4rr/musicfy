@@ -97,6 +97,8 @@ constructor(
             // forceRefresh, or the helper's in-memory cache hands back the exact result being
             // replaced and the refetch becomes a no-op.
             val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
+            // offline, a refetch would replace the lyrics there are with "not found"
+            if (lyricsWithProvider.provider == com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider) return@launch
             database.query {
                 upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
             }

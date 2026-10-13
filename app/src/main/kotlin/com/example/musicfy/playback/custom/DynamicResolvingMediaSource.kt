@@ -92,6 +92,7 @@ class DynamicResolvingMediaSource(
             }
 
             val builder = originalMediaItem.buildUpon().setUri(Uri.parse(result.streamUrl))
+            result.cacheKey?.let(builder::setCustomCacheKey)
 
             if (result.isDash || result.streamUrl.endsWith(".mpd")) {
                 builder.setMimeType(MimeTypes.APPLICATION_MPD)

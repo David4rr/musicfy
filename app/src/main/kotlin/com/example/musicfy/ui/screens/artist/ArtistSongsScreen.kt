@@ -133,6 +133,7 @@ fun ArtistSongsScreen(
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,
+                    songId = song.id,
                     title = song.song.title,
                     subtitle = listOfNotNull(song.album?.title, makeTimeString(song.song.duration * 1000L)).joinToString(" • "),
                     isActive = song.id == mediaMetadata?.id,

@@ -670,6 +670,7 @@ fun LocalPlaylistScreen(
                 val content: @Composable () -> Unit = {
                     PlaylistTrackRow(
                         thumbnailUrl = song.song.song.thumbnailUrl,
+                        songId = song.song.id,
                         title = song.song.song.title,
                         subtitle = "${song.song.artists.joinToString { it.name }} • ${makeTimeString(song.song.song.duration * 1000L)}",
                         isActive = song.song.id == mediaMetadata?.id,

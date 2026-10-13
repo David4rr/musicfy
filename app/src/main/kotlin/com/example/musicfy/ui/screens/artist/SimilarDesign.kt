@@ -624,6 +624,7 @@ internal fun PagedSongGrid(
             Box(modifier = Modifier.width(columnWidth)) {
                 HomeTrackRow(
                     thumbnailUrl = song.thumbnail,
+                    songId = song.id,
                     title = song.title,
                     subtitle = song.artists.joinToString { it.name },
                     isActive = song.id == activeId,

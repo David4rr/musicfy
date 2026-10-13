@@ -278,6 +278,7 @@ fun AlbumScreen(
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,
+                    songId = song.id,
                     title = song.song.title,
                     subtitle = "${song.artists.joinToString { it.name }} • ${makeTimeString(song.song.duration * 1000L)}",
                     isActive = song.id == mediaMetadata?.id,

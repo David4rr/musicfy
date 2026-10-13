@@ -172,6 +172,12 @@ suspend fun importLocalAudio(
         extractAudioMetadata(context, uri)
     }
 
+    // the file's own lyrics, if its tags have any: saved with it, so they're
+    // there offline from the first play
+    val embeddedLyrics = withContext(Dispatchers.IO) {
+        com.example.musicfy.lyrics.readEmbeddedLyrics(context, uri)
+    }
+
     val songId = "LOCAL_${UUID.randomUUID()}"
     val thumbnailUrl = withContext(Dispatchers.IO) {
         metadata.embeddedArtwork?.let { artworkData ->
@@ -220,6 +226,16 @@ suspend fun importLocalAudio(
                     position = 0,
                 ),
             )
+
+            embeddedLyrics?.let { lyrics ->
+                upsert(
+                    com.example.musicfy.db.entities.LyricsEntity(
+                        id = songId,
+                        lyrics = lyrics,
+                        provider = com.example.musicfy.lyrics.EmbeddedLyrics.Provider,
+                    ),
+                )
+            }
 
             val mimeType = metadata.mimeType ?: "audio/mpeg"
             val codecs = when {

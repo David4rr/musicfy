@@ -22,6 +22,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -47,6 +48,23 @@ constructor(
                         database.searchHistory().map { history ->
                             SearchSuggestionViewState(
                                 history = history,
+                            )
+                        }
+                    } else if (com.example.musicfy.utils.OfflineMode.isOn) {
+                        // offline: the library is all there is to search, shown where YouTube's
+                        // top results would be
+                        combine(
+                            database.searchHistory(query).map { it.take(3) },
+                            database.searchSongs(query, OfflinePreviewSize),
+                            database.searchAlbums(query, OfflinePreviewSize),
+                            database.searchArtists(query, OfflinePreviewSize),
+                            database.searchPlaylists(query, OfflinePreviewSize),
+                        ) { history, songs, albums, artists, playlists ->
+                            SearchSuggestionViewState(
+                                history = history,
+                                items = com.example.musicfy.ui.screens.library.searchLibrary(
+                                    query, songs, artists, albums, playlists,
+                                ),
                             )
                         }
                     } else {
@@ -115,3 +133,6 @@ data class SearchSuggestionViewState(
     val items: List<YTItem> = emptyList(),
     val isFromLink: Boolean = false,
 )
+
+/** how many of each kind offline search shows */
+private const val OfflinePreviewSize = 8

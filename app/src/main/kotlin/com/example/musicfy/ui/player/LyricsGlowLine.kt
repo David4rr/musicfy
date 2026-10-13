@@ -286,8 +286,10 @@ fun LyricsGlowLine(
         modifier = Modifier.padding(horizontal = LyricsTapPadH, vertical = LyricsTapPadV),
     ) {
 
-        val parts = remember(entry.text, entry.words) {
-            splitBackingVocal(entry.text, entry.words)
+        // the pieces as the source timed them: this style sweeps along the line's own text,
+        // syllable by syllable, so it never shows the gaps other styles put between them
+        val parts = remember(entry.text, entry.words, entry.syllables) {
+            splitBackingVocal(entry.text, entry.syllables ?: entry.words)
         }
         val leadText = parts.lead
         val words = parts.leadWords

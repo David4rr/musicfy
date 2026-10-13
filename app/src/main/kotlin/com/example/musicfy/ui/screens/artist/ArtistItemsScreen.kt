@@ -280,6 +280,7 @@ fun ArtistItemsScreen(
                 ) {
                     PlaylistTrackRow(
                         thumbnailUrl = song.thumbnail,
+                        songId = song.id,
                         title = song.title,
                         subtitle = listOfNotNull(
                             song.album?.name ?: song.artists.joinToString { it.name },
@@ -362,6 +363,7 @@ fun ArtistItemsScreen(
             else -> itemsIndexed(rows, key = { _, it -> it.id }, contentType = { _, _ -> "row" }) { position, item ->
                 PlaylistTrackRow(
                     thumbnailUrl = item.thumbnail,
+                    songId = (item as? SongItem)?.id,
                     title = item.title,
                     subtitle = cellSubtitle(item).orEmpty(),
                     isActive = item is AlbumItem && item.id == mediaMetadata?.album?.id,

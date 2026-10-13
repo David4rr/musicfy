@@ -392,11 +392,113 @@ object LyricsUtils {
             RICH_SYNC_WORD_REGEX.containsMatchIn(line)
         }
 
-        return if (isRichSync) {
+        val parsed = if (isRichSync) {
             parseRichSyncLyrics(lines)
         } else {
             parseStandardLyrics(lines)
         }
+        return fixWordSpacing(parsed)
+    }
+
+    /**
+     * Repairs the two ways a line's word timings and its text come apart, so every lyrics style
+     * shows the same words:
+     *
+     *  - **Syllables timed as words** ("a" "gain", "lo" "ve"). The line text is right, but the
+     *    styles that lay out one timed word after another with a space between showed "let down a
+     *    gain you will not.. I thin k I lo ve yo u". Pieces with no space between them in the
+     *    line are one word, and are merged into it. The pieces themselves stay in
+     *    [LyricsEntry.syllables] for the main style, which sweeps syllable by syllable.
+     *  - **No spaces at all** ("<t>I<t>love<t>you" reads "Iloveyou"). When nearly every
+     *    multi-word line of a song has no space in it, the source dropped them: its timed pieces
+     *    are the words, and the text is rebuilt with spaces between them.
+     *
+     * Neither touches Chinese, Japanese or Thai, which are written without spaces.
+     */
+    private fun fixWordSpacing(entries: List<LyricsEntry>): List<LyricsEntry> {
+        if (entries.none { (it.words?.size ?: 0) > 1 }) return entries
+        val spacesDropped = spacesDropped(entries)
+        return entries.map { entry ->
+            val words = entry.words?.takeIf { it.size > 1 } ?: return@map entry
+            val text = if (spacesDropped && isGluedLine(entry.text, words)) spacedText(words) else entry.text
+            val merged = mergeWordPieces(text, words)
+            if (text == entry.text && merged == words) {
+                entry
+            } else {
+                entry.copy(text = text, words = merged, syllables = words.takeIf { it.size != merged.size })
+            }
+        }
+    }
+
+    /** Scripts written without spaces between words: their timed pieces are never merged. */
+    private val UnspacedScripts = setOf(Script.HAN, Script.KANA, Script.THAI)
+
+    /** Two or more timed pieces on a line in a spaced script with no space anywhere in it. */
+    private fun isGluedLine(text: String, words: List<WordTimestamp>): Boolean =
+        words.count { it.text.isNotBlank() } >= 2 &&
+            text.none(Char::isWhitespace) &&
+            dominantScript(text).let { it !in UnspacedScripts && it != Script.UNKNOWN }
+
+    /**
+     * Whether the source left out the spaces between words: at least three multi-piece lines in a
+     * spaced script, four in five of them with no space at all, and those split into three or more
+     * pieces on average. Lyrics timed in syllables still have spaces between their words on most
+     * lines, so they never get this far, and neither do a few glued "oh-oh"s.
+     */
+    private fun spacesDropped(entries: List<LyricsEntry>): Boolean {
+        val lines = entries.filter { entry ->
+            val words = entry.words ?: return@filter false
+            words.count { it.text.isNotBlank() } >= 2 &&
+                dominantScript(entry.text).let { it !in UnspacedScripts && it != Script.UNKNOWN }
+        }
+        if (lines.size < 3) return false
+        val glued = lines.filter { it.text.none(Char::isWhitespace) }
+        if (glued.size * 5 < lines.size * 4) return false
+        val pieces = glued.sumOf { line -> line.words!!.count { it.text.isNotBlank() } }
+        return pieces >= glued.size * 3
+    }
+
+    private const val NoSpaceBefore = ",.!?;:)]}…"
+    private const val NoSpaceAfter = "([{"
+    private val ContractionPiece = Regex("^['’](s|t|re|ll|m|ve|d)$", RegexOption.IGNORE_CASE)
+
+    /** Timed words as a line of text: a space between each, but not before punctuation. */
+    private fun spacedText(words: List<WordTimestamp>): String = buildString {
+        words.map { it.text.trim() }.filter { it.isNotEmpty() }.forEach { piece ->
+            val attached = piece.first() in NoSpaceBefore || ContractionPiece.matches(piece)
+            if (isNotEmpty() && !attached && last() !in NoSpaceAfter) append(' ')
+            append(piece)
+        }
+    }
+
+    /**
+     * [words] as whole words of [text]: consecutive pieces with nothing between them in the text
+     * become one word, timed from the first piece's start to the last one's end. Blank pieces (a
+     * timed space) drop out. A piece that can't be found in the text is left as it is.
+     */
+    private fun mergeWordPieces(text: String, words: List<WordTimestamp>): List<WordTimestamp> {
+        val pieces = words.filter { it.text.isNotBlank() }
+        val ranges = wordCharRanges(text, pieces)
+        val merged = ArrayList<WordTimestamp>(pieces.size)
+        var lastEnd = -1
+        pieces.forEachIndexed { index, piece ->
+            val range = ranges[index]
+            val previous = merged.lastOrNull()
+            val glued = !range.isEmpty() && range.first == lastEnd &&
+                scriptOf(text[lastEnd - 1]) !in UnspacedScripts &&
+                scriptOf(text[range.first]) !in UnspacedScripts
+            if (previous != null && glued) {
+                merged[merged.lastIndex] = WordTimestamp(
+                    text = previous.text + piece.text.trim(),
+                    startTime = previous.startTime,
+                    endTime = maxOf(previous.endTime, piece.endTime),
+                )
+            } else {
+                merged += WordTimestamp(piece.text.trim(), piece.startTime, piece.endTime)
+            }
+            lastEnd = if (range.isEmpty()) -1 else range.last + 1
+        }
+        return merged
     }
 
     private fun parseRichSyncLyrics(lines: List<String>): List<LyricsEntry> {
@@ -717,7 +819,8 @@ object LyricsUtils {
         // One word timing on one line is noise; a genuinely word-synced payload has them
         // throughout. Requiring half the lines keeps a stray <00:12.34> from promoting a
         // line-synced file.
-        val wordSynced = entries.count { (it.words?.size ?: 0) > 1 }
+        // counted on the pieces as sent: a one-word line sung in two syllables is still word-timed
+        val wordSynced = entries.count { ((it.syllables ?: it.words)?.size ?: 0) > 1 }
         if (wordSynced * 2 >= entries.size && wordSynced > 0) return SyncKind.WORD
         return SyncKind.LINE
     }
@@ -862,6 +965,100 @@ object LyricsUtils {
 
         else -> null
     }
+
+    /**
+     * Which language Latin-script lyrics are in, told by how often each language's commonest small
+     * words turn up ("the", "yang", "que"...): script alone can't tell an Indonesian song from its
+     * English translation. An ISO-style code ("en", "id"; "ja-Latn" for romanised Japanese), or
+     * null for another script, too few words, or no clear winner.
+     */
+    fun latinLanguage(rawLyrics: String): String? {
+        if (lyricsScript(rawLyrics) != Script.LATIN) return null
+        val tokens = rawLyrics
+            .replace(MarkupRegex, " ")
+            .lowercase(Locale.ROOT)
+            .split(NonWordRegex)
+            .map { it.trim('\'', '’') }
+            .filter { it.isNotEmpty() }
+        if (tokens.size < 12) return null
+        val ranked = LanguageMarkers
+            .map { (language, markers) -> language to tokens.count { it in markers } }
+            .sortedByDescending { it.second }
+        val (best, hits) = ranked.first()
+        val runnerUp = ranked.getOrNull(1)?.second ?: 0
+        // a tenth of all words, and half again as many as the next language
+        return best.takeIf { hits * 10 >= tokens.size && hits * 2 >= runnerUp * 3 }
+    }
+
+    /** Timestamps, word timings, voice tags: everything in a payload that isn't the words. */
+    private val MarkupRegex = Regex("""\[[^\]]*]|<[^>]*>|\{[^}]*}""")
+    private val NonWordRegex = Regex("""[^\p{L}'’]+""")
+
+    /**
+     * Small words that mark a language, chosen to be told apart: words common to several
+     * languages ("a", "de", "la", "no") are left out, since they would count for all of them.
+     */
+    private val LanguageMarkers: Map<String, Set<String>> = mapOf(
+        "en" to setOf(
+            "the", "and", "you", "i", "i'm", "my", "it's", "don't", "your", "that", "what", "with",
+            "this", "be", "just", "can't", "won't", "when", "all", "for", "of", "we", "but", "now",
+            "never", "you're", "i'll", "was", "are", "can", "know", "like", "want", "she", "he",
+        ),
+        "id" to setOf(
+            "yang", "dan", "aku", "kau", "kamu", "ini", "itu", "tak", "tidak", "dengan", "untuk",
+            "akan", "ada", "dalam", "hati", "saja", "bisa", "tapi", "jangan", "sudah", "lagi",
+            "karena", "selalu", "engkau", "dia", "kita", "cinta", "ku", "mu", "dari", "pun",
+            "pernah", "hanya", "semua", "takkan", "denganmu", "padamu", "diriku", "dirimu",
+        ),
+        "es" to setOf(
+            "que", "y", "el", "los", "las", "yo", "pero", "porque", "quiero", "eres", "estoy",
+            "cuando", "para", "del", "como", "más", "qué", "nada", "todo", "tú", "mí", "sí", "esta",
+            "está", "contigo", "corazón", "vida", "siempre", "nunca", "puedo",
+        ),
+        "pt" to setOf(
+            "você", "não", "eu", "meu", "minha", "é", "um", "pra", "tudo", "nao", "voce", "também",
+            "mais", "quando", "sem", "isso", "ela", "ele", "só", "vou", "seu", "sua", "nós", "estou",
+            "coração", "agora", "sempre", "nunca",
+        ),
+        "fr" to setOf(
+            "je", "les", "et", "est", "pas", "pour", "dans", "moi", "toi", "mon", "c'est", "j'ai",
+            "qui", "sur", "une", "des", "du", "au", "ne", "plus", "tout", "elle", "nous", "vous",
+            "suis", "ça", "avec", "mais",
+        ),
+        "de" to setOf(
+            "der", "die", "das", "und", "ich", "nicht", "ist", "ein", "eine", "mich", "mir", "dich",
+            "dir", "wir", "mein", "auf", "mit", "wie", "nur", "auch", "sich", "noch", "bin", "bist",
+            "kein", "immer", "zu",
+        ),
+        "it" to setOf(
+            "il", "che", "non", "sono", "sei", "io", "per", "mio", "mia", "più", "cosa", "ancora",
+            "questo", "della", "nel", "perché", "tutto", "anche", "gli", "voglio", "amore",
+        ),
+        "tl" to setOf(
+            "ang", "ng", "sa", "ko", "mo", "na", "ka", "ako", "ikaw", "hindi", "lang", "mga",
+            "kita", "ay", "naman", "pa", "sana", "akin", "ito", "iyong", "natin", "tayo", "puso",
+        ),
+        "nl" to setOf(
+            "het", "een", "ik", "niet", "van", "dat", "mijn", "jij", "wij", "voor", "maar", "zijn",
+            "wat", "wel", "nog", "ook", "geen", "heb", "ben",
+        ),
+        "tr" to setOf(
+            "bir", "ve", "ben", "sen", "bu", "için", "çok", "gibi", "beni", "seni", "var", "yok",
+            "değil", "olan", "her", "ama", "daha", "şey", "kadar",
+        ),
+        "vi" to setOf(
+            "anh", "em", "và", "không", "là", "của", "một", "người", "yêu", "có", "những", "cho",
+            "đã", "mình", "trong", "như", "tôi", "thì", "này",
+        ),
+        "ja-Latn" to setOf(
+            "wa", "ga", "wo", "ni", "mo", "kimi", "boku", "watashi", "anata", "dake", "kara",
+            "made", "kokoro", "demo", "itsumo", "nai", "koto", "toki", "naka", "sora",
+        ),
+        "ko-Latn" to setOf(
+            "naega", "neol", "neoreul", "nan", "nae", "neon", "geu", "nal", "naneun", "neoui",
+            "uri", "saranghae", "jigeum", "modeun", "ije", "geurae", "eonjena",
+        ),
+    )
 
     /** The script of the lyric text only, with timestamps and markup stripped. */
     fun lyricsScript(rawLyrics: String): Script {

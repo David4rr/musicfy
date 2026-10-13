@@ -104,6 +104,8 @@ class ScrobbleManager(
     }
 
     private fun scrobbleSong(metadata: MediaMetadata) {
+        // offline mode: nothing goes to Last.fm
+        if (com.example.musicfy.utils.OfflineMode.isOn) return
         scope.launch {
             LastFM.scrobble(
                 artist = metadata.artists.joinToString { it.name },
@@ -116,6 +118,8 @@ class ScrobbleManager(
     }
 
     private fun updateNowPlaying(metadata: MediaMetadata) {
+        // offline mode: nothing goes to Last.fm
+        if (com.example.musicfy.utils.OfflineMode.isOn) return
         scope.launch {
             LastFM.updateNowPlaying(
                 artist = metadata.artists.joinToString { it.name },

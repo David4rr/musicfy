@@ -482,6 +482,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
             onClick = { onOpen(item) },
             onLongClick = { onOpen(item) },
             round = item is ArtistItem,
+            songId = (item as? SongItem)?.id,
             // albums and playlists open growing out of their cover, as from Home
             sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
         )

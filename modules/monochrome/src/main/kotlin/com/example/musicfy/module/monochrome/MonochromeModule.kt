@@ -57,8 +57,21 @@ class MonochromeModule : SourceModule {
 
     override val choices: List<ModuleChoice> = emptyList()
 
-    override fun accountState(): AccountState =
-        host.storage.get("unreachable")?.let { AccountState.Expired(it) } ?: AccountState.SignedIn("No account needed")
+    /**
+     * Signed in, unless the server didn't answer a check in the last [UnreachableRetryMs]. The mark
+     * used to last until a check passed, but playback passes over a module that isn't signed in,
+     * so nothing ever checked again: one check made offline turned FLAC off until someone opened
+     * the module's settings and pressed Check server.
+     */
+    override fun accountState(): AccountState {
+        val reason = host.storage.get("unreachable") ?: return AccountState.SignedIn("No account needed")
+        val markedAt = host.storage.get("unreachable_at")?.toLongOrNull() ?: 0L
+        return if (System.currentTimeMillis() - markedAt < UnreachableRetryMs) {
+            AccountState.Expired(reason)
+        } else {
+            AccountState.SignedIn("No account needed")
+        }
+    }
 
     override fun onSignInHeader(name: String, value: String, url: String): Boolean = false
 
@@ -70,6 +83,7 @@ class MonochromeModule : SourceModule {
         } else {
             val reason = "Monochrome's server didn't answer (${response?.code ?: "offline"})"
             host.storage.set("unreachable", reason)
+            host.storage.set("unreachable_at", System.currentTimeMillis().toString())
             AccountState.Expired(reason)
         }
     }
@@ -200,6 +214,8 @@ class MonochromeModule : SourceModule {
         const val Id = "monochrome"
         private const val Base = "https://tracks.monochrome.st"
         private const val MissMemoryMs = 30L * 60 * 1000
+        /** how long a server that didn't answer a check is left alone before it's tried again */
+        private const val UnreachableRetryMs = 10L * 60 * 1000
         private const val UserAgent =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
         private val headers = mapOf("Accept" to "application/json", "User-Agent" to UserAgent)

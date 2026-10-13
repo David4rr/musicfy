@@ -247,6 +247,7 @@ fun SectionDetailScreen(
             val row: @Composable () -> Unit = {
                 PlaylistTrackRow(
                     thumbnailUrl = rowThumbnail(item),
+                    songId = id.takeIf { item is Song || item is SongItem },
                     title = name,
                     subtitle = sub,
                     isActive = id == mediaMetadata?.id || (item is AlbumItem && item.id == mediaMetadata?.album?.id),

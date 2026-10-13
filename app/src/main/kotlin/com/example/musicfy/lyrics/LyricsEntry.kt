@@ -32,7 +32,13 @@ data class LyricsEntry(
     val rubyFlow: MutableStateFlow<List<RubyToken>?> = MutableStateFlow(null),
     val translatedTextFlow: MutableStateFlow<String?> = MutableStateFlow(null),
     val agent: String? = null,
-    val isBackground: Boolean = false
+    val isBackground: Boolean = false,
+    /**
+     * The timed pieces exactly as the source sent them, when they were syllables that
+     * [LyricsUtils.parseLyrics] merged into whole [words]. Null when [words] already are those
+     * pieces. The main lyrics style sweeps along the line's own text and wants these.
+     */
+    val syllables: List<WordTimestamp>? = null,
 ) : Comparable<LyricsEntry> {
     override fun compareTo(other: LyricsEntry): Int = (time - other.time).toInt()
 

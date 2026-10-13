@@ -40,6 +40,8 @@ constructor(
             if (existing != null && !staleSyllableSplit) return@launch
 
             val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
+            // nothing was asked: not a "not found" to keep
+            if (lyricsWithProvider.provider == com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider) return@launch
             database.query {
                 upsert(
                     LyricsEntity(

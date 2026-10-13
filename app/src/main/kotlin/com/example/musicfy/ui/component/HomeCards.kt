@@ -364,6 +364,8 @@ fun HomeTrackRow(
     coverShape: Shape = HomeRowShape,
     /** Applied to the cover itself, e.g. to open a playlist growing out of it. */
     coverModifier: Modifier = Modifier,
+    /** A song's id: marks the row when the song is downloaded or an imported file. */
+    songId: String? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -421,6 +423,7 @@ fun HomeTrackRow(
                 )
             }
         }
+        OnDeviceMarks(songId, modifier = Modifier.padding(end = 2.dp))
         if (onMoreClick != null) Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier

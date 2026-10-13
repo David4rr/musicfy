@@ -84,7 +84,16 @@ constructor(
             bestCache.get(mediaMetadata.id)?.let { return it }
         }
 
-        val isNetworkAvailable = try {
+        // An imported file's own lyrics, from its tags: they're the file's, and they're there
+        // offline. Read before anything goes online, so offline mode still has them.
+        mediaMetadata.localUri?.let { uri ->
+            readEmbeddedLyrics(context, android.net.Uri.parse(uri))?.let { lyrics ->
+                return LyricsWithProvider(lyrics, EmbeddedLyrics.Provider).also { bestCache.put(mediaMetadata.id, it) }
+            }
+        }
+
+        // offline mode counts as no network: lyrics already saved for the song still show
+        val isNetworkAvailable = !com.example.musicfy.utils.OfflineMode.isOn && try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
 
@@ -92,8 +101,8 @@ constructor(
         }
 
         if (!isNetworkAvailable) {
-
-            return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
+            // not "not found": nothing was asked, and saying so would be saved as the answer
+            return LyricsWithProvider(LYRICS_NOT_FOUND, NoConnectionProvider)
         }
 
         val providers = resolveLyricsProviders()
@@ -103,6 +112,7 @@ constructor(
         if (candidates.isEmpty()) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
 
         val best = pickBest(mediaMetadata, candidates, providers.size)
+            ?: return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         val result = LyricsWithProvider(best.lyrics, best.providerName)
         bestCache.put(mediaMetadata.id, result)
         return result
@@ -118,6 +128,8 @@ constructor(
         val order: Int,
         val sync: LyricsUtils.SyncKind,
         val script: LyricsUtils.Script,
+        /** For Latin-script lyrics, the language when it can be told; see [LyricsUtils.latinLanguage]. */
+        val language: String? = null,
     ) {
         /** Carries real left/right voice tags, which is what lays a duet out on both sides. */
         val hasDuet: Boolean get() = LyricsUtils.hasDistinctVoices(lyrics)
@@ -149,7 +161,7 @@ constructor(
         provider: LyricsProvider,
         order: Int,
     ): ProviderCandidate? {
-        if (!provider.isEnabled(context)) return null
+        if (!provider.isEnabled(context) || com.example.musicfy.utils.OfflineMode.isOn) return null
         val lyrics = try {
             withTimeoutOrNull(ProviderTimeoutMs) {
                 provider.getLyrics(
@@ -173,6 +185,7 @@ constructor(
             order = order,
             sync = LyricsUtils.syncKind(lyrics),
             script = LyricsUtils.lyricsScript(lyrics),
+            language = LyricsUtils.latinLanguage(lyrics),
         ).takeIf { it.sync != LyricsUtils.SyncKind.NONE }
     }
 
@@ -191,19 +204,27 @@ constructor(
      *  2. Otherwise, YouTube's own lyrics or captions for this exact video, when they are in a
      *     non-Latin script. They come from the video itself, not from a title search, so they
      *     cannot be a different song or a translation fetched by mistake.
-     *  3. Otherwise the old rule, narrowed: a non-Latin result beats a Latin one (the Latin one
-     *     being a translation or romanisation) only when it is Japanese or Korean, or when two
-     *     providers agree on it. A lone Chinese result for a song with a Latin title is far more
-     *     often a mismatched search hit than the original, and it used to win outright, which is
-     *     how English and Indonesian songs ended up showing Chinese lyrics.
+     *  3. Otherwise, the language most sources agree on - by language, not just script, so an
+     *     Indonesian song's English translation counts against it. When most of the lyrics found
+     *     are in one language, the one or two in another lose to all of them, however well timed:
+     *     a translation or a different song is wrong however finely it is synced.
+     *  4. Otherwise (no clear majority) the old rule, narrowed: a non-Latin result beats a Latin
+     *     one (the Latin one being a translation or romanisation) only when it is Japanese or
+     *     Korean, or when two providers agree on it. A lone Chinese result for a song with a Latin
+     *     title is far more often a mismatched search hit than the original, and it used to win
+     *     outright, which is how English and Indonesian songs ended up showing Chinese lyrics.
      *
-     * Then sync quality (word > line > plain), then duet tags, then provider order.
+     * Then, among lyrics in the right language, sync quality (word > line > plain), then duet
+     * tags, then provider order.
+     *
+     * Not every source gets a say, though: KuGou and YouTube's auto captions only do when the
+     * better sources have nothing - see [eligible]. Null when nothing is left to pick from.
      */
     private fun pickBest(
         mediaMetadata: MediaMetadata,
         candidates: List<ProviderCandidate>,
         providerCount: Int,
-    ): ProviderCandidate {
+    ): ProviderCandidate? {
         val metadataScript = LyricsUtils.dominantScript(
             listOfNotNull(
                 mediaMetadata.title,
@@ -229,10 +250,18 @@ constructor(
             }
         }
 
-        val trustedNative: Set<LyricsUtils.Script> = if (referenceScript != null) {
+        val chineseSong = isChineseSong(referenceScript, candidates)
+        val pool = eligible(candidates, chineseSong)
+        if (pool.isEmpty()) return null
+
+        // what most of the sources say the song is in, asked only when the song itself doesn't say
+        val languages = languageKeys(pool)
+        val majority = if (referenceScript == null) majorityLanguage(languages, minVotes = 2) else null
+
+        val trustedNative: Set<LyricsUtils.Script> = if (referenceScript != null || majority != null) {
             emptySet()
         } else {
-            candidates.map { it.script }
+            pool.map { it.script }
                 .filter(::isNative)
                 .groupingBy { it }
                 .eachCount()
@@ -242,11 +271,16 @@ constructor(
                 .keys
         }
 
-        return candidates.maxByOrNull { c ->
+        return pool.withIndex().maxByOrNull { (index, c) ->
             val scriptScore = when {
                 referenceScript != null -> when {
                     c.script == referenceScript -> 3
                     sameLanguageFamily(c.script, referenceScript) -> 2
+                    c.script == LyricsUtils.Script.UNKNOWN -> 1
+                    else -> 0
+                }
+                majority != null -> when {
+                    languages[index] == majority -> 3
                     c.script == LyricsUtils.Script.UNKNOWN -> 1
                     else -> 0
                 }
@@ -280,11 +314,97 @@ constructor(
                 else -> 0
             }
 
+            // KuGou is the strongest source for Chinese songs, so for one it wins a tie outright
+            val orderScore = if (chineseSong && c.providerName == KuGouLyricsProvider.name) {
+                providerCount + 1
+            } else {
+                providerCount - c.order
+            }
+
             scriptScore * ScriptWeight +
                 syncScore * SyncWeight +
                 duetScore * DuetWeight +
-                (providerCount - c.order)
-        }!!
+                orderScore
+        }?.value
+    }
+
+    /**
+     * What each candidate's lyrics are compared by: the language for Latin-script lyrics whose
+     * language could be told, the script for everything else. Latin lyrics whose language
+     * couldn't be told (too short, say) are taken to be in the Latin language most of the others
+     * are in, rather than counting as a language of their own.
+     */
+    private fun languageKeys(candidates: List<ProviderCandidate>): List<String> {
+        val keys = candidates.map { c ->
+            if (c.script == LyricsUtils.Script.LATIN) {
+                c.language?.let { LatinPrefix + it } ?: LyricsUtils.Script.LATIN.name
+            } else {
+                c.script.name
+            }
+        }
+        val commonLatin = keys.filter { it.startsWith(LatinPrefix) }
+            .groupingBy { it }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key
+        return keys.map { if (it == LyricsUtils.Script.LATIN.name && commonLatin != null) commonLatin else it }
+    }
+
+    /**
+     * The language of [keys] there are clearly the most of: at least [minVotes], and more than
+     * any other language. Null on a tie. Lyrics with no letters to tell by don't vote.
+     */
+    private fun majorityLanguage(keys: List<String>, minVotes: Int): String? {
+        val ranked = keys.filter { it != LyricsUtils.Script.UNKNOWN.name }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+        val top = ranked.firstOrNull() ?: return null
+        val runnerUp = ranked.getOrNull(1)?.value ?: 0
+        return top.key.takeIf { top.value >= minVotes && top.value > runnerUp }
+    }
+
+    /**
+     * Whether the song is Chinese, which decides how far KuGou is believed. The song's own evidence
+     * decides when there is some ([referenceScript]: its title, artist or album, or YouTube's
+     * lyrics for this video). Without any, the other sources do: when Chinese is what most of the
+     * ones that aren't KuGou came back in - and none in kana, since kana makes kanji Japanese - the
+     * song is Chinese, and KuGou's Chinese is believed along with them.
+     */
+    private fun isChineseSong(
+        referenceScript: LyricsUtils.Script?,
+        candidates: List<ProviderCandidate>,
+    ): Boolean =
+        if (referenceScript != null) {
+            referenceScript == LyricsUtils.Script.HAN
+        } else {
+            val others = candidates.filter { it.providerName != KuGouLyricsProvider.name }
+            candidates.none { it.script == LyricsUtils.Script.KANA } &&
+                majorityLanguage(languageKeys(others), minVotes = 1) == LyricsUtils.Script.HAN.name
+        }
+
+    /**
+     * Which candidates are picked from, in tiers - a tier is only heard when every tier above it
+     * came back empty:
+     *
+     *  1. Every source but KuGou and YouTube's auto captions; KuGou too for a Chinese song, since
+     *     that is what it is good at.
+     *  2. KuGou for any other song, and then only lyrics of its that aren't Chinese. KuGou answers
+     *     songs in every language with Chinese translations, or a different song with a similar
+     *     name, often enough that Chinese from it is not believed for a song that isn't Chinese.
+     *     The source picker still lists it, for anyone who wants it anyway.
+     *  3. YouTube's auto captions: speech recognition, so lyrics only when there are no lyrics.
+     */
+    private fun eligible(
+        candidates: List<ProviderCandidate>,
+        chineseSong: Boolean,
+    ): List<ProviderCandidate> {
+        val (kugou, rest) = candidates.partition { it.providerName == KuGouLyricsProvider.name }
+        val (captions, main) = rest.partition { it.providerName == YouTubeCaptionsLyricsProvider.name }
+        return (if (chineseSong) main + kugou else main)
+            .ifEmpty { kugou.filter { it.script != LyricsUtils.Script.HAN } }
+            .ifEmpty { captions }
     }
 
     private fun isNative(script: LyricsUtils.Script) =
@@ -314,7 +434,8 @@ constructor(
             return
         }
 
-        val isNetworkAvailable = try {
+        // offline mode counts as no network: lyrics already saved for the song still show
+        val isNetworkAvailable = !com.example.musicfy.utils.OfflineMode.isOn && try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
 
@@ -358,6 +479,13 @@ constructor(
         private const val MAX_CACHE_SIZE = 3
 
         /**
+         * The provider of a lookup that couldn't go online (offline mode, or no network). Its
+         * "not found" isn't an answer: saved, it would stay the song's lyrics after the network
+         * came back, so callers don't save it.
+         */
+        const val NoConnectionProvider = "NoConnection"
+
+        /**
          * One hung provider must not hold the whole lookup hostage. Kept above the providers' own
          * HTTP timeouts: Apple Music (BetterLyrics) alone allows 10s to connect plus 15s for the
          * request, and it is the main source of duet tags. A 15s cap here cut it off on slow
@@ -370,6 +498,9 @@ constructor(
          * language is the song's language.
          */
         private val LanguageReferenceProviders = setOf("YouTubeMusic", "YouTubeSubtitle")
+
+        /** Marks a language key as a Latin-script language: "latin:en", "latin:id". */
+        private const val LatinPrefix = "latin:"
 
         // Spread far enough apart that a script match always outranks any amount of sync
         // quality, and sync quality always outranks provider order.

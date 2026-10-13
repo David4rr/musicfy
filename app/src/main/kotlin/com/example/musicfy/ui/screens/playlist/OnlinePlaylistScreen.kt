@@ -355,6 +355,7 @@ fun OnlinePlaylistScreen(
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = songItem.thumbnail,
+                    songId = songItem.id,
                     title = songItem.title,
                     subtitle = "${songItem.artists.joinToString { it.name }} • ${makeTimeString(songItem.duration?.times(1000L))}",
                     isActive = mediaMetadata?.id == songItem.id,

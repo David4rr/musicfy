@@ -1096,6 +1096,8 @@ fun PlaylistTrackRow(
     coverShape: androidx.compose.ui.graphics.Shape = TrackShape,
     /** applied to the cover itself, e.g. to open an album growing out of it */
     coverModifier: Modifier = Modifier,
+    /** a song's id: marks the row when the song is downloaded or an imported file */
+    songId: String? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1144,6 +1146,7 @@ fun PlaylistTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        com.example.musicfy.ui.component.OnDeviceMarks(songId, modifier = Modifier.padding(end = 2.dp))
         if (trailing != null) {
             trailing()
         } else {

@@ -460,6 +460,8 @@ fun LibraryListRow(
     round: Boolean = false,
     /** A playlist's "playlist-<id>": its page opens growing out of this cover, as from Home. */
     sharedElementKey: String? = null,
+    /** A song's id: marks the row when the song is downloaded or an imported file. */
+    songId: String? = null,
 ) {
     HomeTrackRow(
         thumbnailUrl = thumbnailUrl,
@@ -471,6 +473,7 @@ fun LibraryListRow(
         onLongClick = onLongClick,
         onMoreClick = null,
         coverShape = if (round) CircleShape else LibraryRowCoverShape,
+        songId = songId,
         coverModifier = Modifier.containerTransformSource(
             key = sharedElementKey,
             cornerRadius = if (round) LibraryRowCoverSize / 2 else LibraryRowCoverCorner,

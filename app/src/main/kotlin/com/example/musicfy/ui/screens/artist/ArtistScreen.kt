@@ -573,6 +573,7 @@ private fun LazyListScope.artistShelves(
                     Box(modifier = Modifier.width(columnWidth)) {
                         HomeTrackRow(
                             thumbnailUrl = song.thumbnail,
+                            songId = song.id,
                             title = song.title,
                             subtitle = song.album?.name ?: song.artists.joinToString { it.name },
                             isActive = song.id == mediaMetadataId,
@@ -819,6 +820,7 @@ private fun LazyListScope.librarySection(
     items(items = songs.take(5).withIndex().toList(), key = { "library_${it.value.id}" }, contentType = { "track" }) { (index, song) ->
         PlaylistTrackRow(
             thumbnailUrl = song.song.thumbnailUrl,
+            songId = song.id,
             title = song.song.title,
             subtitle = listOfNotNull(
                 song.album?.title,

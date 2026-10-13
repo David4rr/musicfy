@@ -100,6 +100,7 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val playerConnection = LocalPlayerConnection.current
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+    val offlineMode by rememberPreference(com.example.musicfy.constants.OfflineModeKey, defaultValue = false)
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -133,10 +134,13 @@ fun SearchScreen(
         { maxOf(collapse.value, activeProgress.value) }
     }
 
-    val commit: (String) -> Unit = remember(navController, pauseSearchHistory) {
+    val commit: (String) -> Unit = remember(navController, pauseSearchHistory, offlineMode) {
         { raw ->
             val text = raw.trim()
-            if (text.isNotEmpty()) {
+            if (offlineMode && text.isNotEmpty()) {
+                // offline: the library results above are the whole search; stay on them
+                focusManager.clearFocus()
+            } else if (text.isNotEmpty()) {
                 focusManager.clearFocus()
                 active = false
                 when (val parsed = YouTubeUrlParser.parse(text)) {
@@ -381,6 +385,7 @@ private fun SearchActiveContent(
     navController: NavController,
 ) {
     val playerConnection = LocalPlayerConnection.current
+    val offlineMode by rememberPreference(com.example.musicfy.constants.OfflineModeKey, defaultValue = false)
     val bottomInset = LocalPlayerAwareWindowInsets.current
         .asPaddingValues()
         .calculateBottomPadding()
@@ -469,7 +474,16 @@ private fun SearchActiveContent(
                         modifier = Modifier.fillMaxWidth().height(180.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        SearchLoadingDots()
+                        // offline there's nothing on its way: the library just has no match
+                        if (offlineMode) {
+                            Text(
+                                text = "Offline mode: nothing in your library matches",
+                                color = SearchColors.Secondary,
+                                fontSize = 13.sp,
+                            )
+                        } else {
+                            SearchLoadingDots()
+                        }
                     }
                 }
             }

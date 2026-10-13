@@ -1213,6 +1213,7 @@ fun HomeScreen(
                                     ) { index, song ->
                                         HomeTrackRow(
                                             thumbnailUrl = song.song.thumbnailUrl,
+                                            songId = song.id,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
                                             isActive = song.id == mediaMetadataState.value?.id,
@@ -1244,6 +1245,7 @@ fun HomeScreen(
                                     ) { _, song ->
                                         HomeTrackRow(
                                             thumbnailUrl = song.song.thumbnailUrl,
+                                            songId = song.id,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
                                             isActive = song.id == mediaMetadataState.value?.id,
@@ -1501,6 +1503,7 @@ fun HomeScreen(
                                     ) { _, song ->
                                         HomeTrackRow(
                                             thumbnailUrl = song.song.thumbnailUrl,
+                                            songId = song.id,
                                             title = song.song.title,
                                             subtitle = song.artists.joinToString(", ") { it.name },
                                             isActive = song.id == mediaMetadataState.value?.id,

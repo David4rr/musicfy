@@ -116,6 +116,13 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    /** Offline mode: every YouTube request fails at once with [OfflineModeException]. */
+    var offline: Boolean
+        get() = innerTube.offline
+        set(value) {
+            innerTube.offline = value
+        }
+
     var ipVersion: com.music.innertube.models.IpVersion
         get() = innerTube.ipVersion
         set(value) {
@@ -1361,6 +1368,34 @@ object YouTube {
             "[%02d:%02d.%03d]$text".format(time / 60000, (time / 1000) % 60, time % 1000)
         }!!
     }
+
+    /**
+     * The video's captions as line-synced lyrics: YouTube's auto-generated ones, or a track
+     * uploaded for the video in the same language when there is one (written by a person, so
+     * likelier to have the words right). See [pickCaptionTrack].
+     *
+     * Asked as clients whose caption links work as they are: a web client's need a PoToken and
+     * come back empty without one.
+     */
+    suspend fun captions(videoId: String): Result<String> = runCatching {
+        CAPTION_CLIENTS.firstNotNullOfOrNull { client ->
+            runCatching { captionsAs(videoId, client) }.getOrNull()?.takeIf { it.isNotBlank() }
+        } ?: throw IllegalStateException("No captions for $videoId")
+    }
+
+    /** Null when the video has no track worth using for [client]; throws when asking fails. */
+    private suspend fun captionsAs(videoId: String, client: YouTubeClient): String? {
+        val tracks = player(videoId, client = client).getOrThrow()
+            .captions?.playerCaptionsTracklistRenderer?.captionTracks.orEmpty()
+        val track = pickCaptionTrack(tracks) ?: return null
+        return timedTextToLrc(innerTube.timedText(track.baseUrl, client).bodyAsText())
+    }
+
+    private val CAPTION_CLIENTS = listOf(
+        YouTubeClient.ANDROID_VR_NO_AUTH,
+        YouTubeClient.IOS,
+        WEB_REMIX,
+    )
 
     suspend fun visitorData(): Result<String> = runCatching {
         Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))

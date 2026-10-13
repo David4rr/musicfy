@@ -20,8 +20,16 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import com.music.innertube.YouTube
 import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.AudioQualityKey
+import com.example.musicfy.constants.DownloadQuality
+import com.example.musicfy.constants.DownloadQualityKey
 import com.example.musicfy.constants.IpVersionKey
+import com.example.musicfy.constants.OfflineModeKey
+import com.example.musicfy.module.ResolveResult
+import com.example.musicfy.module.StreamFormat
+import com.example.musicfy.module.TrackQuery
+import com.example.musicfy.module.monochrome.MonochromeModule
+import com.example.musicfy.modules.SourceModules
+import com.example.musicfy.utils.dataStore
 import com.music.innertube.models.IpVersion
 import okhttp3.Dns
 import java.net.InetAddress
@@ -29,7 +37,13 @@ import java.net.Inet4Address
 import java.net.Inet6Address
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.FormatEntity
+import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.SongEntity
+import com.example.musicfy.lyrics.LyricsHelper
+import com.example.musicfy.models.toMediaMetadata
+import com.example.musicfy.utils.OfflineMode
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.example.musicfy.di.DownloadCache
 import com.example.musicfy.di.PlayerCache
 import com.example.musicfy.ui.utils.resize
@@ -45,6 +59,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -64,14 +79,19 @@ constructor(
     val databaseProvider: DatabaseProvider,
     @DownloadCache val downloadCache: SimpleCache,
     @PlayerCache val playerCache: SimpleCache,
+    private val sourceModules: SourceModules,
+    private val lyricsHelper: LyricsHelper,
 ) {
     private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
-    private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
+    private val downloadQuality by enumPreference(context, DownloadQualityKey, DownloadQuality.HIGH)
     private val ipVersion by enumPreference(context, IpVersionKey, IpVersion.AUTO)
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
 
     /** Per-track stream request headers, so a cached url is replayed with its client's Origin. */
     private val songStreamHeaders = HashMap<String, Map<String, String>>()
+
+    /** Monochrome's FLAC for each song being downloaded lossless: its url and request headers. */
+    private val losslessStreams = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<String, String>>>()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -110,6 +130,18 @@ constructor(
             val mediaId = dataSpec.key ?: error("No media id")
             val length = if (dataSpec.length >= 0) dataSpec.length else 1
 
+            if (downloadQuality == DownloadQuality.LOSSLESS) {
+                losslessStream(mediaId)?.let { (url, headers) ->
+                    return@Factory dataSpec.buildUpon()
+                        .setUri(url.toUri())
+                        // its own key under the download: the player cache may hold this song's
+                        // YouTube stream under the bare id, and the two mustn't end up in one file
+                        .setKey("$LosslessKeyPrefix$mediaId")
+                        .setHttpRequestHeaders(dataSpec.httpRequestHeaders + headers)
+                        .build()
+                }
+            }
+
             if (playerCache.isCached(mediaId, dataSpec.position, length)) {
                 return@Factory dataSpec
             }
@@ -123,7 +155,7 @@ constructor(
             val playbackData = runBlocking(Dispatchers.IO) {
                 YTPlayerUtils.playerResponseForPlayback(
                     mediaId,
-                    audioQuality = audioQuality,
+                    audioQuality = downloadQuality.youTubeQuality,
                     connectivityManager = connectivityManager,
                 )
             }.getOrThrow()
@@ -218,6 +250,9 @@ constructor(
                             when (download.state) {
                                 Download.STATE_COMPLETED -> {
                                     database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                    recordDownloadedLength(download)
+                                    losslessStreams.remove(download.request.id)
+                                    saveLyrics(download.request.id)
                                 }
                                 Download.STATE_FAILED,
                                 Download.STATE_STOPPED,
@@ -240,12 +275,110 @@ constructor(
             result[cursor.download.request.id] = cursor.download
         }
         downloads.value = result
+
+        // Offline mode holds downloads where they are rather than failing them: they carry on
+        // when it's turned off.
+        scope.launch {
+            context.dataStore.data
+                .map { it[OfflineModeKey] ?: false }
+                .distinctUntilChanged()
+                .collect { offline ->
+                    kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        if (offline) downloadManager.pauseDownloads() else downloadManager.resumeDownloads()
+                    }
+                }
+        }
     }
+
+    /**
+     * Monochrome's FLAC of [mediaId], for a lossless download: null when Monochrome doesn't have the
+     * song (or can't be reached), and the song downloads from YouTube at High instead. Looked up
+     * once per song: the download opens the stream more than once.
+     */
+    private fun losslessStream(mediaId: String): Pair<String, Map<String, String>>? {
+        losslessStreams[mediaId]?.let { return it }
+        val module = sourceModules.module(MonochromeModule.Id) ?: return null
+        val song = runBlocking(Dispatchers.IO) { database.song(mediaId).first() } ?: return null
+        val track = TrackQuery(
+            title = song.song.title,
+            artists = song.artists.map { it.name },
+            album = song.song.albumName ?: song.album?.title,
+            durationMs = song.song.duration.takeIf { it > 0 }?.times(1000L),
+        )
+        val found = runBlocking(Dispatchers.IO) {
+            runCatching { module.resolve(track, sourceModules.picks(MonochromeModule.Id)) }.getOrNull()
+        } as? ResolveResult.Found ?: return null
+        // a file to download, not a playlist of segments or something only a CDM can open
+        if (found.stream.format != StreamFormat.Progressive || found.stream.drm != null) return null
+
+        database.query {
+            // the length is filled in when the download finishes: see recordDownloadedLength
+            upsert(
+                FormatEntity(
+                    id = mediaId,
+                    itag = -1,
+                    mimeType = "audio/flac",
+                    codecs = "flac",
+                    bitrate = 0,
+                    sampleRate = null,
+                    contentLength = 0L,
+                    loudnessDb = null,
+                    perceptualLoudnessDb = null,
+                    playbackUrl = null,
+                ),
+            )
+            if (song.song.dateDownload == null) upsert(song.song.copy(dateDownload = LocalDateTime.now()))
+        }
+        return (found.stream.url to found.stream.headers).also { losslessStreams[mediaId] = it }
+    }
+
+    /** One lyrics lookup at a time: an album finishing downloading would otherwise ask every provider at once per song. */
+    private val lyricsLock = Mutex()
+
+    /**
+     * A downloaded song's lyrics, saved with it so they're there offline. Lyrics were only ever
+     * fetched when a song played with lyrics on, so a download played offline had none. A song
+     * that already has lyrics keeps them; one saved as "not found" is asked again.
+     */
+    private suspend fun saveLyrics(songId: String) {
+        if (OfflineMode.isOn) return
+        lyricsLock.withLock {
+            val stored = database.lyrics(songId).first()
+            if (stored != null && stored.lyrics != LyricsEntity.LYRICS_NOT_FOUND) return
+            val song = database.song(songId).first() ?: return
+            val found = runCatching { lyricsHelper.getLyrics(song.toMediaMetadata()) }.getOrNull() ?: return
+            if (found.provider == LyricsHelper.NoConnectionProvider) return
+            database.query { upsert(LyricsEntity(id = songId, lyrics = found.lyrics, provider = found.provider)) }
+        }
+    }
+
+    /**
+     * The downloaded file's real size into the song's format record. Playback checks the download
+     * holds the whole song against that size, and a FLAC is several times the size YouTube's
+     * stream was recorded at.
+     */
+    private suspend fun recordDownloadedLength(download: Download) {
+        val length = download.contentLength.takeIf { it > 0 } ?: return
+        val format = database.format(download.request.id).first() ?: return
+        if (format.contentLength != length) database.query { upsert(format.copy(contentLength = length)) }
+    }
+
+    private val DownloadQuality.youTubeQuality: AudioQuality
+        get() = when (this) {
+            DownloadQuality.LOSSLESS, DownloadQuality.HIGH -> AudioQuality.HIGH
+            DownloadQuality.MEDIUM -> AudioQuality.MEDIUM
+            DownloadQuality.LOW -> AudioQuality.LOW
+        }
 
     fun getDownload(songId: String): Flow<Download?> =
         downloads.map { it[songId] }.distinctUntilChanged()
 
     fun release() {
         scope.cancel()
+    }
+
+    private companion object {
+        /** the key a lossless download is fetched under, below the download cache */
+        const val LosslessKeyPrefix = "lossless|"
     }
 }
