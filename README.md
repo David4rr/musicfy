@@ -58,6 +58,10 @@ you can fork it but I dont support unofficial fork
 
 oh also thanks to [monochrome](https://github.com/monochrome-music/monochrome) we have FLAC streams!
 
+---
+## Wants to help? bug report? report it on issues!
+
+Or read contribute.md there
 
 ---
 ## Disclaimer
