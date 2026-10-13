@@ -94,6 +94,9 @@ fun PlayerProgressSlider(
         Color.White
     }
 
+    val failureProgress = rememberStreamFailureProgress()
+    val failureLabel by rememberStreamFailureLabel(failureProgress)
+
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
     val displayedPosition = sliderPosition ?: progress.position
 
@@ -150,6 +153,7 @@ fun PlayerProgressSlider(
                 .padding(horizontal = PlayerHorizontalPadding)
                 .then(onSeekBarPlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier)
                 .then(seekBarModifier)
+                .streamFailureOverlay(failureProgress)
         )
     }
 
@@ -163,12 +167,20 @@ fun PlayerProgressSlider(
         val timeStyle = MaterialTheme.typography.labelMedium
         val timeColor = Color.White.copy(alpha = 0.85f)
         AnimatedContent(
-            targetState = showLoading,
+            targetState = if (failureLabel != null) FailureKey else if (showLoading) LoadingKey else null,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
             label = "seekTimeLoading",
-        ) { loading ->
-            if (loading) {
+        ) { state ->
+            if (state == LoadingKey) {
                 LoadingLabel(style = timeStyle, color = timeColor)
+            } else if (state == FailureKey) {
+                Text(
+                    text = failureLabel ?: "Error",
+                    style = timeStyle,
+                    color = StreamFailureRed,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             } else {
                 Text(
                     text = makeTimeString(displayedPosition),
@@ -194,6 +206,10 @@ fun PlayerProgressSlider(
         )
     }
 }
+
+/** Stand for the loading and failure labels in the time's switch, so the failure's ticking text doesn't re-fade each second. */
+private const val LoadingKey = "\u0000loading"
+private const val FailureKey = "\u0000failure"
 
 /** Buffering this close to the start of a track counts as the track loading. */
 private const val LoadingStartWindowMs = 1_500L

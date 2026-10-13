@@ -84,6 +84,7 @@ import com.example.musicfy.constants.AudioQualityKey
 import com.example.musicfy.constants.AutoDownloadOnLikeKey
 import com.example.musicfy.constants.AutoLoadMoreKey
 import com.example.musicfy.constants.AutoSkipNextOnErrorKey
+import com.example.musicfy.constants.DontSkipOnFailureKey
 import com.example.musicfy.constants.CrossfadeDurationKey
 import com.example.musicfy.constants.CrossfadeEnabledKey
 import com.example.musicfy.constants.CrossfadeGaplessKey
@@ -239,6 +240,9 @@ private const val INSTANT_SILENCE_SKIP_SETTLE_MS = 350L
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @androidx.annotation.OptIn(UnstableApi::class)
+/** A stream that failed at [startedAt] (elapsedRealtime) and skips to the next track [timeoutMs] later. */
+data class StreamFailure(val startedAt: Long, val timeoutMs: Long)
+
 @AndroidEntryPoint
 class MusicService :
     MediaLibraryService(),
@@ -311,6 +315,10 @@ class MusicService :
     private lateinit var connectivityManager: ConnectivityManager
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
+
+    /** A stream that failed and is counting down to a skip; null when nothing has failed. */
+    val streamFailure = MutableStateFlow<StreamFailure?>(null)
+    private var failureJob: Job? = null
     private val isNetworkConnected = MutableStateFlow(false)
 
     private lateinit var audioQuality: com.example.musicfy.constants.AudioQuality
@@ -1305,11 +1313,10 @@ class MusicService :
         }
     }
 
-    private fun skipOnError() {
-
+    /** Moves past a stream that never came back, unless it has failed too many times in a row. */
+    private fun skipAfterFailure() {
         consecutivePlaybackErr += 2
         val nextWindowIndex = player.nextMediaItemIndex
-        announceStreamFailure()
 
         if (consecutivePlaybackErr <= MAX_CONSECUTIVE_ERR && nextWindowIndex != C.INDEX_UNSET) {
             player.seekTo(nextWindowIndex, C.TIME_UNSET)
@@ -1325,10 +1332,29 @@ class MusicService :
         consecutivePlaybackErr = 0
     }
 
-    private fun stopOnError() {
+    /** A failed stream the player has given up on: says so, and skips after the timeout unless that's turned off. */
+    private fun failStream() {
         player.pause()
         announceStreamFailure()
+        clearStreamFailure()
+        if (dataStore.get(DontSkipOnFailureKey, false) || player.nextMediaItemIndex == C.INDEX_UNSET) return
+
+        streamFailure.value = StreamFailure(android.os.SystemClock.elapsedRealtime(), STREAM_FAILURE_TIMEOUT_MS)
+        failureJob = scope.launch {
+            delay(STREAM_FAILURE_TIMEOUT_MS)
+            streamFailure.value = null
+            Timber.tag(TAG).d("Stream failure timed out, skipping to next track")
+            skipAfterFailure()
+        }
     }
+
+    private fun clearStreamFailure() {
+        failureJob?.cancel()
+        failureJob = null
+        streamFailure.value = null
+    }
+
+    private fun stopOnError() = failStream()
 
     private var lastPlaybackError: PlaybackException? = null
 
@@ -2354,6 +2380,7 @@ class MusicService :
         mediaItem: MediaItem?,
         reason: Int,
     ) {
+        clearStreamFailure()
         if (!promotingCrossmix) crossmixDirector.onItemChanged()
 
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
@@ -2406,6 +2433,8 @@ class MusicService :
     override fun onPlaybackStateChanged(
         @Player.State playbackState: Int,
     ) {
+        // IDLE is where a failed stream sits; anything else means it's loading or playing again
+        if (playbackState != Player.STATE_IDLE) clearStreamFailure()
 
         if (playbackState == Player.STATE_ENDED) {
             val repeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
@@ -2775,13 +2804,8 @@ class MusicService :
             return
         }
 
-        if (dataStore.get(AutoSkipNextOnErrorKey, false) || dataStore.get(ForcePlaybackKey, false)) {
-            Timber.tag(TAG).d("Auto-skipping to next track due to unrecoverable error")
-            skipOnError()
-        } else {
-            Timber.tag(TAG).d("Stopping playback due to unrecoverable error")
-            stopOnError()
-        }
+        Timber.tag(TAG).d("Unrecoverable error, failing the stream")
+        failStream()
     }
 
     private fun performAggressiveCacheClear(mediaId: String) {
@@ -2986,13 +3010,8 @@ class MusicService :
 
     private fun handleFinalFailure() {
         player.currentMediaItem?.mediaId?.let { if (forceFallBack(it, includeYouTube = true)) return }
-        if (dataStore.get(AutoSkipNextOnErrorKey, false) || dataStore.get(ForcePlaybackKey, false)) {
-            Timber.tag(TAG).d("All recovery attempts exhausted, auto-skipping to next track")
-            skipOnError()
-        } else {
-            Timber.tag(TAG).d("All recovery attempts exhausted, stopping playback")
-            stopOnError()
-        }
+        Timber.tag(TAG).d("All recovery attempts exhausted, failing the stream")
+        failStream()
     }
 
     override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
@@ -4127,6 +4146,7 @@ class MusicService :
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
         const val MAX_CONSECUTIVE_ERR = 5
+        const val STREAM_FAILURE_TIMEOUT_MS = 6500L
         // Keep at least this many songs queued after the current one.
         private const val QUEUE_RUNWAY_SIZE = 5
         private const val MAX_RUNWAY_ATTEMPTS = 3

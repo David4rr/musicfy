@@ -239,6 +239,9 @@ class PlayerConnection(
 
     val waitingForNetworkConnection = service.waitingForNetworkConnection
 
+    /** A failed stream counting down to its skip, for the seek bars */
+    val streamFailure = service.streamFailure
+
     /** Crossmix has the next song playing over the end of this one */
     val isCrossmixing = service.crossmixMixing
 

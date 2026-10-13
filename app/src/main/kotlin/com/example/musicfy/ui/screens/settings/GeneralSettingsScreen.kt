@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.DisableVideoAutoplayKey
+import com.example.musicfy.constants.DontSkipOnFailureKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
 import com.example.musicfy.constants.OfflineModeKey
 import com.example.musicfy.ui.component.AppSwitch
@@ -47,6 +48,11 @@ fun GeneralSettingsScreen(navController: NavController) {
     )
     val (disableVideoAutoplay, onDisableVideoAutoplayChange) = rememberPreference(
         DisableVideoAutoplayKey,
+        defaultValue = false
+    )
+
+    val (dontSkipOnFailure, onDontSkipOnFailureChange) = rememberPreference(
+        DontSkipOnFailureKey,
         defaultValue = false
     )
 
@@ -154,6 +160,20 @@ fun GeneralSettingsScreen(navController: NavController) {
                     AppSwitch(
                         checked = disableVideoAutoplay,
                         onCheckedChange = onDisableVideoAutoplayChange,
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Don't skip on failure") },
+                highlightKey = "Don't skip on failure",
+                descriptionText = "When a stream fails, stay on it instead of skipping to the next track after a few seconds",
+                icon = painterResource(R.drawable.skip_next),
+                iconShape = CircleShape,
+                onClick = { onDontSkipOnFailureChange(!dontSkipOnFailure) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = dontSkipOnFailure,
+                        onCheckedChange = onDontSkipOnFailureChange,
                     )
                 },
             ),

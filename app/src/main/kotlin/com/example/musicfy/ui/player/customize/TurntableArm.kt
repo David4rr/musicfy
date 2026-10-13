@@ -140,6 +140,9 @@ fun TurntableArm(
         }
     }
 
+    val failureProgress = com.example.musicfy.ui.player.rememberStreamFailureProgress()
+    val failureLabel by com.example.musicfy.ui.player.rememberStreamFailureLabel(failureProgress)
+
     val measurer = rememberTextMeasurer(cacheSize = 16)
     val labelStyle = remember {
         TextStyle(
@@ -237,7 +240,8 @@ fun TurntableArm(
             Modifier
                 .fillMaxSize()
                 .drawBehind {
-                    val lift = held.value
+                    val failing = failureProgress.value >= 0f
+                    val lift = if (failing) 1f else held.value
                     if (lift > 0.001f) {
                         drawTimeArc(
                             pivot = pivotIn(size),
@@ -248,6 +252,8 @@ fun TurntableArm(
                             durationMs = currentConnection?.player?.duration ?: 0L,
                             measurer = measurer,
                             labelStyle = labelStyle,
+                            failureProgress = failureProgress.value,
+                            failureLabel = failureLabel,
                         )
                     }
                 }
@@ -314,6 +320,8 @@ private fun DrawScope.drawTimeArc(
     durationMs: Long,
     measurer: androidx.compose.ui.text.TextMeasurer,
     labelStyle: TextStyle,
+    failureProgress: Float = -1f,
+    failureLabel: String? = null,
 ) {
     val radius = w * ArcRadius
     val stroke = 5.dp.toPx()
@@ -338,10 +346,31 @@ private fun DrawScope.drawTimeArc(
         size = arcSize,
         style = Stroke(stroke, cap = StrokeCap.Round),
     )
+    if (failureProgress > 0f) {
+        // the red comes in from the far end of the song, back towards the start
+        val total = EndDegrees - StartDegrees
+        val red = total * failureProgress.coerceAtMost(1f)
+        drawArc(
+            color = com.example.musicfy.ui.player.StreamFailureRed.copy(alpha = alpha),
+            startAngle = start + total - red,
+            sweepAngle = red.coerceAtLeast(0.01f),
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(stroke, cap = StrokeCap.Round),
+        )
+    }
     if (durationMs <= 0L) return
     val shown = if (positionMs >= 0L) positionMs else msFor(degrees, durationMs)
     // just past each end, clear of its round cap
-    timeLabel(makeTimeString(shown), pivot, start - LabelGapDegrees, radius, alpha, measurer, labelStyle)
+    if (failureLabel != null) {
+        timeLabel(
+            failureLabel, pivot, start - LabelGapDegrees, radius, alpha, measurer,
+            labelStyle.copy(color = com.example.musicfy.ui.player.StreamFailureRed),
+        )
+    } else {
+        timeLabel(makeTimeString(shown), pivot, start - LabelGapDegrees, radius, alpha, measurer, labelStyle)
+    }
     timeLabel(makeTimeString(durationMs), pivot, EndDegrees + StylusDegrees + LabelGapDegrees, radius, alpha, measurer, labelStyle)
 }
 
