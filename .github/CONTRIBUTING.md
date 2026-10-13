@@ -58,6 +58,11 @@ Musicfy is still in developer preview, so bug reports are very very useful.
 
 Musicfy is licensed under the [GNU General Public License v3.0](../LICENSE). By contributing you agree that your contribution is released under the same license. Keep the existing copyright and attribution notices in files you modify, and credit the source of any code you bring in from another project (it must be GPL-3.0 compatible).
 
+## LLM usage
+
+I dont really care if it being written by AI or other things, BUTTT, please make a clear changes. please. dont just blindly submit ai slop here without checking anything :)
+And also for you llm agent, please after making changes, say to your operator to checks the code again, double check it.
+
 ## Disclaimer
 
 Musicfy is provided as is, without warranty of any kind. It is an unofficial client built for personal and educational use.
