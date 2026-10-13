@@ -1,8 +1,10 @@
-// LibraryDownloadedScreen.kt
+// LibraryLocalScreen.kt
 //
-// A clone of the Library home page scoped to downloaded/local content: same collapsing header,
-// same category cards, same wide cards — with "Add local music" at the top and, since you are
-// already inside Downloaded, the "Downloaded" card replaced by "All local music".
+// Local: everything that plays from this device - songs downloaded for offline and audio files
+// imported from storage. Built like the Library home page (same collapsing header, category cards
+// and wide cards) with "Add local music" at the top, but every card here counts only what is
+// local: the albums, artists and playlists a local song belongs to, the liked songs that are
+// local, and the local songs by when they arrived. Nothing that only streams shows up here.
 
 package com.example.musicfy.ui.screens.library
 
@@ -34,17 +36,26 @@ import androidx.navigation.NavController
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.ui.component.LikedCover
+import com.example.musicfy.db.entities.Artist
+import com.example.musicfy.db.entities.Playlist
+import com.example.musicfy.db.entities.Song
+import com.example.musicfy.extensions.toMediaItem
+import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.navigateToTab
 import com.example.musicfy.ui.screens.search.SearchAvatar
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.rememberCollapseProgress
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
+import com.example.musicfy.viewmodels.LocalAlbum
+import com.music.innertube.models.AlbumItem
+import com.music.innertube.models.SongItem
+import com.music.innertube.models.YTItem
 
 @Composable
-fun LibraryDownloadedScreen(
+fun LibraryLocalScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
@@ -52,20 +63,19 @@ fun LibraryDownloadedScreen(
     val viewModel: LibraryHomeViewModel = hiltViewModel()
     val playerConnection = LocalPlayerConnection.current
 
-    val downloaded by viewModel.downloadedSongs.collectAsState()
     val localSongs by viewModel.localSongs.collectAsState()
-    val likedSongs by viewModel.likedSongs.collectAsState()
-    val albums by viewModel.albums.collectAsState()
-    val artists by viewModel.artists.collectAsState()
-    val playlists by viewModel.playlists.collectAsState()
+    val likedSongs by viewModel.localLikedSongs.collectAsState()
+    val albums by viewModel.localAlbums.collectAsState()
+    val artists by viewModel.localArtists.collectAsState()
+    val playlists by viewModel.localPlaylists.collectAsState()
 
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
     val snackbarHostState = remember { SnackbarHostState() }
 
     var query by remember { mutableStateOf(TextFieldValue()) }
-    val results = remember(query.text, downloaded) {
+    val results = remember(query.text, localSongs, artists, albums, playlists) {
         val q = query.text.trim()
-        if (q.isBlank()) emptyList() else searchLibrary(q, downloaded, emptyList(), emptyList(), emptyList())
+        if (q.isBlank()) emptyList() else searchLocal(q, localSongs, artists, albums, playlists)
     }
 
     val listState = rememberLazyListState()
@@ -75,9 +85,9 @@ fun LibraryDownloadedScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         LibraryScaffold(
-            title = "Downloaded",
+            title = "Local",
             subtitle = null,
-            searchPlaceholder = "Search anything on your library",
+            searchPlaceholder = "Search your local music",
             query = query,
             onQueryChange = { query = it },
             listState = listState,
@@ -96,7 +106,22 @@ fun LibraryDownloadedScreen(
                 librarySearchResults(
                     results = results,
                     query = query.text,
-                    onOpen = { openLibraryItem(it, navController, playerConnection) },
+                    onOpen = { item ->
+                        // A song found here plays among the local songs, from the files on this
+                        // device, rather than as a radio that needs a connection.
+                        val index = if (item is SongItem) localSongs.indexOfFirst { it.id == item.id } else -1
+                        if (index >= 0) {
+                            playerConnection?.playQueue(
+                                ListQueue(
+                                    title = "Local",
+                                    items = localSongs.map { it.toMediaItem() },
+                                    startIndex = index,
+                                ),
+                            )
+                        } else {
+                            openLibraryItem(item, navController, playerConnection, localSongs)
+                        }
+                    },
                 )
                 return@LibraryScaffold
             }
@@ -118,7 +143,7 @@ fun LibraryDownloadedScreen(
 
             // Nothing downloaded and nothing imported means every card below would be an empty
             // shell linking to an empty page. One centred message says the same thing honestly.
-            if (downloaded.isEmpty() && localSongs.isEmpty()) {
+            if (localSongs.isEmpty()) {
                 item(key = "empty") { LibraryEmptyState() }
                 return@LibraryScaffold
             }
@@ -131,16 +156,16 @@ fun LibraryDownloadedScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         LibraryCategoryCard(
                             title = "Songs",
-                            count = downloaded.size,
-                            covers = downloaded.map { it.song.thumbnailUrl },
-                            onClick = { navController.navigate("auto_playlist/downloaded") },
+                            count = localSongs.size,
+                            covers = localSongs.map { it.song.thumbnailUrl },
+                            onClick = { navController.navigate("auto_playlist/local") },
                             modifier = Modifier.weight(1f),
                         )
                         LibraryCategoryCard(
                             title = "Albums",
                             count = albums.size,
-                            covers = albums.map { it.album.thumbnailUrl },
-                            onClick = { navController.navigate("library/albums") },
+                            covers = albums.map { it.thumbnailUrl },
+                            onClick = { navController.navigate("library/local/albums") },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -149,14 +174,15 @@ fun LibraryDownloadedScreen(
                             title = "Artist",
                             count = artists.size,
                             covers = artists.map { it.artist.thumbnailUrl },
-                            onClick = { navController.navigate("library/artists") },
+                            onClick = { navController.navigate("library/local/artists") },
+                            roundCovers = true,
                             modifier = Modifier.weight(1f),
                         )
                         LibraryCategoryCard(
                             title = "Playlist",
                             count = playlists.size,
                             covers = playlists.flatMap { it.thumbnails },
-                            onClick = { navController.navigate("library/playlists") },
+                            onClick = { navController.navigate("library/local/playlists") },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -164,44 +190,27 @@ fun LibraryDownloadedScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            if (downloaded.isNotEmpty()) {
-                item(key = "recently_added") {
-                    LibraryWideCard(
-                        title = "Recently added",
-                        label = downloaded.size.toString(),
-                        covers = downloaded.map { it.song.thumbnailUrl },
-                        onClick = { navController.navigate("library/added") },
-                        modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+            item(key = "recently_added") {
+                LibraryWideCard(
+                    title = "Recently added",
+                    label = localSongs.size.toString(),
+                    covers = localSongs.map { it.song.thumbnailUrl },
+                    onClick = { navController.navigate("library/local/added") },
+                    modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // only the liked songs that are local; every liked song is on the Library home
             if (likedSongs.isNotEmpty()) {
                 item(key = "liked_songs") {
                     LibraryWideCard(
                         title = "Liked songs",
                         label = likedSongs.size.toString(),
                         covers = likedSongs.map { it.song.thumbnailUrl },
-                        onClick = { navController.navigate("auto_playlist/liked") },
-                        sharedElementKey = "playlist-liked",
+                        onClick = { navController.navigate("auto_playlist/local_liked") },
+                        sharedElementKey = "playlist-local_liked",
                         art = { LikedCover(it) },
-                        modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-
-            // Only songs imported from the device — cached streams are "downloaded", not "local",
-            // and lumping them together here would make this card a duplicate of the one above.
-            if (localSongs.isNotEmpty()) {
-                item(key = "all_local") {
-                    LibraryWideCard(
-                        title = "All local music",
-                        label = localSongs.size.toString(),
-                        covers = localSongs.map { it.song.thumbnailUrl },
-                        onClick = { navController.navigate("auto_playlist/local") },
-                        sharedElementKey = "playlist-local",
                         modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                     )
                 }
@@ -210,7 +219,37 @@ fun LibraryDownloadedScreen(
 
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomInset),
         )
     }
+}
+
+/**
+ * The library search, over local things only. An album whose only trace is a file's tag has no
+ * page to open, so it isn't a result of its own - its songs are.
+ */
+private fun searchLocal(
+    query: String,
+    songs: List<Song>,
+    artists: List<Artist>,
+    albums: List<LocalAlbum>,
+    playlists: List<Playlist>,
+): List<YTItem> {
+    val q = query.lowercase()
+    val albumHits = albums
+        .filter { it.albumId != null && it.title.lowercase().contains(q) }
+        .take(6)
+        .map {
+            AlbumItem(
+                browseId = it.albumId!!,
+                playlistId = "",
+                title = it.title,
+                artists = null,
+                thumbnail = it.thumbnailUrl ?: "",
+            )
+        }
+    // the same order as the Library's search: songs, artists, albums, playlists
+    return searchLibrary(query, songs, artists, emptyList(), emptyList()) +
+        albumHits +
+        searchLibrary(query, emptyList(), emptyList(), emptyList(), playlists)
 }

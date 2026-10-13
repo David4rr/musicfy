@@ -85,6 +85,7 @@ import com.example.musicfy.constants.AutoDownloadOnLikeKey
 import com.example.musicfy.constants.AutoLoadMoreKey
 import com.example.musicfy.constants.AutoSkipNextOnErrorKey
 import com.example.musicfy.constants.DontSkipOnFailureKey
+import com.example.musicfy.constants.StreamFailureTimeoutKey
 import com.example.musicfy.constants.CrossfadeDurationKey
 import com.example.musicfy.constants.CrossfadeEnabledKey
 import com.example.musicfy.constants.CrossfadeGaplessKey
@@ -485,6 +486,7 @@ class MusicService :
     private var currentMediaIdRetryCount = mutableMapOf<String, Int>()
     private val MAX_RETRY_PER_SONG = 3
     private val RETRY_DELAY_MS = 1000L
+    private val STREAM_RETRY_INTERVAL_MS = 5000L
 
     private val recentlyFailedSongs = mutableSetOf<String>()
     private var failedSongsClearJob: Job? = null
@@ -1337,11 +1339,23 @@ class MusicService :
         player.pause()
         announceStreamFailure()
         clearStreamFailure()
-        if (dataStore.get(DontSkipOnFailureKey, false) || player.nextMediaItemIndex == C.INDEX_UNSET) return
+        if (dataStore.get(DontSkipOnFailureKey, false)) {
+            // staying on it means trying it again every few seconds until it plays: loading it
+            // again ends this job, and a failure starts the next wait
+            failureJob = scope.launch {
+                delay(STREAM_RETRY_INTERVAL_MS)
+                Timber.tag(TAG).d("Retrying the failed stream")
+                player.prepare()
+                player.play()
+            }
+            return
+        }
+        if (player.nextMediaItemIndex == C.INDEX_UNSET) return
 
-        streamFailure.value = StreamFailure(android.os.SystemClock.elapsedRealtime(), STREAM_FAILURE_TIMEOUT_MS)
+        val timeoutMs = dataStore.get(StreamFailureTimeoutKey, 6).coerceIn(5, 20) * 1000L
+        streamFailure.value = StreamFailure(android.os.SystemClock.elapsedRealtime(), timeoutMs)
         failureJob = scope.launch {
-            delay(STREAM_FAILURE_TIMEOUT_MS)
+            delay(timeoutMs)
             streamFailure.value = null
             Timber.tag(TAG).d("Stream failure timed out, skipping to next track")
             skipAfterFailure()
@@ -4161,7 +4175,6 @@ class MusicService :
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
         const val MAX_CONSECUTIVE_ERR = 5
-        const val STREAM_FAILURE_TIMEOUT_MS = 6500L
         // Keep at least this many songs queued after the current one.
         private const val QUEUE_RUNWAY_SIZE = 5
         private const val MAX_RUNWAY_ATTEMPTS = 3

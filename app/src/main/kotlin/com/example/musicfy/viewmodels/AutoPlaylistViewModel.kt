@@ -109,8 +109,14 @@ constructor(
                     "uploaded" -> database.uploadedSongs(sortType, descending)
                         .map { AutoPlaylistSongs(visible(it)) }
 
-                    "local" -> database.localSongs(sortType, descending)
+                    // Local is everything on this device: downloads and imported files together
+                    "local" -> database.onDeviceSongs(sortType, descending)
                         .map { AutoPlaylistSongs(visible(it)) }
+
+                    // the Local page's Liked songs: only the liked songs that are on this device.
+                    // Sorted like any song list - the page shows the song sort for it, not Liked's.
+                    "local_liked" -> database.onDeviceSongs(sortType, descending)
+                        .map { songs -> AutoPlaylistSongs(visible(songs.filter { it.song.liked })) }
 
                     "songs" -> database.songs(sortType, descending)
                         .map { AutoPlaylistSongs(visible(it)) }

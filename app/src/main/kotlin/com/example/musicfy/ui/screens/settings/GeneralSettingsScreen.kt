@@ -24,6 +24,9 @@ import com.example.musicfy.constants.DisableVideoAutoplayKey
 import com.example.musicfy.constants.DontSkipOnFailureKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
 import com.example.musicfy.constants.OfflineModeKey
+import com.example.musicfy.constants.StreamFailureTimeoutKey
+import com.example.musicfy.ui.screens.audiolab.LabCard
+import com.example.musicfy.ui.screens.audiolab.LabSlider
 import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
@@ -53,6 +56,11 @@ fun GeneralSettingsScreen(navController: NavController) {
     val (dontSkipOnFailure, onDontSkipOnFailureChange) = rememberPreference(
         DontSkipOnFailureKey,
         defaultValue = false
+    )
+
+    val (failureTimeout, onFailureTimeoutChange) = rememberPreference(
+        StreamFailureTimeoutKey,
+        defaultValue = 6
     )
 
     SubSettingsScaffold(
@@ -153,6 +161,20 @@ fun GeneralSettingsScreen(navController: NavController) {
                 style = SettingsGroupStyle.Grouped,
                 items = toggleItems,
             )
+        }
+
+        if (!dontSkipOnFailure && (query.isBlank() || "skip timeout failure".contains(query, ignoreCase = true))) {
+            Spacer(Modifier.height(14.dp))
+            LabCard(padding = 14.dp) {
+                LabSlider(
+                    label = "Skip timeout",
+                    valueText = "${failureTimeout}s",
+                    value = failureTimeout.toFloat(),
+                    onValueChange = { onFailureTimeoutChange(it.toInt()) },
+                    valueRange = 5f..20f,
+                    steps = 14,
+                )
+            }
         }
 
         Spacer(Modifier.height(140.dp))

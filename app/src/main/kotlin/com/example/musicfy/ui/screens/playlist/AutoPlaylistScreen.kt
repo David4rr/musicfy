@@ -148,7 +148,8 @@ fun AutoPlaylistScreen(
         "liked" -> stringResource(R.string.liked)
         "uploaded" -> stringResource(R.string.uploaded_playlist)
         "downloaded" -> stringResource(R.string.offline)
-        "local" -> "Local Songs"
+        "local" -> "Local"
+        "local_liked" -> "Local liked songs"
         "songs" -> "All Songs"
         "recently_added" -> "Recently Added"
         else -> viewModel.playlist
@@ -219,7 +220,9 @@ fun AutoPlaylistScreen(
     }
 
     LaunchedEffect(songs) {
-        val current = songs
+        // a file imported from the device is never a download - it's on the device already - so
+        // only the rest say whether this list is downloaded
+        val current = songs?.filterNot { it.song.isLocal }
         if (current.isNullOrEmpty()) return@LaunchedEffect
         downloadUtil.downloads.collect { downloads ->
             downloadState =
@@ -323,13 +326,15 @@ fun AutoPlaylistScreen(
     }
 
     val isLiked = viewModel.playlist == "liked"
-    val likedCoverColors = if (isLiked) rememberLikedCoverColors() else null
+    // the Local page's liked songs wear the same cover as Liked songs, the one its card shows
+    val hasLikedCover = isLiked || viewModel.playlist == "local_liked"
+    val likedCoverColors = if (hasLikedCover) rememberLikedCoverColors() else null
 
     PlaylistDetailScaffold(
         sharedElementKey = "playlist-${viewModel.playlist}",
         coverUrl = coverUrl,
         // Liked songs has a cover of its own, the one its cards show, instead of its first song's
-        cover = if (isLiked) {
+        cover = if (hasLikedCover) {
             { modifier -> LikedCover(modifier, heartSize = 0.3f, heartAlignment = BiasAlignment(0f, -0.28f)) }
         } else null,
         coverThemeColor = likedCoverColors?.let(LikedCoverColors::theme),
@@ -360,7 +365,8 @@ fun AutoPlaylistScreen(
                                 }
                             }
                             else -> {
-                                current.forEach { song ->
+                                // imported files have no YouTube id to download from
+                                current.filterNot { it.song.isLocal }.forEach { song ->
                                     val downloadRequest = DownloadRequest
                                         .Builder(song.song.id, song.song.id.toUri())
                                         .setCustomCacheKey(song.song.id)

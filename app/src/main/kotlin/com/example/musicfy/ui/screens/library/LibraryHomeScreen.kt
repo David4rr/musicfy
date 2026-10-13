@@ -1,7 +1,7 @@
 // LibraryHomeScreen.kt
 //
 // The Library tab's landing page: collapsing title + search, an optional Pinned grid, the four
-// category cards, and the Recently added / Downloaded cards.
+// category cards, and the Recently added / Liked songs / Local cards.
 
 package com.example.musicfy.ui.screens.library
 
@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -45,7 +47,9 @@ import com.example.musicfy.db.entities.Album
 import com.example.musicfy.db.entities.Artist
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
+import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.toMediaMetadata
+import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.GlassState
@@ -84,13 +88,16 @@ fun LibraryHomeScreen(
     val artists by viewModel.artists.collectAsState()
     val albums by viewModel.albums.collectAsState()
     val playlists by viewModel.playlists.collectAsState()
-    val downloadedSongs by viewModel.downloadedSongs.collectAsState()
+    val localSongs by viewModel.localSongs.collectAsState()
     val likedSongs by viewModel.likedSongs.collectAsState()
     val importedSources by viewModel.importedSources.collectAsState()
     val importProgress by viewModel.importProgress.collectAsState()
     val menuState = LocalMenuState.current
 
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
+    val snackbarHostState = remember { SnackbarHostState() }
+    // the Local card opens the file picker itself while there is no local music
+    val localImporter = rememberLocalMusicImporter(snackbarHostState)
 
     var query by remember { mutableStateOf(TextFieldValue()) }
     val results = remember(query.text, songs, artists, albums, playlists) {
@@ -103,155 +110,198 @@ fun LibraryHomeScreen(
     val collapse = rememberCollapseProgress(listState)
     val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
 
-    LibraryScaffold(
-        title = "Library",
-        subtitle = null,
-        searchPlaceholder = "Search anything on your library",
-        query = query,
-        onQueryChange = { query = it },
-        listState = listState,
-        glassState = glassState,
-        collapseProvider = { collapse.value },
-        pureBlack = pureBlack,
-        trailing = {
-            SearchAvatar(
-                imageUrl = profilePicStr.ifBlank { null },
-                onClick = { navController.navigateToTab("settings") },
-            )
-        },
-        bottomInset = bottomInset,
-        modifier = modifier,
-    ) {
-        if (query.text.isNotBlank()) {
-            librarySearchResults(
-                results = results,
-                query = query.text,
-                onOpen = { item -> openLibraryItem(item, navController, playerConnection) },
-            )
-            return@LibraryScaffold
-        }
-
-        // Right under the search bar, even in a library with nothing in it - that is when it
-        // matters most. Opens the import sheet, and is the import's progress bar while one runs.
-        item(key = "import_banner") {
-            Spacer(modifier = Modifier.height(4.dp))
-            LibraryImportBanner(
-                progress = importProgress,
-                onOpenSheet = { menuState.showLibraryImportSheet() },
-                onOpenProgress = { navController.navigate(ImportProgressRoute) },
-                modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // A completely empty library gets one honest message instead of four zero-count cards and
-        // two empty shelves.
-        if (songs.isEmpty() && albums.isEmpty() && artists.isEmpty() &&
-            playlists.isEmpty() && pinnedItems.isEmpty()
+    Box(modifier = modifier.fillMaxSize()) {
+        LibraryScaffold(
+            title = "Library",
+            subtitle = null,
+            searchPlaceholder = "Search anything on your library",
+            query = query,
+            onQueryChange = { query = it },
+            listState = listState,
+            glassState = glassState,
+            collapseProvider = { collapse.value },
+            pureBlack = pureBlack,
+            trailing = {
+                SearchAvatar(
+                    imageUrl = profilePicStr.ifBlank { null },
+                    onClick = { navController.navigateToTab("settings") },
+                )
+            },
+            bottomInset = bottomInset,
         ) {
-            item(key = "empty") { LibraryEmptyState() }
-            return@LibraryScaffold
-        }
+            if (query.text.isNotBlank()) {
+                librarySearchResults(
+                    results = results,
+                    query = query.text,
+                    onOpen = { item -> openLibraryItem(item, navController, playerConnection, songs) },
+                )
+                return@LibraryScaffold
+            }
 
-        // Pinned disappears entirely when nothing is pinned rather than showing an empty 3x3 of
-        // placeholders, which on a fresh install would be the first thing on the screen.
-        if (pinnedItems.isNotEmpty()) {
-            item(key = "pinned_header") {
-                LibrarySectionTitle("Pinned")
-                Spacer(modifier = Modifier.height(12.dp))
-                LibraryRule()
+            // Right under the search bar, even in a library with nothing in it - that is when it
+            // matters most. Opens the import sheet, and is the import's progress bar while one runs.
+            item(key = "import_banner") {
+                Spacer(modifier = Modifier.height(4.dp))
+                LibraryImportBanner(
+                    progress = importProgress,
+                    onOpenSheet = { menuState.showLibraryImportSheet() },
+                    onOpenProgress = { navController.navigate(ImportProgressRoute) },
+                    modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
-            item(key = "pinned_grid") {
-                // Chunked rows rather than a nested lazy grid: a scrolling grid inside a scrolling
-                // column has no bounded height, and nine items never needs its own scroller.
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    pinnedItems.take(9).chunked(3).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            row.forEach { item ->
-                                LibraryPinnedTile(
-                                    thumbnailUrl = item.thumbnail,
-                                    sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
-                                    onClick = { openLibraryItem(item, navController, playerConnection) },
-                                    onLongClick = { viewModel.unpin(item.id) },
-                                    modifier = Modifier.weight(1f),
-                                )
+
+            // A completely empty library gets one honest message instead of four zero-count cards and
+            // two empty shelves - but keeps the Local card above it, as "Add local music": an empty
+            // library is exactly when bringing in your own files matters most.
+            if (songs.isEmpty() && albums.isEmpty() && artists.isEmpty() &&
+                playlists.isEmpty() && pinnedItems.isEmpty()
+            ) {
+                item(key = "local") {
+                    LibraryLocalCard(
+                        localSongs = localSongs,
+                        importer = localImporter,
+                        onOpen = { navController.navigate("library/local") },
+                        modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+                    )
+                }
+                // downloads that never went into the library still make it something to show
+                if (localSongs.isEmpty()) {
+                    item(key = "empty") { LibraryEmptyState() }
+                }
+                return@LibraryScaffold
+            }
+
+            // Pinned disappears entirely when nothing is pinned rather than showing an empty 3x3 of
+            // placeholders, which on a fresh install would be the first thing on the screen.
+            if (pinnedItems.isNotEmpty()) {
+                item(key = "pinned_header") {
+                    LibrarySectionTitle("Pinned")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LibraryRule()
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                item(key = "pinned_grid") {
+                    // Chunked rows rather than a nested lazy grid: a scrolling grid inside a scrolling
+                    // column has no bounded height, and nine items never needs its own scroller.
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        pinnedItems.take(9).chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                row.forEach { item ->
+                                    LibraryPinnedTile(
+                                        thumbnailUrl = item.thumbnail,
+                                        sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+                                        onClick = { openLibraryItem(item, navController, playerConnection, songs) },
+                                        onLongClick = { viewModel.unpin(item.id) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                // Keeps the last row's tiles the same size as a full row's.
+                                repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                             }
-                            // Keeps the last row's tiles the same size as a full row's.
-                            repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                         }
                     }
+                    Spacer(modifier = Modifier.height(18.dp))
+                    LibraryRule()
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Spacer(modifier = Modifier.height(18.dp))
-                LibraryRule()
-                Spacer(modifier = Modifier.height(16.dp))
             }
-        }
 
-        item(key = "categories") {
-            LibraryCategoryGrid(
-                songCount = songs.size,
-                albumCount = albums.size,
-                artistCount = artists.size,
-                playlistCount = playlists.size,
-                songCovers = songs.map { it.song.thumbnailUrl },
-                albumCovers = albums.map { it.album.thumbnailUrl },
-                artistCovers = artists.map { it.artist.thumbnailUrl },
-                playlistCovers = playlists.flatMap { it.thumbnails },
-                importedSources = importedSources,
-                onSongs = { navController.navigate("library/songs") },
-                onAlbums = { navController.navigate("library/albums") },
-                onArtists = { navController.navigate("library/artists") },
-                onPlaylists = { navController.navigate("library/playlists") },
-                onImported = { navController.navigate("library/imported/${it.source.key}") },
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (songs.isNotEmpty()) {
-            item(key = "recently_added") {
-                LibraryWideCard(
-                    title = "Recently added",
-                    label = songs.size.toString(),
-                    covers = songs.map { it.song.thumbnailUrl },
-                    onClick = { navController.navigate("library/added") },
-                    modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+            item(key = "categories") {
+                LibraryCategoryGrid(
+                    songCount = songs.size,
+                    albumCount = albums.size,
+                    artistCount = artists.size,
+                    playlistCount = playlists.size,
+                    songCovers = songs.map { it.song.thumbnailUrl },
+                    albumCovers = albums.map { it.album.thumbnailUrl },
+                    artistCovers = artists.map { it.artist.thumbnailUrl },
+                    playlistCovers = playlists.flatMap { it.thumbnails },
+                    importedSources = importedSources,
+                    onSongs = { navController.navigate("library/songs") },
+                    onAlbums = { navController.navigate("library/albums") },
+                    onArtists = { navController.navigate("library/artists") },
+                    onPlaylists = { navController.navigate("library/playlists") },
+                    onImported = { navController.navigate("library/imported/${it.source.key}") },
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
-        }
 
-        if (likedSongs.isNotEmpty()) {
-            item(key = "liked_songs") {
-                LibraryWideCard(
-                    title = "Liked songs",
-                    label = likedSongs.size.toString(),
-                    covers = likedSongs.map { it.song.thumbnailUrl },
-                    onClick = { navController.navigate("auto_playlist/liked") },
-                    sharedElementKey = "playlist-liked",
-                    art = { LikedCover(it) },
+            if (songs.isNotEmpty()) {
+                item(key = "recently_added") {
+                    LibraryWideCard(
+                        title = "Recently added",
+                        label = songs.size.toString(),
+                        covers = songs.map { it.song.thumbnailUrl },
+                        onClick = { navController.navigate("library/added") },
+                        modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            if (likedSongs.isNotEmpty()) {
+                item(key = "liked_songs") {
+                    LibraryWideCard(
+                        title = "Liked songs",
+                        label = likedSongs.size.toString(),
+                        covers = likedSongs.map { it.song.thumbnailUrl },
+                        onClick = { navController.navigate("auto_playlist/liked") },
+                        sharedElementKey = "playlist-liked",
+                        art = { LikedCover(it) },
+                        modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            // Kept even when empty: it's the way in to "Add local music", so hiding it would strip the
+            // only route to importing anything.
+            item(key = "local") {
+                LibraryLocalCard(
+                    localSongs = localSongs,
+                    importer = localImporter,
+                    onOpen = { navController.navigate("library/local") },
                     modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                 )
-                Spacer(modifier = Modifier.height(12.dp))
             }
+
         }
 
-        // Kept even when empty: it's the way in to "Add local music", so hiding it would strip the
-        // only route to importing anything.
-        item(key = "downloaded") {
-            LibraryWideCard(
-                title = "Downloaded",
-                label = downloadedSongs.size.toString(),
-                covers = downloadedSongs.map { it.song.thumbnailUrl },
-                onClick = { navController.navigate("library/downloaded") },
-                modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
-            )
-        }
-
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomInset),
+        )
     }
+}
+
+/**
+ * Local: everything on this device, downloads and imported files. Always on the page - with
+ * nothing local yet it reads "Add local music" and opens the file picker straight away, since the
+ * Local page would only have that same button on it; once there is something it opens the page.
+ */
+@Composable
+private fun LibraryLocalCard(
+    localSongs: List<Song>,
+    importer: LocalMusicImporter,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isEmpty = localSongs.isEmpty()
+    LibraryWideCard(
+        title = when {
+            importer.isImporting -> importer.progressLabel()
+            isEmpty -> "Add local music"
+            else -> "Local"
+        },
+        label = if (isEmpty) "From your device" else localSongs.size.toString(),
+        covers = localSongs.map { it.song.thumbnailUrl },
+        onClick = { if (isEmpty) importer.launch() else onOpen() },
+        modifier = modifier,
+    )
 }
 
 /**
@@ -438,13 +488,26 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
     }
 }
 
+/**
+ * Opens what a search result or pinned tile stands for. [librarySongs] is where a song result is
+ * looked up first: a file imported from the device has no YouTube id to start a radio from, so it
+ * plays from its file instead - starting a radio with it would fail on the spot.
+ */
 internal fun openLibraryItem(
     item: YTItem,
     navController: NavController,
     playerConnection: com.example.musicfy.playback.PlayerConnection?,
+    librarySongs: List<Song> = emptyList(),
 ) {
     when (item) {
-        is SongItem -> playerConnection?.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+        is SongItem -> {
+            val file = librarySongs.firstOrNull { it.id == item.id }?.takeIf { it.song.isLocal }
+            if (file != null) {
+                playerConnection?.playQueue(ListQueue(title = file.title, items = listOf(file.toMediaItem())))
+            } else {
+                playerConnection?.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
+            }
+        }
         is AlbumItem -> navController.navigate("album/${item.browseId}")
         is ArtistItem -> navController.navigate("artist/${item.id}")
         // the Library's own playlists have local ids; only YouTube ones open as online playlists

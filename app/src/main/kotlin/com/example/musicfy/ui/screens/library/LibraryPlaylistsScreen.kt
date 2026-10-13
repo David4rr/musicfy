@@ -13,20 +13,25 @@ import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.menu.PlaylistMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
+/**
+ * The library's playlists, or with [localOnly] the Local page's: only the playlists that have a
+ * local song in them.
+ */
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
+    localOnly: Boolean = false,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val playlists by viewModel.playlists.collectAsState()
+    val playlists by (if (localOnly) viewModel.localPlaylists else viewModel.playlists).collectAsState()
     val menuState = LocalMenuState.current
     val coroutineScope = rememberCoroutineScope()
 
     LibraryEntityListScreen(
         title = "Playlist",
-        subtitle = "All playlist on your library listed here.",
+        subtitle = if (localOnly) "Playlists with music on this device." else "All playlist on your library listed here.",
         searchPlaceholder = "Find a playlist by its name",
         items = playlists,
         idOf = { it.id },

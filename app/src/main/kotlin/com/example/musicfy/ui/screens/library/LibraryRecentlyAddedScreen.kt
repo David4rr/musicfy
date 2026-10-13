@@ -1,8 +1,10 @@
 // LibraryRecentlyAddedScreen.kt
 //
-// Songs only. The underlying query orders by when each song entered the library, which is the one
-// timeline shared across the library; albums/artists/playlists carry no comparable timestamp, so a
-// combined "recently added" feed would need new queries rather than a merge of what exists.
+// Songs only - every library song, or with localOnly the Local page's songs. The underlying query
+// orders by when each song entered the library (a local one: when it was downloaded or imported),
+// which is the one timeline shared across the library; albums/artists/playlists carry no
+// comparable timestamp, so a combined "recently added" feed would need new queries rather than a
+// merge of what exists.
 
 package com.example.musicfy.ui.screens.library
 
@@ -23,9 +25,11 @@ fun LibraryRecentlyAddedScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
+    localOnly: Boolean = false,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val songs by viewModel.songs.collectAsState()
+    val songs by (if (localOnly) viewModel.localSongs else viewModel.songs).collectAsState()
+    val queueTitle = if (localOnly) "Local" else "Recently added"
     val playerConnection = LocalPlayerConnection.current ?: return
 
     val entries = remember(songs) {
@@ -44,7 +48,7 @@ fun LibraryRecentlyAddedScreen(
         val ordered = if (shuffle) songs.shuffled() else songs
         playerConnection.playQueue(
             ListQueue(
-                title = "Recently added",
+                title = queueTitle,
                 items = ordered.map { it.toMediaItem() },
                 startIndex = if (shuffle) 0 else startIndex,
             ),

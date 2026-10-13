@@ -13,25 +13,33 @@ import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.menu.ArtistMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
+/**
+ * The library's artists, or with [localOnly] the Local page's: only the artists of local songs,
+ * each with how many of its songs are local.
+ */
 @Composable
 fun LibraryArtistsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
+    localOnly: Boolean = false,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val artists by viewModel.artists.collectAsState()
+    val artists by (if (localOnly) viewModel.localArtists else viewModel.artists).collectAsState()
     val menuState = LocalMenuState.current
     val coroutineScope = rememberCoroutineScope()
 
     LibraryEntityListScreen(
         title = "Artist",
-        subtitle = "All artist on your library listed here.",
+        subtitle = if (localOnly) "Artists with music on this device." else "All artist on your library listed here.",
         searchPlaceholder = "Find an artist by name",
         items = artists,
         idOf = { it.id },
         nameOf = { it.artist.name },
-        subtitleOf = { if (it.songCount == 1) "1 song" else "${it.songCount} songs" },
+        subtitleOf = {
+            val count = if (it.songCount == 1) "1 song" else "${it.songCount} songs"
+            if (localOnly) "$count on this device" else count
+        },
         thumbnailOf = { it.artist.thumbnailUrl },
         roundThumbnails = true,
         onClick = { artist -> navController.navigate("artist/${artist.id}") },

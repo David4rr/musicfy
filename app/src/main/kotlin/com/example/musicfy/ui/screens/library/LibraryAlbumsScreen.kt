@@ -9,14 +9,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.musicfy.LocalPlayerConnection
+import com.example.musicfy.extensions.toMediaItem
+import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
+/**
+ * The library's albums, or with [localOnly] the Local page's: only the albums a local song is
+ * from. Those can include an imported file's album, which is only a tag and has no page - opening
+ * one plays its local songs instead.
+ */
 @Composable
 fun LibraryAlbumsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
+    localOnly: Boolean = false,
 ) {
+    if (localOnly) {
+        LocalAlbumsScreen(navController, modifier, pureBlack)
+        return
+    }
+
     val viewModel: LibraryHomeViewModel = hiltViewModel()
     val albums by viewModel.albums.collectAsState()
 
@@ -43,6 +57,59 @@ fun LibraryAlbumsScreen(
         // every album's tracklist up front just to make one button work.
         onPlay = { albums.firstOrNull()?.let { navController.navigate("album/${it.id}") } },
         onShuffle = { albums.randomOrNull()?.let { navController.navigate("album/${it.id}") } },
+        modifier = modifier,
+        pureBlack = pureBlack,
+    )
+}
+
+@Composable
+private fun LocalAlbumsScreen(
+    navController: NavController,
+    modifier: Modifier,
+    pureBlack: Boolean,
+) {
+    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val albums by viewModel.localAlbums.collectAsState()
+    val playerConnection = LocalPlayerConnection.current ?: return
+
+    val entries = remember(albums) {
+        albums.map {
+            LibraryGridEntry(
+                id = it.key,
+                title = it.title,
+                subtitle = it.artists,
+                thumbnailUrl = it.thumbnailUrl,
+                sharedElementKey = it.albumId?.let { id -> "album-$id" },
+            )
+        }
+    }
+
+    fun playAll(shuffle: Boolean) {
+        val songs = albums.flatMap { it.songs }
+        if (songs.isEmpty()) return
+        val ordered = if (shuffle) songs.shuffled() else songs
+        playerConnection.playQueue(ListQueue(title = "Local", items = ordered.map { it.toMediaItem() }))
+    }
+
+    LibraryGridScreen(
+        title = "Albums",
+        subtitle = "Albums with music on this device.",
+        searchPlaceholder = "Find an album listed here",
+        entries = entries,
+        onOpen = { entry ->
+            val album = albums.firstOrNull { it.key == entry.id } ?: return@LibraryGridScreen
+            if (album.albumId != null) {
+                navController.navigate("album/${album.albumId}")
+            } else {
+                playerConnection.playQueue(
+                    ListQueue(title = album.title, items = album.songs.map { it.toMediaItem() }),
+                )
+            }
+        },
+        // Every album here has its songs on hand, so these play them all for real: album by
+        // album, or every local album's songs shuffled together.
+        onPlay = { playAll(shuffle = false) },
+        onShuffle = { playAll(shuffle = true) },
         modifier = modifier,
         pureBlack = pureBlack,
     )

@@ -1,9 +1,10 @@
 // LibraryLocalImport.kt
 //
-// The "Add local music" action on the Downloaded screen. Moved out of NavigationBuilder.kt's old
-// LibraryTabScreen rather than rewritten — the import pipeline (permission grant, tag extraction,
-// artwork extraction, artist dedup, format row) is exactly right and untouched; only the trigger
-// UI around it changed, from a row in the old bare list to a card matching the rebuilt screens.
+// "Add local music": the file picker and the import behind it. Used by the card at the top of the
+// Local page, and by the Local card on the Library home while there is no local music yet. The
+// import itself ([importLocalAudio]) is shared with audio files shared into Musicfy from other
+// apps ([importSharedAudio]): permission grant, tag extraction, artwork extraction, artist dedup,
+// format row.
 
 package com.example.musicfy.ui.screens.library
 
@@ -21,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,24 +49,52 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.util.UUID
 
+/** The picker and its import, as one handle: [launch] opens the picker, the rest is its progress. */
+@Stable
+class LocalMusicImporter internal constructor() {
+    var isImporting by mutableStateOf(false)
+        internal set
+
+    /** 0..1 while [isImporting]. */
+    var progress by mutableFloatStateOf(0f)
+        internal set
+
+    internal var openPicker: () -> Unit = {}
+
+    fun launch() {
+        if (!isImporting) openPicker()
+    }
+}
+
+/** Audio types the picker offers: every audio type, plus the common ones named outright. */
+private val LocalAudioMimeTypes = arrayOf(
+    "audio/*",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/flac",
+    "audio/ogg",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/aac",
+)
+
+/**
+ * The importer for one screen. The import runs in this screen's scope, and how it went is shown in
+ * [snackbarHostState] once it finishes.
+ */
 @Composable
-fun LibraryAddLocalMusicCard(
-    snackbarHostState: SnackbarHostState,
-    modifier: Modifier = Modifier,
-) {
+fun rememberLocalMusicImporter(snackbarHostState: SnackbarHostState): LocalMusicImporter {
     val context = LocalContext.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
-
-    var importProgress by remember { mutableFloatStateOf(-1f) }
-    var isImporting by remember { mutableStateOf(false) }
+    val importer = remember { LocalMusicImporter() }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
         onResult = { uris: List<Uri> ->
             if (uris.isEmpty()) return@rememberLauncherForActivityResult
-            isImporting = true
-            importProgress = 0f
+            importer.isImporting = true
+            importer.progress = 0f
             coroutineScope.launch {
                 var successCount = 0
                 var failCount = 0
@@ -81,10 +112,10 @@ fun LibraryAddLocalMusicCard(
                     } catch (e: Exception) {
                         failCount++
                     }
-                    importProgress = (index + 1).toFloat() / total
+                    importer.progress = (index + 1).toFloat() / total
                 }
-                isImporting = false
-                importProgress = -1f
+                importer.isImporting = false
+                importer.progress = 0f
 
                 val message = if (failCount == 0) {
                     "Imported $successCount song${if (successCount != 1) "s" else ""}"
@@ -95,6 +126,20 @@ fun LibraryAddLocalMusicCard(
             }
         },
     )
+    SideEffect { importer.openPicker = { launcher.launch(LocalAudioMimeTypes) } }
+
+    return importer
+}
+
+/** "Importing… 40%" while [LocalMusicImporter.isImporting]. */
+internal fun LocalMusicImporter.progressLabel(): String = "Importing… ${(progress * 100).toInt()}%"
+
+@Composable
+fun LibraryAddLocalMusicCard(
+    snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+) {
+    val importer = rememberLocalMusicImporter(snackbarHostState)
 
     Column(
         modifier = modifier
@@ -102,28 +147,11 @@ fun LibraryAddLocalMusicCard(
             .height(84.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(SearchColors.Tile)
-            .clickable(enabled = !isImporting) {
-                launcher.launch(
-                    arrayOf(
-                        "audio/*",
-                        "audio/mpeg",
-                        "audio/mp4",
-                        "audio/flac",
-                        "audio/ogg",
-                        "audio/wav",
-                        "audio/x-wav",
-                        "audio/aac",
-                    ),
-                )
-            }
+            .clickable(enabled = !importer.isImporting, onClick = importer::launch)
             .padding(18.dp),
     ) {
         Text(
-            text = if (isImporting) {
-                "Importing… ${(importProgress.coerceAtLeast(0f) * 100).toInt()}%"
-            } else {
-                "Add local music"
-            },
+            text = if (importer.isImporting) importer.progressLabel() else "Add local music",
             color = SearchColors.Primary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,

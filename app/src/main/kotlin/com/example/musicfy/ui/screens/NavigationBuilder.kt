@@ -285,8 +285,31 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
-    coverSourceComposable("library/downloaded") {
-        com.example.musicfy.ui.screens.library.LibraryDownloadedScreen(navController = navController)
+    // Local: downloads and imported files, and the same pages again counting only those
+    coverSourceComposable("library/local") {
+        com.example.musicfy.ui.screens.library.LibraryLocalScreen(navController = navController)
+    }
+
+    coverSourceComposable("library/local/added") {
+        com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, localOnly = true)
+    }
+
+    coverSourceComposable("library/local/albums") {
+        com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, localOnly = true)
+    }
+
+    coverSourceComposable("library/local/artists") {
+        com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, localOnly = true)
+    }
+
+    composable(
+        route = "library/local/playlists",
+        exitTransition = { libraryExitTo(targetState.destination.route) },
+        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+    ) {
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, localOnly = true)
+        }
     }
 
     // Everything one service brought in, whatever playlist it went into: Imported from Spotify.
