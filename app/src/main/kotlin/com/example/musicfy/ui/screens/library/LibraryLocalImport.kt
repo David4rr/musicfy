@@ -70,87 +70,12 @@ fun LibraryAddLocalMusicCard(
                 val total = uris.size
                 for ((index, uri) in uris.withIndex()) {
                     try {
-                        context.contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                        )
-
-                        val metadata = withContext(Dispatchers.IO) {
-                            extractAudioMetadata(context, uri)
-                        }
-
-                        val songId = "LOCAL_${UUID.randomUUID()}"
-                        val thumbnailUrl = withContext(Dispatchers.IO) {
-                            metadata.embeddedArtwork?.let { artworkData ->
-                                try {
-                                    val artworkFile = java.io.File(
-                                        context.cacheDir,
-                                        "artwork_${songId.hashCode()}.jpg",
-                                    )
-                                    artworkFile.writeBytes(artworkData)
-                                    Uri.fromFile(artworkFile).toString()
-                                } catch (_: Exception) {
-                                    null
-                                }
-                            }
-                        }
-
                         withContext(Dispatchers.IO) {
-                            database.transaction {
-                                insert(
-                                    SongEntity(
-                                        id = songId,
-                                        title = metadata.title,
-                                        duration = metadata.durationSeconds,
-                                        thumbnailUrl = thumbnailUrl,
-                                        albumName = metadata.album,
-                                        isLocal = true,
-                                        inLibrary = LocalDateTime.now(),
-                                        localUri = uri.toString(),
-                                    ),
-                                )
-
-                                val artistName = metadata.artist
-                                val artistId = artistByName(artistName)?.id
-                                    ?: ArtistEntity.generateArtistId()
-                                insert(
-                                    ArtistEntity(
-                                        id = artistId,
-                                        name = artistName,
-                                        isLocal = true,
-                                    ),
-                                )
-                                insert(
-                                    SongArtistMap(
-                                        songId = songId,
-                                        artistId = artistId,
-                                        position = 0,
-                                    ),
-                                )
-
-                                val mimeType = metadata.mimeType ?: "audio/mpeg"
-                                val codecs = when {
-                                    mimeType.contains("flac") -> "flac"
-                                    mimeType.contains("opus") || mimeType.contains("ogg") -> "opus"
-                                    mimeType.contains("mp4") || mimeType.contains("m4a") || mimeType.contains("aac") -> "mp4a.40.2"
-                                    mimeType.contains("wav") -> "pcm"
-                                    else -> "mp3"
-                                }
-                                upsert(
-                                    FormatEntity(
-                                        id = songId,
-                                        itag = -1,
-                                        mimeType = mimeType,
-                                        codecs = codecs,
-                                        bitrate = metadata.bitrate ?: 0,
-                                        sampleRate = metadata.sampleRate,
-                                        contentLength = 0L,
-                                        loudnessDb = null,
-                                        perceptualLoudnessDb = null,
-                                        playbackUrl = null,
-                                    ),
-                                )
-                            }
+                            context.contentResolver.takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                            )
+                            importLocalAudio(context, database, uri)
                         }
                         successCount++
                     } catch (e: Exception) {
@@ -203,5 +128,119 @@ fun LibraryAddLocalMusicCard(
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+/**
+ * Adds one audio file to the library as a local song: tags, artwork, artist and format row.
+ * [uri] has to stay readable, so a shared file is copied into the app first (see [importSharedAudio]).
+ */
+suspend fun importLocalAudio(
+    context: android.content.Context,
+    database: com.example.musicfy.db.MusicDatabase,
+    uri: Uri,
+) {
+    val metadata = withContext(Dispatchers.IO) {
+        extractAudioMetadata(context, uri)
+    }
+
+    val songId = "LOCAL_${UUID.randomUUID()}"
+    val thumbnailUrl = withContext(Dispatchers.IO) {
+        metadata.embeddedArtwork?.let { artworkData ->
+            try {
+                val artworkFile = java.io.File(
+                    context.cacheDir,
+                    "artwork_${songId.hashCode()}.jpg",
+                )
+                artworkFile.writeBytes(artworkData)
+                Uri.fromFile(artworkFile).toString()
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    withContext(Dispatchers.IO) {
+        database.transaction {
+            insert(
+                SongEntity(
+                    id = songId,
+                    title = metadata.title,
+                    duration = metadata.durationSeconds,
+                    thumbnailUrl = thumbnailUrl,
+                    albumName = metadata.album,
+                    isLocal = true,
+                    inLibrary = LocalDateTime.now(),
+                    localUri = uri.toString(),
+                ),
+            )
+
+            val artistName = metadata.artist
+            val artistId = artistByName(artistName)?.id
+                ?: ArtistEntity.generateArtistId()
+            insert(
+                ArtistEntity(
+                    id = artistId,
+                    name = artistName,
+                    isLocal = true,
+                ),
+            )
+            insert(
+                SongArtistMap(
+                    songId = songId,
+                    artistId = artistId,
+                    position = 0,
+                ),
+            )
+
+            val mimeType = metadata.mimeType ?: "audio/mpeg"
+            val codecs = when {
+                mimeType.contains("flac") -> "flac"
+                mimeType.contains("opus") || mimeType.contains("ogg") -> "opus"
+                mimeType.contains("mp4") || mimeType.contains("m4a") || mimeType.contains("aac") -> "mp4a.40.2"
+                mimeType.contains("wav") -> "pcm"
+                else -> "mp3"
+            }
+            upsert(
+                FormatEntity(
+                    id = songId,
+                    itag = -1,
+                    mimeType = mimeType,
+                    codecs = codecs,
+                    bitrate = metadata.bitrate ?: 0,
+                    sampleRate = metadata.sampleRate,
+                    contentLength = 0L,
+                    loudnessDb = null,
+                    perceptualLoudnessDb = null,
+                    playbackUrl = null,
+                ),
+            )
+        }
+    }
+}
+
+/** Copies a file another app shared into the app's own storage, then imports it. */
+suspend fun importSharedAudio(
+    context: android.content.Context,
+    database: com.example.musicfy.db.MusicDatabase,
+    shared: Uri,
+) {
+    val name = withContext(Dispatchers.IO) {
+        context.contentResolver.query(shared, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getString(0) else null }
+    }?.replace(Regex("[\\\\/:*?\"<>|]"), "_") ?: "audio"
+    val copy = withContext(Dispatchers.IO) {
+        val dir = java.io.File(context.filesDir, "shared_audio/${UUID.randomUUID()}").apply { mkdirs() }
+        java.io.File(dir, name).also { file ->
+            context.contentResolver.openInputStream(shared)!!.use { input ->
+                file.outputStream().use { input.copyTo(it) }
+            }
+        }
+    }
+    try {
+        importLocalAudio(context, database, Uri.fromFile(copy))
+    } catch (e: Exception) {
+        copy.parentFile?.deleteRecursively()
+        throw e
     }
 }

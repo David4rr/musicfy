@@ -1290,7 +1290,37 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Audio files shared to Musicfy from another app or a file manager are imported as local songs. */
+    private fun importSharedAudio(intent: Intent): Boolean {
+        if (intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_SEND_MULTIPLE) return false
+        val uris = if (intent.action == Intent.ACTION_SEND) {
+            listOfNotNull(androidx.core.content.IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, android.net.Uri::class.java))
+        } else {
+            androidx.core.content.IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, android.net.Uri::class.java).orEmpty()
+        }
+        if (uris.isEmpty()) return false
+        // handled once: the activity being recreated would otherwise import them again
+        intent.action = null
+        intent.removeExtra(Intent.EXTRA_STREAM)
+        lifecycle.coroutineScope.launch {
+            var done = 0
+            for (uri in uris) {
+                try {
+                    com.example.musicfy.ui.screens.library.importSharedAudio(applicationContext, database, uri)
+                    done++
+                } catch (e: Exception) {
+                    reportException(e)
+                }
+            }
+            com.example.musicfy.ui.component.TopToaster.show(
+                if (done == 0) "Couldn't import that" else "Imported $done song${if (done != 1) "s" else ""} to Musicfy",
+            )
+        }
+        return true
+    }
+
     private fun handleDeepLinkIntent(intent: Intent, navController: NavHostController) {
+        if (importSharedAudio(intent)) return
         val uri = intent.data ?: intent.extras?.getString(Intent.EXTRA_TEXT)?.toUri() ?: return
         intent.data = null
         intent.removeExtra(Intent.EXTRA_TEXT)
@@ -1394,7 +1424,6 @@ val SubSettingsRoutes = setOf(
     "cipher_settings",
     "playback_diagnostics",
     "musicfy_settings",
-    "other_settings",
     "import_sync",
     "import_providers",
     "import_tunemymusic",

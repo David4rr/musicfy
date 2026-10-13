@@ -2,7 +2,6 @@
 
 package com.example.musicfy.ui.screens.settings
 
-import com.example.musicfy.ui.component.navigateToTab
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -70,41 +69,7 @@ fun GeneralSettingsScreen(navController: NavController) {
             modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
         )
 
-        // Card 1: Page options
-        val pageItems = listOf(
-            SettingsItem(
-                title = { Text("Import Data") },
-                highlightKey = "Import Data",
-                descriptionText = "import musicfy data or other streaming apps",
-                icon = painterResource(R.drawable.backup),
-                iconShape = CircleShape,
-                onClick = { navController.navigate("other_settings") },
-            ),
-            SettingsItem(
-                title = { Text("Edit profile") },
-                highlightKey = "Edit profile",
-                descriptionText = "edit profilee",
-                icon = painterResource(R.drawable.person),
-                iconShape = CircleShape,
-                onClick = {
-                    // back to the profile page these were opened from, not a second copy of it on top
-                    if (!navController.popBackStack("settings", inclusive = false)) navController.navigateToTab("settings")
-                },
-            ),
-        ).filter {
-            query.isBlank() || it.highlightKey?.contains(query, ignoreCase = true) == true ||
-                it.descriptionText?.contains(query, ignoreCase = true) == true
-        }
-
-        if (pageItems.isNotEmpty()) {
-            SettingsGroup(
-                style = SettingsGroupStyle.Grouped,
-                items = pageItems,
-            )
-            Spacer(Modifier.height(14.dp))
-        }
-
-        // Card 2: Toggle options
+        // Toggle options
         val toggleItems = listOf(
             SettingsItem(
                 title = { Text("Disable App Updates notice") },

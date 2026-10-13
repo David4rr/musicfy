@@ -1426,7 +1426,6 @@ fun HomeScreen(
                             if (!localPlaylists.isNullOrEmpty() || !accountPlaylists.isNullOrEmpty()) {
                                 homeItem("account_playlists_title", revealSeen) {
                                     Box {
-                                        var showProfileMenu by remember { mutableStateOf(false) }
                                         HomeSectionTitle(
                                             label = "Your Playlists",
                                             title = accountName,
@@ -1451,40 +1450,8 @@ fun HomeScreen(
                                                     )
                                                 }
                                             },
-                                            onClick = { showProfileMenu = true },
                                         )
 
-                                        androidx.compose.material3.DropdownMenu(
-                                            expanded = showProfileMenu,
-                                            onDismissRequest = { showProfileMenu = false }
-                                        ) {
-                                            androidx.compose.material3.DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.account)) },
-                                                onClick = {
-                                                    showProfileMenu = false
-                                                    navController.navigate("account")
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        painter = painterResource(id = R.drawable.person),
-                                                        contentDescription = null
-                                                    )
-                                                }
-                                            )
-                                            androidx.compose.material3.DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.settings)) },
-                                                onClick = {
-                                                    showProfileMenu = false
-                                                    navController.navigateToTab("settings")
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        painter = painterResource(id = R.drawable.settings),
-                                                        contentDescription = null
-                                                    )
-                                                }
-                                            )
-                                        }
                                     }
                                 }
 

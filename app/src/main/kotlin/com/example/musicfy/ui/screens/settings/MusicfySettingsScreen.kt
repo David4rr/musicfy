@@ -425,12 +425,6 @@ fun MusicfySettingsScreen(navController: NavController) {
                             iconRes = R.drawable.library_add,
                             onClick = { navController.navigate("modules") }
                         )
-
-                        CategoryBubble(
-                            title = "Other Settings",
-                            iconRes = R.drawable.settings,
-                            onClick = { navController.navigate("other_settings") }
-                        )
                     }
                 }
             }
