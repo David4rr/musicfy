@@ -6,6 +6,7 @@
 
 package com.example.musicfy.ui.screens.audiolab
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -64,8 +66,10 @@ fun ProviderOrder(
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
     val slotPx = with(density) { (RowHeight + ArrowGap).toPx() }
-    var items by remember(order) { mutableStateOf(order) }
+    var items by remember { mutableStateOf(order) }
     var dragging by remember { mutableStateOf<String?>(null) }
+    // a saved order coming back in mustn't yank the list while a row is held
+    LaunchedEffect(order) { if (dragging == null) items = order }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val currentItems by rememberUpdatedState(items)
     val currentOnReorder by rememberUpdatedState(onReorder)
@@ -99,13 +103,24 @@ fun ProviderOrder(
             items.forEachIndexed { index, id ->
                 key(id) {
                     val isDragged = dragging == id
-                    val slotY by animateFloatAsState(index * slotPx, spring(dampingRatio = 0.8f, stiffness = 500f), label = "slot")
+                    // one position per row: follows the finger while held, springs to its slot after
+                    val y = remember { Animatable(index * slotPx) }
+                    val held = remember { floatArrayOf(index * slotPx) }
+                    LaunchedEffect(isDragged, index) {
+                        if (!isDragged) {
+                            y.snapTo(held[0])
+                            y.animateTo(index * slotPx, spring(dampingRatio = 0.8f, stiffness = 500f))
+                        }
+                    }
                     val lift by animateFloatAsState(if (isDragged) 1f else 0f, spring(dampingRatio = 0.7f, stiffness = 600f), label = "lift")
                     val on = usable(id)
                     Row(
                         modifier = Modifier
                             .zIndex(if (isDragged) 1f else 0f)
-                            .offset { IntOffset(0, (if (isDragged) index * slotPx + dragOffset else slotY).roundToInt()) }
+                            .offset {
+                                if (isDragged) held[0] = index * slotPx + dragOffset
+                                IntOffset(0, (if (isDragged) held[0] else y.value).roundToInt())
+                            }
                             .graphicsLayer {
                                 scaleX = 1f + 0.03f * lift
                                 scaleY = 1f + 0.03f * lift

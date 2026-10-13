@@ -31,7 +31,8 @@ fun crossmixTestItems(isVisible: Boolean = true): List<SettingsItem> {
         SettingsItem(
             title = { Text("Test on this song") },
             highlightKey = "Test on this song",
-            descriptionText = "Plans the mix into the next song, then jumps to a few seconds before it",
+            descriptionText = "Mixes into the next song",
+            detail = "Plans the mix into the next song, then jumps to a few seconds before it",
             icon = painterResource(R.drawable.fast_forward),
             iconShape = androidx.compose.foundation.shape.CircleShape,
             enabled = playerConnection != null,

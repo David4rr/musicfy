@@ -50,7 +50,8 @@ fun PlaybackSettingsScreen(navController: NavController) {
             SettingsItem(
                 title = { Text("Keep playing even when closed") },
                 highlightKey = "Keep playing even when closed",
-                descriptionText = "Continue playback in background when app is cleared from recents",
+                descriptionText = "Keep playing after the app is cleared",
+                detail = "Continue playback in background when app is cleared from recents",
                 icon = painterResource(R.drawable.clear_all),
                 iconShape = CircleShape,
                 onClick = { onStopPlaybackOnTaskRemovedChange(!stopPlaybackOnTaskRemoved) },
@@ -64,7 +65,8 @@ fun PlaybackSettingsScreen(navController: NavController) {
             SettingsItem(
                 title = { Text("Save Player's last state") },
                 highlightKey = "Save Player's last state",
-                descriptionText = "disabling this will removing previously played tracks when closing the app",
+                descriptionText = "Off clears played tracks on close",
+                detail = "disabling this will removing previously played tracks when closing the app",
                 icon = painterResource(R.drawable.cached),
                 iconShape = CircleShape,
                 onClick = { onPersistentQueueChange(!persistentQueue) },

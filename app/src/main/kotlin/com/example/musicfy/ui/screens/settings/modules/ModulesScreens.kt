@@ -177,7 +177,7 @@ fun ModuleScreen(navController: NavController, id: String, viewModel: ModulesVie
         LabCard(padding = 10.dp) {
             LabToggleRow(
                 title = "Play from ${module.info.name}",
-                subtitle = "Songs play from ${module.info.name} when it has them, in the order set under Audio Quality → Provider order.",
+                subtitle = "Songs play from ${module.info.name} when it has them, in the order set under Audio Quality → Provider order",
                 checked = entry.enabled && signedIn,
                 enabled = signedIn,
                 onCheckedChange = { viewModel.setEnabled(id, it) },

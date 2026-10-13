@@ -34,8 +34,6 @@ import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.component.GlassPillBackground
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.ProfileMenuItem
-import com.example.musicfy.ui.component.ProfileMenuOverlay
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Rect
@@ -748,29 +746,6 @@ fun HomeScreen(
         }
     }
 
-    var profileMenuOpen by remember { mutableStateOf(false) }
-    val profileMenuProgress = remember { Animatable(0f) }
-    LaunchedEffect(profileMenuOpen) {
-        if (profileMenuOpen) {
-            profileMenuProgress.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 340f))
-        } else {
-            profileMenuProgress.animateTo(0f, tween(260, easing = FastOutSlowInEasing))
-        }
-    }
-    val profileMenuProgressProvider = remember { { profileMenuProgress.value } }
-    val showProfileMenuOverlay by remember { derivedStateOf { profileMenuOpen || profileMenuProgress.value > 0.0005f } }
-    var profilePillBounds by remember { mutableStateOf<Rect?>(null) }
-    var profileAvatarBounds by remember { mutableStateOf<Rect?>(null) }
-    val profileMenuItems = remember {
-        listOf(
-            ProfileMenuItem(icon = R.drawable.settings, label = "Musicfy Settings") {
-                navController.navigateToTab("settings")
-            },
-            ProfileMenuItem(icon = R.drawable.account, label = "Switch Profile") {},
-            ProfileMenuItem(icon = R.drawable.logout, label = "Log Out and reset") {},
-        )
-    }
-    BackHandler(enabled = profileMenuOpen) { profileMenuOpen = false }
 
     val scope = rememberCoroutineScope()
 
@@ -1144,11 +1119,9 @@ fun HomeScreen(
 
             val homeGlassState = remember { GlassState() }
 
-            val profileMenuGlassState = remember { GlassState() }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .glassRoot(profileMenuGlassState, isActive = { profileMenuProgress.value > 0f })
             ) {
                 val backgroundColor = Color.Black
                 CompositionLocalProvider(
@@ -1784,17 +1757,14 @@ fun HomeScreen(
                             }
                             .height(44.dp)
                             .clip(RoundedCornerShape(50))
-                            .onGloballyPositioned { profilePillBounds = it.boundsInRoot() }
-                            .clickable { profileMenuOpen = true },
+                            .clickable { navController.navigateToTab("settings") },
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(vertical = 4.dp)
                         ) {
-                            val avatarBoundsModifier = Modifier
-                                .onGloballyPositioned { profileAvatarBounds = it.boundsInRoot() }
-                                .graphicsLayer { alpha = (1f - profileMenuProgress.value * 6f).coerceIn(0f, 1f) }
+            val avatarBoundsModifier = Modifier
                             if (profileImageUrl != null) {
                                 AsyncImage(
                                     model = profileImageRequest,
@@ -1828,19 +1798,6 @@ fun HomeScreen(
             }
         }
 
-            ProfileMenuOverlay(
-                visible = showProfileMenuOverlay,
-                progressProvider = profileMenuProgressProvider,
-                onDismissRequest = { profileMenuOpen = false },
-                glassState = profileMenuGlassState,
-                triggerBoundsProvider = { profilePillBounds },
-                avatarBoundsProvider = { profileAvatarBounds },
-                accountName = accountName,
-                accountSubtitle = "Tap here to view profile",
-                profileImageRequest = profileImageRequest,
-                onProfileClick = { profileMenuOpen = false },
-                items = profileMenuItems,
-            )
 
         }
     }

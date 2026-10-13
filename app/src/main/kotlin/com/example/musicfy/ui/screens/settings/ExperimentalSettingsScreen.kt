@@ -93,7 +93,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                         SettingsItem(
                             title = { Text("Crossmix test tools") },
                             highlightKey = "Crossmix test tools",
-                            descriptionText = "Live status and a button that jumps to just before the next mix; also shown in Crossmix",
+                            descriptionText = "Live status and a jump-to-mix button",
+                            detail = "Live status and a button that jumps to just before the next mix; also shown in Crossmix",
                             icon = painterResource(R.drawable.graphic_eq),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onCrossmixTestToolsChange(!crossmixTestTools) },
@@ -110,7 +111,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                         SettingsItem(
                             title = { Text("Show where songs play from") },
                             highlightKey = "Show where songs play from",
-                            descriptionText = "A banner at the top names each song's source: Apple Music, Monochrome or YouTube, and its quality",
+                            descriptionText = "Banner showing each song's source and quality",
+                            detail = "A banner at the top names each song's source: Apple Music, Monochrome or YouTube, and its quality",
                             icon = painterResource(R.drawable.info),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onSourceBannerChange(!sourceBanner) },
@@ -123,7 +125,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                         SettingsItem(
                             title = { Text("Force playback") },
                             highlightKey = "Force playback",
-                            descriptionText = "Never stop on a song: if one provider can't play it, the next in the provider order does; if none can, it's skipped. A banner says which",
+                            descriptionText = "If a provider fails, try the next one",
+                            detail = "Never stop on a song: if one provider can't play it, the next in the provider order does; if none can, it's skipped. A banner says which",
                             icon = painterResource(R.drawable.play),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onForcePlaybackChange(!forcePlayback) },
@@ -152,7 +155,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                         SettingsItem(
                             title = { Text("Force show monthly recap") },
                             highlightKey = "Force show monthly recap",
-                            descriptionText = "Unlock the recap behind the Musicfy card now, before the 3rd or 10 songs",
+                            descriptionText = "Unlock the recap early",
+                            detail = "Unlock the recap behind the Musicfy card now, before the 3rd or 10 songs",
                             icon = painterResource(R.drawable.history),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onForceRecapChange(!forceRecap) },

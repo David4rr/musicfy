@@ -199,7 +199,7 @@ fun AccountImportScreen(
     when (val current = state) {
         AccountImportState.SigningIn -> CaptureWebView(
             title = "Sign in to ${service.label}",
-            subtitle = "On ${service.label}'s own page. Musicfy only reads your playlists.",
+            subtitle = "On ${service.label}'s own page. Musicfy only reads your playlists",
             startUrl = service.loginUrl.orEmpty(),
             playerOrigins = service.playerOrigins,
             desktopSite = service.desktopSite,

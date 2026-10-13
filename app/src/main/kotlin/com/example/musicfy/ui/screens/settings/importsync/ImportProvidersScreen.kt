@@ -119,7 +119,8 @@ fun ImportProvidersScreen(
             items = listOf(
                 SettingsItem(
                     title = { Text("Amazon Music, SoundCloud, Pandora…") },
-                    descriptionText = "These go through TuneMyMusic, which can sign in to them for you",
+                    descriptionText = "Goes through TuneMyMusic",
+                    detail = "These go through TuneMyMusic, which can sign in to them for you",
                     icon = painterResource(R.drawable.library_music),
                     iconShape = CircleShape,
                     onClick = { navController.navigate(ImportTuneMyMusicRoute) },

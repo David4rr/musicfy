@@ -87,7 +87,8 @@ fun ImportSyncScreen(
                 SettingsItem(
                     title = { Text("Import") },
                     highlightKey = "Import",
-                    descriptionText = "Sign in to Spotify, Apple Music, YouTube Music or Tidal and pick playlists",
+                    descriptionText = "Sign in and pick playlists",
+                    detail = "Sign in to Spotify, Apple Music, YouTube Music or Tidal and pick playlists",
                     icon = painterResource(R.drawable.playlist_add),
                     iconShape = CircleShape,
                     onClick = { navController.navigate(ImportProvidersRoute) },
@@ -104,7 +105,8 @@ fun ImportSyncScreen(
                 SettingsItem(
                     title = { Text("TuneMyMusic CSV") },
                     highlightKey = "TuneMyMusic CSV",
-                    descriptionText = "Any other service, such as Amazon Music, SoundCloud or Deezer libraries",
+                    descriptionText = "Amazon Music, SoundCloud, Deezer and more",
+                    detail = "Any other service, such as Amazon Music, SoundCloud or Deezer libraries",
                     icon = painterResource(R.drawable.web_link),
                     iconShape = CircleShape,
                     onClick = { navController.navigate(ImportTuneMyMusicRoute) },
@@ -121,7 +123,8 @@ fun ImportSyncScreen(
                 SettingsItem(
                     title = { Text("Export to Musicfy CSV") },
                     highlightKey = "Export to Musicfy CSV",
-                    descriptionText = "Liked songs and playlists. Import it back from Import → Musicfy backup",
+                    descriptionText = "Liked songs and playlists",
+                    detail = "Liked songs and playlists, import it back from Import → Musicfy backup",
                     icon = painterResource(R.drawable.backup),
                     iconShape = CircleShape,
                     onClick = { exportLauncher.launch("musicfy-library-${LocalDate.now()}.csv") },

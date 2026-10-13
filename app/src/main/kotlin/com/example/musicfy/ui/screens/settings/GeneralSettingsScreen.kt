@@ -166,7 +166,8 @@ fun GeneralSettingsScreen(navController: NavController) {
             SettingsItem(
                 title = { Text("Don't skip on failure") },
                 highlightKey = "Don't skip on failure",
-                descriptionText = "When a stream fails, stay on it instead of skipping to the next track after a few seconds",
+                descriptionText = "Stay on a failed stream instead of skipping",
+                detail = "When a stream fails, stay on it instead of skipping to the next track after a few seconds",
                 icon = painterResource(R.drawable.skip_next),
                 iconShape = CircleShape,
                 onClick = { onDontSkipOnFailureChange(!dontSkipOnFailure) },

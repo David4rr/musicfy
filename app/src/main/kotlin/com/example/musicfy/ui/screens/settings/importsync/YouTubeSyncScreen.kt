@@ -152,7 +152,8 @@ fun YouTubeSyncScreen(
                 ),
                 SettingsItem(
                     title = { Text("Put local playlists on YouTube") },
-                    descriptionText = "Creates a YouTube copy of every playlist that only exists here",
+                    descriptionText = "Copy local playlists to YouTube",
+                    detail = "Creates a YouTube copy of every playlist that only exists here",
                     icon = painterResource(R.drawable.cloud),
                     iconShape = CircleShape,
                     enabled = signedIn && !state.running,

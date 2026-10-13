@@ -47,8 +47,8 @@
 
 ---
 ## How to install? 
-Go to https://github.com/realidkroo/musicfy/releases/latest
-Pick the latest version, and the correct architecture of your phone, normally it will be arm64
+**Go to https://github.com/realidkroo/musicfy/releases/latest
+Pick the latest version, and the correct architecture of your phone, normally it will be arm64**
 
 ---
 ## Other notes

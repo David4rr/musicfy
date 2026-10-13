@@ -14,6 +14,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import com.example.musicfy.R
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -196,6 +198,7 @@ private fun ClusterRows(cluster: ItemCluster) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SettingsItemRow(
     item: SettingsItem,
@@ -229,9 +232,13 @@ private fun SettingsItemRow(
                     drawRect(color = highlightColor.copy(alpha = 0.22f * highlightAlpha))
                 }
             }
-            .clickable(
-                enabled = item.enabled && item.onClick != null,
-                onClick = { item.onClick?.invoke() }
+            .combinedClickable(
+                enabled = item.enabled && (item.onClick != null || item.descriptionText != null),
+                onClick = { item.onClick?.invoke() },
+                // holding a row shows its whole description, since the line under it is cut to one
+                onLongClick = (item.detail ?: item.descriptionText)?.let { full ->
+                    { TopToaster.show(full, iconRes = R.drawable.info) }
+                },
             )
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -356,6 +363,8 @@ data class SettingsItem(
     val description: (@Composable () -> Unit)? = null,
 
     val descriptionText: String? = null,
+    /** The whole description, shown when the row is held; [descriptionText] is the short line. */
+    val detail: String? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,
