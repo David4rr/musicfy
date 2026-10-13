@@ -56,7 +56,8 @@ you can straightly compile using build.sh type build.sh --help for more info.
 its a script to make the day easier.
 you can fork it but I dont support unofficial fork
 
-Want to help? Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) first.
+oh also thanks to [monochrome](https://github.com/monochrome-music/monochrome) we have FLAC streams!
+
 
 ---
 ## Disclaimer
@@ -91,17 +92,15 @@ Musicfy is an independent, unofficial project made for personal and educational 
 
 ---
 
-## Musicfy isn’t possible without these incredible projects
+## These incredible project helped musicfy a lot!
 
-- **ViviMusic** by [vividm](https://github.com/vividm) ([Repository](https://github.com/vividm/ViviMusic)) -- For the base app. This app is a fork from this project.
+- **ViviMusic** by [vivizzz007Z](https://github.com/vivizzz007Z) )[Their repo](https://github.com/vivizzz007/vivi-music)) -- For the base app. This app is a fork from this project.
 - **Metrolist** by [Mostafa Alagamy](https://github.com/mostafaalagamy) ([Repository](https://github.com/mostafaalagamy/Metrolist)) -- For the base framework.
 - **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- For the lyrics API provider.
-- **BetterLyrics** by [boidu](https://github.com/boidu) ([Website](https://better-lyrics.boidu.dev/)) -- For word-by-word lyrics, unison, and artwork provider support.
-- **Archivetune** by [ZionHuang](https://github.com/zionhuang) ([Repository](https://github.com/zionhuang/archivetune)) -- For design and architectural inspiration.
-- **ViMusic** by [vapps](https://github.com/vapps) ([Repository](https://github.com/vapps/vimusic)) -- For original Android music player concept and foundation.
+- **Archivetune** by [Rukamori](https://github.com/rukamori) ([Repository](https://github.com/rukamori/ArchiveTune)) -- For design and architectural inspiration.
 - **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
 - **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
-- **Kizzy** by [Kizzy-APKs](https://github.com/Kizzy-APKs) ([Repository](https://github.com/Kizzy-APKs/Kizzy)) -- For Discord RPC integration support.
+  
 ---
 ## Star History
 
