@@ -43,7 +43,10 @@
 
 
 > [!WARNING]
-> player customization on 7.xx rn is broken pls wait for fix
+> Thanks for sharing the app, but PLEASE share this repo instead of sharing your own app download in a mediafire or smth, and this app is not for monetized, please dont upload it/gate keep it with a ads!!! i dont want my app to get monetized.
+
+> [!WARNING]
+> I dont support forks, please do not commit issue from forked apps here.
 
 ---
 ## How to install? 
