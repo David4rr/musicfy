@@ -30,6 +30,9 @@
   <a href="https://github.com/realidkroo/musicfy/blob/main/LICENSE">
     <img src="https://shieldcn.dev/github/license/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="License">
   </a>
+  <a href="https://github.com/realidkroo/musicfy/blob/main/Roadmap.md">
+    <img src="https://shieldcn.dev/badge/Roadmap-View-313244.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="Roadmap">
+  </a>
 </p>
 </div>
 
