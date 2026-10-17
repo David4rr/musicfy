@@ -208,8 +208,41 @@ fun StudioSheets(
                 }
             }
 
+            StudioSheet.POSTER -> PosterOptions()
+
         }
         }
+    }
+}
+
+/**
+ * The sheets of the styles that aren't the flagship (the Poster's), which open over the style
+ * itself with none of the flagship's editor around them.
+ */
+@Composable
+fun StyleSheets(studio: PlayerStudioState) {
+    if (studio.sheet != StudioSheet.POSTER) return
+    MenuSheetSurface(onDismiss = { studio.sheet = null }, wrapHeight = true) { _ ->
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalTextStyle provides studioText(StudioType.Body),
+        ) {
+            PosterOptions()
+        }
+    }
+}
+
+private val PosterVisualizerOption = CoverOption.Switch(
+    title = "Visualizer",
+    description = "bars round the cover, moving with the music",
+    icon = R.drawable.graphic_eq,
+    key = com.example.musicfy.constants.PosterVisualizerKey,
+    default = false,
+)
+
+@Composable
+private fun ColumnScope.PosterOptions() {
+    OptionSheet(title = "The poster") {
+        SwitchRow(PosterVisualizerOption)
     }
 }
 

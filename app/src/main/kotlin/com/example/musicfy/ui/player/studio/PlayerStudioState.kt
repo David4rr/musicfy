@@ -33,7 +33,7 @@ import kotlin.math.abs
 enum class StudioStage { PLAYER, SELECTOR, EDIT, COVER, MIDDLE, MENU }
 
 /** the sheets the editor opens over itself */
-enum class StudioSheet { CONTROLS, SEEKBAR, END_TIME, MENU_SLOT, COVER_OPTIONS, DISC_LABEL }
+enum class StudioSheet { CONTROLS, SEEKBAR, END_TIME, MENU_SLOT, COVER_OPTIONS, DISC_LABEL, POSTER }
 
 /** one smooth, slightly unhurried spring for every move in the studio, so it all flows as one */
 internal val StudioSpring: AnimationSpec<Float> = spring(dampingRatio = 0.88f, stiffness = 210f)

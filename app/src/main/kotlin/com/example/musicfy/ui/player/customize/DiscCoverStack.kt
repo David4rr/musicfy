@@ -43,6 +43,8 @@ fun DiscCoverStack(
      * the editor, the previews - there's just the playing song's record, still.
      */
     carousel: DiscCarousel? = null,
+    /** how much colour the records' pictures keep: greyer while paused */
+    saturationProvider: () -> Float = { 1f },
 ) {
     val (rotatingEnabled) = rememberPreference(DiscRotatingAnimationKey, defaultValue = true)
     val (realistic) = rememberPreference(DiscRealisticModeKey, defaultValue = true)
@@ -169,6 +171,7 @@ fun DiscCoverStack(
                     editMode = editMode && slot.current,
                     rotationProvider = { angle.floatValue },
                     textMeasurer = measurer,
+                    saturationProvider = saturationProvider,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(

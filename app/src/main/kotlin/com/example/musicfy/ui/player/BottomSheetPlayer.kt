@@ -333,6 +333,8 @@ fun BottomSheetPlayer(
         kotlinx.coroutines.delay(180)
         openStudio()
     }
+    // the song's whole lyrics, opened over an alternate style from its ••• menu
+    var styleLyricsOpen by remember { mutableStateOf(false) }
     val styleActions = remember(openStudio) {
         com.example.musicfy.ui.player.styles.StyleActions(
             onOtherMenu = {
@@ -342,6 +344,7 @@ fun BottomSheetPlayer(
                 showActionMenu = true
             },
             onEditPlayer = openStudio,
+            onLyrics = { styleLyricsOpen = true },
         )
     }
 
@@ -760,6 +763,13 @@ fun BottomSheetPlayer(
                         )
                     }
                 }
+                // closed with the player, so it isn't still up the next time it opens
+                LaunchedEffect(styleOpen) { if (!styleOpen) styleLyricsOpen = false }
+                com.example.musicfy.ui.player.styles.StyleLyricsPage(
+                    open = styleLyricsOpen && styleOpen,
+                    onClose = { styleLyricsOpen = false },
+                    screenHeight = screenHeight,
+                )
                 PlayerHandle(
                     state = handleState,
                     sheet = state,
@@ -1236,7 +1246,13 @@ fun BottomSheetPlayer(
                 studio.go(StudioStage.PLAYER)
             },
             onEdit = { focused ->
-                if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
+                if (playerStyles.getOrNull(focused) == PlayerStyle.POSTER) {
+                    // its one edit is its visualizer: back to the player, with the poster's sheet
+                    if (playerStyle != PlayerStyle.POSTER) onPlayerStyleChange(PlayerStyle.POSTER)
+                    studio.livePage = focused
+                    studio.go(StudioStage.PLAYER)
+                    studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.POSTER)
+                } else if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
                     // its one edit is the disc label: back to the player, with the label's sheet
                     if (playerStyle != PlayerStyle.TURNTABLE) onPlayerStyleChange(PlayerStyle.TURNTABLE)
                     studio.livePage = focused
@@ -1250,6 +1266,10 @@ fun BottomSheetPlayer(
                 }
             },
         )
+        // the Poster's sheet, over the poster itself
+        if (playerStyle == PlayerStyle.POSTER) {
+            com.example.musicfy.ui.player.studio.StyleSheets(studio)
+        }
         if (playerStyle.flagshipFamily) {
             val (showBigDiscStyles) = rememberPreference(com.example.musicfy.constants.ShowBigDiscStylesKey, defaultValue = false)
             val coverStyles = remember(showBigDiscStyles, coverStyle) {

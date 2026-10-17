@@ -59,7 +59,9 @@ import com.example.musicfy.utils.rememberPreference
 // The Turntable frame's controls, at its sizes: four pills stacked on the right (like, back,
 // play/pause, forward) above the title row - the chevron on the left, the title and its format
 // badge running the width under them.
-private val PillWidth = 59.dp
+/** a pill's width, for a layout that leaves room for the stack */
+val TurntablePillWidth = 59.dp
+private val PillWidth = TurntablePillWidth
 private val PillHeight = 42.dp
 private val PillGap = 11.dp
 private val ChevronSize = 43.dp
@@ -82,10 +84,6 @@ fun TurntableControls(
 ) {
     val connection = LocalPlayerConnection.current ?: return
     val track by connection.uiState.trackInfo.collectAsState()
-    val transport by connection.uiState.transportState.collectAsState()
-
-    val holdSpeed = remember(connection) { HoldSpeed(connection.player) }
-    DisposableEffect(holdSpeed) { onDispose { holdSpeed.end() } }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(PillGap),
@@ -93,63 +91,7 @@ fun TurntableControls(
             .fillMaxWidth()
             .padding(start = SideMargin, end = SideMargin),
     ) {
-        Pill(modifier = Modifier.align(Alignment.End)) {
-            val liked = track.liked
-            PressScaleIcon(
-                icon = if (liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
-                tint = if (liked) Color.White else Color.White.copy(alpha = 0.85f),
-                onClick = {
-                    if (likeBurst != null) likeBurst.likeFromButton(LikeSlot.PLAYER, liked, connection::toggleLike)
-                    else connection.toggleLike()
-                },
-                modifier = Modifier.likeButtonTarget(likeBurst, LikeSlot.PLAYER),
-            )
-        }
-        Pill(modifier = Modifier.align(Alignment.End)) {
-            AnimatedPressScaleSkipButton(
-                icon = R.drawable.avd_skip_previous,
-                onClick = connection::seekToPrevious,
-                enabled = transport.canSkipPrevious,
-                tint = Color.White,
-                iconSize = 24.dp,
-                onHoldStart = { holdSpeed.start(HoldSlowFactor) },
-                onHoldEnd = holdSpeed::end,
-                holdLabel = "0.5×",
-                holdPulseMs = 900L,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Pill(modifier = Modifier.align(Alignment.End)) {
-            AnimatedPressScalePlayPauseButton(
-                isPlaying = transport.isPlaying,
-                playbackState = transport.playbackState,
-                onClick = {
-                    if (transport.playbackState == Player.STATE_ENDED) {
-                        connection.player.seekTo(0, 0)
-                        connection.player.playWhenReady = true
-                    } else {
-                        connection.togglePlayPause()
-                    }
-                },
-                tint = Color.White,
-                iconSize = 26.dp,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Pill(modifier = Modifier.align(Alignment.End)) {
-            AnimatedPressScaleSkipButton(
-                icon = R.drawable.avd_skip_next,
-                onClick = connection::seekToNext,
-                enabled = transport.canSkipNext,
-                tint = Color.White,
-                iconSize = 24.dp,
-                onHoldStart = { holdSpeed.start(HoldFastFactor) },
-                onHoldEnd = holdSpeed::end,
-                holdLabel = "2×",
-                holdPulseMs = 420L,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        TurntablePills(likeBurst = likeBurst, modifier = Modifier.align(Alignment.End))
         Spacer(Modifier.height(TitleGap))
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -178,6 +120,85 @@ fun TurntableControls(
                     ),
             )
         }
+    }
+}
+
+/**
+ * The Turntable's stack of pills, top to bottom: like, back, play/pause, forward. Holding back or
+ * forward plays slower or faster while held. The Poster wears the same stack.
+ */
+@Composable
+fun TurntablePills(modifier: Modifier = Modifier, likeBurst: LikeBurstState? = null, horizontal: Boolean = false) {
+    val connection = LocalPlayerConnection.current ?: return
+    val track by connection.uiState.trackInfo.collectAsState()
+    val transport by connection.uiState.transportState.collectAsState()
+
+    val holdSpeed = remember(connection) { HoldSpeed(connection.player) }
+    DisposableEffect(holdSpeed) { onDispose { holdSpeed.end() } }
+
+    val pills: @Composable () -> Unit = {
+        Pill {
+            val liked = track.liked
+            PressScaleIcon(
+                icon = if (liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
+                tint = if (liked) Color.White else Color.White.copy(alpha = 0.85f),
+                onClick = {
+                    if (likeBurst != null) likeBurst.likeFromButton(LikeSlot.PLAYER, liked, connection::toggleLike)
+                    else connection.toggleLike()
+                },
+                modifier = Modifier.likeButtonTarget(likeBurst, LikeSlot.PLAYER),
+            )
+        }
+        Pill {
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_previous,
+                onClick = connection::seekToPrevious,
+                enabled = transport.canSkipPrevious,
+                tint = Color.White,
+                iconSize = 24.dp,
+                onHoldStart = { holdSpeed.start(HoldSlowFactor) },
+                onHoldEnd = holdSpeed::end,
+                holdLabel = "0.5×",
+                holdPulseMs = 900L,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Pill {
+            AnimatedPressScalePlayPauseButton(
+                isPlaying = transport.isPlaying,
+                playbackState = transport.playbackState,
+                onClick = {
+                    if (transport.playbackState == Player.STATE_ENDED) {
+                        connection.player.seekTo(0, 0)
+                        connection.player.playWhenReady = true
+                    } else {
+                        connection.togglePlayPause()
+                    }
+                },
+                tint = Color.White,
+                iconSize = 26.dp,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Pill {
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_next,
+                onClick = connection::seekToNext,
+                enabled = transport.canSkipNext,
+                tint = Color.White,
+                iconSize = 24.dp,
+                onHoldStart = { holdSpeed.start(HoldFastFactor) },
+                onHoldEnd = holdSpeed::end,
+                holdLabel = "2×",
+                holdPulseMs = 420L,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+    if (horizontal) {
+        Row(horizontalArrangement = Arrangement.spacedBy(PillGap), modifier = modifier) { pills() }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(PillGap), modifier = modifier) { pills() }
     }
 }
 

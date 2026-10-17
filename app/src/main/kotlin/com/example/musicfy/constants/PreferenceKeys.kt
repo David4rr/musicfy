@@ -480,9 +480,9 @@ enum class PlayerCoverStyle {
 /**
  * Whole-player presets, picked in the player selector (hold the player, or "edit player").
  *
- * The flagship [DEFAULT] can be edited, and [TURNTABLE] (the flagship around a record player) has
- * its disc label; the other three are complete designs of their own, each of which can be turned
- * sideways from its menu.
+ * The flagship [DEFAULT] can be edited, [TURNTABLE] (the flagship around a record player) has
+ * its disc label and [POSTER] its visualizer; the other three are complete designs of their own,
+ * each of which can be turned sideways from its menu.
  */
 enum class PlayerStyle(val displayName: String, val selectorName: String) {
     DEFAULT("Flagship", "Default"),
@@ -492,7 +492,7 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
     TIMELINE("Timeline", "Timeline"),
     LYRICS("Lyrics", "Lyrics stage");
 
-    val editable: Boolean get() = this == DEFAULT || this == TURNTABLE
+    val editable: Boolean get() = this == DEFAULT || this == TURNTABLE || this == POSTER
 
     /** drawn by the flagship's own player (cover, controls, card), not a design of its own */
     val flagshipFamily: Boolean get() = this == DEFAULT || this == TURNTABLE
@@ -508,6 +508,9 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
 }
 
 val PlayerStyleKey = stringPreferencesKey("playerStyle")
+
+/** the Poster's bars round its cover, moving with the music; off until turned on in its editor */
+val PosterVisualizerKey = booleanPreferencesKey("posterVisualizer")
 
 /** whether [style] is shown turned sideways (its content rotated a quarter turn) */
 fun playerStyleRotatedKey(style: PlayerStyle) = booleanPreferencesKey("playerStyleRotated_${style.name}")

@@ -723,15 +723,18 @@ fun MorphingCover(
                         // A colour filter on a layer forces it offscreen - the whole cover rendered
                         // into a buffer of its own every frame of the morph. While playing the
                         // matrix is the identity anyway, so it's only set while the cover is
-                        // (or is turning) grey.
-                        colorFilter = if (animatedPauseSaturation < 0.999f) {
+                        // (or is turning) grey. A record greys its own pictures instead: offscreen,
+                        // this layer kept nothing outside its box, and a big record (or any
+                        // record's shadow) was cut flat along the bottom the moment it paused.
+                        val clipped = !isDiscStyle ||
+                            discWeight(progressProvider, lyricsProgressProvider) < 0.5f
+                        colorFilter = if (clipped && animatedPauseSaturation < 0.999f) {
                             ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(animatedPauseSaturation) })
                         } else {
                             null
                         }
 
-                        clip = !isDiscStyle ||
-                            discWeight(progressProvider, lyricsProgressProvider) < 0.5f
+                        clip = clipped
 
                         val expandedRadius = if (coverStyle == PlayerCoverStyle.SQUARED) {
                             SquaredCoverCornerRadius
@@ -930,6 +933,10 @@ fun MorphingCover(
                         spinActive = discSpinActive,
                         editMode = editMode,
                         carousel = discCarousel,
+                        // greyed here only where the cover's layer above doesn't grey it already
+                        saturationProvider = {
+                            if (discWeight(progressProvider, lyricsProgressProvider) < 0.5f) 1f else animatedPauseSaturation
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { alpha = discWeight(progressProvider, lyricsProgressProvider) },

@@ -151,6 +151,13 @@ private fun styleInsets(landscape: Boolean): StyleInsets {
 
 // ---- Poster ------------------------------------------------------------------------------
 
+/** what the words give the visualizer's bars under the cover */
+private val VisualizerRoom = 30.dp
+/** how far the words move down while the cover's seek bar is out */
+private val RingPush = 34.dp
+/** the Turntable's pills, side by side: as tall as one */
+private val PillsHeight = 42.dp
+
 /**
  * The cover cut into a great circle swung in from the top-left corner, over the flagship's own
  * background, and beneath it the song's words performed big ([ExpressiveLyrics]) with the artist
@@ -169,6 +176,12 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
         com.example.musicfy.constants.PlayerBackgroundStyleKey,
         com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT,
     )
+    val (visualizer) = com.example.musicfy.utils.rememberPreference(com.example.musicfy.constants.PosterVisualizerKey, defaultValue = false)
+    val ring = rememberCoverRingState()
+    val live = !preview && LocalStyleInteractive.current
+    val density = LocalDensity.current
+    // the pills' column, and the room the words keep from it
+    val pillsWidth = com.example.musicfy.ui.player.TurntablePillWidth
     StyleFrame(
         PlayerStyle.POSTER, preview, modifier, tones,
         background = {
@@ -203,20 +216,35 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            top = (w * 1.24f).coerceAtMost(h * 0.6f),
+                            // the visualizer's bars stand where the words would start
+                            top = (w * 1.24f).coerceAtMost(h * 0.6f) + (if (visualizer) VisualizerRoom else 0.dp),
                             start = 28.dp,
-                            end = 22.dp + circle + 18.dp,
+                            end = 22.dp + pillsWidth + 16.dp,
                             bottom = bottom,
                         ),
                 ) {
-                    PosterText(lines, position, track, tones, r, baseSize = r.sp(0.12f, 34f, 56f), gap = 12.dp)
+                    PosterText(
+                        lines, position, track, tones, r, baseSize = r.sp(0.12f, 34f, 56f), gap = 12.dp,
+                        // the seek bar coming out past the rim moves the words down with it
+                        push = { ring.expand.value * with(density) { RingPush.toPx() } },
+                    )
                 }
+                // the seek bar on the cover's rim and the visualizer round it
+                val wPx = with(density) { w.toPx() }
+                CoverRing(
+                    state = ring,
+                    circle = RingCircle(Offset(0.13f * wPx, 0.06f * wPx), 1.14f * wPx),
+                    visualizer = visualizer,
+                    live = live,
+                    position = position,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 22.dp, bottom = bottom),
                 ) {
-                    TransportCircles(tones = tones, vertical = true, size = circle)
+                    com.example.musicfy.ui.player.TurntablePills()
                 }
                 // the menu at the top, opening down, clear of the transport
                 StyleMenu(
@@ -239,7 +267,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         .padding(
                             start = maxOf(h * 1.08f, w * 0.5f),
                             end = 24.dp + insets.end,
-                            top = 18.dp + circle + 18.dp,
+                            top = 18.dp + maxOf(circle, PillsHeight) + 18.dp,
                             bottom = 20.dp,
                         ),
                 ) {
@@ -250,7 +278,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         .align(Alignment.TopEnd)
                         .padding(top = 18.dp, end = 20.dp + insets.end + circle + 8.dp),
                 ) {
-                    TransportCircles(tones = tones, size = circle)
+                    com.example.musicfy.ui.player.TurntablePills(horizontal = true)
                 }
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
@@ -277,6 +305,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
     r: Responsive,
     baseSize: TextUnit,
     gap: Dp,
+    /** how far down the words are pushed (px), read as they're drawn */
+    push: () -> Float = { 0f },
 ) {
     val hasLyrics = lines.isNotEmpty()
     val found = remember { androidx.compose.animation.core.Animatable(if (hasLyrics) 1f else 0f) }
@@ -296,6 +326,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f)
+            .graphicsLayer { translationY = push() }
             .onPlaced { places[0] = it },
     ) {
         if (hasLyrics) {
@@ -377,10 +408,18 @@ private fun rememberStyleLyrics(readings: Boolean): List<LyricsEntry> {
         else runCatching { LyricsUtils.parseLyrics(raw) }.getOrDefault(emptyList())
             .takeIf { it.isNotEmpty() && !LyricsUtils.isUnsynced(it) }.orEmpty()
     }
-    if (readings && connection != null && all.isNotEmpty()) {
+    if (readings && connection != null) {
         val metadata by connection.mediaMetadata.collectAsState()
-        // the whole song, background lines too, so a stored translation lines up with the lyrics page's
-        com.example.musicfy.ui.player.LyricsReadings(all, metadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
+        // The flagship's bottom card is what asks for a song's lyrics; a style has no card, so it
+        // asks itself. Without this the words only came once the flagship had been shown.
+        val loader: com.example.musicfy.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+        androidx.compose.runtime.LaunchedEffect(metadata?.id) {
+            metadata?.let(loader::ensureLyricsLoaded)
+        }
+        if (all.isNotEmpty()) {
+            // the whole song, background lines too, so a stored translation lines up with the lyrics page's
+            com.example.musicfy.ui.player.LyricsReadings(all, metadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
+        }
     }
     return remember(all) { all.filter { !it.isBackground && it.text.isNotBlank() } }
 }

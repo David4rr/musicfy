@@ -281,6 +281,8 @@ fun TransportCircles(tones: StyleTones, size: Dp = 30.dp, vertical: Boolean = fa
 class StyleActions(
     val onOtherMenu: () -> Unit,
     val onEditPlayer: () -> Unit,
+    /** opens the song's whole lyrics over the style; no item without it (the selector's cards) */
+    val onLyrics: (() -> Unit)? = null,
 )
 
 /** whether [style] is turned sideways, and the switch for it */
@@ -314,7 +316,7 @@ fun Modifier.styleGestures(enabled: Boolean, onToggle: () -> Unit, onNext: () ->
 private const val SwipeSkipPx = 120f
 
 /**
- * The ••• button and the little menu it opens: other menu, rotate (in the middle) and edit player,
+ * The ••• button and the little menu it opens: lyrics, other menu, rotate and edit player,
  * rising out of the button the way the flagship's chevron menu does. The button sits [edge] from
  * the top (or the bottom, [atBottom]) and [end] from the right; the menu opens away from that edge.
  * Call it last in the style's Box so the dimmed backdrop and the menu draw over the style.
@@ -344,7 +346,8 @@ fun BoxScope.StyleMenu(
                 .drawBehind { drawRect(Color.Black.copy(alpha = 0.42f * reveal.value.coerceIn(0f, 1f))) }
                 .pointerInput(Unit) { detectTapGestures { onOpenChange(false) } },
         )
-        val items = listOf(
+        val items = listOfNotNull(
+            actions.onLyrics?.let { open -> Triple("Lyrics", R.drawable.lyrics) { onOpenChange(false); open() } },
             Triple("Other menu", R.drawable.more_horiz) { onOpenChange(false); actions.onOtherMenu() },
             Triple(if (rotated) "Turn upright" else "Rotate", R.drawable.screen_rotation) { onOpenChange(false); onRotate(!rotated) },
             Triple("Edit player", R.drawable.tune) { onOpenChange(false); actions.onEditPlayer() },
