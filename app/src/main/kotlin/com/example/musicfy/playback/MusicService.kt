@@ -237,6 +237,9 @@ import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 private const val INSTANT_SILENCE_SKIP_STEP_MS = 15_000L
+
+/** A saved volume below this is taken as one saved while muted or mid-fade, not the user's own. */
+private const val MinRestoredVolume = 0.02f
 private const val INSTANT_SILENCE_SKIP_SETTLE_MS = 350L
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -659,7 +662,12 @@ class MusicService :
 
         audioQuality = dataStore.get(AudioQualityKey).toEnum(com.example.musicfy.constants.AudioQuality.AUTO)
         ipVersion = dataStore.get(IpVersionKey).toEnum(IpVersion.AUTO)
-        playerVolume = MutableStateFlow(dataStore.get(PlayerVolumeKey, 1f).coerceIn(0f, 1f))
+        // a saved volume of (next to) nothing is almost always left over from the old saving bug
+        // (the live volume saved while muted or mid-fade, and copied back into this setting): it
+        // started the app silent, so it starts at the default instead
+        playerVolume = MutableStateFlow(
+            dataStore.get(PlayerVolumeKey, 1f).coerceIn(0f, 1f).let { if (it < MinRestoredVolume) 1f else it },
+        )
 
         initializeCast()
 
@@ -1030,7 +1038,10 @@ class MusicService :
                     scope.launch {
                         delay(1000)
 
-                        playerVolume.value = playerState.volume
+                        // older saves held the player's live volume (0 if it was muted or fading
+                        // when saved): only a real one is taken, and the slider's own saved value
+                        // (PlayerVolumeKey, read at start) stands otherwise
+                        if (playerState.volume >= MinRestoredVolume) playerVolume.value = playerState.volume
 
                         if (playerState.currentMediaItemIndex < player.mediaItemCount) {
                             player.seekTo(playerState.currentMediaItemIndex, playerState.currentPosition)
@@ -1151,6 +1162,14 @@ class MusicService :
                 val mediaId = player.currentMediaItem?.mediaId
                 val format = StreamFacts.selectedAudio(tracks)
                 if (mediaId != null && format != null) recordDecodedFormat(mediaId, format)
+                // audio that no decoder on this phone takes isn't an error to the player: the song
+                // "plays" on in silence. Only the main player's song: a Crossmix's next one waits
+                if (mediaId != null && player === this@MusicService.player &&
+                    tracks.containsType(C.TRACK_TYPE_AUDIO) &&
+                    !tracks.isTypeSupported(C.TRACK_TYPE_AUDIO, true)
+                ) {
+                    onUndecodableAudio(mediaId, tracks)
+                }
             }
         })
         playerReplayGain[player] = replayGain
@@ -1249,12 +1268,25 @@ class MusicService :
         }
     }
 
+    /** the volume the playing song should be at now: the user's, nothing while muted, a fifth while ducked */
+    private fun targetVolume(): Float = when {
+        isMuted.value -> 0f
+        !hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> playerVolume.value * 0.2f
+        else -> playerVolume.value
+    }
+
     private fun requestAudioFocus(): Boolean {
         if (hasAudioFocus) return true
 
         audioFocusRequest?.let { request ->
             val result = audioManager.requestAudioFocus(request)
             hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            // granted straight back after a duck: no GAIN callback follows, and the player stayed
+            // at a fifth of its volume for good
+            if (hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                player.volume = if (isMuted.value) 0f else playerVolume.value
+                lastAudioFocusState = AudioManager.AUDIOFOCUS_GAIN
+            }
             return hasAudioFocus
         }
         return false
@@ -1339,6 +1371,34 @@ class MusicService :
 
         player.pause()
         consecutivePlaybackErr = 0
+    }
+
+    /**
+     * The song's audio is in a format no decoder on this phone takes (a FLAC on a phone without a
+     * FLAC decoder, a rate or channel count beyond the phone's decoders). The player doesn't count
+     * that as an error - the song plays on, in silence - so it's made one: a module's stream gives
+     * way to the next provider (YouTube at the latest), and anything else fails like a song that
+     * can't be played, saying why, and moves on.
+     */
+    private fun onUndecodableAudio(mediaId: String, tracks: androidx.media3.common.Tracks) {
+        val audio = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO }?.takeIf { it.length > 0 }?.getTrackFormat(0)
+        val what = listOfNotNull(
+            audio?.sampleMimeType?.substringAfter('/'),
+            audio?.sampleRate?.takeIf { it > 0 }?.let { "$it Hz" },
+            audio?.channelCount?.takeIf { it > 0 }?.let { "$it ch" },
+        ).joinToString(" ").ifBlank { "unknown format" }
+        Timber.tag(TAG).w("No decoder on this phone for $mediaId's audio ($what)")
+        // not from inside the player's listener: the fallback stops and re-prepares the player
+        scope.launch {
+            if (player.currentMediaItem?.mediaId != mediaId) return@launch
+            if (forceFallBack(mediaId)) return@launch
+            lastPlaybackError = PlaybackException(
+                "This phone can't decode this song's audio ($what)",
+                null,
+                PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            )
+            failStream()
+        }
     }
 
     /** A failed stream the player has given up on: says so, and skips after the timeout unless that's turned off. */
@@ -2924,6 +2984,9 @@ class MusicService :
 
         incrementRetryCount(mediaId)
 
+        // whether it was playing, read before the pause below wipes it: the recovery used to go
+        // by the audio-focus flag instead, so it re-prepared the song and left it paused
+        val resume = player.playWhenReady || wasPlayingBeforeAudioFocusLoss
         retryJob?.cancel()
         retryJob = scope.launch {
             try {
@@ -2947,9 +3010,9 @@ class MusicService :
 
                     Timber.tag(TAG).d("Retrying playback for $mediaId after AudioTrack error")
 
-                    if (wasPlayingBeforeAudioFocusLoss) {
+                    if (resume) {
                         delay(500)
-                        if (hasAudioFocus && playerInitialized.value) {
+                        if ((hasAudioFocus || requestAudioFocus()) && playerInitialized.value) {
                             if (castConnectionHandler?.isCasting?.value != true) {
                                 player.play()
                             }
@@ -3426,14 +3489,20 @@ class MusicService :
     }
 
     /**
-     * Force playback: a song that failed from one provider starts again from the next one in the
-     * order, where it left off. YouTube's own errors get YouTube's recoveries first (a stale URL is
-     * refreshed, a cipher retried) and only come here once those are spent, via [handleFinalFailure].
+     * A song that failed from one provider starts again from the next one in the order, where it
+     * left off. A module's stream always gives way like this - a module this phone can't play (its
+     * codec, its DRM, its server) used to leave the song retrying, then skipped, with YouTube never
+     * asked. Force playback adds YouTube's own failures, which get YouTube's recoveries first (a
+     * stale URL is refreshed, a cipher retried) and only come here once those are spent, via
+     * [handleFinalFailure].
      */
     private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false): Boolean {
-        if (!dataStore.get(ForcePlaybackKey, false)) return false
         val failed = resolvedSourceIds[mediaId] ?: return false
-        if (failed == com.example.musicfy.modules.SourceModules.YouTubeId && !includeYouTube) return false
+        if (failed == com.example.musicfy.modules.SourceModules.YouTubeId &&
+            (!includeYouTube || !dataStore.get(ForcePlaybackKey, false))
+        ) {
+            return false
+        }
         recentFailures(mediaId)
         val skip = failedSources.getOrPut(mediaId) { java.util.concurrent.ConcurrentHashMap.newKeySet() }
         if (!skip.add(failed)) return false
@@ -3521,6 +3590,10 @@ class MusicService :
                         SonicAudioProcessor(),
                     ),
                 ).build(), crossmixProcessor, audioFx, replayGain)
+        }.apply {
+            // a phone's first-choice decoder failing to start (a vendor FLAC decoder on a 24-bit
+            // file, say) moves on to its next one instead of failing the song
+            setEnableDecoderFallback(true)
         }
 
     override fun onPlaybackStatsReady(
@@ -3593,7 +3666,10 @@ class MusicService :
                 playWhenReady = player.playWhenReady,
                 repeatMode = player.repeatMode,
                 shuffleModeEnabled = player.shuffleModeEnabled,
-                volume = player.volume,
+                // the user's volume, not the player's live one: that's 0 while muted, a fifth while
+                // ducked and anywhere at all mid-crossfade, and coming back to it next launch left
+                // the app silent until the slider was touched
+                volume = playerVolume.value,
                 currentPosition = player.currentPosition,
                 currentMediaItemIndex = player.currentMediaItemIndex,
                 playbackState = player.playbackState
@@ -3935,7 +4011,9 @@ class MusicService :
                 val fadeOut = kotlin.math.cos(progress * Math.PI / 2.0).toFloat()
 
                 try {
-                    player.volume = startVolume * fadeIn
+                    // the new song fades up to the volume it should be at now: started from the old
+                    // one's, a fade begun while muted or ducked ended at 0 or a fifth, and stayed
+                    player.volume = targetVolume() * fadeIn
                     fadingPlayer?.volume = startVolume * fadeOut
                 } catch (e: Exception) { break }
 
@@ -3944,7 +4022,7 @@ class MusicService :
 
             try {
                 fadingPlayer?.volume = 0f
-                player.volume = startVolume
+                player.volume = targetVolume()
                 cleanupCrossfade()
             } catch (e: Exception) { }
         }
@@ -4173,6 +4251,9 @@ class MusicService :
             fadingPlayer = outgoing
             player = incoming
             _playerFlow.value = incoming
+            // set when it was made, seconds ago: a mute, an unmute or a slider move since then
+            // never reached it, and the song carried on at the old volume (0, if it was muted)
+            incoming.volume = targetVolume()
 
             outgoing.removeListener(this@MusicService)
             outgoing.removeListener(sleepTimer)

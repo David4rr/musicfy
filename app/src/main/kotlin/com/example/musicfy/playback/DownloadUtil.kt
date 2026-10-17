@@ -317,6 +317,8 @@ constructor(
         } as? ResolveResult.Found ?: return null
         // a file to download, not a playlist of segments or something only a CDM can open
         if (found.stream.format != StreamFormat.Progressive || found.stream.drm != null) return null
+        // a FLAC this phone can't decode would download fine and then play in silence
+        if (!com.example.musicfy.modules.DeviceDecoders.canPlay(found.stream)) return null
 
         database.query {
             // the length is filled in when the download finishes: see recordDownloadedLength

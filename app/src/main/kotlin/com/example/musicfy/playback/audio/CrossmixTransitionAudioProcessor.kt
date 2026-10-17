@@ -98,6 +98,9 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         finishing = false
         fadingOut = false
         silenced = false
+        // this side's beat from its last transition (as the incoming side, it ended well past the
+        // end): read before the new clock has run once, it marked the song "done" and silenced it
+        currentBeat = Float.NaN
         scriptHeard = false
         calibrated = false
         clockCorrectionMs = 0.0

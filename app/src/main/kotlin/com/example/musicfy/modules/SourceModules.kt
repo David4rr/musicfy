@@ -148,6 +148,11 @@ class SourceModules @Inject constructor(
                 .getOrNull()
             when (result) {
                 is ResolveResult.Found -> {
+                    // a stream this phone has no decoder for would play in silence: the next provider has it
+                    if (!DeviceDecoders.canPlay(result.stream)) {
+                        android.util.Log.i(Tag, "$id: ${track.title}: this phone can't decode ${result.stream.codec} at ${result.stream.sampleRateHz} Hz, passing over")
+                        continue
+                    }
                     android.util.Log.i(Tag, "$id: ${track.title} -> ${result.stream.matched.title} (${result.stream.qualityLabel})")
                     return@withContext Route.Module(module, result.stream)
                 }

@@ -113,6 +113,11 @@ data class SourceStream(
     val matched: MatchedTrack,
     /** the audio's codec as listeners know it ("AAC", "HE-AAC", "FLAC"), for the player's format badge */
     val codec: String? = null,
+    /**
+     * the audio's sample rate, when the module knows it (Monochrome reads it from the FLAC's
+     * header): the app passes over a stream the phone has no decoder for at that rate
+     */
+    val sampleRateHz: Int? = null,
 )
 
 sealed interface StreamDrm {
