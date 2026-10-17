@@ -225,7 +225,8 @@ private fun ToastPill(toast: TopToast) {
         Text(
             text = toast.text,
             style = ToastTitle,
-            maxLines = 2,
+            // three for the longest ones ("No FLAC decoder available on this phone · playing in...")
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )

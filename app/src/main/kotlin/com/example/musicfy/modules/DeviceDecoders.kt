@@ -17,15 +17,17 @@ import java.util.concurrent.ConcurrentHashMap
 object DeviceDecoders {
     private val known = ConcurrentHashMap<String, Boolean>()
 
-    fun canPlay(stream: SourceStream): Boolean {
-        val mime = when (stream.codec?.uppercase()) {
+    fun canPlay(stream: SourceStream): Boolean = canPlay(stream.codec, stream.sampleRateHz ?: 0)
+
+    /** [codec] ("FLAC", "ALAC"...) at [sampleRateHz], or at any rate when 0 */
+    fun canPlay(codec: String?, sampleRateHz: Int = 0): Boolean {
+        val mime = when (codec?.uppercase()) {
             "FLAC" -> "audio/flac"
             "ALAC" -> "audio/alac"
             // AAC and the rest: every phone decodes them
             else -> return true
         }
-        val rate = stream.sampleRateHz ?: 0
-        return known.getOrPut("$mime@$rate") { hasDecoder(mime, rate) }
+        return known.getOrPut("$mime@$sampleRateHz") { hasDecoder(mime, sampleRateHz) }
     }
 
     /** a decoder for [mime] that takes [sampleRateHz] (any rate when 0); true when it can't be told */

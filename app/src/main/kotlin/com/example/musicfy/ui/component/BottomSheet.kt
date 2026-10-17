@@ -60,7 +60,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -90,6 +93,31 @@ private val PlayerSheetHorizontalAnimationSpec = spring<Float>(
     dampingRatio = 0.92f,
     stiffness = 90f
 )
+
+/** How far the mini player tilts and shrinks under a press. */
+private const val PillMaxTilt = 6f
+private const val PillPressedScale = 0.97f
+
+/** A press only tilts the sheet this close to collapsed: the mini player itself. */
+private const val PillPressMaxProgress = 0.02f
+
+/** The progress the mini player's hairline outline is gone by. */
+private const val PillEdgeFadeEnd = 0.08f
+
+private val PillTiltSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = 420f,
+)
+
+/** The mini player's press: how far in (0 to 1), and where it landed, -1 to 1 across the sheet. */
+@Stable
+private class PillPress {
+    val amount = Animatable(0f)
+
+    // Plain fields: set before each press animates, and read in the layer that animation redraws.
+    var normalizedX = 0f
+    var normalizedY = 0f
+}
 
 @Composable
 fun BottomSheet(
@@ -246,6 +274,12 @@ fun BottomSheet(
                 }
             }
 
+            // Pressing the mini player tilts it toward the finger. In the sheet's own layer, so the
+            // shape it's clipped to tilts with what's in it, and kept through the open: the tilt
+            // eases back out over the open's first frames. It was a modifier on the player inside,
+            // taken off at 2% open, so a tap's tilt snapped flat a frame or two into every open.
+            val pillPress = remember { PillPress() }
+
             Box(
                 modifier = modifier
                     .fillMaxSize()
@@ -267,16 +301,34 @@ fun BottomSheet(
                             clip = true
                             translationY = (state.expandedBound - state.value).toPx()
                             translationX = state.horizontalOffset
+
+                            val t = pillPress.amount.value
+                            if (t > 0f) {
+                                val s = 1f - (1f - PillPressedScale) * t
+                                scaleX = s
+                                scaleY = s
+                                rotationX = -pillPress.normalizedY * PillMaxTilt * t
+                                rotationY = pillPress.normalizedX * PillMaxTilt * t
+                                cameraDistance = size.width * 3f
+                                // about the pill's centre
+                                transformOrigin = TransformOrigin(
+                                    0.5f,
+                                    if (size.height > 0f) 32.dp.toPx() / size.height else 0f,
+                                )
+                            }
                         }
                         .drawWithContent {
                             drawContent()
                             val p = state.progress.coerceIn(0f, 1f)
-                            if (p < 0.05f) {
+                            // The pill's hairline fades out as it opens; it used to drop in one
+                            // frame at 5% open.
+                            val edge = 1f - p / PillEdgeFadeEnd
+                            if (edge > 0f) {
                                 val cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
                                 val hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
                                 val visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
                                 drawRoundRect(
-                                    color = Color.White.copy(alpha = 0.1f),
+                                    color = Color.White.copy(alpha = 0.1f * edge),
                                     topLeft = androidx.compose.ui.geometry.Offset(hp, 0f),
                                     size = androidx.compose.ui.geometry.Size(size.width - hp * 2, visibleHeight),
                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr),
@@ -302,6 +354,34 @@ fun BottomSheet(
                         // to the swipe handler in root coordinates. Stored, not state: it is only
                         // read when a drag starts.
                         .onPlaced { sheetCoordinates[0] = it }
+                        // The press tilt: watched in the Initial pass and never consumed, so the
+                        // tap and the drags below still get every touch.
+                        .pointerInput(state, isExpandable) {
+                            // A press cut off by this restarting must not leave the sheet tilted.
+                            if (pillPress.amount.targetValue != 0f) {
+                                coroutineScope.launch { pillPress.amount.animateTo(0f, PillTiltSpring) }
+                            }
+                            if (!isExpandable) return@pointerInput
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val down = awaitPointerEvent(PointerEventPass.Initial)
+                                        .changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: continue
+                                    if (state.progress >= PillPressMaxProgress) continue
+                                    if (size.width > 0 && size.height > 0) {
+                                        pillPress.normalizedX = ((down.position.x / size.width) * 2f - 1f).coerceIn(-1f, 1f)
+                                        pillPress.normalizedY = ((down.position.y / size.height) * 2f - 1f).coerceIn(-1f, 1f)
+                                    }
+                                    coroutineScope.launch { pillPress.amount.animateTo(1f, PillTiltSpring) }
+                                    // Let go when the finger lifts, or as soon as the sheet leaves
+                                    // the pill under a drag.
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        if (event.changes.none { it.pressed } || state.progress >= PillPressMaxProgress) break
+                                    }
+                                    coroutineScope.launch { pillPress.amount.animateTo(0f, PillTiltSpring) }
+                                }
+                            }
+                        }
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
                             val velocityTracker = VelocityTracker()

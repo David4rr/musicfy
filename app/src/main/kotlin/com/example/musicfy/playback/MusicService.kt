@@ -411,6 +411,13 @@ class MusicService :
     private val resolvedSourceIds = java.util.concurrent.ConcurrentHashMap<String, String>()
     /** what each song is playing as, by media id, for the player's format badge */
     val streamFacts = MutableStateFlow<Map<String, StreamFacts>>(emptyMap())
+    /**
+     * What this phone had no decoder for, by song ("No FLAC decoder available on this phone"),
+     * and the provider whose stream it was: told with what plays instead once its format is
+     * known, or as the reason when nothing does.
+     */
+    private data class DecoderNotice(val text: String, val from: String?)
+    private val decoderNotices = java.util.concurrent.ConcurrentHashMap<String, DecoderNotice>()
     private var lastAnnouncedSourceMediaId: String? = null
     lateinit var player: ExoPlayer
         private set
@@ -1169,6 +1176,8 @@ class MusicService :
                     !tracks.isTypeSupported(C.TRACK_TYPE_AUDIO, true)
                 ) {
                     onUndecodableAudio(mediaId, tracks)
+                } else if (mediaId != null && format != null && tracks.isTypeSupported(C.TRACK_TYPE_AUDIO, true)) {
+                    announceDecoderNotice(mediaId)
                 }
             }
         })
@@ -1391,7 +1400,8 @@ class MusicService :
         // not from inside the player's listener: the fallback stops and re-prepares the player
         scope.launch {
             if (player.currentMediaItem?.mediaId != mediaId) return@launch
-            if (forceFallBack(mediaId)) return@launch
+            noteMissingDecoder(mediaId, StreamFacts.codecOf(audio?.sampleMimeType, audio?.codecs), audio?.sampleRate)
+            if (forceFallBack(mediaId, announce = !decoderNotices.containsKey(mediaId))) return@launch
             lastPlaybackError = PlaybackException(
                 "This phone can't decode this song's audio ($what)",
                 null,
@@ -1399,6 +1409,40 @@ class MusicService :
             )
             failStream()
         }
+    }
+
+    /** a player error that's this phone's decoders turning the song's format down */
+    private fun isDecoderError(e: PlaybackException) = e.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED
+
+    /**
+     * Remembers that [mediaId]'s stream from the provider it was handed to is [codec] this phone
+     * can't decode, so the next stream's toast says why it's playing instead.
+     */
+    private fun noteMissingDecoder(mediaId: String, codec: String?, sampleRate: Int?, from: String? = resolvedSourceIds[mediaId]) {
+        codec ?: return
+        val rate = sampleRate?.takeIf { it > 0 }
+        val text = when {
+            !com.example.musicfy.modules.DeviceDecoders.canPlay(codec) -> "No $codec decoder available on this phone"
+            rate != null && !com.example.musicfy.modules.DeviceDecoders.canPlay(codec, rate) ->
+                "No $codec decoder for ${if (rate % 1000 == 0) "${rate / 1000}" else "%.1f".format(rate / 1000f)} kHz on this phone"
+            else -> "This phone can't decode this $codec"
+        }
+        decoderNotices[mediaId] = DecoderNotice(text, from)
+    }
+
+    /**
+     * "No FLAC decoder available on this phone · playing in OPUS on YouTube Music", once
+     * [mediaId] plays from somewhere other than the stream this phone couldn't decode.
+     */
+    private fun announceDecoderNotice(mediaId: String) {
+        val notice = decoderNotices.remove(mediaId) ?: return
+        val source = resolvedSourceIds[mediaId] ?: return
+        if (source == notice.from) return
+        val codec = streamFacts.value[mediaId]?.codec?.let { " in $it" }.orEmpty()
+        showBanner("${notice.text} · playing$codec on ${sourceModules.nameOf(source)}")
     }
 
     /** A failed stream the player has given up on: says so, and skips after the timeout unless that's turned off. */
@@ -1442,6 +1486,12 @@ class MusicService :
     /** The top toast for a stream that couldn't be played, with a plain reason. */
     private fun announceStreamFailure() {
         val e = lastPlaybackError
+        // no decoder for it here, and nowhere else had it: that's the whole reason
+        val notice = player.currentMediaItem?.mediaId?.let { decoderNotices.remove(it) }
+        if (notice != null && e != null && isDecoderError(e)) {
+            com.example.musicfy.ui.component.TopToaster.error(notice.text)
+            return
+        }
         val reason = when {
             !isNetworkConnected.value || (e != null && isNetworkRelatedError(e)) -> "no internet connection"
             e != null && getHttpResponseCode(e) != null -> "server error ${getHttpResponseCode(e)}"
@@ -2873,7 +2923,16 @@ class MusicService :
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}, causes=${generateSequence<Throwable>(error) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + ":" + it.message }}")
         reportException(error)
 
-        if (mediaId != null && forceFallBack(mediaId)) return
+        // a decoder turning the format down: the next provider's toast says so
+        if (mediaId != null && isDecoderError(error)) {
+            val format = (error as? androidx.media3.exoplayer.ExoPlaybackException)?.rendererFormat
+            noteMissingDecoder(
+                mediaId,
+                StreamFacts.codecOf(format?.sampleMimeType, format?.codecs) ?: streamFacts.value[mediaId]?.codec,
+                format?.sampleRate,
+            )
+        }
+        if (mediaId != null && forceFallBack(mediaId, announce = !decoderNotices.containsKey(mediaId))) return
 
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
             Timber.tag(TAG).w("Song $mediaId has exceeded retry limit, skipping")
@@ -3468,6 +3527,8 @@ class MusicService :
 
         if (!dataStore.get(ShowStreamSourceToastKey, false)) return
         if (lastAnnouncedSourceMediaId == mediaId) return
+        // its decoder toast names the source too, once the stream's format is known
+        if (decoderNotices.containsKey(mediaId)) return
         val source = resolvedStreamSources[mediaId] ?: return
         lastAnnouncedSourceMediaId = mediaId
         showBanner("Playing from $source")
@@ -3494,9 +3555,9 @@ class MusicService :
      * codec, its DRM, its server) used to leave the song retrying, then skipped, with YouTube never
      * asked. Force playback adds YouTube's own failures, which get YouTube's recoveries first (a
      * stale URL is refreshed, a cipher retried) and only come here once those are spent, via
-     * [handleFinalFailure].
+     * [handleFinalFailure]. Without [announce] it says nothing: a decoder notice follows instead.
      */
-    private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false): Boolean {
+    private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false, announce: Boolean = true): Boolean {
         val failed = resolvedSourceIds[mediaId] ?: return false
         if (failed == com.example.musicfy.modules.SourceModules.YouTubeId &&
             (!includeYouTube || !dataStore.get(ForcePlaybackKey, false))
@@ -3515,7 +3576,7 @@ class MusicService :
         val index = player.currentMediaItemIndex
         val position = player.currentPosition
         val wasPlaying = player.playWhenReady
-        showBanner("${sourceModules.nameOf(failed)} couldn't play this · trying ${sourceModules.nameOf(next)}")
+        if (announce) showBanner("${sourceModules.nameOf(failed)} couldn't play this · trying ${sourceModules.nameOf(next)}")
         player.stop()
         player.seekTo(index, position)
         player.prepare()
@@ -4129,6 +4190,8 @@ class MusicService :
         // An imported file is never looked for online, even one whose file has gone missing.
         if (com.example.musicfy.utils.OfflineMode.isOn || mediaId.startsWith("LOCAL_")) return null
         val skip = recentFailures(mediaId)
+        // a fresh lookup: a notice from one that never got to play no longer holds
+        if (skip.isEmpty()) decoderNotices.remove(mediaId)
         // songs that only YouTube has (and the common case of YouTube first) need no lookup
         val first = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) }
         if (first == com.example.musicfy.modules.SourceModules.YouTubeId) {
@@ -4145,7 +4208,10 @@ class MusicService :
                 durationMs = it.song.duration.takeIf { d -> d > 0 }?.times(1000L),
             )
         }
-        return when (val route = sourceModules.route(track, skip)) {
+        val route = sourceModules.route(track, skip) { id, passed ->
+            if (!decoderNotices.containsKey(mediaId)) noteMissingDecoder(mediaId, passed.codec?.uppercase(), passed.sampleRateHz, from = id)
+        }
+        return when (route) {
             is com.example.musicfy.modules.SourceModules.Route.Module -> {
                 val stream = route.stream
                 resolvedSourceIds[mediaId] = route.module.info.id

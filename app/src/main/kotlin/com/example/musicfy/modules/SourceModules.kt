@@ -136,8 +136,13 @@ class SourceModules @Inject constructor(
     /**
      * Walks the provider order for [track], passing over the providers in [skip] (the ones that
      * already failed on this song). YouTube in the order means "play it from YouTube now".
+     * [onUndecodable] hears of each stream passed over because this phone has no decoder for it.
      */
-    suspend fun route(track: TrackQuery?, skip: Set<String>): Route = withContext(Dispatchers.IO) {
+    suspend fun route(
+        track: TrackQuery?,
+        skip: Set<String>,
+        onUndecodable: (id: String, stream: SourceStream) -> Unit = { _, _ -> },
+    ): Route = withContext(Dispatchers.IO) {
         for (id in _order.value) {
             if (id in skip || !isUsable(id)) continue
             if (id == YouTubeId) return@withContext Route.YouTube
@@ -151,6 +156,7 @@ class SourceModules @Inject constructor(
                     // a stream this phone has no decoder for would play in silence: the next provider has it
                     if (!DeviceDecoders.canPlay(result.stream)) {
                         android.util.Log.i(Tag, "$id: ${track.title}: this phone can't decode ${result.stream.codec} at ${result.stream.sampleRateHz} Hz, passing over")
+                        onUndecodable(id, result.stream)
                         continue
                     }
                     android.util.Log.i(Tag, "$id: ${track.title} -> ${result.stream.matched.title} (${result.stream.qualityLabel})")
