@@ -394,6 +394,10 @@ fun BottomSheetPlayer(
 
     var controlsInset by remember { mutableStateOf(220.dp) }
 
+    // The bar at the top of the open player, on every style: bright while it's touched, faint
+    // once left alone. The sheet tells it about every touch.
+    val handleState = rememberPlayerHandleState()
+
     /**
      * Distance from the top of the seek bar to the bottom of the screen.
      *
@@ -635,6 +639,7 @@ fun BottomSheetPlayer(
             isExpandable = !studioEngaged,
             isPillTransition = true,
             expandedSwipe = swipe,
+            onTouchActivity = handleState::onTouchActivity,
             pureBlack = pureBlack,
             background = {},
             sharedContent = {
@@ -755,6 +760,13 @@ fun BottomSheetPlayer(
                         )
                     }
                 }
+                PlayerHandle(
+                    state = handleState,
+                    sheet = state,
+                    statusBarTop = statusBarTopInset,
+                    enabled = { !studio.engaged },
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
                 return@BottomSheet
             }
 
@@ -1123,6 +1135,15 @@ fun BottomSheetPlayer(
 
             // the editor's tiles: inside the sheet, so they shrink and grow with it
             EditTiles(studioParts)
+
+            // over everything on the player, pages included
+            PlayerHandle(
+                state = handleState,
+                sheet = state,
+                statusBarTop = statusBarTopInset,
+                enabled = { !studio.engaged },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
 
         // Above the player and its controls, so a heart can fly over everything on its way home.

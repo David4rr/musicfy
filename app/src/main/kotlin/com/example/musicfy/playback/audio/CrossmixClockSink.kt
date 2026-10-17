@@ -21,6 +21,8 @@ class CrossmixClockSink(
     private val audioFx: AudioFxService? = null,
     /** this player's song's ReplayGain, applied as part of its volume */
     private val replayGain: ReplayGainTags? = null,
+    /** the visualizer's ear: every buffer, with its time, before the processors touch it */
+    private val spectrum: AudioSpectrum? = null,
 ) : ForwardingAudioSink(delegate) {
 
     private var lastTimestampUs = Long.MIN_VALUE
@@ -36,6 +38,7 @@ class CrossmixClockSink(
         if (presentationTimeUs != lastTimestampUs) {
             lastTimestampUs = presentationTimeUs
             processor.onInputTimestamp(presentationTimeUs)
+            spectrum?.onBuffer(buffer, presentationTimeUs)
         }
         // the curve or the song's ReplayGain changed: the player won't send its (unchanged)
         // volume again
@@ -60,13 +63,20 @@ class CrossmixClockSink(
         return replayGain?.linear(fx.replayGain, fx.normalize) ?: 1f
     }
 
+    override fun configure(inputFormat: androidx.media3.common.Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
+        spectrum?.configure(inputFormat)
+        super.configure(inputFormat, specifiedBufferSize, outputChannels)
+    }
+
     override fun flush() {
         lastTimestampUs = Long.MIN_VALUE
+        spectrum?.flush()
         super.flush()
     }
 
     override fun setOutputStreamOffsetUs(outputStreamOffsetUs: Long) {
         processor.onStreamOffset(outputStreamOffsetUs)
+        spectrum?.onStreamOffset(outputStreamOffsetUs)
         super.setOutputStreamOffsetUs(outputStreamOffsetUs)
     }
 }

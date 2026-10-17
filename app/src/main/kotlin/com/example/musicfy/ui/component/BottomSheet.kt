@@ -131,11 +131,17 @@ fun BottomSheet(
     pureBlack: Boolean = false,
     /** Offered vertical swipes on the fully expanded sheet first (pill transition only). */
     expandedSwipe: ExpandedSwipe? = null,
+    /**
+     * Told when a finger comes down anywhere on the sheet (true) and when the last one lifts
+     * (false), whatever on it takes the touch (pill transition only).
+     */
+    onTouchActivity: ((touching: Boolean) -> Unit)? = null,
     sharedContent: @Composable (BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
     val currentSwipe by androidx.compose.runtime.rememberUpdatedState(expandedSwipe)
+    val currentOnTouchActivity by androidx.compose.runtime.rememberUpdatedState(onTouchActivity)
 
     if (!isPillTransition) {
         Box(
@@ -354,6 +360,23 @@ fun BottomSheet(
                         // to the swipe handler in root coordinates. Stored, not state: it is only
                         // read when a drag starts.
                         .onPlaced { sheetCoordinates[0] = it }
+                        // Any touch on the sheet, for whoever wants to know it's in use. Watched
+                        // like the press tilt below, so it takes nothing from anyone.
+                        .then(
+                            if (onTouchActivity == null) Modifier else Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    var touching = false
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        val now = event.changes.any { it.pressed }
+                                        if (now != touching) {
+                                            touching = now
+                                            currentOnTouchActivity?.invoke(now)
+                                        }
+                                    }
+                                }
+                            }
+                        )
                         // The press tilt: watched in the Initial pass and never consumed, so the
                         // tap and the drags below still get every touch.
                         .pointerInput(state, isExpandable) {

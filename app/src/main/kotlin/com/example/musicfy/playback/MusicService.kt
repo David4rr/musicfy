@@ -463,6 +463,11 @@ class MusicService :
     // each player's equaliser, so it's unregistered when that player goes (crossfades make many)
     private val playerEqProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
     private val playerCrossmixProcessors = HashMap<Player, CrossmixTransitionAudioProcessor>()
+    // each player's ear for the visualizer; weak, so a player let go takes its own with it
+    private val playerSpectra = java.util.WeakHashMap<Player, com.example.musicfy.playback.audio.AudioSpectrum>()
+
+    /** what [player] is playing, as bands for the visualizer (the main thread's) */
+    fun spectrumOf(player: Player): com.example.musicfy.playback.audio.AudioSpectrum? = playerSpectra[player]
 
 
     private val instantSilenceSkipEnabled = MutableStateFlow(false)
@@ -1093,6 +1098,7 @@ class MusicService :
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
         val crossmixProcessor = CrossmixTransitionAudioProcessor()
+        val spectrum = com.example.musicfy.playback.audio.AudioSpectrum()
 
         val hapticVibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -1148,7 +1154,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum))
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
@@ -1184,6 +1190,7 @@ class MusicService :
         playerReplayGain[player] = replayGain
         playerSilenceProcessors[player] = silenceProcessor
         playerCrossmixProcessors[player] = crossmixProcessor
+        playerSpectra[player] = spectrum
         playerEqProcessors[player] = eqProcessor
 
         player.apply {
@@ -3625,6 +3632,7 @@ class MusicService :
         hapticProcessor: HapticAudioProcessor,
         crossmixProcessor: CrossmixTransitionAudioProcessor,
         replayGain: com.example.musicfy.eq.audio.ReplayGainTags,
+        spectrum: com.example.musicfy.playback.audio.AudioSpectrum,
     ) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -3650,7 +3658,7 @@ class MusicService :
                         SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                         SonicAudioProcessor(),
                     ),
-                ).build(), crossmixProcessor, audioFx, replayGain)
+                ).build(), crossmixProcessor, audioFx, replayGain, spectrum)
         }.apply {
             // a phone's first-choice decoder failing to start (a vendor FLAC decoder on a 24-bit
             // file, say) moves on to its next one instead of failing the song
