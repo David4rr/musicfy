@@ -5,6 +5,7 @@ package com.music.directlyrics
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -26,6 +27,8 @@ internal val lyricsHttp by lazy {
             connectTimeoutMillis = 5_000
             requestTimeoutMillis = 10_000
         }
+        // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+        install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
         install(ContentNegotiation) {
             json(LyricsJson)
             json(LyricsJson, ContentType.Text.Plain)

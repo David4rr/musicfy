@@ -5,7 +5,6 @@ package com.example.musicfy.ui.player
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -131,14 +130,13 @@ private fun SwitchSourceButton(onClick: () -> Unit) {
     }
 }
 
-// A pill with a hairline edge and a gold star, so it reads as something to tap rather than a link.
+// A pill with a gold star, so it reads as something to tap rather than a link.
 @Composable
 private fun StarOnGitHubButton(onClick: () -> Unit) {
     FooterButton(
         onClick = onClick,
         shape = CircleShape,
         background = Color.White.copy(alpha = 0.12f),
-        modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
     ) {
         Icon(
             painter = painterResource(R.drawable.github),
@@ -157,7 +155,6 @@ private fun FooterButton(
     onClick: () -> Unit,
     shape: Shape,
     background: Color,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -175,7 +172,6 @@ private fun FooterButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .then(modifier)
             .clip(shape)
             .background(background)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)

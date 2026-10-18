@@ -36,16 +36,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
 import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.ui.player.menu.MenuRowSurface
 
@@ -132,39 +133,25 @@ internal fun SheetTextField(
     )
 }
 
-/** The search field at the top of a sheet: a search glyph in a circle, then the query. */
+/**
+ * The search field at the top of a sheet. Searching happens as you type, so the keyboard's Search
+ * key just puts the keyboard away to show the results.
+ */
 @Composable
 internal fun SheetSearchField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     SheetTextField(
         value = value,
         onValueChange = onValueChange,
         placeholder = placeholder,
         modifier = modifier,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        leading = {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.9f)),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = null,
-                    tint = Color.Black.copy(alpha = 0.75f),
-                    modifier = Modifier.size(13.dp),
-                )
-            }
-        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
     )
 }
 
@@ -446,21 +433,6 @@ internal fun SheetSearchLauncher(
             )
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.9f)),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.search),
-                contentDescription = null,
-                tint = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier.size(13.dp),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
         Text(
             text = placeholder,
             fontSize = 15.sp,

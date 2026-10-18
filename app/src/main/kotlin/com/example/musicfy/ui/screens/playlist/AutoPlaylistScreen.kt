@@ -408,7 +408,6 @@ fun AutoPlaylistScreen(
                             )
                         }
                     },
-                    onStartSearch = { isSearching = true },
                     onBack = {
                         if (isSearching) {
                             isSearching = false
@@ -632,7 +631,6 @@ private fun AutoPlaylistSearchBar(
     allSelected: Boolean,
     onToggleSelectAll: () -> Unit,
     onSelectionMenu: () -> Unit,
-    onStartSearch: () -> Unit,
     onBack: () -> Unit,
     onBackLong: () -> Unit,
 ) {
@@ -686,13 +684,6 @@ private fun AutoPlaylistSearchBar(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null
-                    )
-                }
-            } else if (!isSearching) {
-                IconButton(onClick = onStartSearch) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
                         contentDescription = null
                     )
                 }

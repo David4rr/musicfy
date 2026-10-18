@@ -15,6 +15,7 @@ import com.example.musicfy.constants.HideVideoSongsKey
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.models.MediaMetadata
+import com.example.musicfy.ui.component.isImportedFile
 import com.example.musicfy.ui.menu.announceAddedToPlaylist
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
@@ -102,9 +103,9 @@ private fun Song.matches(needle: String): Boolean =
         artists.any { it.name.contains(needle, ignoreCase = true) }
 
 /**
- * Songs like the ones already in the playlist: YouTube's related list for a few of them, taking
- * turns between the lists so one song's neighbours don't fill the top. Empty when the playlist is,
- * or when YouTube can't be reached.
+ * Songs like the ones already in the playlist: songs like a few of them, taking turns between the
+ * lists so one song's neighbours don't fill the top. Empty when the playlist is, or when YouTube
+ * can't be reached.
  */
 internal suspend fun loadPlaylistSuggestions(
     database: MusicDatabase,
@@ -112,28 +113,60 @@ internal suspend fun loadPlaylistSuggestions(
     hideExplicit: Boolean,
     hideVideos: Boolean,
 ): List<SongItem> = coroutineScope {
-    val songs = database.playlistSongs(playlistId).first()
+    val songs = database.playlistSongs(playlistId).first().map { it.song }
     if (songs.isEmpty()) return@coroutineScope emptyList()
-    val have = songs.mapTo(HashSet()) { it.song.id }
+    val haveIds = songs.mapTo(HashSet()) { it.id }
+    // A song imported from the phone and its YouTube copy have different ids, so match by name too.
+    val haveNames = songs.mapTo(HashSet()) { nameKey(it.song.title, it.artists.firstOrNull()?.name) }
 
     // The first song sets the playlist's mood; a couple of random others keep the mix from
     // leaning on one artist, and make each opening a little different.
     val seeds = listOf(songs.first()) + songs.drop(1).shuffled().take(SuggestionSeeds - 1)
-    val lists = seeds.map { seed ->
-        async {
-            val endpoint = YouTube.next(WatchEndpoint(videoId = seed.song.id)).getOrNull()?.relatedEndpoint
-                ?: return@async emptyList()
-            YouTube.related(endpoint).getOrNull()?.songs.orEmpty()
-        }
-    }.awaitAll()
+    val lists = seeds.map { seed -> async { songsLike(seed) } }.awaitAll()
 
     interleave(lists)
-        .filter { it.id !in have }
+        .filter { it.id !in haveIds && nameKey(it.title, it.artists.firstOrNull()?.name) !in haveNames }
         .distinctBy { it.id }
         .filterExplicit(hideExplicit)
         .filterVideoSongs(hideVideos)
         .take(MaxSuggestions)
 }
+
+/**
+ * Songs like [seed], in the order the player's endless queue tries them. The song's radio comes
+ * first because it's the one a signed-out session reliably gets: YouTube leaves out the "related"
+ * list without an account. The artist's own songs are the last resort.
+ */
+private suspend fun songsLike(seed: Song): List<SongItem> {
+    val videoId = if (isImportedFile(seed.id)) findOnYouTube(seed) ?: return emptyList() else seed.id
+
+    YouTube.next(WatchEndpoint(videoId = videoId, playlistId = "RDAMVM$videoId")).getOrNull()?.items
+        ?.filter { it.id != videoId }
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { return it }
+
+    YouTube.next(WatchEndpoint(videoId = videoId)).getOrNull()?.relatedEndpoint
+        ?.let { YouTube.related(it).getOrNull()?.songs }
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { return it }
+
+    val artistId = seed.artists.firstOrNull { it.isYouTubeArtist }?.id ?: return emptyList()
+    return YouTube.artist(artistId).getOrNull()?.sections.orEmpty()
+        .flatMap { it.items }
+        .filterIsInstance<SongItem>()
+}
+
+/** A song imported from the phone has no YouTube id: find its YouTube copy by title and artist. */
+private suspend fun findOnYouTube(song: Song): String? {
+    val query = listOfNotNull(song.song.title, song.artists.firstOrNull()?.name).joinToString(" ")
+    return YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items
+        ?.filterIsInstance<SongItem>()
+        ?.firstOrNull()
+        ?.id
+}
+
+private fun nameKey(title: String, artist: String?): String =
+    title.trim().lowercase() + "|" + artist.orEmpty().trim().lowercase()
 
 /** First of each list, then the second of each, and so on. */
 private fun <T> interleave(lists: List<List<T>>): List<T> {
