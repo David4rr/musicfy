@@ -75,7 +75,7 @@ private const val RecentCount = 4
  *   them with its [topSongArtworkUrl]: the new playlist's cover takes its colours from it.
  */
 /** The top toast for songs just added to [playlist]: what went in, and Undo (not for a synced playlist, which YouTube has already been told about). */
-private fun announceAddedToPlaylist(database: com.example.musicfy.db.MusicDatabase, playlist: Playlist, ids: List<String>) {
+internal fun announceAddedToPlaylist(database: com.example.musicfy.db.MusicDatabase, playlist: Playlist, ids: List<String>) {
     if (ids.isEmpty()) return
     kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
         val first = database.song(ids.first()).firstOrNull()?.song

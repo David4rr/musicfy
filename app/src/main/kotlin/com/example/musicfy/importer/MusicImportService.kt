@@ -9,6 +9,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.musicfy.R
 import com.example.musicfy.db.MusicDatabase
+import com.example.musicfy.db.entities.ImportSession
+import com.example.musicfy.db.entities.ImportSessionSong
+import com.example.musicfy.db.entities.ImportedPlaylist
 import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.PlaylistSongMap
@@ -61,6 +64,9 @@ class MusicImportService @Inject constructor(
     /** Where the import being run comes from; read by the steps below, one import runs at a time. */
     @Volatile private var source: ImportSource = ImportSource.OTHER
 
+    /** The session the running import records what it changes under, so it can be undone. */
+    @Volatile private var sessionId: Long? = null
+
     private val _progress = MutableStateFlow(ImportProgress())
     val progress: StateFlow<ImportProgress> = _progress.asStateFlow()
 
@@ -73,6 +79,7 @@ class MusicImportService @Inject constructor(
         _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs, source = parsed.provider)
         runningJob = importScope.launch {
             try {
+                sessionId = database.insert(ImportSession(source = source.key, startedAt = LocalDateTime.now()))
                 runImport(parsed, options)
                 _progress.update { it.copy(isRunning = false, isDone = true, currentLabel = "") }
                 val done = _progress.value
@@ -85,6 +92,9 @@ class MusicImportService @Inject constructor(
                 _progress.update {
                     it.copy(isRunning = false, isDone = true, currentLabel = "", error = e.message ?: "Import failed")
                 }
+            } finally {
+                sessionId?.let { database.deleteImportSessionIfEmpty(it) }
+                sessionId = null
             }
         }
         return true
@@ -130,6 +140,7 @@ class MusicImportService @Inject constructor(
             val song = database.getSongById(item.id)?.song ?: return@forEach
             if (!song.liked) {
                 database.update(song.copy(liked = true, likedDate = dates.getValue(item.id)))
+                sessionId?.let { database.markLikedByImport(it, item.id) }
                 newlyLiked += item.id
             }
         }
@@ -234,7 +245,10 @@ class MusicImportService @Inject constructor(
         val start = if (existing == null) 0 else database.playlistSongs(playlist.id).first().size
         var newIds: List<String> = emptyList()
         database.withTransaction {
-            if (existing == null) insert(playlist)
+            if (existing == null) {
+                insert(playlist)
+                insert(ImportedPlaylist(playlistId = playlist.id, source = source.key, sessionId = sessionId, importedAt = LocalDateTime.now()))
+            }
             // topping up one that has no picture of its own: it gets the source's
             else if (existing.thumbnailUrl == null && cover != null) update(existing.copy(thumbnailUrl = cover))
             matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
@@ -275,11 +289,15 @@ class MusicImportService @Inject constructor(
         if (songIds.isEmpty()) return
         val now = LocalDateTime.now()
         val from = source.key
+        val session = sessionId
         database.withTransaction {
             songIds.distinct().forEach { id ->
                 val song = getSongById(id)?.song ?: return@forEach
-                if (song.inLibrary == null) update(song.copy(inLibrary = addedAt[id] ?: now))
+                val adding = song.inLibrary == null
+                if (adding) update(song.copy(inLibrary = addedAt[id] ?: now))
                 insert(ImportedSong(songId = id, source = from, importedAt = now))
+                // the first step to touch a song records it; a later one finds it already in
+                if (session != null) insert(ImportSessionSong(session, id, addedToLibrary = adding, liked = false))
             }
         }
     }

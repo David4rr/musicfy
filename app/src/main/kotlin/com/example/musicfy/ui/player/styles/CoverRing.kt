@@ -128,6 +128,7 @@ fun CoverRing(
     live: Boolean,
     position: LivePosition,
     modifier: Modifier = Modifier,
+    side: RingSide = RingSide.Bottom,
 ) {
     val connection = LocalPlayerConnection.current
     val haptics = LocalHapticFeedback.current
@@ -186,7 +187,7 @@ fun CoverRing(
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = true, pass = PointerEventPass.Main)
                         val c = currentCircle
-                        val geometry = RingGeometry(c, size.width.toFloat(), density)
+                        val geometry = RingGeometry(c, Size(size.width.toFloat(), size.height.toFloat()), density, side)
                         if (!geometry.onBand(down.position)) return@awaitEachGesture
                         val duration = connection.player.duration.takeIf { it > 0 } ?: return@awaitEachGesture
                         state.grab()
@@ -234,7 +235,7 @@ fun CoverRing(
             .drawBehind {
                 frame.longValue
                 val c = currentCircle
-                val geometry = RingGeometry(c, size.width, density)
+                val geometry = RingGeometry(c, size, density, side)
                 val e = state.expand.value
                 if (visualizer) {
                     drawBars(geometry, bars, e, preview = !live)
@@ -251,12 +252,15 @@ fun CoverRing(
     )
 }
 
+/** which part of the cover's rim is on screen: its bottom (upright) or its right side (sideways) */
+enum class RingSide { Bottom, Right }
+
 /**
- * Where everything on the ring sits, for a ring as wide as the screen: the bar's ends kept a
- * margin in from the sides (wider when expanded, for the times beyond them), the visualizer over
- * the visible rim.
+ * Where everything on the ring sits. The bar runs along the rim that's on screen, from the left
+ * (upright) or the top (sideways), its ends kept a margin in from the screen's edges (wider when
+ * expanded, for the times beyond them); the visualizer covers that whole rim.
  */
-private class RingGeometry(val circle: RingCircle, val width: Float, density: Float) {
+private class RingGeometry(val circle: RingCircle, val size: Size, density: Float, val side: RingSide) {
     private val dp = density
     val center get() = circle.center
     val radius get() = circle.radius
@@ -270,10 +274,26 @@ private class RingGeometry(val circle: RingCircle, val width: Float, density: Fl
         return Math.toDegrees(atan2(sqrt(r * r - dx * dx), dx).toDouble()).toFloat()
     }
 
-    /** the bar's ends, left (the larger angle) then right */
-    fun barEnds(e: Float): Pair<Float, Float> {
-        val r = barRadius(e)
-        return angleAtX(lerp(26f, 64f, e) * dp, r) to angleAtX(width - lerp(26f, 52f, e) * dp, r)
+    /** the same where it crosses y, on its right side */
+    fun angleAtY(y: Float, r: Float): Float {
+        val dy = (y - center.y).coerceIn(-r * 0.999f, r * 0.999f)
+        return Math.toDegrees(atan2(dy, sqrt(r * r - dy * dy)).toDouble()).toFloat()
+    }
+
+    /** where a circle of [r] crosses into the screen [from] its first edge and [to] its last */
+    fun span(r: Float, from: Float, to: Float): Pair<Float, Float> = when (side) {
+        RingSide.Bottom -> angleAtX(from, r) to angleAtX(size.width - to, r)
+        RingSide.Right -> angleAtY(from, r) to angleAtY(size.height - to, r)
+    }
+
+    /** the bar's ends: the song's start, then its end */
+    fun barEnds(e: Float): Pair<Float, Float> =
+        span(barRadius(e), lerp(26f, 64f, e) * dp, lerp(26f, 52f, e) * dp)
+
+    /** the visualizer's: nearly the whole rim that shows */
+    fun barsSpan(): Pair<Float, Float> = when (side) {
+        RingSide.Bottom -> span(radius, 14f * dp, 10f * dp)
+        RingSide.Right -> span(radius, 10f * dp, 10f * dp)
     }
 
     /** a touch near enough the bar to take it */
@@ -282,7 +302,7 @@ private class RingGeometry(val circle: RingCircle, val width: Float, density: Fl
         if (d < radius - 46f * dp || d > radius + 50f * dp) return false
         val (start, end) = barEnds(0f)
         val a = angleOf(p)
-        return a in (end - 4f)..(start + 4f)
+        return a in (minOf(start, end) - 4f)..(maxOf(start, end) + 4f)
     }
 
     fun angleOf(p: Offset) = Math.toDegrees(atan2((p.y - center.y).toDouble(), (p.x - center.x).toDouble())).toFloat()
@@ -297,10 +317,10 @@ private class RingGeometry(val circle: RingCircle, val width: Float, density: Fl
         return sqrt((1f - across * across).coerceAtLeast(0f))
     }
 
-    /** how far along the bar [p] is, 0 at its left end */
+    /** how far along the bar [p] is, 0 at its start */
     fun fractionAt(p: Offset): Float {
         val (start, end) = barEnds(1f)
-        return ((start - angleOf(p)) / (start - end)).coerceIn(0f, 1f)
+        return ((angleOf(p) - start) / (end - start)).coerceIn(0f, 1f)
     }
 }
 
@@ -359,9 +379,8 @@ private class BarLevels {
 private fun DrawScope.drawBars(g: RingGeometry, bars: BarLevels, e: Float, preview: Boolean) {
     val r = g.radius
     // the whole visible rim, nearly edge to edge
-    val start = g.angleAtX(14.dp.toPx(), r)
-    val end = g.angleAtX(size.width - 10.dp.toPx(), r)
-    val spanRad = Math.toRadians((start - end).toDouble()).toFloat()
+    val (start, end) = g.barsSpan()
+    val spanRad = Math.toRadians(abs(start - end).toDouble()).toFloat()
     val count = ((r * spanRad) / 21.dp.toPx()).toInt().coerceIn(12, 40)
     bars.resize(count)
     val thickness = 5.dp.toPx()
@@ -376,8 +395,8 @@ private fun DrawScope.drawBars(g: RingGeometry, bars: BarLevels, e: Float, previ
         val rad = degrees * (PI.toFloat() / 180f)
         val dir = Offset(cos(rad), sin(rad))
         val level = if (preview) 0.35f + 0.3f * sin(i * 0.9f) * sin(i * 0.37f + 1f) else bars.shown[i]
-        // the left end sits over the start of the words: its bars stay a little shorter
-        val taper = 0.65f + 0.35f * t.coerceAtMost(0.3f) / 0.3f
+        // upright, the left end sits over the start of the words: its bars stay a little shorter
+        val taper = if (g.side == RingSide.Bottom) 0.65f + 0.35f * t.coerceAtMost(0.3f) / 0.3f else 1f
         val length = minLength + (maxLength - minLength) * level * taper
         val inner = g.center + dir * (r + gap)
         drawLine(color, inner, inner + dir * length, strokeWidth = thickness, cap = StrokeCap.Round)
@@ -395,36 +414,30 @@ private fun DrawScope.drawSeekArc(
 ) {
     val r = g.barRadius(e)
     val (start, end) = g.barEnds(e)
-    val sweep = start - end
+    val sweep = end - start
     val stroke = lerp(3f, 7f, e).dp.toPx()
     val topLeft = g.center - Offset(r, r)
     val arcSize = Size(r * 2f, r * 2f)
-    // a soft dark line under it, so a pale cover doesn't swallow the thin bar
-    if (e < 0.999f) {
-        drawArc(
-            color = Color.Black.copy(alpha = 0.16f * (1f - e)),
-            startAngle = end, sweepAngle = sweep, useCenter = false,
-            topLeft = topLeft, size = arcSize,
-            style = Stroke(stroke + 3.dp.toPx(), cap = StrokeCap.Round),
-        )
-    }
+    // on the cover it's only a hint (a third as bright); out past the rim, the full bar
+    val ink = lerp(0.3f, 1f, e)
     drawArc(
-        color = Color.White.copy(alpha = lerp(0.38f, 0.3f, e)),
-        startAngle = end, sweepAngle = sweep, useCenter = false,
+        color = Color.White.copy(alpha = 0.38f * ink),
+        startAngle = start, sweepAngle = sweep, useCenter = false,
         topLeft = topLeft, size = arcSize,
         style = Stroke(stroke, cap = StrokeCap.Round),
     )
-    // the played part runs from the left end, the opposite way round
+    val played = sweep * fraction.coerceIn(0f, 1f)
     drawArc(
-        color = Color.White.copy(alpha = 0.96f),
-        startAngle = start, sweepAngle = -(sweep * fraction.coerceIn(0f, 1f)).coerceAtLeast(0.01f), useCenter = false,
+        color = Color.White.copy(alpha = 0.96f * ink),
+        startAngle = start, sweepAngle = if (abs(played) < 0.01f) 0.01f * kotlin.math.sign(sweep) else played, useCenter = false,
         topLeft = topLeft, size = arcSize,
         style = Stroke(stroke, cap = StrokeCap.Round),
     )
     val shown = ((e - 0.3f) / 0.7f).coerceIn(0f, 1f)
     if (shown <= 0.001f || durationMs <= 0L) return
-    ringLabel(makeTimeString(positionMs), g, start, r, before = true, shown, measurer, labelStyle)
-    ringLabel(makeTimeString(durationMs), g, end, r, before = false, shown, measurer, labelStyle)
+    val toward = kotlin.math.sign(sweep)
+    ringLabel(makeTimeString(positionMs), g, start, r, outward = -toward, shown, measurer, labelStyle)
+    ringLabel(makeTimeString(durationMs), g, end, r, outward = toward, shown, measurer, labelStyle)
 }
 
 /** a time just past one end of the bar, turned along it, reading the right way up */
@@ -433,7 +446,8 @@ private fun DrawScope.ringLabel(
     g: RingGeometry,
     endDegrees: Float,
     r: Float,
-    before: Boolean,
+    /** which way round, in degrees, is away from the bar */
+    outward: Float,
     shown: Float,
     measurer: TextMeasurer,
     style: TextStyle,
@@ -442,11 +456,15 @@ private fun DrawScope.ringLabel(
     // clear of the round cap by a little, sliding in from further out as it appears
     val gapPx = (layout.size.width / 2f) + (8f + 10f * (1f - shown)).dp.toPx()
     val gapDegrees = Math.toDegrees((gapPx / r).toDouble()).toFloat()
-    val degrees = if (before) endDegrees + gapDegrees else endDegrees - gapDegrees
+    val degrees = endDegrees + outward * gapDegrees
     val rad = degrees * (PI.toFloat() / 180f)
     val at = g.center + Offset(cos(rad), sin(rad)) * r
     val s = 0.86f + 0.14f * shown
-    rotate(degrees - 90f, at) {
+    // along the rim, turned whichever way keeps it the right way up
+    var turn = degrees - 90f
+    while (turn > 90f) turn -= 180f
+    while (turn < -90f) turn += 180f
+    rotate(turn, at) {
         scale(s, s, at) {
             drawText(layout, topLeft = Offset(at.x - layout.size.width / 2f, at.y - layout.size.height / 2f))
         }

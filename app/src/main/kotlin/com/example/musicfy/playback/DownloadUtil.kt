@@ -40,6 +40,9 @@ import com.example.musicfy.db.entities.FormatEntity
 import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.lyrics.LyricsHelper
+import com.example.musicfy.models.TransferBatch
+import com.example.musicfy.models.TransferItem
+import com.example.musicfy.models.TransferState
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.utils.OfflineMode
 import kotlinx.coroutines.sync.Mutex
@@ -57,7 +60,10 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -96,6 +102,15 @@ constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
+
+    private val _batch = MutableStateFlow(TransferBatch())
+
+    /**
+     * The songs downloaded since the last time nothing was downloading, with how far each has got,
+     * for the Library's progress card and sheet. A finished batch stays until the next download
+     * starts, so the sheet can still save it as a playlist.
+     */
+    val batch: StateFlow<TransferBatch> = _batch.asStateFlow()
 
     private val dataSourceFactory =
         ResolvingDataSource.Factory(
@@ -276,6 +291,8 @@ constructor(
         }
         downloads.value = result
 
+        scope.launch { followBatches() }
+
         // Offline mode holds downloads where they are rather than failing them: they carry on
         // when it's turned off. Only then - resuming whenever offline mode reads off, at every
         // start included, would undo downloads paused for any other reason.
@@ -378,6 +395,59 @@ constructor(
             DownloadQuality.MEDIUM -> AudioQuality.MEDIUM
             DownloadQuality.LOW -> AudioQuality.LOW
         }
+
+    /**
+     * Keeps [batch] up to date. The manager only reports a download starting, finishing or
+     * failing, never how far along it is, so while anything downloads this asks twice a second.
+     * Nothing is polled while idle: it waits for [downloads] to show a download under way.
+     */
+    private suspend fun followBatches() {
+        while (true) {
+            downloads.first { map -> map.values.any { it.isUnderWay } }
+            val ids = LinkedHashSet<String>()
+            val songs = HashMap<String, com.example.musicfy.db.entities.Song?>()
+            while (true) {
+                // the manager may only be read on the thread it was made on
+                val running = kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    downloadManager.currentDownloads.filter { it.isUnderWay }
+                }
+                running.forEach { ids += it.request.id }
+                val known = downloads.value
+                // cancelled or deleted part way: it leaves the batch rather than showing as failed
+                ids.retainAll { id -> known[id]?.state.let { it != null && it != Download.STATE_REMOVING } }
+                ids.forEach { id -> if (id !in songs) songs[id] = database.song(id).first() }
+                _batch.value = TransferBatch(
+                    ids.map { id -> transferItem(id, running.firstOrNull { it.request.id == id } ?: known[id], songs[id]) },
+                )
+                if (running.isEmpty()) break
+                delay(500)
+            }
+            // a batch that ended on an out-of-date entry in downloads can't spin this loop
+            delay(1_000)
+        }
+    }
+
+    private val Download.isUnderWay: Boolean
+        get() = state == Download.STATE_QUEUED || state == Download.STATE_DOWNLOADING || state == Download.STATE_RESTARTING
+
+    private fun transferItem(id: String, download: Download?, song: com.example.musicfy.db.entities.Song?): TransferItem =
+        TransferItem(
+            key = id,
+            title = song?.song?.title
+                ?: download?.request?.data?.takeIf { it.isNotEmpty() }?.decodeToString()
+                ?: "Song",
+            subtitle = song?.artists?.joinToString { it.name }?.ifBlank { null },
+            artworkUrl = song?.song?.thumbnailUrl,
+            state = when (download?.state) {
+                Download.STATE_COMPLETED -> TransferState.Done
+                Download.STATE_DOWNLOADING -> TransferState.Running
+                Download.STATE_QUEUED, Download.STATE_RESTARTING -> TransferState.Waiting
+                else -> TransferState.Failed
+            },
+            // unknown until the server says how big the file is
+            progress = ((download?.percentDownloaded ?: 0f) / 100f).coerceIn(0f, 1f),
+            songId = id,
+        )
 
     fun getDownload(songId: String): Flow<Download?> =
         downloads.map { it[songId] }.distinctUntilChanged()

@@ -36,6 +36,9 @@ import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.PlayCountEntity
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.PlaylistEntity
+import com.example.musicfy.db.entities.ImportSession
+import com.example.musicfy.db.entities.ImportSessionSong
+import com.example.musicfy.db.entities.ImportedPlaylist
 import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.ImportedSourceCount
 import com.example.musicfy.db.entities.PlaylistEvent
@@ -1114,6 +1117,10 @@ interface DatabaseDao {
         songId: String,
     ): Int
 
+    /** Just the ids, for ticking off songs that are already in the playlist without loading them. */
+    @Query("SELECT songId FROM playlist_song_map WHERE playlistId = :playlistId")
+    fun playlistSongIds(playlistId: String): Flow<List<String>>
+
     @Query("SELECT songId from playlist_song_map WHERE playlistId = :playlistId AND songId IN (:songIds)")
     fun playlistDuplicates(
         playlistId: String,
@@ -1587,13 +1594,21 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(imported: ImportedSong)
 
-    @Query("SELECT source, COUNT(*) AS songCount FROM imported_song GROUP BY source")
+    // Only songs still in the library or liked count as a service's: one taken back out of both
+    // is gone from the user's music, and listing it under "Spotify" would bring it back.
+
+    @Query(
+        "SELECT imported_song.source, COUNT(*) AS songCount FROM imported_song " +
+            "JOIN song ON song.id = imported_song.songId " +
+            "WHERE song.inLibrary IS NOT NULL OR song.liked GROUP BY imported_song.source"
+    )
     fun importedSourceCounts(): Flow<List<ImportedSourceCount>>
 
     /** The newest few covers of a source, for its card in the Library. */
     @Query(
         "SELECT song.thumbnailUrl FROM song JOIN imported_song ON song.id = imported_song.songId " +
             "WHERE imported_song.source = :source AND song.thumbnailUrl IS NOT NULL " +
+            "AND (song.inLibrary IS NOT NULL OR song.liked) " +
             "ORDER BY imported_song.importedAt DESC LIMIT 4"
     )
     fun importedCovers(source: String): Flow<List<String>>
@@ -1601,13 +1616,103 @@ interface DatabaseDao {
     @Transaction
     @Query(
         "SELECT song.* FROM song JOIN imported_song ON song.id = imported_song.songId " +
-            "WHERE imported_song.source = :source ORDER BY song.title"
+            "WHERE imported_song.source = :source AND (song.inLibrary IS NOT NULL OR song.liked) " +
+            "ORDER BY song.title"
     )
     fun importedSongsByNameAsc(source: String): Flow<List<Song>>
 
     /** Every song that was imported from anywhere, for the library sync to leave alone. */
     @Query("SELECT DISTINCT songId FROM imported_song")
     fun importedSongIds(): List<String>
+
+    /**
+     * The songs imported from anywhere but [source]. YouTube sync passes its own source: the songs
+     * it brought in follow the YouTube library, so they may leave it again.
+     */
+    @Query("SELECT DISTINCT songId FROM imported_song WHERE source != :source")
+    fun importedSongIdsExcept(source: String): List<String>
+
+    @Query("DELETE FROM imported_song WHERE songId = :songId AND source = :source")
+    fun deleteImportedSong(songId: String, source: String)
+
+    // ---- import sessions ----
+
+    @Insert
+    fun insert(session: ImportSession): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(row: ImportSessionSong)
+
+    @Query("UPDATE import_session_song SET liked = 1 WHERE sessionId = :sessionId AND songId = :songId")
+    fun markLikedByImport(sessionId: Long, songId: String)
+
+    @Query("SELECT * FROM import_session WHERE source = :source ORDER BY id DESC")
+    fun importSessions(source: String): List<ImportSession>
+
+    @Query("SELECT * FROM import_session WHERE source != :excluded ORDER BY id DESC")
+    fun importSessionsExcept(excluded: String): List<ImportSession>
+
+    @Query("SELECT * FROM import_session_song WHERE sessionId = :sessionId")
+    fun importSessionSongs(sessionId: Long): List<ImportSessionSong>
+
+    /** Every song an import session brought in, for the library sync to leave alone. */
+    @Query("SELECT DISTINCT songId FROM import_session_song")
+    fun importSessionSongIds(): List<String>
+
+    /** Any other session that still has a claim on the song: it stays in the library for that one. */
+    @Query("SELECT COUNT(*) FROM import_session_song WHERE songId = :songId AND sessionId != :sessionId")
+    fun otherSessionsWithSong(songId: String, sessionId: Long): Int
+
+    /** Another session from the same service still has the song, so it keeps that service's tag. */
+    @Query(
+        "SELECT COUNT(*) FROM import_session_song JOIN import_session ON import_session.id = import_session_song.sessionId " +
+            "WHERE import_session_song.songId = :songId AND import_session.source = :source AND import_session.id != :sessionId"
+    )
+    fun otherSessionsFromSource(songId: String, source: String, sessionId: Long): Int
+
+    @Query("DELETE FROM import_session_song WHERE sessionId = :sessionId")
+    fun deleteImportSessionSongs(sessionId: Long)
+
+    @Query("DELETE FROM import_session_song WHERE songId = :songId")
+    fun deleteImportSessionSong(songId: String)
+
+    @Query("DELETE FROM import_session WHERE id = :sessionId")
+    fun deleteImportSession(sessionId: Long)
+
+    /** A session that ended up bringing nothing in has nothing to undo, so it isn't kept. */
+    @Query(
+        "DELETE FROM import_session WHERE id = :sessionId " +
+            "AND NOT EXISTS (SELECT 1 FROM import_session_song WHERE sessionId = :sessionId) " +
+            "AND NOT EXISTS (SELECT 1 FROM imported_playlist WHERE sessionId = :sessionId)"
+    )
+    fun deleteImportSessionIfEmpty(sessionId: Long)
+
+    // ---- imported playlists ----
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(playlist: ImportedPlaylist)
+
+    /** Which service each imported playlist came from. */
+    @Query("SELECT * FROM imported_playlist")
+    fun importedPlaylists(): Flow<List<ImportedPlaylist>>
+
+    @Query("SELECT playlistId FROM imported_playlist WHERE sessionId = :sessionId")
+    fun importSessionPlaylistIds(sessionId: Long): List<String>
+
+    @Query("DELETE FROM imported_playlist WHERE playlistId = :playlistId")
+    fun deleteImportedPlaylist(playlistId: String)
+
+    // ---- files imported from the phone ----
+
+    /** Every file already in the library, so a storage scan only offers the new ones. */
+    @Query("SELECT localUri FROM song WHERE localUri IS NOT NULL")
+    fun localUris(): List<String>
+
+    @Query("DELETE FROM format WHERE id = :songId")
+    fun deleteFormat(songId: String)
+
+    @Query("DELETE FROM lyrics WHERE id = :songId")
+    fun deleteLyrics(songId: String)
 
     /** Where each liked song was imported from, for Liked songs' import order. A song from two services has two rows. */
     @Query("SELECT imported_song.* FROM imported_song JOIN song ON song.id = imported_song.songId WHERE song.liked")

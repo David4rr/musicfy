@@ -151,12 +151,15 @@ private fun styleInsets(landscape: Boolean): StyleInsets {
 
 // ---- Poster ------------------------------------------------------------------------------
 
-/** what the words give the visualizer's bars under the cover */
-private val VisualizerRoom = 30.dp
+/** what the words give the visualizer's bars under the cover (beside it, sideways) */
+private val VisualizerRoom = 60.dp
+private val VisualizerRoomSideways = 40.dp
 /** how far the words move down while the cover's seek bar is out */
 private val RingPush = 34.dp
 /** the Turntable's pills, side by side: as tall as one */
 private val PillsHeight = 42.dp
+/** the menu's chevron, the Turntable's size */
+private val PosterChevron = 43.dp
 
 /**
  * The cover cut into a great circle swung in from the top-left corner, over the flagship's own
@@ -169,7 +172,6 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val r = rememberResponsive()
-    val circle = r.dp(0.078f, 28.dp, 40.dp)
     val position = rememberLivePosition(animated = !preview)
     val lines = rememberStyleLyrics(readings = !preview)
     val backgroundStyle by com.example.musicfy.utils.rememberEnumPreference(
@@ -226,7 +228,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                     PosterText(
                         lines, position, track, tones, r, baseSize = r.sp(0.12f, 34f, 56f), gap = 12.dp,
                         // the seek bar coming out past the rim moves the words down with it
-                        push = { ring.expand.value * with(density) { RingPush.toPx() } },
+                        push = { Offset(0f, ring.expand.value * with(density) { RingPush.toPx() }) },
                     )
                 }
                 // the seek bar on the cover's rim and the visualizer round it
@@ -250,7 +252,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
                     rotated = rotated, onRotate = setRotated, atBottom = false, end = 22.dp, edge = insets.top + 16.dp,
-                    buttonSize = circle,
+                    buttonSize = PosterChevron, pill = true,
                 )
             } else {
                 // circle from the left edge, the words to its right
@@ -265,25 +267,39 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(
-                            start = maxOf(h * 1.08f, w * 0.5f),
+                            start = maxOf(h * 1.08f, w * 0.5f) + (if (visualizer) VisualizerRoomSideways else 0.dp),
                             end = 24.dp + insets.end,
-                            top = 18.dp + maxOf(circle, PillsHeight) + 18.dp,
+                            top = 18.dp + maxOf(PosterChevron, PillsHeight) + 18.dp,
                             bottom = 20.dp,
                         ),
                 ) {
-                    PosterText(lines, position, track, tones, r, baseSize = r.sp(0.095f, 28f, 46f), gap = 8.dp)
+                    PosterText(
+                        lines, position, track, tones, r, baseSize = r.sp(0.095f, 28f, 46f), gap = 8.dp,
+                        // sideways the bar comes out to the right, and moves the words that way
+                        push = { Offset(ring.expand.value * with(density) { RingPush.toPx() }, 0f) },
+                    )
                 }
+                val hPx = with(density) { h.toPx() }
+                CoverRing(
+                    state = ring,
+                    circle = RingCircle(Offset(0.04f * hPx, 0.30f * hPx), 0.953f * hPx),
+                    visualizer = visualizer,
+                    live = live,
+                    position = position,
+                    side = RingSide.Right,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 18.dp, end = 20.dp + insets.end + circle + 8.dp),
+                        .padding(top = 18.dp, end = 20.dp + insets.end + PosterChevron + 8.dp),
                 ) {
                     com.example.musicfy.ui.player.TurntablePills(horizontal = true)
                 }
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
                     rotated = rotated, onRotate = setRotated, atBottom = false, end = 20.dp + insets.end, edge = 18.dp,
-                    buttonSize = circle,
+                    buttonSize = PosterChevron, pill = true,
                 )
             }
         }
@@ -305,8 +321,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
     r: Responsive,
     baseSize: TextUnit,
     gap: Dp,
-    /** how far down the words are pushed (px), read as they're drawn */
-    push: () -> Float = { 0f },
+    /** how far the words are pushed aside (px), read as they're drawn */
+    push: () -> Offset = { Offset.Zero },
 ) {
     val hasLyrics = lines.isNotEmpty()
     val found = remember { androidx.compose.animation.core.Animatable(if (hasLyrics) 1f else 0f) }
@@ -326,7 +342,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f)
-            .graphicsLayer { translationY = push() }
+            .graphicsLayer {
+                val o = push()
+                translationX = o.x
+                translationY = o.y
+            }
             .onPlaced { places[0] = it },
     ) {
         if (hasLyrics) {

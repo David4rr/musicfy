@@ -198,6 +198,9 @@ fun LyricsScreen(
 
     morph: CardMorphState? = null,
 
+    /** Opens the source picker from the footer's "Switch" button. Without it the button is hidden. */
+    onSwitchSource: (() -> Unit)? = null,
+
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -740,6 +743,27 @@ fun LyricsScreen(
                                     },
                                 )
                             }
+                        }
+                    }
+
+                    // Where the lyrics came from, after the last line. "Unknown" and "no
+                    // connection" aren't sources, so there's nothing to credit for them.
+                    val provider = lyricsEntity?.provider
+                    if (provider != null && provider != "Unknown" &&
+                        provider != com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider
+                    ) {
+                        item(key = "source", contentType = "source") {
+                            LyricsSourceFooter(
+                                provider = provider,
+                                onSwitchSource = onSwitchSource,
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        translationY = staggerLags[rows.size] ?: 0f
+                                        applyPageRowEnter(enterProgressProvider(), rows.size - cardLineRow.coerceAtLeast(0))
+                                    }
+                                    .padding(horizontal = LyricsHeaderArtX)
+                                    .padding(top = 36.dp),
+                            )
                         }
                     }
                 }

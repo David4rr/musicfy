@@ -27,6 +27,9 @@ import com.example.musicfy.db.entities.FormatEntity
 import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.PlayCountEntity
 import com.example.musicfy.db.entities.PlaylistEntity
+import com.example.musicfy.db.entities.ImportSession
+import com.example.musicfy.db.entities.ImportSessionSong
+import com.example.musicfy.db.entities.ImportedPlaylist
 import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSongMap
@@ -124,13 +127,16 @@ class MusicDatabase(
         SpeedDialItem::class,
         PlaylistEvent::class,
         ImportedSong::class,
+        ImportSession::class,
+        ImportSessionSong::class,
+        ImportedPlaylist::class,
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 39,
+    version = 40,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -185,6 +191,7 @@ val AllMigrations: Array<Migration>
         MIGRATION_36_37,
         MIGRATION_37_38,
         MIGRATION_38_39,
+        MIGRATION_39_40,
     )
 
 val MIGRATION_1_2 =
@@ -763,5 +770,58 @@ val MIGRATION_38_39 =
                 "CREATE TABLE IF NOT EXISTS `imported_song` (`songId` TEXT NOT NULL, `source` TEXT NOT NULL, `importedAt` INTEGER NOT NULL, PRIMARY KEY(`songId`, `source`))",
             )
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_imported_song_source` ON `imported_song` (`source`)")
+        }
+    }
+
+val MIGRATION_39_40 =
+    object : Migration(39, 40) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // IF NOT EXISTS for the same reason as 38 -> 39: a device that already has the tables
+            // must not fail the upgrade and fall into the destructive reset.
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `import_session` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source` TEXT NOT NULL, `startedAt` INTEGER NOT NULL)",
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `import_session_song` (`sessionId` INTEGER NOT NULL, `songId` TEXT NOT NULL, `addedToLibrary` INTEGER NOT NULL, `liked` INTEGER NOT NULL, PRIMARY KEY(`sessionId`, `songId`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_import_session_song_songId` ON `import_session_song` (`songId`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `imported_playlist` (`playlistId` TEXT NOT NULL, `source` TEXT NOT NULL, `sessionId` INTEGER, `importedAt` INTEGER NOT NULL, PRIMARY KEY(`playlistId`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_imported_playlist_source` ON `imported_playlist` (`source`)")
+
+            // Imports made before sessions existed become one session per service, so "Delete
+            // Spotify imports" still reaches them. What each one changed wasn't recorded, so the
+            // best guess is used: the import put its songs in the library, and a liked one was
+            // liked by it. That is also how Liked songs already groups them.
+            db.execSQL(
+                "INSERT INTO `import_session` (`source`, `startedAt`) " +
+                    "SELECT `source`, MIN(`importedAt`) FROM `imported_song` " +
+                    "WHERE `source` NOT IN (SELECT `source` FROM `import_session`) GROUP BY `source`",
+            )
+            db.execSQL(
+                "INSERT OR IGNORE INTO `import_session_song` (`sessionId`, `songId`, `addedToLibrary`, `liked`) " +
+                    "SELECT `import_session`.`id`, `imported_song`.`songId`, " +
+                    "CASE WHEN `song`.`inLibrary` IS NOT NULL THEN 1 ELSE 0 END, " +
+                    "CASE WHEN `song`.`liked` THEN 1 ELSE 0 END " +
+                    "FROM `imported_song` " +
+                    "JOIN `import_session` ON `import_session`.`source` = `imported_song`.`source` " +
+                    "JOIN `song` ON `song`.`id` = `imported_song`.`songId`",
+            )
+            // A playlist counts as imported when every song in it came from that one service and
+            // its cover is the service's own picture (or none). Playlists made in the app get a
+            // generated cover saved on the phone, so they never match.
+            db.execSQL(
+                "INSERT OR IGNORE INTO `imported_playlist` (`playlistId`, `source`, `sessionId`, `importedAt`) " +
+                    "SELECT `m`.`playlistId`, `i`.`source`, `s`.`id`, `s`.`startedAt` " +
+                    "FROM `playlist_song_map` AS `m` " +
+                    "JOIN `imported_song` AS `i` ON `i`.`songId` = `m`.`songId` " +
+                    "JOIN `playlist` AS `p` ON `p`.`id` = `m`.`playlistId` " +
+                    "JOIN `import_session` AS `s` ON `s`.`source` = `i`.`source` " +
+                    "WHERE `p`.`isEditable` AND (`p`.`thumbnailUrl` IS NULL OR `p`.`thumbnailUrl` LIKE 'http%') " +
+                    "GROUP BY `m`.`playlistId`, `i`.`source` " +
+                    "HAVING COUNT(DISTINCT `m`.`songId`) = " +
+                    "(SELECT COUNT(DISTINCT `songId`) FROM `playlist_song_map` WHERE `playlistId` = `m`.`playlistId`)",
+            )
         }
     }

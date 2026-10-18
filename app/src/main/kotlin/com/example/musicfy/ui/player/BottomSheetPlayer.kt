@@ -257,6 +257,7 @@ fun BottomSheetPlayer(
     }
     var showPlaybackSpeed by remember { mutableStateOf(false) }
     var showDeviceOutput by remember { mutableStateOf(false) }
+    var showLyricsSource by remember { mutableStateOf(false) }
 
     var showExpandMenu by remember { mutableStateOf(false) }
     var seeVideo by remember { mutableStateOf(false) }
@@ -272,10 +273,22 @@ fun BottomSheetPlayer(
     val menuReveal = remember { mutableFloatStateOf(0f) }
 
     var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
-    val (playerStyle, onPlayerStyleChange) = rememberEnumPreference(
+    val (savedPlayerStyle, savePlayerStyle) = rememberEnumPreference(
         com.example.musicfy.constants.PlayerStyleKey,
         com.example.musicfy.constants.PlayerStyle.DEFAULT,
     )
+    // A style picked in the studio shows at once. The saved one only comes back after the
+    // settings file is written, which landed in the middle of the player growing back out of its
+    // card - the old style grew, then the new one was built mid-spring, and the spring stuttered.
+    var pickedPlayerStyle by remember { mutableStateOf<PlayerStyle?>(null) }
+    val playerStyle = pickedPlayerStyle ?: savedPlayerStyle
+    LaunchedEffect(savedPlayerStyle) {
+        if (savedPlayerStyle == pickedPlayerStyle) pickedPlayerStyle = null
+    }
+    val onPlayerStyleChange: (PlayerStyle) -> Unit = { style ->
+        pickedPlayerStyle = style
+        savePlayerStyle(style)
+    }
     // the Turntable is the flagship around a record player, whatever cover the flagship is set to
     val isTurntable = playerStyle == com.example.musicfy.constants.PlayerStyle.TURNTABLE
     val shownCoverStyle = if (isTurntable) PlayerCoverStyle.TURNTABLE else coverStyle
@@ -335,6 +348,8 @@ fun BottomSheetPlayer(
     }
     // the song's whole lyrics, opened over an alternate style from its ••• menu
     var styleLyricsOpen by remember { mutableStateOf(false) }
+    // that page fully up: the style under it stops drawing
+    var styleCovered by remember { mutableStateOf(false) }
     val styleActions = remember(openStudio) {
         com.example.musicfy.ui.player.styles.StyleActions(
             onOtherMenu = {
@@ -759,7 +774,10 @@ fun BottomSheetPlayer(
                         com.example.musicfy.ui.player.styles.AlternatePlayerStyle(
                             style = playerStyle,
                             actions = styleActions,
-                            modifier = Modifier.fillMaxSize(),
+                            // under a lyrics page that fills the screen it needn't be drawn
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = if (styleCovered) 0f else 1f },
                         )
                     }
                 }
@@ -769,6 +787,8 @@ fun BottomSheetPlayer(
                     open = styleLyricsOpen && styleOpen,
                     onClose = { styleLyricsOpen = false },
                     screenHeight = screenHeight,
+                    onCoveredChange = { styleCovered = it },
+                    onSwitchSource = { showLyricsSource = true },
                 )
                 PlayerHandle(
                     state = handleState,
@@ -818,6 +838,7 @@ fun BottomSheetPlayer(
                     isMorphing = lyricsMorphing,
                     enterProgressProvider = { transition.cardMorphProgress(PlayerPage.LYRICS) },
                     morph = morph,
+                    onSwitchSource = { showLyricsSource = true },
                     modifier = Modifier
                         .fillMaxSize()
                         .pageTransitionLayer(PlayerPage.LYRICS, transition, morph) { lyricsPageProgress },
@@ -1234,6 +1255,10 @@ fun BottomSheetPlayer(
         if (showDeviceOutput) {
             com.example.musicfy.ui.player.menu.DeviceOutputSheet(onDismiss = { showDeviceOutput = false })
         }
+        // opened by "Switch" at the end of the lyrics page
+        if (showLyricsSource) {
+            com.example.musicfy.ui.player.menu.LyricsProviderSheet(onDismiss = { showLyricsSource = false })
+        }
 
         // the player studio, over the player: the selector, the editor's header and editors, its sheets
         PlayerSelectorOverlay(
@@ -1241,23 +1266,25 @@ fun BottomSheetPlayer(
             styles = playerStyles,
             onSet = { index ->
                 val style = playerStyles[index]
-                if (style != playerStyle) onPlayerStyleChange(style)
-                studio.livePage = index
-                studio.go(StudioStage.PLAYER)
+                val restyled = style != playerStyle
+                if (restyled) onPlayerStyleChange(style)
+                studio.settleOn(index, restyled)
             },
             onEdit = { focused ->
                 if (playerStyles.getOrNull(focused) == PlayerStyle.POSTER) {
                     // its one edit is its visualizer: back to the player, with the poster's sheet
-                    if (playerStyle != PlayerStyle.POSTER) onPlayerStyleChange(PlayerStyle.POSTER)
-                    studio.livePage = focused
-                    studio.go(StudioStage.PLAYER)
-                    studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.POSTER)
+                    val restyled = playerStyle != PlayerStyle.POSTER
+                    if (restyled) onPlayerStyleChange(PlayerStyle.POSTER)
+                    studio.settleOn(focused, restyled) {
+                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.POSTER)
+                    }
                 } else if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
                     // its one edit is the disc label: back to the player, with the label's sheet
-                    if (playerStyle != PlayerStyle.TURNTABLE) onPlayerStyleChange(PlayerStyle.TURNTABLE)
-                    studio.livePage = focused
-                    studio.go(StudioStage.PLAYER)
-                    studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                    val restyled = playerStyle != PlayerStyle.TURNTABLE
+                    if (restyled) onPlayerStyleChange(PlayerStyle.TURNTABLE)
+                    studio.settleOn(focused, restyled) {
+                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                    }
                 } else {
                     val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
                     if (playerStyle != PlayerStyle.DEFAULT) onPlayerStyleChange(PlayerStyle.DEFAULT)

@@ -139,12 +139,16 @@ internal fun SheetSearchField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     SheetTextField(
         value = value,
         onValueChange = onValueChange,
         placeholder = placeholder,
         modifier = modifier,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
         leading = {
             Box(
                 contentAlignment = Alignment.Center,

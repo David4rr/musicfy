@@ -27,7 +27,7 @@ extensions.configure<ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = 71
-        versionName = "8.0.0 build#1154"
+        versionName = "8.0.0 build#1157"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -382,6 +382,7 @@ dependencies {
     implementation(project(":providers:artistvideo"))
     implementation(project(":providers:applecanvas"))
     implementation(project(":providers:paxsenixlyrics"))
+    implementation(project(":providers:directlyrics"))
     implementation(project(":modules:api"))
     implementation(project(":modules:applemusic"))
     implementation(project(":modules:monochrome"))

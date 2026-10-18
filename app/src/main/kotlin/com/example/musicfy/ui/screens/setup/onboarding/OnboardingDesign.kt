@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -41,14 +43,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.ui.component.AppSwitch
+import com.example.musicfy.ui.theme.InterFontFamily
 
 internal object Onb {
     val Page = Color(0xFF1C1C1C)
@@ -93,6 +99,8 @@ internal fun OnboardingPage(
     subtitle: String? = null,
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
+    /** Space above the badge. A popup sheet already has its own handle row, so it needs less. */
+    contentTop: Dp = Onb.TopClearance + 18.dp,
     footer: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -110,7 +118,7 @@ internal fun OnboardingPage(
                     .fillMaxWidth()
                     .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                     .padding(horizontal = side)
-                    .padding(top = Onb.TopClearance + 18.dp, bottom = 16.dp),
+                    .padding(top = contentTop, bottom = 16.dp),
             ) {
                 badge()
                 Spacer(Modifier.height(22.dp))
@@ -201,6 +209,37 @@ internal fun OnbButton(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** The round single-line field the profile pages type the username into. */
+@Composable
+internal fun OnbTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = TextStyle(color = Color.White, fontFamily = InterFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.03).em),
+        cursorBrush = SolidColor(Color.White),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        modifier = modifier,
+        decorationBox = { inner ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CircleShape)
+                    .background(Onb.Field)
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ) {
+                if (value.isEmpty()) Text(placeholder, color = Onb.Faint, fontSize = 16.sp)
+                inner()
+            }
+        },
+    )
 }
 
 /** A tappable card that dims a touch while pressed. */

@@ -902,25 +902,7 @@ class MainActivity : ComponentActivity() {
                                 markOnboardedOnThisInstall(context)
                                 onboardedHere = true
                                 coroutineScope.launch(Dispatchers.IO) {
-
-                                    var savedUriStr = ""
-                                    if (uri != null) {
-                                        try {
-                                            val file = java.io.File(context.filesDir, "profile_pic_${System.currentTimeMillis()}.jpg")
-                                            if (uri.scheme == "file") {
-                                                java.io.File(uri.path!!).copyTo(file, overwrite = true)
-                                            } else {
-                                                val inputStream = context.contentResolver.openInputStream(uri)
-                                                val outputStream = java.io.FileOutputStream(file)
-                                                inputStream?.copyTo(outputStream)
-                                                inputStream?.close()
-                                                outputStream.close()
-                                            }
-                                            savedUriStr = file.absolutePath
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
+                                    val savedUriStr = uri?.let { com.example.musicfy.ui.screens.profile.ProfileStore.copyPhoto(context, it) }.orEmpty()
 
                                     dataStore.updateData { prefs ->
                                         prefs.toMutablePreferences().apply {
@@ -1325,7 +1307,7 @@ class MainActivity : ComponentActivity() {
             var done = 0
             for (uri in uris) {
                 try {
-                    com.example.musicfy.ui.screens.library.importSharedAudio(applicationContext, database, uri)
+                    com.example.musicfy.importer.importSharedAudio(applicationContext, database, uri)
                     done++
                 } catch (e: Exception) {
                     reportException(e)

@@ -82,6 +82,18 @@ internal fun ImportSource.service(): AccountService? = when (this) {
     ImportSource.DEEZER, ImportSource.OTHER -> null
 }
 
+/** The services the Imported tab always lists, in the mock's order, even before anything came from them. */
+internal val ImportedTabServices = listOf(
+    ImportSource.SPOTIFY,
+    ImportSource.YOUTUBE_MUSIC,
+    ImportSource.APPLE_MUSIC,
+    ImportSource.TIDAL,
+)
+
+/** A service's name on a half-width card, where "YouTube Music" next to its icon would be cut off. */
+internal val ImportSource.cardLabel: String
+    get() = if (this == ImportSource.YOUTUBE_MUSIC) "YouTube" else label
+
 /** A source's app icon, or - for one with no icon of ours - a neutral squircle with a note in it. */
 @Composable
 internal fun ImportSourceIcon(source: ImportSource, size: Dp, modifier: Modifier = Modifier) {
@@ -107,9 +119,9 @@ internal fun ImportSourceIcon(source: ImportSource, size: Dp, modifier: Modifier
 }
 
 /**
- * The banner right under the search bar. Idle, it invites an import - the services' icons flowing
- * past, "Sync and add your music from your favourite music provider" - and opens the import sheet.
- * While an import runs it is replaced by its progress.
+ * The banner at the top of the All and Imported tabs. Idle, it invites an import - the services'
+ * icons flowing past, "Import your music here!" - and opens the import sheet. While an import runs
+ * it is replaced by its progress.
  */
 @Composable
 fun LibraryImportBanner(
@@ -146,7 +158,7 @@ private fun ImportPromoBanner(onClick: () -> Unit) {
         ProviderMarquee()
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "Sync and add your music from your favourite music provider",
+            text = "Import your music here!",
             color = SearchColors.Primary,
             fontSize = 21.sp,
             lineHeight = 25.sp,

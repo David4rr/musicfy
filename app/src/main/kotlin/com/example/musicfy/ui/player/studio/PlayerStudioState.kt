@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -34,6 +35,11 @@ enum class StudioStage { PLAYER, SELECTOR, EDIT, COVER, MIDDLE, MENU }
 
 /** the sheets the editor opens over itself */
 enum class StudioSheet { CONTROLS, SEEKBAR, END_TIME, MENU_SLOT, COVER_OPTIONS, DISC_LABEL, POSTER }
+
+/** frames the selector's cards get to be built before the player shrinks into them */
+private const val PrepareFrames = 2
+/** frames a newly picked style gets to be built (and drawn once) behind its card before it grows */
+private const val HandoffFrames = 3
 
 /** one smooth, slightly unhurried spring for every move in the studio, so it all flows as one */
 internal val StudioSpring: AnimationSpec<Float> = spring(dampingRatio = 0.88f, stiffness = 210f)
@@ -152,6 +158,11 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
 
     /** the selector's position, in cards */
     val page = Motion(scope)
+    /**
+     * 1 while a newly picked style's card still covers the live player, which is building that
+     * style behind it; it fades to 0 as the player grows back out of the card
+     */
+    val handoff = Motion(scope)
     /** the card that is the live player (the style it's showing) */
     var livePage by mutableIntStateOf(0)
 
@@ -189,7 +200,41 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
         if (stage != StudioStage.PLAYER) return
         this.livePage = livePage
         page.value = livePage.toFloat()
-        go(StudioStage.SELECTOR)
+        handoff.value = 0f
+        stage = StudioStage.SELECTOR
+        sheet = null
+        // prepare, then animate: the cards are built before the player starts shrinking into its
+        // own, so their first frames aren't the spring's
+        scope.launch {
+            repeat(PrepareFrames) { withFrameNanos { } }
+            if (stage == StudioStage.SELECTOR) go(StudioStage.SELECTOR)
+        }
+    }
+
+    /**
+     * Back to the player on card [index] - a tap on a card, Set, or a swipe down. When it's another
+     * style ([restyled]: the player has just been switched to it) the live player moves under that
+     * card, which keeps covering it while the style is built behind it; only then does the player
+     * grow back out, the card fading into it. Nothing heavy happens while anything moves.
+     */
+    fun settleOn(index: Int, restyled: Boolean, after: () -> Unit = {}) {
+        livePage = index
+        if (!restyled) {
+            go(StudioStage.PLAYER)
+            after()
+            return
+        }
+        handoff.value = 1f
+        stage = StudioStage.PLAYER
+        sheet = null
+        // a tapped card at the side glides to the middle meanwhile
+        page.animateTo(index.toFloat())
+        scope.launch {
+            repeat(HandoffFrames) { withFrameNanos { } }
+            if (stage != StudioStage.PLAYER) return@launch
+            go(StudioStage.PLAYER)
+            after()
+        }
     }
 
     fun go(target: StudioStage) {
@@ -197,11 +242,13 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
         sheet = null
         when (target) {
             StudioStage.PLAYER -> {
+                if (handoff.value > 0f) handoff.animateTo(0f, spec = androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
                 selector.animateTo(0f); edit.animateTo(0f); cover.animateTo(0f)
                 backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f)
                 page.animateTo(livePage.toFloat())
             }
             StudioStage.SELECTOR -> {
+                handoff.value = 0f
                 selector.animateTo(1f); edit.animateTo(0f); cover.animateTo(0f)
                 backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f)
             }
@@ -237,7 +284,7 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
     fun reset() {
         stage = StudioStage.PLAYER
         sheet = null
-        listOf(selector, edit, cover, backdrop, middle, menu).forEach { it.value = 0f }
+        listOf(selector, edit, cover, backdrop, middle, menu, handoff).forEach { it.value = 0f }
         page.value = livePage.toFloat()
         coverPage.value = coverCommitted.toFloat()
         backdropPage.value = backdropCommitted.toFloat()

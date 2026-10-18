@@ -285,11 +285,7 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
-    // Local: downloads and imported files, and the same pages again counting only those
-    coverSourceComposable("library/local") {
-        com.example.musicfy.ui.screens.library.LibraryLocalScreen(navController = navController)
-    }
-
+    // The Library's Local tab opens these: the same pages again, counting only downloads and files
     coverSourceComposable("library/local/added") {
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, localOnly = true)
     }
@@ -318,6 +314,21 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("source") { type = NavType.StringType }),
     ) {
         com.example.musicfy.ui.screens.library.LibraryImportedScreen(navController = navController)
+    }
+
+    // The Imported tab's Playlists cards: the playlists one service brought in.
+    composable(
+        route = "library/imported/{source}/playlists",
+        arguments = listOf(navArgument("source") { type = NavType.StringType }),
+        exitTransition = { libraryExitTo(targetState.destination.route) },
+        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+    ) { entry ->
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(
+                navController = navController,
+                source = com.example.musicfy.importer.ImportSource.fromKey(entry.arguments?.getString("source")),
+            )
+        }
     }
 
     composable(Screens.Settings.route) {

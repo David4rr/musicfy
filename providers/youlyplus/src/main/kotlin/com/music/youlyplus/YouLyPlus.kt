@@ -21,13 +21,11 @@ import java.util.concurrent.atomic.AtomicReference
 
 object YouLyPlus {
 
+    // The workers.dev, atomix and both Vercel mirrors were dead as of October 2026 (Cloudflare
+    // error 1042, no DNS, deployments disabled). Racing them only wasted four requests per song.
     private val BASE_SERVERS = listOf(
         "https://lyricsplus.prjktla.my.id",
-        "https://lyricsplus.atomix.one",
         "https://lyricsplus.binimum.org",
-        "https://lyricsplus.prjktla.workers.dev",
-        "https://lyricsplus-seven.vercel.app",
-        "https://lyrics-plus-backend.vercel.app",
     )
 
     private val lastWorkingServer = AtomicReference<String?>(null)

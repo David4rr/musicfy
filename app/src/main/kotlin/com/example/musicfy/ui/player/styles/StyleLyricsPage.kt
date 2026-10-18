@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -24,8 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -45,9 +44,11 @@ import com.example.musicfy.ui.player.LyricsScreen
 import com.example.musicfy.ui.theme.InterFontFamily
 
 /**
- * The song's whole lyrics over a style, from its ••• menu: the flagship's own lyrics page, rising
- * over a dark veil with the cover and title where the flagship's header sits. Tapping the cover,
- * the back gesture or the menu's item again closes it.
+ * The song's whole lyrics over a style, from its menu: the flagship's own lyrics page on the
+ * player's own background (the one the flagship's lyrics sit on, not the style seen through a
+ * veil), with the cover and title where the flagship's header sits. Tapping the cover or the back
+ * gesture closes it. [onCoveredChange] says when it fills the screen, so the style under it can
+ * stop drawing.
  */
 @Composable
 fun StyleLyricsPage(
@@ -55,33 +56,48 @@ fun StyleLyricsPage(
     onClose: () -> Unit,
     screenHeight: Dp,
     modifier: Modifier = Modifier,
+    onCoveredChange: (Boolean) -> Unit = {},
+    onSwitchSource: (() -> Unit)? = null,
 ) {
     val shown = remember { Animatable(0f) }
     LaunchedEffect(open) {
         shown.animateTo(if (open) 1f else 0f, spring(dampingRatio = 0.86f, stiffness = if (open) 260f else 420f))
     }
     BackHandler(enabled = open, onBack = onClose)
+    val currentOnCovered by androidx.compose.runtime.rememberUpdatedState(onCoveredChange)
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { shown.value >= 0.999f }
+            .collect { currentOnCovered(it) }
+    }
     if (!open && shown.value < 0.001f) return
 
     val connection = LocalPlayerConnection.current ?: return
     val track by connection.uiState.trackInfo.collectAsState()
     val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // the veil: dark enough for white words over any style
+    val backgroundStyle by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.PlayerBackgroundStyleKey,
+        com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT,
+    )
+
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val pageWidth = maxWidth
+        val pageHeight = maxHeight
+        // the player's own background, as under the flagship's lyrics: nothing of the style shows through
         Box(
             Modifier
                 .fillMaxSize()
-                .drawBehind {
-                    val p = shown.value.coerceIn(0f, 1f)
-                    drawRect(
-                        Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.78f * p),
-                            1f to Color.Black.copy(alpha = 0.88f * p),
-                        )
-                    )
-                },
-        )
+                .graphicsLayer { alpha = shown.value.coerceIn(0f, 1f) },
+        ) {
+            com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+                style = backgroundStyle,
+                thumbnailUrl = track.thumbnailUrl,
+                width = pageWidth,
+                height = pageHeight,
+                animate = true,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -131,6 +147,7 @@ fun StyleLyricsPage(
                 onClose = onClose,
                 screenHeight = screenHeight,
                 contentBottomInset = nav + 28.dp,
+                onSwitchSource = onSwitchSource,
                 modifier = Modifier.fillMaxSize(),
             )
         }

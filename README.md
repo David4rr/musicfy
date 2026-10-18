@@ -109,9 +109,21 @@ Musicfy is an independent, unofficial project made for personal and educational 
 - **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- For the lyrics API provider.
 - **Archivetune** by [Rukamori](https://github.com/rukamori) ([Repository](https://github.com/rukamori/ArchiveTune)) -- For design and architectural inspiration.
 - **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
-- **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
-- **Monochrome Music** by [monochrome](https://github.com/monochrome) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
+- **LRCLib** by [tranxuanthang](https://github.com/tranxuanthang) ([Repository](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
+- **Monochrome Music** by [monochrome-music](https://github.com/monochrome-music) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
 - **Auto Eq** ([Web](https://autoeq.app)) -- The equalizer database
+
+---
+
+## Open source APIs musicfy talks to
+
+These are the open source apis and server we get gets its lyrics, streams and data from. They r free for everyone because of these people, so go give them a star!
+
+- **LyricsPlus** by [Ibra Al Tabian](https://github.com/ibratabian17) ([Repository](https://github.com/ibratabian17/LyricsPlus)) -- The YouLyPlus lyrics source: word-synced lyrics with duets and background vocals.
+- **Better Lyrics API** by [Boidushya](https://github.com/boidushya) ([Repository](https://github.com/better-lyrics/api)) -- The "Apple Music" lyrics source, and the animated album covers.
+- **LRCLIB** by [tranxuanthang](https://github.com/tranxuanthang) ([Repository](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) -- A free community database of synced lyrics.
+- **SimpMusic Lyrics** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- Lyrics looked up by YouTube video, part of the SimpMusic project.
+- **AutoEq** by [Jaakko Pasanen](https://github.com/jaakkopasanen) ([Repository](https://github.com/jaakkopasanen/AutoEq) / [Website](https://autoeq.app)) -- The headphone EQ presets in Audio Lab.
 
 ---
 ## Star History

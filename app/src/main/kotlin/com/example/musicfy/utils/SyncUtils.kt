@@ -18,14 +18,18 @@ import com.example.musicfy.constants.LastFullSyncKey
 import com.example.musicfy.constants.SYNC_COOLDOWN
 import com.example.musicfy.constants.SelectedYtmPlaylistsKey
 import com.example.musicfy.constants.YtSyncLikedSongsKey
+import com.example.musicfy.constants.YtSyncSourcesTaggedKey
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.ArtistEntity
+import com.example.musicfy.db.entities.ImportedPlaylist
+import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.extensions.collectLatest
 import com.example.musicfy.extensions.isInternetConnected
 import com.example.musicfy.extensions.isSyncEnabled
+import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.importer.PendingYouTubeLikes
 import com.example.musicfy.models.toMediaMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -380,6 +384,7 @@ class SyncUtils @Inject constructor(
 
             executeSyncAutoSyncPlaylists()
 
+            context.dataStore.edit { it[YtSyncSourcesTaggedKey] = true }
             updateState { copy(overallStatus = SyncStatus.Completed, currentOperation = "") }
             Timber.d("Full sync completed successfully")
         } catch (e: CancellationException) {
@@ -389,6 +394,13 @@ class SyncUtils @Inject constructor(
             updateState { copy(overallStatus = SyncStatus.Error(e.message ?: "Unknown error"), currentOperation = "") }
         }
     }
+
+    /** See [YtSyncSourcesTaggedKey]: until one full sync has run, everything YouTube has is marked. */
+    private fun sourcesTagged(): Boolean = context.dataStore.get(YtSyncSourcesTaggedKey, false)
+
+    /** Marks a song as one YouTube brought in, so the Library lists it under YouTube Music. */
+    private fun MusicDatabase.tagFromYouTube(songId: String, now: LocalDateTime) =
+        insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now))
 
     private suspend fun executeLikeSong(s: SongEntity) = withContext(Dispatchers.IO) {
         if (!isLoggedIn()) {
@@ -458,6 +470,7 @@ class SyncUtils @Inject constructor(
                     }
 
                     val now = LocalDateTime.now()
+                    val tagAll = !sourcesTagged()
                     remoteSongs.forEachIndexed { index, song ->
                         try {
                             val dbSong = database.song(song.id).firstOrNull()
@@ -465,6 +478,9 @@ class SyncUtils @Inject constructor(
                             val isVideoSong = song.isVideoSong
 
                             database.transaction {
+                                // A like YouTube brought in goes under YouTube Music, not under the
+                                // songs liked here. One liked here already was pushed up from here.
+                                if (tagAll || dbSong == null || !dbSong.song.liked) tagFromYouTube(song.id, now)
                                 if (dbSong == null) {
                                     insert(song.toMediaMetadata()) {
                                         it.copy(liked = true, likedDate = timestamp, isVideo = isVideoSong)
@@ -513,9 +529,15 @@ class SyncUtils @Inject constructor(
                     val localSongs = database.songsByNameAsc().first()
                     // Music brought in by an import is in the library on purpose and is not in the
                     // YouTube one: without this the sync would take each of those songs back out.
-                    val importedIds = database.importedSongIds().toSet()
+                    // What sync itself brought in is left out of that, so it can still leave again;
+                    // a YouTube import run through an import session stays protected.
+                    val importedIds = (
+                        database.importedSongIdsExcept(ImportSource.YOUTUBE_MUSIC.key) +
+                            database.importSessionSongIds()
+                        ).toSet()
 
-                    localSongs.filterNot { it.id in remoteIds || it.id in importedIds }.forEach { song ->
+                    // Files imported from the phone are never in the YouTube library either.
+                    localSongs.filterNot { it.song.isLocal || it.id in remoteIds || it.id in importedIds }.forEach { song ->
                         try {
                             database.update(song.song.toggleLibrary())
                             delay(DB_OPERATION_DELAY_MS)
@@ -524,10 +546,13 @@ class SyncUtils @Inject constructor(
                         }
                     }
 
+                    val now = LocalDateTime.now()
+                    val tagAll = !sourcesTagged()
                     remoteSongs.forEach { song ->
                         try {
                             val dbSong = database.song(song.id).firstOrNull()
                             database.transaction {
+                                if (tagAll || dbSong == null || dbSong.song.inLibrary == null) tagFromYouTube(song.id, now)
                                 if (dbSong == null) {
                                     insert(song.toMediaMetadata()) { it.toggleLibrary() }
                                 } else if (dbSong.song.inLibrary == null) {
@@ -883,9 +908,11 @@ class SyncUtils @Inject constructor(
                             }
                         }
 
+                    val tagAll = !sourcesTagged()
                     for (playlist in remotePlaylists) {
                         try {
                             var playlistEntity = localPlaylists.find { it.playlist.browseId == playlist.id }?.playlist
+                            val created = playlistEntity == null
 
                             if (playlistEntity == null) {
                                 playlistEntity = PlaylistEntity(
@@ -906,6 +933,17 @@ class SyncUtils @Inject constructor(
                             } else {
                                 database.update(playlistEntity, playlist)
                                 Timber.d("syncSavedPlaylists: Updated existing playlist ${playlist.title} (${playlist.id})")
+                            }
+
+                            if (created || tagAll) {
+                                database.insert(
+                                    ImportedPlaylist(
+                                        playlistId = playlistEntity.id,
+                                        source = ImportSource.YOUTUBE_MUSIC.key,
+                                        sessionId = null,
+                                        importedAt = LocalDateTime.now(),
+                                    ),
+                                )
                             }
 
                             executeSyncPlaylist(playlist.id, playlistEntity.id)

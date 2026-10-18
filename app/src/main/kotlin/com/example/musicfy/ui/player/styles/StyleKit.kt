@@ -199,6 +199,8 @@ fun StyleCircle(
     modifier: Modifier = Modifier,
     size: Dp = 30.dp,
     enabled: Boolean = true,
+    /** dressed as the Turntable's pills (a faint white fill, a white icon), for a style wearing them */
+    pill: Boolean = false,
 ) {
     val press = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
@@ -212,7 +214,7 @@ fun StyleCircle(
             }
             .size(size)
             .clip(CircleShape)
-            .background(tones.chip)
+            .background(if (pill) PillFill else tones.chip)
             .pointerInput(enabled, interactive) {
                 if (!enabled || !interactive) return@pointerInput
                 detectTapGestures(
@@ -229,11 +231,14 @@ fun StyleCircle(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = tones.ink,
-            modifier = Modifier.size(size * 0.5f),
+            tint = if (pill) Color.White.copy(alpha = 0.9f) else tones.ink,
+            modifier = Modifier.size(if (pill) 20.dp else size * 0.5f),
         )
     }
 }
+
+/** the Turntable's pill fill */
+private val PillFill = Color.White.copy(alpha = 0.08f)
 
 /** previous, play/pause and next as three [StyleCircle]s, laid out by the caller's [Row] or [Column] */
 @Composable
@@ -316,7 +321,7 @@ fun Modifier.styleGestures(enabled: Boolean, onToggle: () -> Unit, onNext: () ->
 private const val SwipeSkipPx = 120f
 
 /**
- * The ••• button and the little menu it opens: lyrics, other menu, rotate and edit player,
+ * The chevron and the little menu it opens: lyrics, other menu, rotate and edit player,
  * rising out of the button the way the flagship's chevron menu does. The button sits [edge] from
  * the top (or the bottom, [atBottom]) and [end] from the right; the menu opens away from that edge.
  * Call it last in the style's Box so the dimmed backdrop and the menu draw over the style.
@@ -334,6 +339,8 @@ fun BoxScope.StyleMenu(
     edge: Dp,
     buttonSize: Dp = 30.dp,
     showButton: Boolean = true,
+    /** the button and the menu's circles dressed as the Turntable's pills */
+    pill: Boolean = false,
 ) {
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(open) {
@@ -382,8 +389,8 @@ fun BoxScope.StyleMenu(
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
                     },
                 ) {
-                    Text(text = label, color = tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
-                    StyleCircle(icon = icon, tones = tones, size = buttonSize + 6.dp, onClick = onClick)
+                    Text(text = label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
+                    StyleCircle(icon = icon, tones = tones, size = buttonSize + 6.dp, onClick = onClick, pill = pill)
                 }
             }
         }
@@ -394,21 +401,27 @@ fun BoxScope.StyleMenu(
                 .align(if (atBottom) Alignment.BottomEnd else Alignment.TopEnd)
                 .padding(end = end, top = if (atBottom) 0.dp else edge, bottom = if (atBottom) edge else 0.dp),
         ) {
-            MoreButton(open, tones, buttonSize, onOpenChange)
+            MenuChevron(open, tones, buttonSize, pill, opensDown = !atBottom, onOpenChange)
         }
     }
 }
 
+/**
+ * The menu's button: a chevron, as on the Turntable, pointing the way the menu opens and flipping
+ * round once it's open.
+ */
 @Composable
-private fun MoreButton(open: Boolean, tones: StyleTones, size: Dp, onOpenChange: (Boolean) -> Unit) {
-    val turn = remember { Animatable(0f) }
-    LaunchedEffect(open) { turn.animateTo(if (open) 1f else 0f, spring(dampingRatio = 0.6f, stiffness = 380f)) }
+private fun MenuChevron(open: Boolean, tones: StyleTones, size: Dp, pill: Boolean, opensDown: Boolean, onOpenChange: (Boolean) -> Unit) {
+    val turn = remember { Animatable(if (open) 1f else 0f) }
+    LaunchedEffect(open) { turn.animateTo(if (open) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = 380f)) }
     StyleCircle(
-        icon = if (open) R.drawable.close else R.drawable.more_horiz,
+        icon = R.drawable.expand_less,
         tones = tones,
         size = size,
+        pill = pill,
         onClick = { onOpenChange(!open) },
-        modifier = Modifier.graphicsLayer { rotationZ = turn.value * 90f },
+        // up-pointing art: turned to point down at rest when the menu drops below it
+        modifier = Modifier.graphicsLayer { rotationZ = (if (opensDown) 180f else 0f) + turn.value * 180f },
     )
 }
 

@@ -234,8 +234,9 @@ constructor(
      * Then, among lyrics in the right language, sync quality (word > line > plain), then duet
      * tags, then provider order.
      *
-     * Not every source gets a say, though: KuGou and YouTube's auto captions only do when the
-     * better sources have nothing - see [eligible]. Null when nothing is left to pick from.
+     * Not every source gets a say, though: the Chinese services and YouTube's auto captions only
+     * do when the better sources have nothing - see [eligible]. Null when nothing is left to pick
+     * from.
      */
     private fun pickBest(
         mediaMetadata: MediaMetadata,
@@ -331,9 +332,10 @@ constructor(
                 else -> 0
             }
 
-            // KuGou is the strongest source for Chinese songs, so for one it wins a tie outright
-            val orderScore = if (chineseSong && c.providerName == KuGouLyricsProvider.name) {
-                providerCount + 1
+            // The Chinese services are the strongest sources for Chinese songs, so for one they win
+            // a tie outright, and among themselves the user's order decides
+            val orderScore = if (chineseSong && c.providerName in ChineseSources) {
+                providerCount * 2 - c.order
             } else {
                 providerCount - c.order
             }
@@ -383,11 +385,12 @@ constructor(
     }
 
     /**
-     * Whether the song is Chinese, which decides how far KuGou is believed. The song's own evidence
-     * decides when there is some ([referenceScript]: its title, artist or album, or YouTube's
-     * lyrics for this video). Without any, the other sources do: when Chinese is what most of the
-     * ones that aren't KuGou came back in - and none in kana, since kana makes kanji Japanese - the
-     * song is Chinese, and KuGou's Chinese is believed along with them.
+     * Whether the song is Chinese, which decides how far the Chinese services are believed. The
+     * song's own evidence decides when there is some ([referenceScript]: its title, artist or
+     * album, or YouTube's lyrics for this video). Without any, the other sources do: when Chinese
+     * is what most of the ones that aren't Chinese services came back in - and none in kana, since
+     * kana makes kanji Japanese - the song is Chinese, and the Chinese services are believed along
+     * with them. They don't vote themselves: they answer in Chinese for songs that aren't.
      */
     private fun isChineseSong(
         referenceScript: LyricsUtils.Script?,
@@ -396,7 +399,7 @@ constructor(
         if (referenceScript != null) {
             referenceScript == LyricsUtils.Script.HAN
         } else {
-            val others = candidates.filter { it.providerName != KuGouLyricsProvider.name }
+            val others = candidates.filter { it.providerName !in ChineseSources }
             candidates.none { it.script == LyricsUtils.Script.KANA } &&
                 majorityLanguage(languageKeys(others), minVotes = 1) == LyricsUtils.Script.HAN.name
         }
@@ -405,22 +408,22 @@ constructor(
      * Which candidates are picked from, in tiers - a tier is only heard when every tier above it
      * came back empty:
      *
-     *  1. Every source but KuGou and YouTube's auto captions; KuGou too for a Chinese song, since
-     *     that is what it is good at.
-     *  2. KuGou for any other song, and then only lyrics of its that aren't Chinese. KuGou answers
-     *     songs in every language with Chinese translations, or a different song with a similar
-     *     name, often enough that Chinese from it is not believed for a song that isn't Chinese.
-     *     The source picker still lists it, for anyone who wants it anyway.
+     *  1. Every source but the Chinese services (KuGou, NetEase, QQ Music) and YouTube's auto
+     *     captions; the Chinese services too for a Chinese song, since that is what they are good at.
+     *  2. The Chinese services for any other song, and then only lyrics of theirs that aren't
+     *     Chinese. They answer songs in every language with Chinese translations, or a different
+     *     song with a similar name, often enough that Chinese from them is not believed for a song
+     *     that isn't Chinese. The source picker still lists them, for anyone who wants them anyway.
      *  3. YouTube's auto captions: speech recognition, so lyrics only when there are no lyrics.
      */
     private fun eligible(
         candidates: List<ProviderCandidate>,
         chineseSong: Boolean,
     ): List<ProviderCandidate> {
-        val (kugou, rest) = candidates.partition { it.providerName == KuGouLyricsProvider.name }
+        val (chinese, rest) = candidates.partition { it.providerName in ChineseSources }
         val (captions, main) = rest.partition { it.providerName == YouTubeCaptionsLyricsProvider.name }
-        return (if (chineseSong) main + kugou else main)
-            .ifEmpty { kugou.filter { it.script != LyricsUtils.Script.HAN } }
+        return (if (chineseSong) main + chinese else main)
+            .ifEmpty { chinese.filter { it.script != LyricsUtils.Script.HAN } }
             .ifEmpty { captions }
     }
 
@@ -515,6 +518,13 @@ constructor(
          * language is the song's language.
          */
         private val LanguageReferenceProviders = setOf("YouTubeMusic", "YouTubeSubtitle")
+
+        /** Chinese services: trusted first-hand only for Chinese songs; see [eligible]. */
+        private val ChineseSources = setOf(
+            KuGouLyricsProvider.name,
+            NetEaseLyricsProvider.name,
+            QQMusicLyricsProvider.name,
+        )
 
         /** Marks a language key as a Latin-script language: "latin:en", "latin:id". */
         private const val LatinPrefix = "latin:"

@@ -62,6 +62,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -92,6 +93,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -112,6 +114,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.musicfy.BuildConfig
 import com.example.musicfy.LocalAppContentObscured
@@ -129,6 +132,9 @@ import com.example.musicfy.ui.component.LocalZoomOutOverlayState
 import com.example.musicfy.ui.component.OdometerNumber
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.screens.profile.ProfileMorphHost
+import com.example.musicfy.ui.screens.profile.rememberProfileMorphState
+import com.example.musicfy.ui.screens.profile.zoomsAwayFor
 import com.example.musicfy.ui.screens.recap.DateLong
 import com.example.musicfy.ui.screens.recap.Emphasized
 import com.example.musicfy.ui.screens.recap.GiantTextState
@@ -165,6 +171,7 @@ import com.example.musicfy.ui.screens.update.showUpdateSheet
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.ui.utils.stableSystemBars
 import com.example.musicfy.utils.rememberPreference
+import com.example.musicfy.viewmodels.UserProfileViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -226,6 +233,10 @@ fun ProfileScreen(navController: NavController) {
     val (joinedEpochDay, setJoinedEpochDay) = rememberPreference(ProfileJoinedEpochDayKey, -1L)
     val (forceRecap) = rememberPreference(com.example.musicfy.constants.ForceMonthlyRecapKey, false)
 
+    // the profile page that opens out of the card (ui/screens/profile)
+    val profile = rememberProfileMorphState()
+    val profileViewModel: UserProfileViewModel = hiltViewModel()
+
     var liveAccountName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(innerTubeCookie) {
         if (innerTubeCookie.isBlank()) {
@@ -272,7 +283,7 @@ fun ProfileScreen(navController: NavController) {
     var rootOnScreen by remember { mutableStateOf(Offset.Zero) }
     var cardOnScreen by remember { mutableStateOf(Rect.Zero) }
 
-    val time = rememberRecapTime(running = !storyCovering && !obscured.value)
+    val time = rememberRecapTime(running = !storyCovering && !obscured.value, held = { profile.holdsPage })
     val measurer = rememberTextMeasurer()
     val giant = remember {
         GiantTextState("MUSICFY", filledRows = 0..0).apply { color = { lerp(HeaderText, StoryTextDark, expand) } }
@@ -294,6 +305,8 @@ fun ProfileScreen(navController: NavController) {
         }
         while (true) {
             delay(3600)
+            // nobody sees it under the profile page
+            snapshotFlow { profile.isActive }.first { !it }
             hintWords.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
             delay(2400)
             hintWords.animateTo(0f, tween(520, easing = FastOutSlowInEasing))
@@ -394,345 +407,383 @@ fun ProfileScreen(navController: NavController) {
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .onGloballyPositioned { rootOnScreen = it.positionOnScreen() }
-            .pointerInput(Unit) {
-                // a new touch is "in the header" only if the header itself says so (it sees it next)
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    downInHeader = false
-                }
-            },
-    ) {
-        val viewportH = constraints.maxHeight.toFloat()
-        val inset = with(density) { HomeContentInset.toPx() }
-        val cardW = constraints.maxWidth - 2 * inset
-        val cardH = cardW / IdCardAspect
-        val collapsedH = collapsedHeaderPx(topPx, cardH, density.density)
-        val cardTopCollapsed = topPx + with(density) { CardTopDp.dp.toPx() }
-        val cardTopExpanded = viewportH * 0.49f - cardH / 2f
-        val pullRange = (viewportH - collapsedH).coerceAtLeast(1f)
-        val collapseProgress by remember { derivedStateOf { (scrollState.value / with(density) { 120.dp.toPx() }).coerceIn(0f, 1f) } }
-
-        val pullConnection = remember(pullRange) {
-            object : NestedScrollConnection {
-                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    if (stage != HeaderStage.Pulling || available.y >= 0f) return Offset.Zero
-                    val before = pullPx
-                    pullPx = (pullPx + available.y).coerceAtLeast(0f)
-                    expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
-                    if (pullPx == 0f) stage = HeaderStage.Collapsed
-                    return Offset(0f, pullPx - before)
-                }
-
-                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                    val canPull = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
-                    if (!canPull || !downInHeader || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
-                    stage = HeaderStage.Pulling
-                    pullPx += available.y
-                    expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
-                    return Offset(0f, available.y)
-                }
-
-                override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (stage != HeaderStage.Pulling) return Velocity.Zero
-                    if (expand > 0.16f || available.y > 1600f) expandFully() else collapse()
-                    return available
-                }
-            }
-        }
-
-        // ---- the scrolling page ---------------------------------------------------------------
-        Box(
+    // the Musicfy page, and over it the profile page when the card has been tapped
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { collapseProgress > 0f && stage == HeaderStage.Collapsed }),
+                .background(Color.Black)
+                .onGloballyPositioned { rootOnScreen = it.positionOnScreen() }
+                .pointerInput(Unit) {
+                    // a new touch is "in the header" only if the header itself says so (it sees it next)
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        downInHeader = false
+                    }
+                }
+                // zooms towards you and fades as the profile page opens out of the card
+                .zoomsAwayFor(profile),
         ) {
-            Column(
+            val viewportH = constraints.maxHeight.toFloat()
+            val inset = with(density) { HomeContentInset.toPx() }
+            val cardW = constraints.maxWidth - 2 * inset
+            val cardH = cardW / IdCardAspect
+            val collapsedH = collapsedHeaderPx(topPx, cardH, density.density)
+            val cardTopCollapsed = topPx + with(density) { CardTopDp.dp.toPx() }
+            val cardTopExpanded = viewportH * 0.49f - cardH / 2f
+            val pullRange = (viewportH - collapsedH).coerceAtLeast(1f)
+            val collapseProgress by remember { derivedStateOf { (scrollState.value / with(density) { 120.dp.toPx() }).coerceIn(0f, 1f) } }
+
+            val pullConnection = remember(pullRange) {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        if (stage != HeaderStage.Pulling || available.y >= 0f) return Offset.Zero
+                        val before = pullPx
+                        pullPx = (pullPx + available.y).coerceAtLeast(0f)
+                        expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
+                        if (pullPx == 0f) stage = HeaderStage.Collapsed
+                        return Offset(0f, pullPx - before)
+                    }
+
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                        val canPull = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
+                        if (!canPull || !downInHeader || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                        stage = HeaderStage.Pulling
+                        pullPx += available.y
+                        expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
+                        return Offset(0f, available.y)
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        if (stage != HeaderStage.Pulling) return Velocity.Zero
+                        if (expand > 0.16f || available.y > 1600f) expandFully() else collapse()
+                        return available
+                    }
+                }
+            }
+
+            // ---- the scrolling page ---------------------------------------------------------------
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(pullConnection)
-                    .verticalScroll(scrollState, enabled = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling),
+                    .glassRoot(glassState, isActive = { collapseProgress > 0f && stage == HeaderStage.Collapsed }),
             ) {
-                // header: grows to the viewport as it's pulled
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(pullConnection)
+                        .verticalScroll(scrollState, enabled = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling),
+                ) {
+                    // header: grows to the viewport as it's pulled
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .layout { measurable, constraints ->
+                                val h = lerpF(collapsedH, viewportH, expand).roundToInt()
+                                val p = measurable.measure(Constraints.fixed(constraints.maxWidth, h))
+                                layout(constraints.maxWidth, h) { p.place(0, 0) }
+                            }
+                            .pointerInput(Unit) {
+                                // tilt follows the finger; nothing is consumed, so scrolling still works
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    downInHeader = true
+                                    var acc = Offset.Zero
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!change.pressed) break
+                                        if (stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling) {
+                                            acc += change.positionChange()
+                                            tiltTarget = Offset(
+                                                (acc.x * 0.09f).coerceIn(-26f, 26f),
+                                                (-acc.y * 0.07f).coerceIn(-18f, 18f),
+                                            )
+                                        }
+                                    }
+                                    tiltTarget = Offset.Zero
+                                }
+                            }
+                            .pointerInput(stage) {
+                                if (stage != HeaderStage.Expanded && stage != HeaderStage.Invalid) return@pointerInput
+                                // expanded: a swipe up folds it away again
+                                var dy = 0f
+                                detectVerticalDragGestures(
+                                    onDragEnd = {
+                                        if (dy < -with(density) { 64.dp.toPx() }) collapse() else animateExpand(1f, 300)
+                                        dy = 0f
+                                    },
+                                    onDragCancel = { animateExpand(1f, 300) },
+                                ) { change, amount ->
+                                    change.consume()
+                                    dy += amount
+                                    expand = (1f + dy.coerceAtMost(0f) / pullRange * 0.8f).coerceIn(0.4f, 1f)
+                                }
+                            }
+                            .clipBottomRounded { cornerPx * (1f - expand) }
+                            .drawBehind { drawRect(lerp(HeaderGrey, StoryDark, expand)) }
+                            .giantText(giant, time, measurer, centerY = { windowHeight / 2f - rootOnScreen.y })
+                            .recapDots(color = { lerp(HeaderDots, StoryDots, expand) }),
+                    ) {
+                        // greeting (in the header; its scrolled-away twin lives in the top bar)
+                        Text(
+                            text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                            style = PageTitle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .padding(start = HomeContentInset, end = HomeContentInset, top = statusBarTop + 80.dp)
+                                .graphicsLayer {
+                                    alpha = ((1f - expand * 3f) * (1f - collapseProgress * 1.6f)).coerceIn(0f, 1f) * contentIn.value
+                                    translationY = (1f - contentIn.value) * 24.dp.toPx()
+                                },
+                        )
+
+                        // the card: tilts with the finger, drifts a little on its own, flips to the barcode
+                        val showBack by remember { derivedStateOf { flip.value >= 0.5f } }
+                        val coatingGone by remember(scratch) { derivedStateOf { scratch.dissolve.value >= 1f } }
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = HomeContentInset)
+                                .fillMaxWidth()
+                                .aspectRatio(IdCardAspect)
+                                .offset { androidx.compose.ui.unit.IntOffset(0, lerpF(cardTopCollapsed, cardTopExpanded, expand).roundToInt()) }
+                                .onPlaced { profile.cardSlot = it }
+                                .onGloballyPositioned { coords ->
+                                    val p = coords.positionOnScreen()
+                                    cardOnScreen = Rect(p, Size(coords.size.width.toFloat(), coords.size.height.toFloat()))
+                                }
+                                .graphicsLayer {
+                                    // under the profile page the card holds still (no frames for nobody),
+                                    // and it eases back into leaning as the page closes over it again
+                                    val follow = profile.cardFollow.value
+                                    var leanX = profile.heldTiltX
+                                    var leanY = profile.heldTiltY
+                                    if (follow > 0f) {
+                                        val live = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
+                                        val sway = if (live) 1f else 0f
+                                        val t = time.sway
+                                        // the phone's lean too; half as much on the back, so scratching stays steady
+                                        val lean = if (flip.value >= 0.5f) 0.5f else 1f
+                                        val liveY = flip.value * 180f + tiltY.value + deviceTilt.rotationY * lean + sway * sin(t * 0.9f) * 3f
+                                        val liveX = tiltX.value + deviceTilt.rotationX * lean + sway * cos(t * 0.7f) * 2f - (if (stage == HeaderStage.Pulling) expand * 14f else 0f)
+                                        leanX = lerpF(leanX, liveX, follow)
+                                        leanY = lerpF(leanY, liveY, follow)
+                                    }
+                                    rotationX = leanX
+                                    rotationY = leanY
+                                    // the profile page's flying copies lean the same way when they take off or land
+                                    profile.cardTiltX = leanX
+                                    profile.cardTiltY = leanY
+                                    cameraDistance = 14f * this.density
+                                    alpha = if (cardHidden) 0f else 1f
+                                }
+                                .clickable(enabled = stage == HeaderStage.Collapsed, interactionSource = null, indication = null) {
+                                    if (expand > 0f) return@clickable
+                                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                    profile.open()
+                                },
+                        ) {
+                            if (!showBack) {
+                                ProfileIdCard(
+                                    username = accountName,
+                                    photo = photo,
+                                    cardNumber = cardNumber,
+                                    joinedText = joinedText,
+                                    showIdCardOf = true,
+                                    anchors = profile.card,
+                                    partsAlpha = { if (profile.coversCard) 0f else 1f },
+                                    marqueeRunning = { !profile.holdsPage },
+                                )
+                            } else {
+                                val range = (recap as? RecapAvailability.Ready)?.stats?.range
+                                val payload = recapBarcodePayload(range)
+                                IdCardBack(
+                                    username = accountName,
+                                    payload = payload,
+                                    caption = recapBarcodeCaption(payload, cardNumber),
+                                    scratch = scratch.takeIf { !coatingGone && (stage == HeaderStage.Expanding || stage == HeaderStage.Expanded || stage == HeaderStage.Scanning) },
+                                    time = time,
+                                    scan = { scan.value },
+                                    verdict = { verdict },
+                                    onScratchProgress = { if (it >= 0.55f) onScratched() },
+                                    modifier = Modifier.graphicsLayer { rotationY = 180f },
+                                )
+                            }
+                        }
+
+                        // pull hint: a chevron that, with a recap waiting, turns into words now and then
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopCollapsed + cardH + 14.dp.toPx()).roundToInt()) }
+                                .height(30.dp)
+                                .graphicsLayer {
+                                    alpha = (1f - expand * 4f).coerceIn(0f, 1f) * contentIn.value
+                                    translationY = ((sin(time.sway * 2.4f) + 1f) / 2f) * 4.dp.toPx()
+                                },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.expand_more),
+                                contentDescription = "Pull down",
+                                tint = Color.White.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .graphicsLayer {
+                                        val w = hintWords.value
+                                        alpha = 1f - w
+                                        scaleX = 1f - 0.3f * w
+                                        scaleY = 1f - 0.3f * w
+                                        renderEffect = BlurEffectCache.get(w * 14f)
+                                    },
+                            )
+                            if (recapWaiting) {
+                                Text(
+                                    text = "swipe down here!!",
+                                    style = MonoSmall.copy(color = Color.White.copy(alpha = 0.6f)),
+                                    maxLines = 1,
+                                    modifier = Modifier.graphicsLayer {
+                                        val w = hintWords.value
+                                        alpha = w
+                                        scaleX = 0.85f + 0.15f * w
+                                        scaleY = 0.85f + 0.15f * w
+                                        renderEffect = BlurEffectCache.get((1f - w) * 14f)
+                                    },
+                                )
+                            }
+                        }
+
+                        // under the expanded card: "scratch!", or why the code didn't scan
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopExpanded + cardH + 34.dp.toPx()).roundToInt()) }
+                                .padding(horizontal = 40.dp)
+                                .graphicsLayer {
+                                    alpha = ((expand - 0.75f) / 0.25f).coerceIn(0f, 1f)
+                                    translationY = (1f - expand) * 40.dp.toPx()
+                                },
+                        ) {
+                            val invalid = stage == HeaderStage.Invalid
+                            Text(
+                                text = if (invalid) "come back later" else "scratch!",
+                                style = PageTitle.copy(fontSize = 20.sp, textAlign = TextAlign.Center),
+                                modifier = Modifier.graphicsLayer { alpha = if (invalid) 1f else 1f - scratch.dissolve.value },
+                            )
+                            if (invalid) {
+                                Text(
+                                    text = (recap as? RecapAvailability.NotYet)?.comeBack.orEmpty(),
+                                    style = PageTitle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.6f)),
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
+                                Text(
+                                    text = "swipe up to close",
+                                    style = MonoSmall.copy(color = Color.White.copy(alpha = 0.35f)),
+                                    modifier = Modifier.padding(top = 26.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    // ---- everything under the header ----
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .graphicsLayer {
+                                alpha = contentIn.value * (1f - expand * 2f).coerceIn(0f, 1f)
+                                translationY = (1f - contentIn.value) * 60.dp.toPx()
+                            },
+                    ) {
+                        Spacer(Modifier.height(24.dp))
+                        ListeningTimeCard(totalListeningMs, onViewStats = { navController.navigate("stats") })
+                        Spacer(Modifier.height(16.dp))
+                        VersionCard(
+                            updateHeadline = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) UpdateHeadline else null,
+                            onAbout = { zoomOutState.showUpdateSheet(updateState) },
+                            covered = { profile.isActive },
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        DeveloperCard(onClick = { navController.navigate("developer_space") })
+                        Spacer(Modifier.height(28.dp))
+                        Text("Settings", style = PageTitle.copy(fontSize = 15.sp), modifier = Modifier.padding(start = 2.dp, bottom = 10.dp))
+                        OpenSettingsRow(onClick = { navController.navigate("musicfy_settings") })
+                        Spacer(Modifier.height(180.dp))
+                    }
+                }
+            }
+
+            // ---- the glass top bar, a sibling of the glassRoot box (never inside it) ------------------
+            if (collapseProgress > 0.005f && stage == HeaderStage.Collapsed) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .layout { measurable, constraints ->
-                            val h = lerpF(collapsedH, viewportH, expand).roundToInt()
-                            val p = measurable.measure(Constraints.fixed(constraints.maxWidth, h))
-                            layout(constraints.maxWidth, h) { p.place(0, 0) }
-                        }
-                        .pointerInput(Unit) {
-                            // tilt follows the finger; nothing is consumed, so scrolling still works
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                downInHeader = true
-                                var acc = Offset.Zero
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                    if (!change.pressed) break
-                                    if (stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling) {
-                                        acc += change.positionChange()
-                                        tiltTarget = Offset(
-                                            (acc.x * 0.09f).coerceIn(-26f, 26f),
-                                            (-acc.y * 0.07f).coerceIn(-18f, 18f),
-                                        )
-                                    }
-                                }
-                                tiltTarget = Offset.Zero
-                            }
-                        }
-                        .pointerInput(stage) {
-                            if (stage != HeaderStage.Expanded && stage != HeaderStage.Invalid) return@pointerInput
-                            // expanded: a swipe up folds it away again
-                            var dy = 0f
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    if (dy < -with(density) { 64.dp.toPx() }) collapse() else animateExpand(1f, 300)
-                                    dy = 0f
-                                },
-                                onDragCancel = { animateExpand(1f, 300) },
-                            ) { change, amount ->
-                                change.consume()
-                                dy += amount
-                                expand = (1f + dy.coerceAtMost(0f) / pullRange * 0.8f).coerceIn(0.4f, 1f)
-                            }
-                        }
-                        .clipBottomRounded { cornerPx * (1f - expand) }
-                        .drawBehind { drawRect(lerp(HeaderGrey, StoryDark, expand)) }
-                        .giantText(giant, time, measurer, centerY = { windowHeight / 2f - rootOnScreen.y })
-                        .recapDots(color = { lerp(HeaderDots, StoryDots, expand) }),
+                        .height(statusBarTop + 84.dp)
+                        .align(Alignment.TopCenter),
                 ) {
-                    // greeting (in the header; its scrolled-away twin lives in the top bar)
-                    Text(
-                        text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
-                        style = PageTitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    ProgressiveGlassBackground(
+                        state = glassState,
+                        maxBlurRadius = { 55f * collapseProgress },
+                        foundationColor = Color.Black.copy(alpha = 0.55f * collapseProgress),
+                        direction = BlurDirection.BottomToTop,
+                        steps = 3,
                         modifier = Modifier
-                            .padding(start = HomeContentInset, end = HomeContentInset, top = statusBarTop + 80.dp)
-                            .graphicsLayer {
-                                alpha = ((1f - expand * 3f) * (1f - collapseProgress * 1.6f)).coerceIn(0f, 1f) * contentIn.value
-                                translationY = (1f - contentIn.value) * 24.dp.toPx()
-                            },
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = (collapseProgress * 1.5f).coerceIn(0f, 1f) },
                     )
-
-                    // the card: tilts with the finger, drifts a little on its own, flips to the barcode
-                    val showBack by remember { derivedStateOf { flip.value >= 0.5f } }
-                    val coatingGone by remember(scratch) { derivedStateOf { scratch.dissolve.value >= 1f } }
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = HomeContentInset)
-                            .fillMaxWidth()
-                            .aspectRatio(IdCardAspect)
-                            .offset { androidx.compose.ui.unit.IntOffset(0, lerpF(cardTopCollapsed, cardTopExpanded, expand).roundToInt()) }
-                            .onGloballyPositioned { coords ->
-                                val p = coords.positionOnScreen()
-                                cardOnScreen = Rect(p, Size(coords.size.width.toFloat(), coords.size.height.toFloat()))
-                            }
-                            .graphicsLayer {
-                                val live = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
-                                val sway = if (live) 1f else 0f
-                                val t = time.sway
-                                // the phone's lean too; half as much on the back, so scratching stays steady
-                                val lean = if (flip.value >= 0.5f) 0.5f else 1f
-                                rotationY = flip.value * 180f + tiltY.value + deviceTilt.rotationY * lean + sway * sin(t * 0.9f) * 3f
-                                rotationX = tiltX.value + deviceTilt.rotationX * lean + sway * cos(t * 0.7f) * 2f - (if (stage == HeaderStage.Pulling) expand * 14f else 0f)
-                                cameraDistance = 14f * this.density
-                                alpha = if (cardHidden) 0f else 1f
-                            },
-                    ) {
-                        if (!showBack) {
-                            ProfileIdCard(
-                                username = accountName,
-                                photo = photo,
-                                cardNumber = cardNumber,
-                                joinedText = joinedText,
-                                showIdCardOf = true,
-                            )
-                        } else {
-                            val range = (recap as? RecapAvailability.Ready)?.stats?.range
-                            val payload = recapBarcodePayload(range)
-                            IdCardBack(
-                                username = accountName,
-                                payload = payload,
-                                caption = recapBarcodeCaption(payload, cardNumber),
-                                scratch = scratch.takeIf { !coatingGone && (stage == HeaderStage.Expanding || stage == HeaderStage.Expanded || stage == HeaderStage.Scanning) },
-                                time = time,
-                                scan = { scan.value },
-                                verdict = { verdict },
-                                onScratchProgress = { if (it >= 0.55f) onScratched() },
-                                modifier = Modifier.graphicsLayer { rotationY = 180f },
-                            )
-                        }
-                    }
-
-                    // pull hint: a chevron that, with a recap waiting, turns into words now and then
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopCollapsed + cardH + 14.dp.toPx()).roundToInt()) }
-                            .height(30.dp)
-                            .graphicsLayer {
-                                alpha = (1f - expand * 4f).coerceIn(0f, 1f) * contentIn.value
-                                translationY = ((sin(time.sway * 2.4f) + 1f) / 2f) * 4.dp.toPx()
-                            },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.expand_more),
-                            contentDescription = "Pull down",
-                            tint = Color.White.copy(alpha = 0.35f),
-                            modifier = Modifier
-                                .size(30.dp)
-                                .graphicsLayer {
-                                    val w = hintWords.value
-                                    alpha = 1f - w
-                                    scaleX = 1f - 0.3f * w
-                                    scaleY = 1f - 0.3f * w
-                                    renderEffect = BlurEffectCache.get(w * 14f)
-                                },
-                        )
-                        if (recapWaiting) {
-                            Text(
-                                text = "swipe down here!!",
-                                style = MonoSmall.copy(color = Color.White.copy(alpha = 0.6f)),
-                                maxLines = 1,
-                                modifier = Modifier.graphicsLayer {
-                                    val w = hintWords.value
-                                    alpha = w
-                                    scaleX = 0.85f + 0.15f * w
-                                    scaleY = 0.85f + 0.15f * w
-                                    renderEffect = BlurEffectCache.get((1f - w) * 14f)
-                                },
-                            )
-                        }
-                    }
-
-                    // under the expanded card: "scratch!", or why the code didn't scan
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopExpanded + cardH + 34.dp.toPx()).roundToInt()) }
-                            .padding(horizontal = 40.dp)
-                            .graphicsLayer {
-                                alpha = ((expand - 0.75f) / 0.25f).coerceIn(0f, 1f)
-                                translationY = (1f - expand) * 40.dp.toPx()
-                            },
-                    ) {
-                        val invalid = stage == HeaderStage.Invalid
-                        Text(
-                            text = if (invalid) "come back later" else "scratch!",
-                            style = PageTitle.copy(fontSize = 20.sp, textAlign = TextAlign.Center),
-                            modifier = Modifier.graphicsLayer { alpha = if (invalid) 1f else 1f - scratch.dissolve.value },
-                        )
-                        if (invalid) {
-                            Text(
-                                text = (recap as? RecapAvailability.NotYet)?.comeBack.orEmpty(),
-                                style = PageTitle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.6f)),
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
-                            Text(
-                                text = "swipe up to close",
-                                style = MonoSmall.copy(color = Color.White.copy(alpha = 0.35f)),
-                                modifier = Modifier.padding(top = 26.dp),
-                            )
-                        }
-                    }
-                }
-
-                // ---- everything under the header ----
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 20.dp)
-                        .graphicsLayer {
-                            alpha = contentIn.value * (1f - expand * 2f).coerceIn(0f, 1f)
-                            translationY = (1f - contentIn.value) * 60.dp.toPx()
-                        },
-                ) {
-                    Spacer(Modifier.height(24.dp))
-                    ListeningTimeCard(totalListeningMs, onViewStats = { navController.navigate("stats") })
-                    Spacer(Modifier.height(16.dp))
-                    VersionCard(
-                        updateHeadline = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) UpdateHeadline else null,
-                        onAbout = { zoomOutState.showUpdateSheet(updateState) },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    DeveloperCard(onClick = { navController.navigate("developer_space") })
-                    Spacer(Modifier.height(28.dp))
-                    Text("Settings", style = PageTitle.copy(fontSize = 15.sp), modifier = Modifier.padding(start = 2.dp, bottom = 10.dp))
-                    OpenSettingsRow(onClick = { navController.navigate("musicfy_settings") })
-                    Spacer(Modifier.height(180.dp))
-                }
-            }
-        }
-
-        // ---- the glass top bar, a sibling of the glassRoot box (never inside it) ------------------
-        if (collapseProgress > 0.005f && stage == HeaderStage.Collapsed) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(statusBarTop + 84.dp)
-                    .align(Alignment.TopCenter),
-            ) {
-                ProgressiveGlassBackground(
-                    state = glassState,
-                    maxBlurRadius = { 55f * collapseProgress },
-                    foundationColor = Color.Black.copy(alpha = 0.55f * collapseProgress),
-                    direction = BlurDirection.BottomToTop,
-                    steps = 3,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = (collapseProgress * 1.5f).coerceIn(0f, 1f) },
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Black, Color.Black.copy(alpha = 0.85f * collapseProgress), Color.Transparent),
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Black, Color.Black.copy(alpha = 0.85f * collapseProgress), Color.Transparent),
+                                ),
                             ),
-                        ),
-                )
+                    )
+                }
             }
-        }
 
-        // ---- logo, and the greeting sliding into the bar beside it ----
-        Icon(
-            painter = painterResource(R.drawable.ic_musicfy_mark),
-            contentDescription = "Musicfy",
-            tint = Color.White,
-            modifier = Modifier
-                .padding(start = HomeContentInset, top = statusBarTop + TopBarLogoTop)
-                .size(width = 31.dp, height = 34.dp)
-                .graphicsLayer {
-                    val k = 1f - collapseProgress * 0.18f
-                    scaleX = k
-                    scaleY = k
-                    transformOrigin = TransformOrigin(0f, 0.5f)
-                },
-        )
-        if (collapseProgress > 0.01f) {
-            Text(
-                text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
-                style = PageTitle.copy(fontSize = 18.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            // ---- logo, and the greeting sliding into the bar beside it ----
+            Icon(
+                painter = painterResource(R.drawable.ic_musicfy_mark),
+                contentDescription = "Musicfy",
+                tint = Color.White,
                 modifier = Modifier
-                    .padding(start = HomeContentInset + 40.dp, end = HomeContentInset, top = statusBarTop + 37.dp)
+                    .padding(start = HomeContentInset, top = statusBarTop + TopBarLogoTop)
+                    .size(width = 31.dp, height = 34.dp)
                     .graphicsLayer {
-                        val p = ((collapseProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
-                        alpha = easeOutCubic(p)
-                        translationY = (1f - easeOutCubic(p)) * 12.dp.toPx()
+                        val k = 1f - collapseProgress * 0.18f
+                        scaleX = k
+                        scaleY = k
+                        transformOrigin = TransformOrigin(0f, 0.5f)
                     },
             )
+            if (collapseProgress > 0.01f) {
+                Text(
+                    text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                    style = PageTitle.copy(fontSize = 18.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(start = HomeContentInset + 40.dp, end = HomeContentInset, top = statusBarTop + 37.dp)
+                        .graphicsLayer {
+                            val p = ((collapseProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
+                            alpha = easeOutCubic(p)
+                            translationY = (1f - easeOutCubic(p)) * 12.dp.toPx()
+                        },
+                )
+            }
         }
+
+        ProfileMorphHost(
+            state = profile,
+            username = accountName,
+            photo = photo,
+            cardNumber = cardNumber,
+            navController = navController,
+            viewModel = profileViewModel,
+        )
     }
 
     story?.let { (data, anchors) ->
@@ -814,7 +865,7 @@ private val MonoSmall = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 
 
 /** A big figure's size in dp: it follows the card's width, not the font-size setting, so it never overflows. */
 @Composable
-private fun figureSp(dp: Float): TextUnit = with(LocalDensity.current) { dp.dp.toSp() }
+internal fun figureSp(dp: Float): TextUnit = with(LocalDensity.current) { dp.dp.toSp() }
 
 /** How much the cards' figures grow or shrink from the design's 360dp-wide phone, by the width they actually get. */
 private fun widthScale(cardWidthDp: Float): Float = (cardWidthDp / 320f).coerceIn(0.72f, 1.2f)
@@ -882,7 +933,7 @@ private fun TimeValue(value: String, unit: String, k: Float) {
 }
 
 @Composable
-private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
+private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit, covered: () -> Boolean) {
     BoxWithConstraints {
         val k = widthScale(maxWidth.value)
         Row(
@@ -908,7 +959,7 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
                 }
             }
             Spacer(Modifier.width(10.dp))
-            VersionCapsule(update = updateHeadline != null, onAbout = onAbout)
+            VersionCapsule(update = updateHeadline != null, onAbout = onAbout, covered = covered)
         }
     }
 }
@@ -928,18 +979,20 @@ private const val CapsuleCycleMs = 3_000L
  * turns at About app, Star the repo!, Donate me! and Report bug!, each label popping in - the
  * capsule squashes and springs back past its size while the new word grows in on a bounce and the
  * capsule's width springs to fit it - and a tap does what it says. The rest of the card still
- * opens About.
+ * opens About. It waits while something [covered] the page, rather than animating unseen.
  */
 @Composable
-private fun VersionCapsule(update: Boolean, onAbout: () -> Unit) {
+private fun VersionCapsule(update: Boolean, onAbout: () -> Unit, covered: () -> Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val popup = LocalZoomOutOverlayState.current
     var action by remember { mutableStateOf(CapsuleAction.ABOUT) }
+    val isCovered by rememberUpdatedState(covered)
     LaunchedEffect(update) {
         action = CapsuleAction.ABOUT
         if (update) return@LaunchedEffect
         while (true) {
             delay(CapsuleCycleMs)
+            snapshotFlow { isCovered() }.first { !it }
             action = CapsuleAction.entries[(action.ordinal + 1) % CapsuleAction.entries.size]
         }
     }

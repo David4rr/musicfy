@@ -12,6 +12,9 @@ object LyricsProviderRegistry {
         "SimpMusic"       to SimpMusicLyricsProvider,
         "LrcLib"          to LrcLibLyricsProvider,
         "Kugou"           to KuGouLyricsProvider,
+        "NetEase"         to NetEaseLyricsProvider,
+        "QQMusic"         to QQMusicLyricsProvider,
+        "Deezer"          to DeezerLyricsProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
         "YouTubeMusic"    to YouTubeLyricsProvider,
         "YouTubeCaptions" to YouTubeCaptionsLyricsProvider,
@@ -31,16 +34,20 @@ object LyricsProviderRegistry {
     fun serializeProviderOrder(providers: List<String>): String =
         providers.filter { it in providerNames }.joinToString(",")
 
-    // KuGou near the end: it is a Chinese service, and LyricsHelper only believes it first-hand for
-    // Chinese songs. YouTube's auto captions last of all - they are speech recognition.
+    // NetEase, QQ Music and KuGou near the end: they are Chinese services, and LyricsHelper only
+    // believes them first-hand for Chinese songs. NetEase leads them because it often has word
+    // timing. YouTube's auto captions last of all - they are speech recognition.
     fun getDefaultProviderOrder(): List<String> = listOf(
         "BetterLyrics",
         "YouLyPlus",
         "Paxsenix",
         "SimpMusic",
         "LrcLib",
+        "Deezer",
         "YouTubeSubtitle",
         "YouTubeMusic",
+        "NetEase",
+        "QQMusic",
         "Kugou",
         "YouTubeCaptions",
     )
@@ -64,9 +71,28 @@ object LyricsProviderRegistry {
         "SimpMusic"       -> "SimpMusic"
         "LrcLib"          -> "LrcLib"
         "Kugou"           -> "KuGou"
+        "NetEase"         -> "NetEase"
+        "QQMusic"         -> "QQ Music"
+        "Deezer"          -> "Deezer"
         "YouTubeSubtitle" -> "YouTube Subtitle"
         "YouTubeMusic"    -> "YouTube Music"
         "YouTubeCaptions" -> "YouTube Auto Captions"
         else              -> name
     }
+
+    /**
+     * The open-source project behind a source, for the lyrics page's "Star on GitHub" button.
+     * Only sources whose code is public: KuGou, NetEase, QQ Music, Deezer and YouTube are the
+     * companies' own services, and Paxsenix hasn't published its server. SimpMusic's lyrics
+     * server has no public repo of its own, so its star goes to the SimpMusic app.
+     */
+    fun getProject(name: String): LyricsProject? = when (name) {
+        "YouLyPlus"    -> LyricsProject("LyricsPlus", "https://github.com/ibratabian17/LyricsPlus")
+        "BetterLyrics" -> LyricsProject("Better Lyrics", "https://github.com/better-lyrics/better-lyrics")
+        "LrcLib"       -> LyricsProject("LRCLIB", "https://github.com/tranxuanthang/lrclib")
+        "SimpMusic"    -> LyricsProject("SimpMusic", "https://github.com/maxrave-dev/SimpMusic")
+        else           -> null
+    }
 }
+
+data class LyricsProject(val name: String, val repoUrl: String)

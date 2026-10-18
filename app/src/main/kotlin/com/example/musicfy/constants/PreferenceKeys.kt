@@ -80,6 +80,9 @@ val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableSimpMusicKey = booleanPreferencesKey("enableSimpMusic")
 val EnableYouLyPlusKey = booleanPreferencesKey("enableYouLyPlus")
 val EnablePaxsenixKey = booleanPreferencesKey("enablePaxsenix")
+val EnableNetEaseKey = booleanPreferencesKey("enableNetEase")
+val EnableQQMusicKey = booleanPreferencesKey("enableQQMusic")
+val EnableDeezerKey = booleanPreferencesKey("enableDeezer")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoSongsKey = booleanPreferencesKey("hideVideoSongs")
 val HideYoutubeShortsKey = booleanPreferencesKey("hideYoutubeShorts")
@@ -107,6 +110,11 @@ val YtPullHistoryKey = booleanPreferencesKey("ytPullHistory")
 val YtHistoryLastSeenKey = stringPreferencesKey("ytHistoryLastSeen")
 /** Whether YouTube sync keeps Liked music in step (onboarding's "What to sync" can leave it out). */
 val YtSyncLikedSongsKey = booleanPreferencesKey("ytSyncLikedSongs")
+/**
+ * Set after the first full sync that marked what YouTube brought in. Syncs before that never
+ * marked anything, so that one sync marks everything YouTube has, not just what is new.
+ */
+val YtSyncSourcesTaggedKey = booleanPreferencesKey("ytSyncSourcesTagged")
 
 /** The profile ID card's "USR#" number and join date (epoch day), fixed when onboarding finishes. */
 val ProfileCardNumberKey = stringPreferencesKey("profileCardNumber")

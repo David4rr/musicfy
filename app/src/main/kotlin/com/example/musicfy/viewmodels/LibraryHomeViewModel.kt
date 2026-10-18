@@ -105,11 +105,16 @@ constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The service each imported playlist came from, by playlist id, for the Imported tab's Playlists. */
+    val playlistSources: StateFlow<Map<String, ImportSource>> = database.importedPlaylists()
+        .map { rows -> rows.mapNotNull { row -> ImportSource.fromKey(row.source)?.let { row.playlistId to it } }.toMap() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     /**
      * Everything that plays from this device: songs downloaded for offline and audio files
      * imported from storage, newest first. This is what "Local" means everywhere in the Library -
-     * the Local card on the home page and every card on the Local page count from this list and
-     * nothing else, so a song that is only in the library (or only liked) never shows up there.
+     * every card on the Local tab counts from this list and nothing else, so a song that is only
+     * in the library (or only liked) never shows up there.
      */
     val localSongs = database.onDeviceSongs(SongSortType.CREATE_DATE, true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -183,7 +188,7 @@ constructor(
         // change their images and a permanently cached one goes stale.
         //
         // Local artists are included: a downloaded song that never went into the library has
-        // artists the Library's list doesn't know about, and the Local page shows them too.
+        // artists the Library's list doesn't know about, and the Local tab shows them too.
         viewModelScope.launch(Dispatchers.IO) {
             combine(artists, localArtists) { library, local -> (library + local).distinctBy { it.id } }.collect { list ->
                 list.map { it.artist }
@@ -239,7 +244,7 @@ data class ImportedSourceCard(
 )
 
 /**
- * An album on the Local page. [albumId] is null for an imported file whose album is only a tag -
+ * An album on the Local tab. [albumId] is null for an imported file whose album is only a tag -
  * there is no album page to open for it, so opening it plays its [songs] instead.
  */
 @androidx.compose.runtime.Immutable

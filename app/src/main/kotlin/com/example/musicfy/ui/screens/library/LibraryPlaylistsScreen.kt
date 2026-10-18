@@ -5,17 +5,19 @@ package com.example.musicfy.ui.screens.library
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.menu.PlaylistMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
 /**
- * The library's playlists, or with [localOnly] the Local page's: only the playlists that have a
- * local song in them.
+ * The library's playlists, or with [localOnly] the Local tab's: only the playlists that have a
+ * local song in them. With [source], only the playlists imported from that service.
  */
 @Composable
 fun LibraryPlaylistsScreen(
@@ -23,15 +25,24 @@ fun LibraryPlaylistsScreen(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
     localOnly: Boolean = false,
+    source: ImportSource? = null,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val playlists by (if (localOnly) viewModel.localPlaylists else viewModel.playlists).collectAsState()
+    val all by (if (localOnly) viewModel.localPlaylists else viewModel.playlists).collectAsState()
+    val playlistSources by viewModel.playlistSources.collectAsState()
+    val playlists = remember(all, playlistSources, source) {
+        if (source == null) all else all.filter { playlistSources[it.id] == source }
+    }
     val menuState = LocalMenuState.current
     val coroutineScope = rememberCoroutineScope()
 
     LibraryEntityListScreen(
         title = "Playlist",
-        subtitle = if (localOnly) "Playlists with music on this device." else "All playlist on your library listed here.",
+        subtitle = when {
+            source != null -> "Playlists imported from ${source.label}."
+            localOnly -> "Playlists with music on this device."
+            else -> "All playlist on your library listed here."
+        },
         searchPlaceholder = "Find a playlist by its name",
         items = playlists,
         idOf = { it.id },
