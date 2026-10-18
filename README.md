@@ -117,13 +117,13 @@ Musicfy is an independent, unofficial project made for personal and educational 
 
 ## Open source APIs musicfy talks to
 
-These are the open source apis and server we get gets its lyrics, streams and data from. They r free for everyone because of these people, so go give them a star!
+These are the open source apis and server we get gets its lyrics, streams and data from. They r free for everyone because of these good people, so go give them a star!
 
-- **LyricsPlus** by [Ibra Al Tabian](https://github.com/ibratabian17) ([Repository](https://github.com/ibratabian17/LyricsPlus)) -- The YouLyPlus lyrics source: word-synced lyrics with duets and background vocals.
-- **Better Lyrics API** by [Boidushya](https://github.com/boidushya) ([Repository](https://github.com/better-lyrics/api)) -- The "Apple Music" lyrics source, and the animated album covers.
-- **LRCLIB** by [tranxuanthang](https://github.com/tranxuanthang) ([Repository](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) -- A free community database of synced lyrics.
-- **SimpMusic Lyrics** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- Lyrics looked up by YouTube video, part of the SimpMusic project.
-- **AutoEq** by [Jaakko Pasanen](https://github.com/jaakkopasanen) ([Repository](https://github.com/jaakkopasanen/AutoEq) / [Website](https://autoeq.app)) -- The headphone EQ presets in Audio Lab.
+- **LyricsPlus** by [Ibra Al Tabian](https://github.com/ibratabian17) ([repos](https://github.com/ibratabian17/LyricsPlus)) s
+- **Better Lyrics API** by [Boidushya](https://github.com/boidushya) ([repos](https://github.com/better-lyrics/api)) 
+- **LRCLIB** by [tranxuanthang](https://github.com/tranxuanthang) ([repos](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) 
+- **SimpMusic Lyrics** by [maxrave-dev](https://github.com/maxrave-dev) ([repos](https://github.com/maxrave-dev/SimpMusic)) 
+
 
 ---
 ## Star History
