@@ -280,6 +280,7 @@ class MusicService :
 
     private lateinit var audioManager: AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
+    private var legacyFocusListener: AudioManager.OnAudioFocusChangeListener? = null
     private var lastAudioFocusState = AudioManager.AUDIOFOCUS_NONE
     private var wasPlayingBeforeAudioFocusLoss = false
     private var hasAudioFocus = false
@@ -546,14 +547,16 @@ class MusicService :
         playerInitialized.value = false
 
         try {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm?.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    getString(R.string.music_player),
-                    NotificationManager.IMPORTANCE_LOW
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val nm = getSystemService(NotificationManager::class.java)
+                nm?.createNotificationChannel(
+                    NotificationChannel(
+                        CHANNEL_ID,
+                        getString(R.string.music_player),
+                        NotificationManager.IMPORTANCE_LOW
+                    )
                 )
-            )
+            }
             val pending = PendingIntent.getActivity(
                 this,
                 0,
@@ -1114,6 +1117,9 @@ class MusicService :
                             }
                         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hapticVibrator.hasAmplitudeControl()) {
                             hapticVibrator.vibrate(VibrationEffect.createOneShot(20, amplitude))
+                        } else if (isBassKick) {
+                            @Suppress("DEPRECATION")
+                            hapticVibrator.vibrate(20)
                         }
                     }
                 } catch (e: Exception) {
@@ -1173,18 +1179,25 @@ class MusicService :
     }
 
     private fun setupAudioFocusRequest() {
-        audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(
-                android.media.AudioAttributes.Builder()
-                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-            .setOnAudioFocusChangeListener { focusChange ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(
+                    android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setOnAudioFocusChangeListener { focusChange ->
+                    handleAudioFocusChange(focusChange)
+                }
+                .setAcceptsDelayedFocusGain(true)
+                .build()
+        } else {
+            @Suppress("DEPRECATION")
+            legacyFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
                 handleAudioFocusChange(focusChange)
             }
-            .setAcceptsDelayedFocusGain(true)
-            .build()
+        }
     }
 
     private fun handleAudioFocusChange(focusChange: Int) {
@@ -1252,18 +1265,35 @@ class MusicService :
     private fun requestAudioFocus(): Boolean {
         if (hasAudioFocus) return true
 
-        audioFocusRequest?.let { request ->
-            val result = audioManager.requestAudioFocus(request)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { request ->
+                val result = audioManager.requestAudioFocus(request)
+                hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+                return hasAudioFocus
+            }
+            return false
+        } else {
+            @Suppress("DEPRECATION")
+            val result = audioManager.requestAudioFocus(
+                legacyFocusListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
             hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
             return hasAudioFocus
         }
-        return false
     }
 
     private fun abandonAudioFocus() {
         if (hasAudioFocus) {
-            audioFocusRequest?.let { request ->
-                audioManager.abandonAudioFocusRequest(request)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { request ->
+                    audioManager.abandonAudioFocusRequest(request)
+                    hasAudioFocus = false
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                legacyFocusListener?.let { audioManager.abandonAudioFocus(it) }
                 hasAudioFocus = false
             }
         }
@@ -3234,13 +3264,15 @@ class MusicService :
     private fun notifyPlaybackError(title: String, message: String) {
         runCatching {
             val nm = getSystemService(NotificationManager::class.java) ?: return
-            nm.createNotificationChannel(
-                android.app.NotificationChannel(
-                    ERROR_CHANNEL_ID,
-                    getString(R.string.playback_error_channel_name),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ),
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(
+                    android.app.NotificationChannel(
+                        ERROR_CHANNEL_ID,
+                        getString(R.string.playback_error_channel_name),
+                        NotificationManager.IMPORTANCE_DEFAULT,
+                    ),
+                )
+            }
             val notification = NotificationCompat.Builder(this, ERROR_CHANNEL_ID)
                 .setSmallIcon(R.drawable.musicfy_notification)
                 .setContentTitle(title)
