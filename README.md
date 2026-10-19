@@ -39,10 +39,10 @@
 ---
 
 > [!WARNING]
-> Support for android 8+ is available but won’t get many features as on android 13+.
+> Support for android 8+ until 11 is available but expect any bugs. this app is intended only for android 13+
 
 > [!WARNING]
-> This app still on beta! or developer preview, expect some bugs! reporting it will be useful too.
+> This app still on beta!, expect some bugs! reporting it will be useful too.
 
 
 > [!WARNING]
