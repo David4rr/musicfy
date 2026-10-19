@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -40,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.ui.component.SheetIcon
 
 @Composable
 fun DeviceOutputSheet(onDismiss: () -> Unit) {
@@ -258,20 +257,8 @@ private fun DeviceRow(
     }
 }
 
+/** A row's icon, plain white like the rest of the sheets. */
 @Composable
 private fun IconDot(icon: Int, alpha: Float = 1f) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(22.dp)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.9f * alpha))
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.75f),
-            modifier = Modifier.size(13.dp),
-        )
-    }
+    SheetIcon(icon, tint = Color.White.copy(alpha = alpha))
 }

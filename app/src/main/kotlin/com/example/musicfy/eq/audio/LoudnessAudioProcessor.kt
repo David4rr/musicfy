@@ -28,7 +28,7 @@ data class LoudnessParams(
  * passages up (more [LoudnessParams.compression] = lower threshold, higher ratio, more makeup),
  * the boost, then a peak limiter holding everything under -0.5 dBFS with a soft knee as the last
  * guard. Gains are worked out every [Block] frames and glide in between, so it never zips; on
- * and off fade over [ToggleSeconds]. Last in Audio FX, so it also catches the reverb's peaks.
+ * and off fade over [ToggleSeconds]. Last in Audio FX, so it also catches the peaks the other effects add.
  */
 @UnstableApi
 @Suppress("DEPRECATION")

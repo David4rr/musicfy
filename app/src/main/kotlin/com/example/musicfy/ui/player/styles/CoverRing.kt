@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -44,6 +45,7 @@ import com.example.musicfy.utils.makeTimeString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -138,8 +140,11 @@ fun CoverRing(
         TextStyle(fontFamily = com.example.musicfy.ui.theme.InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.White)
     }
     val currentCircle by rememberUpdatedState(circle)
+    val showing = rememberStyleShowing()
+    val interactive = LocalStyleInteractive.current
 
-    // out for a few seconds whenever the music starts: play pressed, or the next song begun
+    // out for a few seconds whenever the music starts: play pressed, or the next song begun. Not
+    // while the player is collapsed, where nobody would see it.
     LaunchedEffect(connection, live) {
         if (!live || connection == null) return@LaunchedEffect
         var wasPlaying = connection.isPlaying.value
@@ -149,7 +154,7 @@ fun CoverRing(
                 val started = playing && (!wasPlaying || id != lastId)
                 wasPlaying = playing
                 lastId = id
-                if (started && !state.held) state.peek(StartPeekMs)
+                if (started && !state.held && showing()) state.peek(StartPeekMs)
             }
     }
 
@@ -157,35 +162,47 @@ fun CoverRing(
     val bars = remember { BarLevels() }
     val frame = remember { mutableLongStateOf(0L) }
     val playing = connection?.isPlaying?.collectAsState()?.value == true
-    LaunchedEffect(visualizer, live, playing, connection) {
+    LaunchedEffect(visualizer, live, playing, connection, showing) {
         if (!visualizer || !live || connection == null) {
             bars.clear()
             frame.longValue++
             return@LaunchedEffect
         }
-        var last = 0L
-        while (true) {
-            val now = withFrameNanos { it }
-            val dt = if (last == 0L) 0.016f else ((now - last) / 1e9f).coerceIn(0.001f, 0.1f)
-            last = now
-            val spectrum = connection.service.spectrumOf(connection.player)
-            val heard = playing && spectrum != null &&
-                spectrum.read(connection.player.currentPosition, bars.target(bars.count))
-            if (!heard) bars.silence()
-            bars.ease(dt)
-            frame.longValue = now
-            // paused and settled: nothing left to move
-            if (!playing && bars.settled()) break
+        // They run while any of the player is on screen, the close included: stopped the moment a
+        // close began, they vanished with the poster still in view. Collapsed, they stop, and rise
+        // from nothing at the next open.
+        snapshotFlow { showing() }.collectLatest { shown ->
+            if (!shown) {
+                bars.clear()
+                frame.longValue++
+                return@collectLatest
+            }
+            var last = 0L
+            while (true) {
+                val now = withFrameNanos { it }
+                val dt = if (last == 0L) 0.016f else ((now - last) / 1e9f).coerceIn(0.001f, 0.1f)
+                last = now
+                val spectrum = connection.service.spectrumOf(connection.player)
+                val heard = playing && spectrum != null &&
+                    spectrum.read(connection.player.currentPosition, bars.target(bars.count))
+                if (!heard) bars.silence()
+                bars.ease(dt)
+                frame.longValue = now
+                // paused and settled: nothing left to move
+                if (!playing && bars.settled()) break
+            }
         }
     }
 
     Spacer(
         modifier = modifier
             .then(
-                if (!live || connection == null) Modifier else Modifier.pointerInput(connection) {
+                if (!live || connection == null) Modifier else Modifier.pointerInput(connection, interactive) {
                     val slop = viewConfiguration.touchSlop
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = true, pass = PointerEventPass.Main)
+                        // nothing taken from the mini player, or from the sheet on its way down
+                        if (!interactive()) return@awaitEachGesture
                         val c = currentCircle
                         val geometry = RingGeometry(c, Size(size.width.toFloat(), size.height.toFloat()), density, side)
                         if (!geometry.onBand(down.position)) return@awaitEachGesture

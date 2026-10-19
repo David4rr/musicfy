@@ -187,6 +187,7 @@ import com.example.musicfy.ui.component.shimmer.ShimmerTheme
 import com.example.musicfy.ui.menu.YouTubeSongMenu
 import com.example.musicfy.ui.player.BottomSheetPlayer
 import com.example.musicfy.ui.screens.Screens
+import com.example.musicfy.ui.screens.search.requestSearchFocus
 import com.example.musicfy.ui.screens.navigationBuilder
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.ui.screens.NavigationTab
@@ -993,12 +994,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                val onSearchLongClick: () -> Unit = remember(navController) {
-                                    {
-                                        navController.navigate("recognition") {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                // Two quick taps on Search open its field, ready to type. (A hold used
+                                // to open song recognition, whose page is gone: it crashed the app.)
+                                val onSearchDoubleTap: () -> Unit = remember(navController) {
+                                    { navController.requestSearchFocus() }
                                 }
 
                                 val navBarTotalHeight = bottomInset + NavigationBarHeight
@@ -1063,7 +1062,7 @@ class MainActivity : ComponentActivity() {
                                             onItemClick = onNavItemClick,
                                             pureBlack = pureBlack,
                                             slimNav = slimNav,
-                                            onSearchLongClick = onSearchLongClick,
+                                            onSearchDoubleTap = onSearchDoubleTap,
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
                                                 .launchRise(order = 3)
@@ -1117,12 +1116,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                val onRailSearchLongClick: () -> Unit = remember(navController) {
-                                    {
-                                        navController.navigate("recognition") {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                val onRailSearchDoubleTap: () -> Unit = remember(navController) {
+                                    { navController.requestSearchFocus() }
                                 }
 
                                 if (showRail && currentRoute != "wrapped" && currentRoute != "update") {
@@ -1132,7 +1127,7 @@ class MainActivity : ComponentActivity() {
                                         selectedTabRoute = selectedTabRoute,
                                         onItemClick = onRailItemClick,
                                         pureBlack = pureBlack,
-                                        onSearchLongClick = onRailSearchLongClick
+                                        onSearchDoubleTap = onRailSearchDoubleTap
                                     )
                                 }
                                 Box(

@@ -1,7 +1,7 @@
 // AudioLabScreen.kt
 //
-// Audio Lab: the home of Musicfy's sound, apart from the plain Audio settings. Big cards for the
-// equalizer and the effects, then quality, transitions and reverb. Each card's drawing shows its
+// Audio Lab: the home of Musicfy's sound. Big cards for the equalizer and the effects, then
+// quality and transitions. Each card's drawing shows its
 // state: the equalizer's knobs sit where your curve is, the FX lights when an effect is on, the
 // quality waveform is as fine as what's streaming.
 
@@ -14,11 +14,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,7 +78,6 @@ fun AudioLabScreen(
 ) {
     val eq by viewModel.eq.collectAsState()
     val presets by viewModel.presets.collectAsState()
-    val reverb by viewModel.reverb.collectAsState()
     val loudness by viewModel.loudness.collectAsState()
     val spatial by viewModel.spatial.collectAsState()
     val playback by viewModel.playback.collectAsState()
@@ -88,16 +85,16 @@ fun AudioLabScreen(
     val (quality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
     val order by viewModel.sources.order.collectAsState()
     val modules by viewModel.sources.entries.collectAsState()
+    val youTubeOn by viewModel.sources.youTubeEnabled.collectAsState()
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.sources.refresh() }
     // whichever provider plays first sets what "quality" means
     val firstProvider = order.firstOrNull { id ->
-        id == com.example.musicfy.modules.SourceModules.YouTubeId ||
-            modules.any { it.module.info.id == id && it.enabled && it.account is com.example.musicfy.module.AccountState.SignedIn }
+        if (id == com.example.musicfy.modules.SourceModules.YouTubeId) youTubeOn
+        else modules.any { it.module.info.id == id && it.enabled && it.account is com.example.musicfy.module.AccountState.SignedIn }
     }
     val (mode) = rememberEnumPreference(CrossmixModeKey, defaultValue = CrossmixMode.AUTO_CROSSFADE)
 
     val activeFx = buildList {
-        if (reverb.enabled) add("Reverb")
         if (loudness.enabled) add("Loudness")
         if (spatial.enabled) add("Spatial")
         if (!playback.isNormal) add(String.format("%.2f×", playback.speed))
@@ -137,27 +134,17 @@ fun AudioLabScreen(
             onClick = { navController.navigate("audio_quality") },
         ) { QualitySketch(quality, firstProvider) }
         Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            HubTile(
-                title = "Transition",
-                status = when (mode) {
-                    CrossmixMode.OFF -> "Off"
-                    CrossmixMode.AUTO_CROSSFADE -> "Auto"
-                    CrossmixMode.MANUAL_CROSSFADE -> "Manual"
-                    CrossmixMode.CROSSMIX -> "CrossMix"
-                },
-                height = 58.dp,
-                modifier = Modifier.weight(1f),
-                onClick = { navController.navigate("crossmix_settings") },
-            ) { TransitionSketch(active = mode != CrossmixMode.OFF) }
-            HubTile(
-                title = "Reverb",
-                status = if (reverb.enabled) "On" else "Off",
-                height = 58.dp,
-                modifier = Modifier.weight(1f),
-                onClick = { navController.navigate("audio_fx") },
-            ) { ReverbSketch(active = reverb.enabled) }
-        }
+        HubTile(
+            title = "Transition",
+            status = when (mode) {
+                CrossmixMode.OFF -> "Off"
+                CrossmixMode.AUTO_CROSSFADE -> "Auto"
+                CrossmixMode.MANUAL_CROSSFADE -> "Manual"
+                CrossmixMode.CROSSMIX -> "CrossMix"
+            },
+            height = 58.dp,
+            onClick = { navController.navigate("crossmix_settings") },
+        ) { TransitionSketch(active = mode != CrossmixMode.OFF) }
         Spacer(Modifier.height(120.dp))
     }
 }
@@ -328,28 +315,5 @@ private fun BoxScope.TransitionSketch(active: Boolean) {
         val inn = Path().apply { moveTo(0f, h); cubicTo(w * 0.5f, h, w * 0.5f, 0f, w, 0f) }
         drawPath(out, Sketch.copy(alpha = on), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         drawPath(inn, Sketch.copy(alpha = on), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
-    }
-}
-
-/** echoes running into a wall */
-@Composable
-private fun BoxScope.ReverbSketch(active: Boolean) {
-    val time = sketchTime { active }
-    Canvas(Modifier.fillMaxHeight().width(44.dp).align(Alignment.CenterEnd).padding(end = 14.dp, top = 16.dp, bottom = 16.dp)) {
-        val w = size.width
-        val h = size.height
-        val wall = w - 3.dp.toPx()
-        drawLine(Sketch, Offset(wall, 0f), Offset(wall, h), 3.dp.toPx(), StrokeCap.Round)
-        for (k in 0 until 2) {
-            val drift = if (active) ((time.value * 0.8f + k * 0.5f) % 1f) else 0.5f
-            val x = w * (0.1f + 0.45f * drift) + k * 7.dp.toPx() * (1f - drift)
-            val alpha = if (active) 1f - drift * 0.7f else 0.7f
-            val chevron = Path().apply {
-                moveTo(x, h * 0.2f)
-                lineTo(x + h * 0.3f, h / 2)
-                lineTo(x, h * 0.8f)
-            }
-            drawPath(chevron, Sketch.copy(alpha = alpha), style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
-        }
     }
 }

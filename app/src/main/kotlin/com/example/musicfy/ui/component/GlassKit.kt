@@ -179,9 +179,10 @@ fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): M
  *
  * Deliberately a fixed dark tone rather than `MaterialTheme.colorScheme.surfaceContainer`: the
  * Material You colour follows the wallpaper accent and washes these surfaces out. They are drawn
- * with white icons over a white hairline border, so they are meant to read as dark glass.
+ * with white icons over a white hairline border, so they are meant to read as dark glass. The
+ * shade is the Figma's.
  */
-val GlassChromeColor = Color(0xFF0F0F12)
+val GlassChromeColor = Color(0xFF131313)
 
 /** Backdrop blur for that chrome, heavier than the 24f default so it reads as properly frosted. */
 const val GlassChromeBlurRadius = 48f
@@ -227,6 +228,15 @@ internal fun glassDownscale(effectiveRadius: Float): Int = when {
     effectiveRadius >= 64f -> 4
     effectiveRadius >= 16f -> 2
     else -> 1
+}
+
+/** Lays its content out [margin] px bigger on every side, centred over the space it takes. */
+private fun Modifier.bleed(margin: () -> Int): Modifier = layout { measurable, constraints ->
+    val m = margin().coerceAtLeast(0)
+    val width = if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
+    val height = if (constraints.hasBoundedHeight) constraints.maxHeight else constraints.minHeight
+    val placeable = measurable.measure(Constraints.fixed(width + m * 2, height + m * 2))
+    layout(width, height) { placeable.place(-m, -m) }
 }
 
 /** The size a downscaled layout was given, before it was divided down. */
@@ -387,6 +397,13 @@ fun GlassPillBackground(
     mask: Brush? = null,
     /** a colour laid over [tint], read only while drawing so it can animate without recomposing */
     accentWash: (() -> Color)? = null,
+    /**
+     * Also blur a margin of the backdrop as wide as the blur around the surface, so the edges are
+     * blurred from what's really past them. Without it the blur has to make that part up, and a
+     * clamped edge row smears anything bright touching it across the surface. The extra is drawn
+     * outside the bounds, so the parent has to clip.
+     */
+    bleed: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
@@ -396,17 +413,25 @@ fun GlassPillBackground(
 
     val currentBlurRadius by rememberUpdatedState(blurRadius)
 
+    // The blur actually applied, clamped the way BlurEffectCache clamps it.
+    val radius = {
+        if (disableBlur) 0f
+        else BlurEffectCache.effectiveRadius(currentBlurRadius() * (blurStrengthPx / 25f))
+    }
+
     DownscaledBlur(
-        // The blur actually applied, clamped the way BlurEffectCache clamps it.
-        radius = {
-            if (disableBlur) 0f
-            else BlurEffectCache.effectiveRadius(currentBlurRadius() * (blurStrengthPx / 25f))
-        },
+        radius = radius,
         tileMode = tileMode,
         mask = mask,
         modifier = modifier
-            .onGloballyPositioned { position = it.positionInWindow() }
-            .then(if (shape != null) Modifier.clip(shape) else Modifier),
+            .then(if (shape != null) Modifier.clip(shape) else Modifier)
+            .then(
+                // no blur below Android 12, so nothing to read past the edges
+                if (bleed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    Modifier.bleed { kotlin.math.ceil(radius()).toInt() }
+                } else Modifier
+            )
+            .onGloballyPositioned { position = it.positionInWindow() },
     ) { fullSize ->
         if (foundationColor != null) {
             drawRect(color = foundationColor, size = fullSize)

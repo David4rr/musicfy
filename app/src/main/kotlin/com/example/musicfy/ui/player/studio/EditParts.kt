@@ -28,7 +28,9 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.musicfy.constants.PlayerBottomBarStyle
 
 /** 0..1 eased in and out, for the stretches of a move that run off one spring */
 internal fun ease(t: Float): Float {
@@ -52,8 +54,9 @@ class StudioParts(
     internal var statusTop = 0f
     internal var density: Density = Density(1f)
     internal var fullCover = false
+    internal var barStyle = PlayerBottomBarStyle.STACK
 
-    fun layout(): TileLayout = tileLayout(width, height, density, anchors, fullCover)
+    fun layout(): TileLayout = tileLayout(width, height, density, anchors, fullCover, barStyle)
 
     /** the middle part's pieces, lifted off the player while it's being edited */
     internal var pieces: StudioPieces? = null
@@ -90,9 +93,11 @@ class StudioParts(
     /** the transport, nearest the camera: it grows a touch more and drifts a little down */
     internal fun transportTransform(): PartTransform {
         val z = zoom()
-        val away = studio.cover.value * (height - anchors.transport.value.top + offPx())
-        return PartTransform(1f + 0.05f * z, 0f, height * 0.03f * z + away)
+        return PartTransform(1f + 0.05f * z, 0f, height * 0.03f * z + awayBelow(anchors.transport.value.top))
     }
+
+    /** how far down a part whose top is at [top] slides to leave the screen for the cover editor */
+    internal fun awayBelow(top: Float): Float = studio.cover.value * (height - top + offPx())
 
     private fun offPx() = with(density) { 60.dp.toPx() }
 
@@ -156,14 +161,12 @@ fun Modifier.studioTransportLayer(parts: StudioParts?): Modifier {
     }
 }
 
-/** the bottom card leaves while the editor is up: it isn't edited here */
-fun Modifier.studioCardLayer(parts: StudioParts?): Modifier {
+/** the bottom bar (either style): it stays put in the tiles and slides away with the transport for the cover editor */
+fun Modifier.studioBarLayer(parts: StudioParts?, slot: (StudioAnchors) -> MutableState<Rect>): Modifier {
     if (parts == null) return this
     return graphicsLayer {
-        val e = parts.studio.edit.value
-        if (e <= 0.0005f) return@graphicsLayer
-        alpha = 1f - ease(e / 0.6f)
-        translationY = ease(e) * size.height * 0.8f
+        if (!parts.studio.editing) return@graphicsLayer
+        translationY = parts.awayBelow(slot(parts.anchors).value.top)
     }
 }
 
@@ -195,6 +198,7 @@ fun EditTiles(parts: StudioParts, modifier: Modifier = Modifier) {
             TileTarget(l.coverTile, density) { studio.go(StudioStage.COVER) }
             TileTarget(l.middleTile, density) { studio.go(StudioStage.MIDDLE) }
             TileTarget(l.controlsTile, density) { studio.openSheet(StudioSheet.CONTROLS) }
+            l.barTile?.let { TileTarget(it, density) { studio.go(StudioStage.BAR) } }
         }
     }
 }
@@ -222,17 +226,19 @@ internal fun DrawScope.drawTiles(parts: StudioParts) {
     val l = parts.layout()
     val c = studio.cover.value
     val m = studio.middle.value
-    val stroke = TileStroke.toPx()
+    val b = studio.bar.value
+    val ink = PartTileInk
+    val stroke = ink.stroke.toPx()
     val corner = TileCorner.toPx()
-    val fade = (1f - c) * (1f - ease(m / 0.4f))
+    val fade = (1f - c) * (1f - ease(m / 0.4f)) * (1f - ease(b / 0.4f))
     val a = e * fade
     if (a <= 0.01f) return
 
     // the cover's tile always fades out toward its bottom; the full-bleed one has no top edge at all
     val r = l.coverTile
     val brush = Brush.verticalGradient(
-        0f to Color.White.copy(alpha = 0.62f * a),
-        0.62f to Color.White.copy(alpha = 0.36f * a),
+        0f to Color.White.copy(alpha = ink.top * a),
+        0.62f to Color.White.copy(alpha = ink.bottom * 0.9f * a),
         1f to Color.Transparent,
         startY = r.top,
         endY = r.bottom,
@@ -248,24 +254,34 @@ internal fun DrawScope.drawTiles(parts: StudioParts) {
     } else {
         drawRoundRect(brush, r.topLeft, r.size, CornerRadius(corner), style = Stroke(width = stroke))
     }
-    drawTileOutline(l.middleTile, a)
-    drawTileOutline(l.controlsTile, a)
+    drawTileOutline(l.middleTile, a, ink)
+    drawTileOutline(l.controlsTile, a, ink)
+    l.barTile?.let { drawTileOutline(it, a, ink) }
 }
 
+/** how a tile's outline is drawn: its width, and how bright it is along its top and its bottom */
+internal class TileInk(val stroke: Dp, val top: Float, val bottom: Float)
+
+/** the tiles round the player's own parts, on the editor's first page: bold enough to read over any cover */
+internal val PartTileInk = TileInk(stroke = 5.dp, top = 0.82f, bottom = 0.58f)
+
+/** the tiles inside a part's own page */
+internal val PageTileInk = TileInk(stroke = TileStroke, top = 0.6f, bottom = 0.38f)
+
 /** a tile's outline: bold, a touch brighter along the top */
-internal fun DrawScope.drawTileOutline(rect: Rect, alpha: Float) {
+internal fun DrawScope.drawTileOutline(rect: Rect, alpha: Float, ink: TileInk = PageTileInk) {
     if (alpha <= 0.01f) return
     drawRoundRect(
         Brush.verticalGradient(
-            0f to Color.White.copy(alpha = 0.6f * alpha),
-            1f to Color.White.copy(alpha = 0.38f * alpha),
+            0f to Color.White.copy(alpha = ink.top * alpha),
+            1f to Color.White.copy(alpha = ink.bottom * alpha),
             startY = rect.top,
             endY = rect.bottom,
         ),
         rect.topLeft,
         rect.size,
         CornerRadius(TileCorner.toPx().coerceAtMost(rect.height / 2f)),
-        style = Stroke(width = TileStroke.toPx()),
+        style = Stroke(width = ink.stroke.toPx()),
     )
 }
 

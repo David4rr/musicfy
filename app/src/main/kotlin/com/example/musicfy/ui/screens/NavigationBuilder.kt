@@ -285,26 +285,29 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
-    // The Library's Local tab opens these: the same pages again, counting only downloads and files
-    coverSourceComposable("library/local/added") {
-        com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, localOnly = true)
-    }
+    // The Library's Local and Cached tabs open these: the same pages again, counting only that
+    // tab's songs. "library/local/albums", "library/cached/albums" and so on.
+    com.example.musicfy.viewmodels.LibraryShelfKind.entries.forEach { shelf ->
+        coverSourceComposable("library/${shelf.key}/added") {
+            com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, shelf = shelf)
+        }
 
-    coverSourceComposable("library/local/albums") {
-        com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, localOnly = true)
-    }
+        coverSourceComposable("library/${shelf.key}/albums") {
+            com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, shelf = shelf)
+        }
 
-    coverSourceComposable("library/local/artists") {
-        com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, localOnly = true)
-    }
+        coverSourceComposable("library/${shelf.key}/artists") {
+            com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, shelf = shelf)
+        }
 
-    composable(
-        route = "library/local/playlists",
-        exitTransition = { libraryExitTo(targetState.destination.route) },
-        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
-    ) {
-        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, localOnly = true)
+        composable(
+            route = "library/${shelf.key}/playlists",
+            exitTransition = { libraryExitTo(targetState.destination.route) },
+            popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+        ) {
+            CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+                com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, shelf = shelf)
+            }
         }
     }
 
@@ -354,11 +357,6 @@ fun NavGraphBuilder.navigationBuilder(
     composable("general_settings") {
         com.example.musicfy.ui.screens.settings.GeneralSettingsScreen(navController = navController)
     }
-
-    composable("audio_settings") {
-        com.example.musicfy.ui.screens.settings.AudioSettingsScreen(navController = navController)
-    }
-
 
     composable("appearance_settings") {
         com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)

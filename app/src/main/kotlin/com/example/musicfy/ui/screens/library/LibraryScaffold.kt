@@ -36,7 +36,7 @@ import com.example.musicfy.ui.screens.search.SearchField
 import com.example.musicfy.ui.screens.search.SearchGlassTopBar
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.searchTopBarHeight
-import com.example.musicfy.viewmodels.LocalAlbum
+import com.example.musicfy.viewmodels.ShelfAlbum
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist as InnertubeArtist
 import com.music.innertube.models.ArtistItem
@@ -238,14 +238,14 @@ internal fun searchLibrary(
 }
 
 /**
- * The library search, over local things only. An album whose only trace is a file's tag has no
- * page to open, so it isn't a result of its own - its songs are.
+ * The library search, over one shelf's things only (the Local or Cached tab). An album whose only
+ * trace is a file's tag has no page to open, so it isn't a result of its own - its songs are.
  */
-internal fun searchLocal(
+internal fun searchShelf(
     query: String,
     songs: List<Song>,
     artists: List<Artist>,
-    albums: List<LocalAlbum>,
+    albums: List<ShelfAlbum>,
     playlists: List<Playlist>,
 ): List<YTItem> {
     val q = query.lowercase()

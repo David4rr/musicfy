@@ -155,7 +155,6 @@ import com.example.musicfy.eq.AudioLabStore
 import com.example.musicfy.eq.EqualizerService
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessAudioProcessor
-import com.example.musicfy.eq.audio.ReverbAudioProcessor
 import com.example.musicfy.eq.audio.SpatialAudioProcessor
 import com.example.musicfy.extensions.SilentHandler
 import com.example.musicfy.extensions.collect
@@ -860,12 +859,13 @@ class MusicService :
             setupLoudnessEnhancer()
         }
 
+        // offload skips the app's own audio processing, so the equalizer and effects would go silent
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
-            dataStore.data.map { it[CrossfadeEnabledKey] ?: false }
-        ) { offloadPref, crossfadeEnabled ->
-
-             if (crossfadeEnabled) false else offloadPref
+            dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
+            audioLab.shapesSound,
+        ) { offloadPref, crossfadeEnabled, shapesSound ->
+             offloadPref && !crossfadeEnabled && !shapesSound
         }.distinctUntilChanged()
         .collectLatest(scope) { useOffload ->
              player.setOffloadEnabled(useOffload)
@@ -1092,7 +1092,6 @@ class MusicService :
         val replayGain = com.example.musicfy.eq.audio.ReplayGainTags()
         val fxProcessors = arrayOf<androidx.media3.common.audio.AudioProcessor>(
             SpatialAudioProcessor(audioFx),
-            ReverbAudioProcessor(audioFx),
             LoudnessAudioProcessor(audioFx),
         )
 
@@ -1511,7 +1510,9 @@ class MusicService :
     /** A readable reason from the root cause, since IO_UNSPECIFIED alone says nothing. */
     private fun plainReason(e: PlaybackException): String {
         val causes = generateSequence<Throwable>(e) { it.cause }.toList()
+        val noProvider = causes.firstOrNull { it is com.example.musicfy.playback.custom.NoProviderException }
         return when {
+            noProvider != null -> noProvider.message.orEmpty()
             causes.any { it is java.net.SocketTimeoutException } -> "connection timed out"
             causes.any { it is java.net.SocketException || it is java.io.EOFException } -> "connection interrupted"
             causes.any { it is javax.net.ssl.SSLException } -> "secure connection failed"
@@ -2926,6 +2927,14 @@ class MusicService :
         }
 
         lastPlaybackError = error
+        // every provider that's on was already asked: retrying would only ask them all again, so
+        // straight on with the reason. Without a connection it waits for one like any other song.
+        if (isNetworkConnected.value &&
+            generateSequence<Throwable>(error) { it.cause }.any { it is com.example.musicfy.playback.custom.NoProviderException }
+        ) {
+            failStream()
+            return
+        }
         val mediaId = player.currentMediaItem?.mediaId
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}, causes=${generateSequence<Throwable>(error) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + ":" + it.message }}")
         reportException(error)
@@ -3646,7 +3655,7 @@ class MusicService :
                 .setAudioProcessorChain(
                     DefaultAudioSink.DefaultAudioProcessorChain(
 
-                        // Audio Lab first (equalizer, then spatial, reverb, loudness), so Crossmix
+                        // Audio Lab first (equalizer, then spatial, loudness), so Crossmix
                         // blends the two songs as they're heard
                         arrayOf(
                             eqProcessor,
@@ -4242,16 +4251,19 @@ class MusicService :
                 null
             }
             com.example.musicfy.modules.SourceModules.Route.Exhausted -> {
-                if (com.example.musicfy.modules.SourceModules.YouTubeId !in skip) {
-                    // YouTube is in the order after providers that don't have it: it plays there
-                    resolvedSourceIds[mediaId] = com.example.musicfy.modules.SourceModules.YouTubeId
-                    forgetModuleFacts(mediaId)
-                    null
-                } else throw androidx.media3.common.PlaybackException(
-                    "No provider could play this song",
-                    null,
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
-                )
+                val youTube = com.example.musicfy.modules.SourceModules.YouTubeId
+                when {
+                    youTube !in skip && sourceModules.isUsable(youTube) -> {
+                        // YouTube is in the order after providers that don't have it: it plays there
+                        resolvedSourceIds[mediaId] = youTube
+                        forgetModuleFacts(mediaId)
+                        null
+                    }
+                    // the user turned YouTube off to hear only their other providers
+                    !sourceModules.isEnabled(youTube) ->
+                        throw com.example.musicfy.playback.custom.NoProviderException("none of your providers have it, and YouTube Music is off")
+                    else -> throw com.example.musicfy.playback.custom.NoProviderException("every provider failed on it")
+                }
             }
         }
     }

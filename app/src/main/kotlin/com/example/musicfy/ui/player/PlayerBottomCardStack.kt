@@ -118,6 +118,11 @@ internal fun PlayerBottomCardStack(
     /** Long press opens the player editor, matching the cover's gesture. */
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 1 when the cards are shown whole, their bodies closed off at the bottom instead of running
+     * off the screen: the bar's editor lifts the deck up to the middle of the screen.
+     */
+    closedProvider: () -> Float = { 0f },
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
 
@@ -274,6 +279,7 @@ internal fun PlayerBottomCardStack(
                     },
                     transition = transition,
                     morph = morph,
+                    closedProvider = closedProvider,
                 ) {
                     if (page == PlayerPage.LYRICS) {
                         MiniLyricsTicker(
@@ -303,6 +309,7 @@ private fun BoxScope.DeckCard(
     frontnessProvider: () -> Float,
     transition: PlayerPageTransition,
     morph: CardMorphState,
+    closedProvider: () -> Float,
     content: @Composable () -> Unit,
 ) {
     // Growing into its page: the card's surface is handed to the expanding one (drawn by the
@@ -341,7 +348,7 @@ private fun BoxScope.DeckCard(
                 val otherTop = PlayerCardHeight.toPx() * mixF(BackCardScale, 1f, otherF) +
                     mixF(PeekOffset.toPx(), 0f, otherF)
                 val exposed = (thisTop - otherTop) / scale
-                val bottom = size.height + BottomBleed.toPx()
+                val bottom = size.height + BottomBleed.toPx() * (1f - closedProvider().coerceIn(0f, 1f))
                 val visibleBottom = if (exposed > 0f) minOf(exposed, bottom) else bottom
                 if (visibleBottom <= 0f) return@drawBehind
 
@@ -355,7 +362,7 @@ private fun BoxScope.DeckCard(
                         cornerRadius = CornerRadius(corner, corner),
                     )
                     // The border runs down the sides and off the screen with the body, so there's
-                    // no line along the bottom.
+                    // no line along the bottom (unless the editor has closed the card off).
                     drawRoundRect(
                         color = Color.White.copy(alpha = mixF(BackCardBorderAlpha, FrontCardBorderAlpha, f)),
                         topLeft = topLeft,

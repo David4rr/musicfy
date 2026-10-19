@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
@@ -58,15 +60,35 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerStyle
 import com.example.musicfy.constants.playerStyleRotatedKey
+import com.example.musicfy.ui.component.LocalPlayerBottomSheetState
 import com.example.musicfy.utils.rememberPreference
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * Whether a style takes touches: only on the open player. Collapsed into the mini pill the style
  * is still composed under it, and its gestures would swallow the swipe and tap that open the player.
+ *
+ * Asked when a touch lands ([whileStyleInteractive]), never in composition. As a plain value it
+ * changed on the first frame of every close and rebuilt the whole style just as the sheet began to move.
  */
-val LocalStyleInteractive = androidx.compose.runtime.compositionLocalOf { true }
+val LocalStyleInteractive = androidx.compose.runtime.compositionLocalOf<() -> Boolean> { { true } }
+
+/**
+ * Runs [detect] only while the style takes touches ([interactive]). The rest of the time nothing
+ * here listens, so a touch goes on to the player. A flow starts and stops it, so the player opening
+ * or closing recomposes nothing.
+ */
+internal suspend fun PointerInputScope.whileStyleInteractive(
+    interactive: () -> Boolean,
+    detect: suspend PointerInputScope.() -> Unit,
+) {
+    snapshotFlow { interactive() }.collectLatest { on -> if (on) detect() }
+}
 
 /**
  * The two tones every alternate style is built from, taken from the cover: [played] is the part of
@@ -146,30 +168,56 @@ class LivePosition internal constructor(private val read: () -> Long, private va
     }
 }
 
-/** [animated] false (a selector card's preview): it follows the player's own updates, not every frame */
+/**
+ * [animated] false (a selector card's preview): it follows the player's own updates, not every frame.
+ *
+ * The player's updates are followed in an effect, not in composition: they come 15 times a second,
+ * and reading them here rebuilt the whole style that often, through every open and close too.
+ * Collapsed into the mini player the style can't be seen, so the clock waits for it to open again.
+ */
 @Composable
 fun rememberLivePosition(animated: Boolean = true): LivePosition {
     val connection = LocalPlayerConnection.current
     val tick = remember { mutableLongStateOf(0L) }
-    val transport = connection?.uiState?.transportState?.collectAsState()
-    val progress = connection?.uiState?.progressState?.collectAsState()
-    val playing = transport?.value?.isPlaying == true
-    LaunchedEffect(playing, progress?.value?.position, animated) {
-        // a seek or a pause still moves the boundary once; playing, it moves every frame
-        tick.longValue++
-        while (playing && animated) withFrameMillis { tick.longValue = it }
+    val showing = rememberStyleShowing()
+    LaunchedEffect(connection, animated, showing) {
+        val ui = connection?.uiState ?: return@LaunchedEffect
+        combine(
+            ui.transportState.map { it.isPlaying }.distinctUntilChanged(),
+            ui.progressState.map { it.position }.distinctUntilChanged(),
+            snapshotFlow { showing() },
+        ) { playing, _, shown -> playing to shown }
+            .collectLatest { (playing, shown) ->
+                if (!shown) return@collectLatest
+                // a seek or a pause still moves the boundary once; playing, it moves every frame
+                tick.longValue++
+                while (playing && animated) withFrameMillis { tick.longValue = it }
+            }
     }
     return remember(connection) {
         LivePosition(read = { connection?.player?.currentPosition ?: 0L }, tick = { tick.longValue })
     }
 }
 
+/**
+ * Whether any of the open player is on screen. A style is still composed while it's collapsed into
+ * the mini player, and holds its clocks still there. Read it in effects and gestures, not composition.
+ */
+@Composable
+internal fun rememberStyleShowing(): () -> Boolean {
+    val sheet = LocalPlayerBottomSheetState.current
+    return remember(sheet) { { sheet == null || sheet.progress > 0f } }
+}
+
 /** the song's length in ms, never 0 */
 @Composable
 fun rememberDurationMs(): Long {
     val connection = LocalPlayerConnection.current ?: return 1L
-    val progress by connection.uiState.progressState.collectAsState()
-    return progress.duration.takeIf { it > 0L } ?: 1L
+    // the length alone: the whole progress state changes 15 times a second, and recomposed the style with it
+    val duration by remember(connection) {
+        connection.uiState.progressState.map { it.duration }.distinctUntilChanged()
+    }.collectAsState(initial = connection.uiState.progressState.value.duration)
+    return duration.takeIf { it > 0L } ?: 1L
 }
 
 /** the whole seconds played, recomposing once a second, for the big timestamp */
@@ -216,15 +264,17 @@ fun StyleCircle(
             .clip(CircleShape)
             .background(if (pill) PillFill else tones.chip)
             .pointerInput(enabled, interactive) {
-                if (!enabled || !interactive) return@pointerInput
-                detectTapGestures(
-                    onPress = {
-                        scope.launch { press.animateTo(0.86f, spring(dampingRatio = 0.6f, stiffness = 900f)) }
-                        tryAwaitRelease()
-                        scope.launch { press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f)) }
-                    },
-                    onTap = { onClick() },
-                )
+                if (!enabled) return@pointerInput
+                whileStyleInteractive(interactive) {
+                    detectTapGestures(
+                        onPress = {
+                            scope.launch { press.animateTo(0.86f, spring(dampingRatio = 0.6f, stiffness = 900f)) }
+                            tryAwaitRelease()
+                            scope.launch { press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f)) }
+                        },
+                        onTap = { onClick() },
+                    )
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -299,23 +349,34 @@ fun rememberStyleRotation(style: PlayerStyle): Pair<Boolean, (Boolean) -> Unit> 
 
 /**
  * Double tap plays or pauses; a horizontal swipe skips (right) or goes back (left). The alternate
- * styles have no big transport buttons, so the whole screen is the transport.
+ * styles have no big transport buttons, so the whole screen is the transport. Only while
+ * [interactive] says the player is open.
  */
-fun Modifier.styleGestures(enabled: Boolean, onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit): Modifier =
+fun Modifier.styleGestures(
+    enabled: Boolean,
+    interactive: () -> Boolean,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+): Modifier =
     if (!enabled) this else this
-        .pointerInput(enabled) { detectTapGestures(onDoubleTap = { onToggle() }) }
-        .pointerInput(enabled) {
+        .pointerInput(enabled, interactive) {
+            whileStyleInteractive(interactive) { detectTapGestures(onDoubleTap = { onToggle() }) }
+        }
+        .pointerInput(enabled, interactive) {
             var total = 0f
-            detectHorizontalDragGestures(
-                onDragStart = { total = 0f },
-                onDragEnd = {
-                    when {
-                        total < -SwipeSkipPx -> onNext()
-                        total > SwipeSkipPx -> onPrevious()
-                    }
-                },
-                onHorizontalDrag = { _, amount -> total += amount },
-            )
+            whileStyleInteractive(interactive) {
+                detectHorizontalDragGestures(
+                    onDragStart = { total = 0f },
+                    onDragEnd = {
+                        when {
+                            total < -SwipeSkipPx -> onNext()
+                            total > SwipeSkipPx -> onPrevious()
+                        }
+                    },
+                    onHorizontalDrag = { _, amount -> total += amount },
+                )
+            }
         }
 
 private const val SwipeSkipPx = 120f

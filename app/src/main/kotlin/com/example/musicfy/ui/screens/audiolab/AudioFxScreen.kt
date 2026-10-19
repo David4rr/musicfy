@@ -1,8 +1,8 @@
 // AudioFxScreen.kt
 //
 // Audio Lab's effects. Each one is its own card: a live picture of what it does, its switch, and
-// its options, which fold away while it's off. Reverb leads, as in the design, then loudness,
-// spatial, Dolby Atmos, speed and pitch, and the volume curve.
+// its options, which fold away while it's off. Loudness leads, then spatial, mono, Dolby Atmos,
+// speed and pitch, and the volume curve.
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -50,7 +50,6 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.AudioNormalizationKey
 import com.example.musicfy.eq.MaxSpeed
 import com.example.musicfy.eq.MinSpeed
-import com.example.musicfy.eq.ReverbPresets
 import com.example.musicfy.eq.audio.SpatialMode
 import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.theme.InterFontFamily
@@ -73,8 +72,6 @@ fun AudioFxScreen(
         backLabel = "Audio Lab",
         onBack = { navController.navigateUp() },
     ) {
-        ReverbCard(viewModel)
-        Spacer(Modifier.height(14.dp))
         LoudnessCard(viewModel)
         Spacer(Modifier.height(14.dp))
         SpatialCard(viewModel)
@@ -112,52 +109,6 @@ private fun EffectCard(
 }
 
 private fun pct(v: Float) = "${(v * 100).roundToInt()}%"
-
-// ---- Reverb --------------------------------------------------------------------------------
-
-@Composable
-private fun ReverbCard(viewModel: AudioLabViewModel) {
-    val reverb by viewModel.reverb.collectAsState()
-    EffectCard(
-        picture = { ReverbPicture(reverb) },
-        header = {
-            LabToggleRow("Reverb", "Reverb the music", reverb.enabled, { on -> viewModel.updateReverb { it.copy(enabled = on) } })
-        },
-        expanded = reverb.enabled,
-        options = {
-            LabChips(
-                chips = ReverbPresets.All.map { LabChip(it.id, it.name) } +
-                    (if (reverb.presetId == null) listOf(LabChip("custom", "Custom")) else emptyList()),
-                selectedKey = reverb.presetId ?: "custom",
-                onSelect = { id -> ReverbPresets.All.firstOrNull { it.id == id }?.let { p -> viewModel.updateReverb { it.withPreset(p) } } },
-            )
-            Spacer(Modifier.height(10.dp))
-            LabPanel {
-                LabSlider("Mix", pct(reverb.mix), reverb.mix, { v -> viewModel.updateReverb { it.copy(mix = v, presetId = null) } }, 0f..1f)
-                LabSlider("Room size", pct(reverb.roomSize), reverb.roomSize, { v -> viewModel.updateReverb { it.copy(roomSize = v, presetId = null) } }, 0f..1f)
-                LabSlider("Damping", pct(reverb.damping), reverb.damping, { v -> viewModel.updateReverb { it.copy(damping = v, presetId = null) } }, 0f..1f)
-                LabSlider("Wet", pct(reverb.wet), reverb.wet, { v -> viewModel.updateReverb { it.copy(wet = v, presetId = null) } }, 0f..1f)
-                FineTuneLabel()
-                LabSlider("Dry", pct(reverb.dry), reverb.dry, { v -> viewModel.updateReverb { it.copy(dry = v, presetId = null) } }, 0f..1f)
-                LabSlider("Width", pct(reverb.width), reverb.width, { v -> viewModel.updateReverb { it.copy(width = v, presetId = null) } }, 0f..1f)
-                LabSlider("Pre-delay", "${reverb.preDelayMs.roundToInt()} ms", reverb.preDelayMs,
-                    { v -> viewModel.updateReverb { it.copy(preDelayMs = v.roundToInt().toFloat(), presetId = null) } }, 0f..120f)
-                LabSlider("Low cut", "${reverb.lowCutHz.roundToInt()} Hz", log10(reverb.lowCutHz),
-                    { v -> viewModel.updateReverb { it.copy(lowCutHz = 10f.pow(v).roundToInt().toFloat(), presetId = null) } },
-                    log10(20f)..log10(1000f))
-            }
-        },
-    )
-}
-
-@Composable
-private fun FineTuneLabel() {
-    Text(
-        "FINE TUNE",
-        fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 1.3.sp,
-        color = LabColors.Secondary, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-    )
-}
 
 // ---- Loudness ------------------------------------------------------------------------------
 
@@ -392,12 +343,11 @@ private fun SupportPill(label: String, value: String) {
 
 // ---- Speed & pitch -------------------------------------------------------------------------
 
-private class SpeedPreset(val key: String, val label: String, val speed: Float, val preservePitch: Boolean, val withReverb: Boolean = false)
+private class SpeedPreset(val key: String, val label: String, val speed: Float, val preservePitch: Boolean)
 
 private val SpeedPresets = listOf(
     SpeedPreset("normal", "Normal", 1f, true),
     SpeedPreset("slowed", "Slowed", 0.85f, false),
-    SpeedPreset("slowed_reverb", "Slowed + reverb", 0.85f, false, withReverb = true),
     SpeedPreset("nightcore", "Nightcore", 1.25f, false),
     SpeedPreset("0.75", "0.75×", 0.75f, true),
     SpeedPreset("1.25", "1.25×", 1.25f, true),
@@ -408,7 +358,6 @@ private val SpeedPresets = listOf(
 @Composable
 private fun SpeedCard(viewModel: AudioLabViewModel) {
     val playback by viewModel.playback.collectAsState()
-    val reverb by viewModel.reverb.collectAsState()
     EffectCard(
         picture = { SpeedPicture(playback) },
         header = {
@@ -433,22 +382,13 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
         options = {
             LabChips(
                 chips = SpeedPresets.map { LabChip(it.key, it.label) },
-                selectedKey = if (playback.speed == 0.85f && !playback.preservePitch) {
-                    if (reverb.enabled) "slowed_reverb" else "slowed"
-                } else {
-                    SpeedPresets.firstOrNull { p ->
-                        !p.withReverb && p.speed == playback.speed && p.preservePitch == playback.preservePitch &&
-                            (!p.preservePitch || playback.pitchSemitones == 0f)
-                    }?.key
-                },
+                selectedKey = SpeedPresets.firstOrNull { p ->
+                    p.speed == playback.speed && p.preservePitch == playback.preservePitch &&
+                        (!p.preservePitch || playback.pitchSemitones == 0f)
+                }?.key,
                 onSelect = { key ->
                     val p = SpeedPresets.first { it.key == key }
                     viewModel.updatePlayback { it.copy(speed = p.speed, preservePitch = p.preservePitch, pitchSemitones = 0f) }
-                    if (p.withReverb) {
-                        ReverbPresets.All.firstOrNull { it.id == "hall" }?.let { hall ->
-                            viewModel.updateReverb { it.withPreset(hall).copy(enabled = true) }
-                        }
-                    }
                 },
             )
             Spacer(Modifier.height(10.dp))

@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.musicfy.LocalPlayerConnection
+import com.example.musicfy.R
 import com.example.musicfy.constants.TranslateLanguageKey
 import com.example.musicfy.constants.TranslateLyricsKey
 import com.example.musicfy.constants.TranslateSourceLanguageKey
@@ -57,6 +58,7 @@ import com.example.musicfy.lyrics.LyricsProviderRegistry
 import com.example.musicfy.lyrics.LyricsTranslationHelper
 import com.example.musicfy.lyrics.LyricsUtils
 import com.example.musicfy.ui.component.AppSwitch
+import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.LyricsMenuViewModel
 
@@ -444,13 +446,8 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
                     .background(MenuRowSurface)
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.9f))
-                )
-                Spacer(modifier = Modifier.width(12.dp))
+                SheetIcon(R.drawable.translate)
+                Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = "Translate this whole session",
                     color = Color.White,

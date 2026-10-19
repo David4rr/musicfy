@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.musicfy.constants.PlayerBottomBarStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import androidx.compose.runtime.withFrameNanos
@@ -28,10 +29,10 @@ import kotlin.math.abs
 
 /**
  * Where the player studio is: the player itself, the selector the player shrinks into, the
- * flagship's edit tiles, and the three things a tile opens in place (the cover editor, the middle
- * part, and the menu the middle part's chevron leads to).
+ * flagship's edit tiles, and the things a tile opens in place (the cover editor, the middle part,
+ * the menu the middle part's chevron leads to, and the bottom bar's styles).
  */
-enum class StudioStage { PLAYER, SELECTOR, EDIT, COVER, MIDDLE, MENU }
+enum class StudioStage { PLAYER, SELECTOR, EDIT, COVER, MIDDLE, MENU, BAR }
 
 /** the sheets the editor opens over itself */
 enum class StudioSheet { CONTROLS, SEEKBAR, END_TIME, MENU_SLOT, COVER_OPTIONS, DISC_LABEL, POSTER }
@@ -107,6 +108,14 @@ class StudioAnchors {
     val chevron = mutableStateOf(Rect.Zero)
     val seekBar = mutableStateOf(Rect.Zero)
     val endTime = mutableStateOf(Rect.Zero)
+    /** the bottom bar in its volume style (the card deck, its other style, is [card]) */
+    val volumeBar = mutableStateOf(Rect.Zero)
+
+    /** where the bottom bar sits on the player in [style] */
+    fun bar(style: PlayerBottomBarStyle): MutableState<Rect> = when (style) {
+        PlayerBottomBarStyle.STACK -> card
+        PlayerBottomBarStyle.VOLUME -> volumeBar
+    }
 
     /** the title row and the seek bar together: the editor's middle part */
     val middle: Rect
@@ -155,6 +164,8 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
     val middle = Motion(scope)
     /** the menu grown out of the chevron */
     val menu = Motion(scope)
+    /** the bottom bar pulled up to the middle of the screen, its styles beside it */
+    val bar = Motion(scope)
 
     /** the selector's position, in cards */
     val page = Motion(scope)
@@ -177,6 +188,9 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
     /** the same for the backgrounds */
     val backdropPage = Motion(scope)
     var backdropCommitted by mutableIntStateOf(0)
+    /** the same for the bottom bar's styles */
+    val barPage = Motion(scope)
+    var barCommitted by mutableIntStateOf(0)
 
     /**
      * the player sheet is covered by the editor's still of it (the middle part's camera): it stops
@@ -195,6 +209,20 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
     /** the editor is up (or coming up): the player's own gestures and controls stand down */
     val editing: Boolean
         get() = stage >= StudioStage.EDIT || edit.value > 0.0005f
+
+    /** the part whose camera move this stage is (the middle part and its menu, or the bottom bar) */
+    val cameraPart: LiftedPart?
+        get() = when (stage) {
+            StudioStage.MIDDLE, StudioStage.MENU -> LiftedPart.MIDDLE
+            StudioStage.BAR -> LiftedPart.BAR
+            else -> null
+        }
+
+    /** how far [part]'s camera has moved in */
+    fun camera(part: LiftedPart): Motion = when (part) {
+        LiftedPart.MIDDLE -> middle
+        LiftedPart.BAR -> bar
+    }
 
     fun open(livePage: Int) {
         if (stage != StudioStage.PLAYER) return
@@ -244,18 +272,19 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
             StudioStage.PLAYER -> {
                 if (handoff.value > 0f) handoff.animateTo(0f, spec = androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
                 selector.animateTo(0f); edit.animateTo(0f); cover.animateTo(0f)
-                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f)
+                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f); bar.animateTo(0f)
                 page.animateTo(livePage.toFloat())
             }
             StudioStage.SELECTOR -> {
                 handoff.value = 0f
                 selector.animateTo(1f); edit.animateTo(0f); cover.animateTo(0f)
-                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f)
+                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f); bar.animateTo(0f)
             }
             StudioStage.EDIT -> {
                 selector.animateTo(0f); edit.animateTo(1f); cover.animateTo(0f)
-                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f)
+                backdrop.animateTo(0f); middle.animateTo(0f); menu.animateTo(0f); bar.animateTo(0f)
                 coverPage.animateTo(coverCommitted.toFloat()); backdropPage.animateTo(backdropCommitted.toFloat())
+                barPage.animateTo(barCommitted.toFloat())
             }
             StudioStage.COVER -> {
                 coverPage.value = coverCommitted.toFloat()
@@ -265,6 +294,11 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
             }
             StudioStage.MIDDLE -> { edit.animateTo(1f); middle.animateTo(1f); menu.animateTo(0f) }
             StudioStage.MENU -> { menu.animateTo(1f) }
+            StudioStage.BAR -> {
+                barPage.value = barCommitted.toFloat()
+                edit.animateTo(1f)
+                bar.animateTo(1f)
+            }
         }
     }
 
@@ -277,6 +311,7 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
             StudioStage.COVER -> if (backdrop.value > 0.5f) backdrop.animateTo(0f) else go(StudioStage.EDIT)
             StudioStage.MIDDLE -> go(StudioStage.EDIT)
             StudioStage.MENU -> go(StudioStage.MIDDLE)
+            StudioStage.BAR -> go(StudioStage.EDIT)
         }
     }
 
@@ -284,10 +319,11 @@ class PlayerStudioState internal constructor(private val scope: CoroutineScope) 
     fun reset() {
         stage = StudioStage.PLAYER
         sheet = null
-        listOf(selector, edit, cover, backdrop, middle, menu, handoff).forEach { it.value = 0f }
+        listOf(selector, edit, cover, backdrop, middle, menu, bar, handoff).forEach { it.value = 0f }
         page.value = livePage.toFloat()
         coverPage.value = coverCommitted.toFloat()
         backdropPage.value = backdropCommitted.toFloat()
+        barPage.value = barCommitted.toFloat()
     }
 
     fun openSheet(sheet: StudioSheet, slot: Int = 0) {
@@ -348,6 +384,8 @@ class TileLayout(
     val coverTile: Rect,
     val middleTile: Rect,
     val controlsTile: Rect,
+    /** round the bottom bar; none when the player has no bar to edit */
+    val barTile: Rect?,
     /** the full-bleed cover has no top edge to outline: its tile is just its sides, fading off */
     val fullCover: Boolean,
 )
@@ -363,6 +401,7 @@ fun tileLayout(
     density: Density,
     anchors: StudioAnchors,
     fullCover: Boolean,
+    barStyle: PlayerBottomBarStyle,
 ): TileLayout = with(density) {
     val margin = TileMargin.toPx()
     val pad = TilePadding.toPx()
@@ -370,6 +409,7 @@ fun tileLayout(
     val cover = anchors.cover.value.takeIf { it.width > 0f } ?: Rect(margin, height * 0.1f, width - margin, height * 0.5f)
     val middle = anchors.middle.takeIf { it.width > 0f } ?: Rect(0f, height * 0.62f, width, height * 0.74f)
     val transport = anchors.transport.value.takeIf { it.width > 0f } ?: Rect(0f, height * 0.78f, width, height * 0.86f)
+    val bar = anchors.bar(barStyle).value.takeIf { it.width > 0f }
 
     val coverTile = if (fullCover) {
         Rect(margin, 0f, width - margin, cover.bottom.coerceAtMost(middle.top - gap * 2))
@@ -378,16 +418,27 @@ fun tileLayout(
     }
     var middleTile = Rect(margin, middle.top - pad, width - margin, middle.bottom + pad)
     var controlsTile = Rect(margin, transport.top - pad, width - margin, transport.bottom + pad)
+    // the card runs off the bottom of the screen, so its tile does too: no bottom edge to draw
+    var barTile = bar?.let {
+        val bottom = if (barStyle == PlayerBottomBarStyle.STACK) height + TileCorner.toPx() * 2f else it.bottom + pad
+        Rect(margin, it.top - pad, width - margin, bottom)
+    }
     // tiles that would touch share the space between them
     if (middleTile.bottom + gap > controlsTile.top) {
         val split = (middle.bottom + transport.top) / 2f
         middleTile = middleTile.copy(bottom = split - gap / 2f)
         controlsTile = controlsTile.copy(top = split + gap / 2f)
     }
+    if (bar != null && barTile != null && controlsTile.bottom + gap > barTile.top) {
+        val split = (transport.bottom + bar.top) / 2f
+        controlsTile = controlsTile.copy(bottom = split - gap / 2f)
+        barTile = barTile.copy(top = split + gap / 2f)
+    }
     TileLayout(
         coverTile = coverTile,
         middleTile = middleTile,
         controlsTile = controlsTile,
+        barTile = barTile,
         fullCover = fullCover,
     )
 }

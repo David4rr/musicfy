@@ -47,6 +47,8 @@ import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
+import com.example.musicfy.ui.component.SheetActionCard
+import com.example.musicfy.ui.component.SheetActionCardRow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -199,29 +201,41 @@ fun YouTubeSelectionSongMenu(
 
     LazyColumn(
         contentPadding = PaddingValues(
-            start = 8.dp,
+            start = 0.dp,
             top = 8.dp,
-            end = 8.dp,
+            end = 0.dp,
             bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
         item {
+            // Playing the picked songs and saving them to a playlist are why people select songs.
+            SheetActionCardRow(modifier = Modifier.padding(bottom = 10.dp)) {
+                SheetActionCard(
+                    icon = R.drawable.play,
+                    title = stringResource(R.string.play),
+                    onClick = {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = context.getString(R.string.queue_all_songs),
+                                items = songSelection.map { it.toMediaItem() },
+                            ),
+                        )
+                        clearAction()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                SheetActionCard(
+                    icon = R.drawable.playlist_add,
+                    title = stringResource(R.string.add_to_playlist),
+                    onClick = { showChoosePlaylistDialog = true },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
             Material3MenuGroup(
                 listOfNotNull(
-                    if (true) Material3MenuItemData(
-                        icon = { Icon(painterResource(R.drawable.play), null) },
-                        title = { Text(stringResource(R.string.play)) },
-                        onClick = {
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = context.getString(R.string.queue_all_songs),
-                                    items = songSelection.map { it.toMediaItem() },
-                                ),
-                            )
-                            clearAction()
-                            onDismiss()
-                        },
-                    ) else null,
                     if (true) Material3MenuItemData(
                         icon = { Icon(painterResource(R.drawable.shuffle), null) },
                         title = { Text(stringResource(R.string.shuffle)) },
@@ -245,13 +259,6 @@ fun YouTubeSelectionSongMenu(
                             onDismiss()
                         },
                     ) else null,
-                    Material3MenuItemData(
-                        icon = { Icon(painterResource(R.drawable.playlist_add), null) },
-                        title = { Text(stringResource(R.string.add_to_playlist)) },
-                        onClick = {
-                            showChoosePlaylistDialog = true
-                        },
-                    ),
                     Material3MenuItemData(
                         title = {
                             Text(

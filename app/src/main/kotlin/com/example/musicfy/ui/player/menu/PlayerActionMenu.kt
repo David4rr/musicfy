@@ -14,7 +14,6 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -56,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
@@ -66,6 +63,11 @@ import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.playback.ExoDownloadService
+import com.example.musicfy.ui.component.SheetActionCard
+import com.example.musicfy.ui.component.SheetActionCardRow
+import com.example.musicfy.ui.component.SheetDownloadCard
+import com.example.musicfy.ui.component.SheetHeaderGap
+import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.ui.menu.AddToPlaylistDialog
 import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.flow.flowOf
@@ -175,11 +177,13 @@ fun PlayerActionMenu(
                     }
                 }
 
-                if (fromLyrics) {
-                    MenuDivider()
+                Spacer(modifier = Modifier.height(SheetHeaderGap))
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MenuCard(
+                // Opened from the lyrics page, the lyrics tools are what the menu is for, so they
+                // come first and take the two big cards.
+                if (fromLyrics) {
+                    SheetActionCardRow {
+                        SheetActionCard(
                             icon = R.drawable.translate,
                             title = "Ai translation",
                             // Greyed out until the AI translation settings are filled in — an
@@ -189,7 +193,7 @@ fun PlayerActionMenu(
                             onClick = {},
                             modifier = Modifier.weight(1f),
                         )
-                        MenuCard(
+                        SheetActionCard(
                             icon = R.drawable.edit,
                             title = "Edit lyrics",
                             onClick = { showLyricsEditor = true },
@@ -215,9 +219,48 @@ fun PlayerActionMenu(
                         title = "lyrics translation",
                         onClick = { showLyricsTranslation = true },
                     )
+
+                    Spacer(modifier = Modifier.height(SectionGap))
                 }
 
-                MenuDivider()
+                // Saving the song somewhere is what people open this menu for most.
+                SheetActionCardRow {
+                    SheetActionCard(
+                        icon = R.drawable.playlist_add,
+                        title = "Add to playlist",
+                        enabled = currentMetadata != null,
+                        onClick = { showChoosePlaylistDialog = true },
+                        modifier = Modifier.weight(1f),
+                    )
+                    SheetDownloadCard(
+                        downloadState = download?.state,
+                        onDownload = {
+                            currentMetadata?.let { metadata ->
+                                // The song has to be in the database for the download to be
+                                // listed and played back from there.
+                                database.transaction { insert(metadata) }
+                                val request = DownloadRequest.Builder(metadata.id, metadata.id.toUri())
+                                    .setCustomCacheKey(metadata.id)
+                                    .setData(metadata.title.toByteArray())
+                                    .build()
+                                DownloadService.sendAddDownload(
+                                    context, ExoDownloadService::class.java, request, false,
+                                )
+                            }
+                        },
+                        // Done, or on its way: tapping takes it back out.
+                        onRemove = {
+                            currentMetadata?.let { metadata ->
+                                DownloadService.sendRemoveDownload(
+                                    context, ExoDownloadService::class.java, metadata.id, false,
+                                )
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(SectionGap))
 
                 DeviceVolumeRow()
                 Spacer(modifier = Modifier.height(8.dp))
@@ -235,15 +278,8 @@ fun PlayerActionMenu(
                     onClick = { showPlaybackSpeed = true },
                 )
 
-                MenuDivider()
+                Spacer(modifier = Modifier.height(SectionGap))
 
-                MenuRow(
-                    icon = R.drawable.playlist_add,
-                    title = "add to playlist",
-                    enabled = currentMetadata != null,
-                    onClick = { showChoosePlaylistDialog = true },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 MenuRow(
                     icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
                     title = if (trackInfo.liked) "remove from liked" else "add to liked",
@@ -258,40 +294,6 @@ fun PlayerActionMenu(
                     onClick = { playerConnection.toggleLibrary() },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                val downloadState = download?.state
-                MenuRow(
-                    icon = if (downloadState == Download.STATE_COMPLETED) R.drawable.offline else R.drawable.download,
-                    title = when (downloadState) {
-                        Download.STATE_COMPLETED -> "remove download"
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> "downloading, tap to cancel"
-                        else -> "download music"
-                    },
-                    enabled = currentMetadata != null,
-                    onClick = {
-                        currentMetadata?.let { metadata ->
-                            when (downloadState) {
-                                // Done, or on its way: tapping takes it back out.
-                                Download.STATE_COMPLETED, Download.STATE_QUEUED, Download.STATE_DOWNLOADING ->
-                                    DownloadService.sendRemoveDownload(
-                                        context, ExoDownloadService::class.java, metadata.id, false,
-                                    )
-                                else -> {
-                                    // The song has to be in the database for the download to be
-                                    // listed and played back from there.
-                                    database.transaction { insert(metadata) }
-                                    val request = DownloadRequest.Builder(metadata.id, metadata.id.toUri())
-                                        .setCustomCacheKey(metadata.id)
-                                        .setData(metadata.title.toByteArray())
-                                        .build()
-                                    DownloadService.sendAddDownload(
-                                        context, ExoDownloadService::class.java, request, false,
-                                    )
-                                }
-                            }
-                        }
-                    },
-                )
-                Spacer(modifier = Modifier.height(8.dp))
                 // Share stays greyed out for now.
                 MenuRow(
                     icon = R.drawable.share,
@@ -300,7 +302,7 @@ fun PlayerActionMenu(
                     onClick = {},
                 )
 
-                MenuDivider()
+                Spacer(modifier = Modifier.height(SectionGap))
 
                 MenuRow(
                     icon = R.drawable.edit,
@@ -349,67 +351,8 @@ fun PlayerActionMenu(
     }
 }
 
-@Composable
-private fun MenuDivider() {
-    Box(
-        modifier = Modifier
-            .padding(vertical = 14.dp)
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(Color.White.copy(alpha = 0.10f))
-    )
-}
-
-/**
- * The tall two-up card used for the headline lyrics actions: icon on its own row, label beneath.
- * Same surface and disabled treatment as [MenuRow], just a different shape.
- */
-@Composable
-private fun MenuCard(
-    icon: Int,
-    title: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val contentAlpha = if (enabled) 1f else 0.35f
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MenuRowSurface)
-            .clickable(
-                enabled = enabled,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(14.dp)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.9f * contentAlpha))
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier.size(13.dp),
-            )
-        }
-        Spacer(modifier = Modifier.height(30.dp))
-        Text(
-            text = title,
-            color = Color.White.copy(alpha = contentAlpha),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
+/** Space between the menu's groups of rows. It used to be a line; the sheets don't draw lines any more. */
+private val SectionGap = 16.dp
 
 @Composable
 private fun MenuRow(
@@ -435,21 +378,8 @@ private fun MenuRow(
             )
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.9f * contentAlpha))
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier.size(13.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
+        SheetIcon(icon, tint = Color.White.copy(alpha = contentAlpha))
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = title,
             color = Color.White.copy(alpha = contentAlpha),
@@ -535,21 +465,8 @@ private fun DeviceVolumeRow() {
             .padding(horizontal = 14.dp, vertical = 14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.9f))
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.volume_up),
-                    contentDescription = null,
-                    tint = Color.Black.copy(alpha = 0.75f),
-                    modifier = Modifier.size(13.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
+            SheetIcon(R.drawable.volume_up)
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = android.os.Build.MODEL ?: "this device",
                 color = Color.White,

@@ -699,6 +699,11 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE id IN (:songIds)")
     suspend fun getSongsByIds(songIds: List<String>): List<Song>
 
+    /** [getSongsByIds] that keeps up: a like or a new artist picture shows without asking again. */
+    @Transaction
+    @Query("SELECT * FROM song WHERE id IN (:songIds)")
+    fun songsByIds(songIds: List<String>): Flow<List<Song>>
+
     @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")
     fun songArtistMap(songId: String): List<SongArtistMap>

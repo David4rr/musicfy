@@ -1,6 +1,6 @@
 // LibraryManageSheets.kt
 //
-// "Manage imports" and "Manage local": two big tiles and a row per action, as in the mocks.
+// "Manage imports", "Manage local" and "Manage cache": two big tiles and a row per action, as in the mocks.
 // Anything that takes music out of the library asks once more on a sheet pushed over this one.
 
 package com.example.musicfy.ui.screens.library
@@ -9,7 +9,6 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,27 +16,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
+import com.example.musicfy.db.entities.Song
 import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.ui.component.PopupSheetHandle
 import com.example.musicfy.ui.component.PopupSheetState
+import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.ui.component.SheetPillButton
 import com.example.musicfy.ui.player.menu.MenuRowSurface
 import com.example.musicfy.ui.screens.search.SearchColors
@@ -119,6 +116,38 @@ fun PopupSheetState.showManageLocalSheet(
     }
 }
 
+/**
+ * [cachedSongs] are the songs "Remove songs" lists. Clearing goes further and also drops songs that
+ * only got partly cached; downloads are kept apart and never touched.
+ */
+fun PopupSheetState.showManageCachedSheet(
+    cachedSongs: List<Song>,
+    onClearCache: () -> Unit,
+    onRemove: (Set<String>) -> Unit,
+) {
+    var sheet: PopupSheetHandle? = null
+    sheet = showWithHandle {
+        ManageLayout(
+            first = ManageAction(R.drawable.clear_all, "Clear cache") {
+                showConfirm(
+                    title = "Clear your cache?",
+                    message = "Every cached song is deleted from this phone and streams again the next time " +
+                        "you play it. Your library and your downloads stay as they are.",
+                    action = "Clear cache",
+                ) {
+                    onClearCache()
+                    sheet?.dismiss()
+                }
+            },
+            second = ManageAction(R.drawable.delete, "Remove songs") {
+                sheet?.dismiss()
+                showRemoveCachedSheet(cachedSongs, onRemove)
+            },
+            rows = emptyList(),
+        )
+    }
+}
+
 /** One more look before music leaves the library, pushed over the sheet that asked. */
 private fun PopupSheetState.showConfirm(title: String, message: String, action: String, onConfirm: () -> Unit) {
     var sheet: PopupSheetHandle? = null
@@ -168,7 +197,7 @@ private fun ManageTile(action: ManageAction, modifier: Modifier = Modifier) {
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        ManageBadge(action.icon)
+        ManageIcon(action.icon)
         Spacer(Modifier.height(14.dp))
         ManageLabel(action.label)
     }
@@ -186,29 +215,16 @@ private fun ManageRow(action: ManageAction) {
             .clickable(role = Role.Button, onClick = action.onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        ManageBadge(action.icon)
-        Spacer(Modifier.width(12.dp))
+        ManageIcon(action.icon)
+        Spacer(Modifier.width(14.dp))
         ManageLabel(action.label)
     }
 }
 
-/** The light circle with the action's icon, like the round markers in the mock. */
+/** The action's icon in plain white. It used to sit in a light circle; the sheets dropped those. */
 @Composable
-private fun ManageBadge(@DrawableRes icon: Int) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(26.dp)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.88f)),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.8f),
-            modifier = Modifier.size(15.dp),
-        )
-    }
+private fun ManageIcon(@DrawableRes icon: Int) {
+    SheetIcon(icon, size = 22.dp)
 }
 
 @Composable

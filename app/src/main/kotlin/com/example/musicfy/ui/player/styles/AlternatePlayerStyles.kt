@@ -119,7 +119,8 @@ private fun StyleFrame(
             modifier = Modifier
                 .fillMaxSize()
                 .styleGestures(
-                    enabled = !preview && connection != null && LocalStyleInteractive.current,
+                    enabled = !preview && connection != null,
+                    interactive = LocalStyleInteractive.current,
                     onToggle = { connection?.togglePlayPause() },
                     onNext = { connection?.seekToNext() },
                     onPrevious = { connection?.seekToPrevious() },
@@ -180,7 +181,9 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
     )
     val (visualizer) = com.example.musicfy.utils.rememberPreference(com.example.musicfy.constants.PosterVisualizerKey, defaultValue = false)
     val ring = rememberCoverRingState()
-    val live = !preview && LocalStyleInteractive.current
+    // The live player, not a selector card, whether open or not. Tied to the player being open, the
+    // ring jumped to a fixed spot and lost its bars the moment a close began.
+    val live = !preview
     val density = LocalDensity.current
     // the pills' column, and the room the words keep from it
     val pillsWidth = com.example.musicfy.ui.player.TurntablePillWidth

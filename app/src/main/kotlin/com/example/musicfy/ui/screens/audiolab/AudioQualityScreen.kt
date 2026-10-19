@@ -1,9 +1,9 @@
 // AudioQualityScreen.kt
 //
-// Audio Lab's streaming quality, by provider: YouTube Music's tiers, then each source module as its
-// own category (Apple Music, Monochrome) with its switch and qualities, then the provider order
-// songs are looked for in. The picture is the music as the first provider plays it: the lower the
-// quality, the coarser the waveform, until Low is pixels; lossless is smooth.
+// Audio Lab's streaming quality, by provider: YouTube Music's switch and tiers, then each source
+// module as its own category (Apple Music, Monochrome) with its switch and qualities, then the
+// provider order songs are looked for in. The picture is the music as the first provider plays
+// it: the lower the quality, the coarser the waveform, until Low is pixels; lossless is smooth.
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -88,12 +88,18 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
     val quality = if (stored.usesMonochrome) AudioQuality.HIGH else stored
     val entries by modules.entries.collectAsState()
     val order by modules.order.collectAsState()
+    val youTubeOn by modules.youTubeEnabled.collectAsState()
     val context = LocalContext.current
     val metered = remember { (context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)?.isActiveNetworkMetered == true }
 
+    val usable = { id: String ->
+        if (id == SourceModules.YouTubeId) youTubeOn
+        else entries.any { it.module.info.id == id && it.enabled && it.account is AccountState.SignedIn }
+    }
     // the first provider in the order that's on plays everything it has
-    val first = order.firstOrNull { id -> id == SourceModules.YouTubeId || entries.any { it.module.info.id == id && it.enabled && it.account is AccountState.SignedIn } }
+    val first = order.firstOrNull(usable)
     val effective = when (first) {
+        null -> Effective(AudioQuality.LOW, "Nothing is on", "Turn a provider on")
         MonochromeModule.Id -> Effective(AudioQuality.LOSSLESS, "Monochrome", "FLAC · lossless")
         AppleMusicModule.Id -> {
             val pick = entries.firstOrNull { it.module.info.id == first }?.picks?.get(AppleMusicModule.ChoiceQuality)
@@ -128,10 +134,20 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
                 )
             }
             Spacer(Modifier.height(12.dp))
-            ProviderHeader(logo = R.drawable.provider_youtube_music, name = "YouTube Music", status = "Always on, plays what the others don't have")
+            ProviderHeader(
+                logo = R.drawable.provider_youtube_music,
+                name = "YouTube Music",
+                status = when {
+                    youTubeOn -> "On, plays what the others don't have"
+                    order.none(usable) -> "Off, and nothing else is on, so songs won't play"
+                    else -> "Off, songs the others don't have are skipped"
+                },
+                checked = youTubeOn,
+                onCheckedChange = { on -> modules.setEnabled(SourceModules.YouTubeId, on) },
+            )
             Spacer(Modifier.height(8.dp))
             YouTubeOptions.forEach { option ->
-                QualityRow(option.title, option.description, selected = quality == option.quality, enabled = true) { onQuality(option.quality) }
+                QualityRow(option.title, option.description, selected = quality == option.quality, enabled = youTubeOn) { onQuality(option.quality) }
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -203,7 +219,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
             order = order,
             name = modules::nameOf,
             logo = ::providerLogo,
-            usable = { id -> id == SourceModules.YouTubeId || entries.any { it.module.info.id == id && it.enabled && it.account is AccountState.SignedIn } },
+            usable = usable,
             onReorder = modules::setOrder,
         )
         Text(

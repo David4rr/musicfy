@@ -534,6 +534,16 @@ val PlayerMenuSlotsKey = stringPreferencesKey("playerMenuSlots")
 /** the action of the round button beside the chevron (a like, out of the box) */
 val PlayerSideButtonKey = stringPreferencesKey("playerSideButton")
 
+/** what sits at the bottom of the player, under the play buttons */
+enum class PlayerBottomBarStyle(val displayName: String) {
+    /** the lyrics and queue cards, one behind the other */
+    STACK("Stack"),
+    /** the phone's volume, with lyrics, queue, repeat and shuffle buttons under it */
+    VOLUME("Volume"),
+}
+
+val PlayerBottomBarStyleKey = stringPreferencesKey("playerBottomBarStyle")
+
 /** what the disc's label shows */
 enum class DiscLabelContent { CUSTOM, MUSIC_NAME, ARTIST_NAME, ALBUM_NAME, MUSIC_AND_ARTIST, NONE }
 

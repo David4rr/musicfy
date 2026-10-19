@@ -50,7 +50,6 @@ import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.PlaylistThumbnail
 import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.SheetDivider
 import com.example.musicfy.ui.component.SheetLabel
 import com.example.musicfy.ui.component.SheetPillButton
 import com.example.musicfy.ui.component.SheetSearchField
@@ -269,7 +268,7 @@ private fun AddToPlaylistContent(
             onValueChange = { query = it },
             placeholder = "Search your playlist",
         )
-        SheetDivider()
+        Spacer(Modifier.height(16.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),

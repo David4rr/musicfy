@@ -36,10 +36,13 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.DefaultPlayerCoverStyle
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.PlayerBackgroundStyleKey
+import com.example.musicfy.constants.PlayerBottomBarStyle
+import com.example.musicfy.constants.PlayerBottomBarStyleKey
 import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.constants.PlayerCoverStyleKey
 import com.example.musicfy.ui.player.PlayerProgressSlider
 import com.example.musicfy.ui.player.PlayerTransportRow
+import com.example.musicfy.ui.player.PlayerVolumeBar
 import com.example.musicfy.ui.player.SongInfoRow
 import com.example.musicfy.ui.player.customize.DiscCoverStack
 import com.example.musicfy.ui.player.customize.PlayerBackgroundPreview
@@ -109,6 +112,7 @@ internal fun FlagshipPreview(
     val flagshipCover by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
     val coverStyle = if (turntable) PlayerCoverStyle.TURNTABLE else flagshipCover
     val backgroundStyle by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.COVER_GRADIENT)
+    val barStyle by rememberEnumPreference(PlayerBottomBarStyleKey, PlayerBottomBarStyle.STACK)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     BoxWithConstraints(modifier = modifier.fillMaxSize().inert()) {
@@ -142,15 +146,26 @@ internal fun FlagshipPreview(
             Spacer(Modifier.height(22.dp))
             PlayerTransportRow()
         }
-        // the bottom card, as its glass plate
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(start = 26.dp, end = 26.dp, bottom = navBottom + 14.dp)
-                .fillMaxWidth()
-                .height(78.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(Color.White.copy(alpha = 0.1f)),
-        )
+        if (barStyle == PlayerBottomBarStyle.VOLUME) {
+            PlayerVolumeBar(
+                isActive = { false },
+                onAction = {},
+                preview = true,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 26.dp, end = 26.dp, bottom = navBottom + 14.dp),
+            )
+        } else {
+            // the bottom card, as its glass plate
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 26.dp, end = 26.dp, bottom = navBottom + 14.dp)
+                    .fillMaxWidth()
+                    .height(78.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Color.White.copy(alpha = 0.1f)),
+            )
+        }
     }
 }

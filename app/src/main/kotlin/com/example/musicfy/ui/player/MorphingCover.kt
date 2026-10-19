@@ -11,6 +11,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -134,7 +136,8 @@ import com.example.musicfy.ui.player.customize.PlayerBackgroundContent
 import com.example.musicfy.ui.player.customize.CoverGradientBackdrop
 import com.example.musicfy.ui.player.customize.coverArtBox
 import com.example.musicfy.ui.player.customize.isDisc
-import com.example.musicfy.ui.component.GlassChromeBlurRadius
+import com.example.musicfy.ui.component.ChromeHighlightColor
+import com.example.musicfy.ui.component.FrostedChromeGlass
 import com.example.musicfy.ui.component.agslRenderEffect
 import com.example.musicfy.ui.component.createAgslShader
 import com.example.musicfy.ui.component.setAgslUniform
@@ -142,8 +145,8 @@ import com.example.musicfy.ui.component.drawGlassNode
 import com.example.musicfy.ui.component.glassNodeHasContent
 import com.example.musicfy.ui.component.glassNodeHeight
 import com.example.musicfy.ui.component.glassNodeWidth
-import com.example.musicfy.ui.component.GlassChromeColor
-import com.example.musicfy.ui.component.GlassPillBackground
+import com.example.musicfy.ui.component.RoundedHighlight
+import com.example.musicfy.ui.component.pressBounce
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.utils.rememberPreference
@@ -463,7 +466,9 @@ fun MorphingCover(
         val miniHeight = 64.dp
         val miniArtWidth = animatedMiniArtWidth
         val miniArtHeight = 48.dp
-        val miniArtX = 36.dp
+        // 8dp in from the pill's edge, as from its top and bottom, so the cover lines up with the
+        // nav bar's first tab highlight right under it
+        val miniArtX = 32.dp
         val miniArtY = (miniHeight - miniArtHeight) / 2
 
         val miniPlaySize = 36.dp
@@ -697,12 +702,10 @@ fun MorphingCover(
             label = "pauseSaturation"
         )
 
-        // behind another style the cover is only the mini player's thumbnail: gone once the sheet is
-        // a third of the way open, where the style itself starts to show
-        val artShown by remember(alternateStyle) {
-            derivedStateOf { !alternateStyle || progressProvider() < 0.42f }
-        }
-        if (artShown && (trackInfo.thumbnailUrl != null || isDiscStyle)) {
+        // Behind another style the cover is only the mini player's thumbnail, faded out by 40% open,
+        // where the style itself shows. It stays composed above that, at alpha 0: built at 42% it was
+        // a heavy frame in the middle of every close, and dropped there in the middle of every open.
+        if (trackInfo.thumbnailUrl != null || isDiscStyle) {
             Box(
                 modifier = Modifier
                     .morphLayout(
@@ -970,17 +973,12 @@ fun MorphingCover(
                     transformOrigin = TransformOrigin(0.5f, 0.5f)
                     alpha = (1f - (p / 0.5f)).coerceIn(0f, 1f)
                 }
-                .clickable { playerConnection?.togglePlayPause() }
         ) {
-            Icon(
-                painter = painterResource(
-                    if (playbackState == Player.STATE_ENDED) R.drawable.replay
-                    else if (isPlaying) R.drawable.ic_untitled_pause
-                    else R.drawable.ic_untitled_play
-                ),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp).align(Alignment.Center)
+            MiniPlayerButton(
+                iconRes = if (playbackState == Player.STATE_ENDED) R.drawable.replay
+                else if (isPlaying) R.drawable.ic_untitled_pause
+                else R.drawable.ic_untitled_play,
+                onClick = { playerConnection?.togglePlayPause() },
             )
         }
 
@@ -1001,13 +999,62 @@ fun MorphingCover(
                     transformOrigin = TransformOrigin(0.5f, 0.5f)
                     alpha = (1f - (p / 0.5f)).coerceIn(0f, 1f)
                 }
-                .clickable { playerConnection?.player?.seekToNext() }
         ) {
+            MiniPlayerButton(
+                iconRes = R.drawable.ic_untitled_skip_next,
+                onClick = { playerConnection?.player?.seekToNext() },
+            )
+        }
+    }
+}
+
+/**
+ * The round highlight behind a pressed mini player button: the nav bar's highlight colour, 4dp
+ * past the 36dp button, so the skip button's sits 8dp in from the pill's end like the cover does.
+ */
+private val MiniButtonHighlight = RoundedHighlight(
+    cornerRadius = 22.dp,
+    spillX = 4.dp,
+    spillY = 4.dp,
+    color = ChromeHighlightColor,
+)
+
+/** Play turning into pause (and back) pops the new icon in from small as the old one shrinks away. */
+private val MiniIconSwap = (fadeIn(tween(160)) + scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.6f)) togetherWith
+    (fadeOut(tween(120)) + scaleOut(tween(160), targetScale = 0.6f))
+
+/**
+ * One of the mini player's buttons. A round highlight comes up under the finger and the button
+ * squishes with it, and a new icon pops in instead of swapping in a single frame.
+ */
+@Composable
+private fun MiniPlayerButton(
+    iconRes: Int,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pressBounce(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = MiniButtonHighlight,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            targetState = iconRes,
+            transitionSpec = { MiniIconSwap },
+            contentAlignment = Alignment.Center,
+            label = "miniPlayerIcon",
+        ) { res ->
             Icon(
-                painter = painterResource(R.drawable.ic_untitled_skip_next),
+                painter = painterResource(res),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp).align(Alignment.Center)
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -1649,17 +1696,13 @@ private fun SheetPillGlass(
     }
     if (!mounted) return
     val insetPx = with(LocalDensity.current) { SheetPillInset.toPx() }
-    val containerColor = if (pureBlack) Color.Black else GlassChromeColor
+    // the same frosted glass as the nav bar; the sheet's clip trims the margin it blurs past its edges
     Box(modifier = Modifier.sheetShapeLayout(progressProvider, endpointsPx, insetPx)) {
-        GlassPillBackground(
+        FrostedChromeGlass(
             state = glassState,
-            blurRadius = { GlassChromeBlurRadius },
-            tint = containerColor.copy(alpha = 0.65f),
-            foundationColor = containerColor,
+            pureBlack = pureBlack,
             accentWash = accentWash,
-
-            tileMode = android.graphics.Shader.TileMode.CLAMP,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

@@ -53,7 +53,6 @@ class AudioLabViewModel @Inject constructor(
 
     val eq = store.eq
     val presets = store.presets
-    val reverb = store.reverb
     val loudness = store.loudness
     val spatial = store.spatial
     val playback = store.playback
@@ -216,9 +215,6 @@ class AudioLabViewModel @Inject constructor(
     }
 
     // ---- Audio FX ---------------------------------------------------------------------------
-
-    fun updateReverb(transform: (com.example.musicfy.eq.ReverbSettings) -> com.example.musicfy.eq.ReverbSettings) =
-        store.updateReverb(transform)
 
     fun updateLoudness(transform: (com.example.musicfy.eq.LoudnessSettings) -> com.example.musicfy.eq.LoudnessSettings) =
         store.updateLoudness(transform)

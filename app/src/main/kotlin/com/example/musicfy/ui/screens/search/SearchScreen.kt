@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.musicfy.ui.screens.Screens
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -87,6 +88,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import com.example.musicfy.ui.component.navigateToTab
+
+/** set on the search page's entry to open its field with the keyboard up */
+private const val SearchFocusKey = "focusSearch"
+
+/** opens the search page's field, ready to type (the Search tab's double tap) */
+fun NavController.requestSearchFocus() {
+    runCatching { getBackStackEntry(Screens.Search.route) }.getOrNull()
+        ?.savedStateHandle?.set(SearchFocusKey, true)
+}
 
 @Composable
 fun SearchScreen(
@@ -173,6 +183,25 @@ fun SearchScreen(
             runCatching { focusRequester.requestFocus() }
         } else {
             keyboardController?.hide()
+        }
+    }
+
+    // two taps on the Search tab ask for the field (requestSearchFocus). Read from this page's own
+    // entry, the one the tab flags, so other pages opening don't recompose the search page
+    val backStackEntry = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+        as? androidx.navigation.NavBackStackEntry
+    val focusAsked = remember(backStackEntry) {
+        backStackEntry?.savedStateHandle?.getStateFlow(SearchFocusKey, false)
+    }?.collectAsState()
+    LaunchedEffect(focusAsked?.value) {
+        if (focusAsked?.value != true) return@LaunchedEffect
+        backStackEntry?.savedStateHandle?.set(SearchFocusKey, false)
+        if (active) {
+            // already open: just bring the keyboard back
+            runCatching { focusRequester.requestFocus() }
+            keyboardController?.show()
+        } else {
+            active = true
         }
     }
 

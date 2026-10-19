@@ -5,8 +5,6 @@ import androidx.media3.common.audio.AudioProcessor
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessParams
-import com.example.musicfy.eq.audio.ReverbAudioProcessor
-import com.example.musicfy.eq.audio.ReverbParams
 import com.example.musicfy.eq.audio.SpatialAudioProcessor
 import com.example.musicfy.eq.audio.SpatialMode
 import com.example.musicfy.eq.audio.SpatialParams
@@ -84,11 +82,34 @@ class AudioLabDspTest {
     }
 
     @Test
-    fun `equalizer is a plain copy until it's given a curve`() {
+    fun `equalizer is a plain copy until it's given a curve, end included`() {
         val eq = CustomEqualizerAudioProcessor()
         configure(eq)
         val input = sine(440.0, 0.3, rate / 2)
-        assertArrayEquals(input, run(eq, input))
+        val out = run(eq, input)
+        // the limiter holds the last few milliseconds until the song ends
+        eq.queueEndOfStream()
+        assertTrue(!eq.isEnded)
+        eq.queueInput(ByteBuffer.allocateDirect(0))
+        val tail = eq.output
+        val all = out + ShortArray(tail.remaining() / 2) { tail.short }
+        assertTrue(eq.isEnded)
+        val late = all.size - input.size
+        assertTrue("$late samples late", late in 2..(rate / 100 * 2))
+        assertArrayEquals(input, all.copyOfRange(late, all.size))
+    }
+
+    @Test
+    fun `a boost that would clip is caught by the limiter, louder and still round`() {
+        val eq = CustomEqualizerAudioProcessor()
+        configure(eq)
+        eq.applyProfile(ParametricEQ(0.0, listOf(ParametricEQBand(60.0, 9.0, 1.0, FilterType.PK))))
+        val input = sine(60.0, 0.9, rate * 2)
+        val out = run(eq, input)
+        assertTrue(rmsDb(out) > rmsDb(input))
+        // clipped flat, most of each cycle would sit at full scale; limited, only the crests touch it
+        val atFullScale = (out.size / 2 until out.size).count { abs(out[it].toInt()) >= 32767 }
+        assertTrue("$atFullScale samples at full scale", atFullScale < out.size / 2 / 50)
     }
 
     @Test
@@ -120,27 +141,6 @@ class AudioLabDspTest {
         }
         // a 200 Hz sine moves at most ~plain per sample; boosted up to 4x, a click would be far more
         assertTrue("step ${maxStep(out)} vs plain $plain", maxStep(out) < plain * 4.5)
-    }
-
-    @Test
-    fun `reverb leaves a tail that dies away, and is off by default`() {
-        val fx = AudioFxService()
-        val reverb = ReverbAudioProcessor(fx)
-        configure(reverb)
-        val burst = stereo(rate * 2) { f ->
-            val v = if (f < 2000) 0.5 * sin(2 * PI * 300.0 * f / rate) else 0.0
-            v to v
-        }
-        assertArrayEquals(burst, run(reverb, burst))
-
-        fx.reverb = ReverbParams(enabled = true, mix = 1f, roomSize = 0.8f, wet = 0.8f)
-        reverb.flush()
-        val out = run(reverb, burst)
-        // interleaved stereo: sample index = seconds * rate * 2
-        val tail = rmsDb(out, from = rate / 4 * 2, to = rate * 3 / 4 * 2)
-        val late = rmsDb(out, from = rate * 7 / 4 * 2, to = rate * 2 * 2)
-        assertTrue("tail $tail dB after the burst", tail > -60)
-        assertTrue("dies away: late $late < tail $tail", late < tail)
     }
 
     @Test

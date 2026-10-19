@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.focus.onFocusChanged
@@ -149,10 +148,8 @@ fun StudioSheets(
                             compact = true,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                                    Icon(painterResource(action.icon), null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                }
-                                Spacer(Modifier.width(16.dp))
+                                Icon(painterResource(action.icon), null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(14.dp))
                                 Text(action.label, color = Color.White, style = studioText(StudioType.Body))
                             }
                         }

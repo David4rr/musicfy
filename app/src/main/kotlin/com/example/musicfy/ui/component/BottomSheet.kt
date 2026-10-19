@@ -55,7 +55,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -66,6 +65,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
@@ -101,8 +101,14 @@ private const val PillPressedScale = 0.97f
 /** A press only tilts the sheet this close to collapsed: the mini player itself. */
 private const val PillPressMaxProgress = 0.02f
 
-/** The progress the mini player's hairline outline is gone by. */
+/** The progress the mini player's hairline outline and shadow are gone by. */
 private const val PillEdgeFadeEnd = 0.08f
+
+/** The collapsed sheet, the mini player: inset from each side, its height and its corners. */
+private val PillInset = 24.dp
+private val PillHeight = 64.dp
+private val PillCornerRadius = 20.dp
+private val PillShape = RoundedCornerShape(PillCornerRadius)
 
 private val PillTiltSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
@@ -117,6 +123,27 @@ private class PillPress {
     // Plain fields: set before each press animates, and read in the layer that animation redraws.
     var normalizedX = 0f
     var normalizedY = 0f
+}
+
+/** Where the pill sheet sits, and its tilt under a press. The sheet and its shadow share this. */
+private fun androidx.compose.ui.graphics.GraphicsLayerScope.placeSheet(state: BottomSheetState, pillPress: PillPress) {
+    translationY = (state.expandedBound - state.value).toPx()
+    translationX = state.horizontalOffset
+
+    val t = pillPress.amount.value
+    if (t > 0f) {
+        val s = 1f - (1f - PillPressedScale) * t
+        scaleX = s
+        scaleY = s
+        rotationX = -pillPress.normalizedY * PillMaxTilt * t
+        rotationY = pillPress.normalizedX * PillMaxTilt * t
+        cameraDistance = size.width * 3f
+        // about the pill's centre
+        transformOrigin = TransformOrigin(
+            0.5f,
+            if (size.height > 0f) (PillHeight / 2).toPx() / size.height else 0f,
+        )
+    }
 }
 
 @Composable
@@ -292,6 +319,34 @@ fun BottomSheet(
                     .nestedScroll(remember(state) { state.preUpPostDownNestedScrollConnection })
             ) {
 
+                // The mini player's faint shadow. The sheet's clip would cut it off, so it's a
+                // layer of its own placed and tilted exactly like the sheet, and it fades with the
+                // hairline. It stays the pill's size: the opening sheet grows over it.
+                val showPillShadow by remember(state) {
+                    derivedStateOf { !state.isDismissed && state.progress < PillEdgeFadeEnd }
+                }
+                if (showPillShadow) {
+                    Box(
+                        modifier = Modifier
+                            .align(androidx.compose.ui.Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(state.expandedBound)
+                            .graphicsLayer {
+                                placeSheet(state, pillPress)
+                                alpha = (1f - state.progress / PillEdgeFadeEnd).coerceIn(0f, 1f)
+                                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+                            }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = PillInset)
+                                .fillMaxWidth()
+                                .height(PillHeight)
+                                .dropShadow(PillShape, ChromeShadow)
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.BottomCenter)
@@ -299,29 +354,13 @@ fun BottomSheet(
                         .height(state.expandedBound)
                         .graphicsLayer {
                             val p = state.progress.coerceIn(0f, 1f)
-                            sheetClipShape.cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
-                            sheetClipShape.hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
-                            sheetClipShape.visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
+                            sheetClipShape.cr = androidx.compose.ui.unit.lerp(PillCornerRadius, 0.dp, p).toPx()
+                            sheetClipShape.hp = androidx.compose.ui.unit.lerp(PillInset, 0.dp, p).toPx()
+                            sheetClipShape.visibleHeight = androidx.compose.ui.unit.lerp(PillHeight, state.expandedBound, p).toPx()
 
                             shape = sheetClipShape
                             clip = true
-                            translationY = (state.expandedBound - state.value).toPx()
-                            translationX = state.horizontalOffset
-
-                            val t = pillPress.amount.value
-                            if (t > 0f) {
-                                val s = 1f - (1f - PillPressedScale) * t
-                                scaleX = s
-                                scaleY = s
-                                rotationX = -pillPress.normalizedY * PillMaxTilt * t
-                                rotationY = pillPress.normalizedX * PillMaxTilt * t
-                                cameraDistance = size.width * 3f
-                                // about the pill's centre
-                                transformOrigin = TransformOrigin(
-                                    0.5f,
-                                    if (size.height > 0f) 32.dp.toPx() / size.height else 0f,
-                                )
-                            }
+                            placeSheet(state, pillPress)
                         }
                         .drawWithContent {
                             drawContent()
@@ -330,15 +369,15 @@ fun BottomSheet(
                             // frame at 5% open.
                             val edge = 1f - p / PillEdgeFadeEnd
                             if (edge > 0f) {
-                                val cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
-                                val hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
-                                val visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
-                                drawRoundRect(
-                                    color = Color.White.copy(alpha = 0.1f * edge),
+                                val hp = androidx.compose.ui.unit.lerp(PillInset, 0.dp, p).toPx()
+                                drawChromeOutline(
                                     topLeft = androidx.compose.ui.geometry.Offset(hp, 0f),
-                                    size = androidx.compose.ui.geometry.Size(size.width - hp * 2, visibleHeight),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr),
-                                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())
+                                    size = androidx.compose.ui.geometry.Size(
+                                        size.width - hp * 2,
+                                        androidx.compose.ui.unit.lerp(PillHeight, state.expandedBound, p).toPx(),
+                                    ),
+                                    cornerRadius = androidx.compose.ui.unit.lerp(PillCornerRadius, 0.dp, p).toPx(),
+                                    alpha = edge,
                                 )
                             }
                         }

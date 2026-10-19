@@ -70,6 +70,7 @@ import androidx.compose.ui.util.fastSumBy
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
@@ -150,12 +151,14 @@ fun AutoPlaylistScreen(
         "downloaded" -> stringResource(R.string.offline)
         "local" -> "Local"
         "local_liked" -> "Local liked songs"
+        "cached" -> "Cached"
+        "cached_liked" -> "Cached liked songs"
         "songs" -> "All Songs"
         "recently_added" -> "Recently Added"
         else -> viewModel.playlist
     }
 
-    val content by viewModel.content.collectAsState()
+    val content by viewModel.content.collectAsStateWithLifecycle()
     val songs = content?.songs
     val revealSeen = rememberRevealSeenState()
 
@@ -326,8 +329,8 @@ fun AutoPlaylistScreen(
     }
 
     val isLiked = viewModel.playlist == "liked"
-    // the Local page's liked songs wear the same cover as Liked songs, the one its card shows
-    val hasLikedCover = isLiked || viewModel.playlist == "local_liked"
+    // the Local and Cached pages' liked songs wear the same cover as Liked songs, the one their cards show
+    val hasLikedCover = isLiked || viewModel.playlist == "local_liked" || viewModel.playlist == "cached_liked"
     val likedCoverColors = if (hasLikedCover) rememberLikedCoverColors() else null
 
     PlaylistDetailScaffold(

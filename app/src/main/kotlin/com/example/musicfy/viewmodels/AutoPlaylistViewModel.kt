@@ -21,6 +21,7 @@ import com.example.musicfy.extensions.filterExplicit
 import com.example.musicfy.extensions.filterVideoSongs
 import com.example.musicfy.extensions.toEnum
 import com.example.musicfy.importer.ImportSource
+import com.example.musicfy.playback.CachedSongs
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,6 +59,7 @@ constructor(
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
     private val syncUtils: SyncUtils,
+    private val cachedSongs: CachedSongs,
 ) : ViewModel() {
     val playlist = savedStateHandle.get<String>("playlist")!!
 
@@ -118,6 +120,17 @@ constructor(
                     "local_liked" -> database.onDeviceSongs(sortType, descending)
                         .map { songs -> AutoPlaylistSongs(visible(songs.filter { it.song.liked })) }
 
+                    // The Cached page and its liked songs: what the player kept whole from
+                    // streaming. They come most recently played first, the cache's own "date added".
+                    "cached" -> cachedSongs.songs
+                        .map { songs -> AutoPlaylistSongs(visible(songs.sortedForSongSort(sortType, descending) { it.asReversed() })) }
+
+                    "cached_liked" -> cachedSongs.songs
+                        .map { songs ->
+                            val liked = songs.filter { it.song.liked }
+                            AutoPlaylistSongs(visible(liked.sortedForSongSort(sortType, descending) { it.asReversed() }))
+                        }
+
                     "songs" -> database.songs(sortType, descending)
                         .map { AutoPlaylistSongs(visible(it)) }
 
@@ -128,7 +141,10 @@ constructor(
                 }
             }
             .flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, null)
+            // Stops a moment after the page stops watching: the Cached lists look at the player's
+            // cache every couple of seconds, which shouldn't go on from the background. The last
+            // list is kept, so coming back shows it at once.
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), null)
 
     /**
      * Liked songs by the service each was imported from, the ones liked here first and then the

@@ -91,8 +91,9 @@ class SourceModules @Inject constructor(
 
     // ---- provider order -----------------------------------------------------------------------
     //
-    // The order songs are looked for in: the modules and YouTube Music, which is always there and
-    // always last to give up. Each song plays from the first switched-on provider that has it.
+    // The order songs are looked for in: the modules and YouTube Music. Each song plays from the
+    // first switched-on provider that has it. YouTube is on unless the user turns it off, and then
+    // a song none of the modules have is skipped rather than quietly played from YouTube.
 
     private val _order = MutableStateFlow(readOrder())
 
@@ -118,9 +119,9 @@ class SourceModules @Inject constructor(
         _order.value = full
     }
 
-    /** whether [id] can play anything now: YouTube always, a module when on and signed in */
-    fun isUsable(id: String): Boolean = id == YouTubeId ||
-        (isEnabled(id) && module(id)?.accountState() is AccountState.SignedIn)
+    /** whether [id] can play anything now: YouTube while it's on, a module when on and signed in */
+    fun isUsable(id: String): Boolean = isEnabled(id) &&
+        (id == YouTubeId || module(id)?.accountState() is AccountState.SignedIn)
 
     fun nameOf(id: String): String = if (id == YouTubeId) "YouTube Music" else module(id)?.info?.name ?: id
 
@@ -177,10 +178,17 @@ class SourceModules @Inject constructor(
 
     fun module(id: String): SourceModule? = modules.firstOrNull { it.first.info.id == id }?.first
 
-    fun isEnabled(id: String): Boolean = prefs.getBoolean("enabled_$id", false)
+    // YouTube starts on, modules start off until they're signed in to
+    fun isEnabled(id: String): Boolean = prefs.getBoolean("enabled_$id", id == YouTubeId)
+
+    private val _youTubeEnabled = MutableStateFlow(isEnabled(YouTubeId))
+
+    /** YouTube Music isn't a module, so it has no entry: the settings watch its switch here */
+    val youTubeEnabled: StateFlow<Boolean> = _youTubeEnabled.asStateFlow()
 
     fun setEnabled(id: String, enabled: Boolean) {
         prefs.edit { putBoolean("enabled_$id", enabled) }
+        if (id == YouTubeId) _youTubeEnabled.value = enabled
         refresh()
     }
 
@@ -259,7 +267,7 @@ class SourceModules @Inject constructor(
     companion object {
         private const val Tag = "SourceModules"
         const val ModuleAction = "com.example.musicfy.SOURCE_MODULE"
-        /** YouTube Music in the provider order: not a module, always usable */
+        /** YouTube Music in the provider order: not a module, and needs no account */
         const val YouTubeId = "youtube"
         private val KnownOrder = listOf(MonochromeModule.Id, AppleMusicModule.Id, YouTubeId)
         const val EntryMetaKey = "com.example.musicfy.module.entry"

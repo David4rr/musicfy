@@ -1,8 +1,9 @@
 // LibraryAddMusicSheet.kt
 //
 // Picking songs in a sheet: "Add music" lists what a storage scan found on the phone (all ticked,
-// so bringing everything in is one tap), and "Remove from list" lists the files already imported
-// (none ticked). Both are the same list with a search field and a checkbox per song.
+// so bringing everything in is one tap), "Remove from list" lists the files already imported and
+// "Remove from cache" the cached songs (none ticked). All the same list with a search field and a
+// checkbox per song.
 
 package com.example.musicfy.ui.screens.library
 
@@ -126,9 +127,34 @@ fun PopupSheetState.showAddLocalMusicSheet(viewModel: LibraryImportViewModel, on
 }
 
 /** Lists the files imported from the phone, to take some back out of the library. */
-fun PopupSheetState.showRemoveLocalSheet(localFiles: List<Song>, viewModel: LibraryImportViewModel) {
+fun PopupSheetState.showRemoveLocalSheet(localFiles: List<Song>, viewModel: LibraryImportViewModel) =
+    showRemoveSongsSheet(
+        songs = localFiles,
+        title = "Remove from list",
+        emptyText = "No files from your phone in your library yet.",
+        hint = "The files stay on your phone.",
+        onRemove = { viewModel.removeLocalSongs(it) },
+    )
+
+/** Lists the cached songs, to delete some from the cache. */
+fun PopupSheetState.showRemoveCachedSheet(cachedSongs: List<Song>, onRemove: (Set<String>) -> Unit) =
+    showRemoveSongsSheet(
+        songs = cachedSongs,
+        title = "Remove from cache",
+        emptyText = "Nothing cached yet.",
+        hint = "They'll stream again the next time you play them.",
+        onRemove = onRemove,
+    )
+
+private fun PopupSheetState.showRemoveSongsSheet(
+    songs: List<Song>,
+    title: String,
+    emptyText: String,
+    hint: String,
+    onRemove: (Set<String>) -> Unit,
+) {
     val selection = PickerSelection()
-    val songs = localFiles.map { PickerSong(it.id, it.song.title, it.artists.joinToString { a -> a.name }.ifBlank { null }, it.song.thumbnailUrl) }
+    val pickerSongs = songs.map { PickerSong(it.id, it.song.title, it.artists.joinToString { a -> a.name }.ifBlank { null }, it.song.thumbnailUrl) }
     var sheet: PopupSheetHandle? = null
     sheet = showWithHandle(
         buttonBar = {
@@ -137,19 +163,19 @@ fun PopupSheetState.showRemoveLocalSheet(localFiles: List<Song>, viewModel: Libr
                 text = if (count == 0) "Pick songs to remove" else "Remove ${songCount(count)}",
                 enabled = count > 0,
                 onClick = {
-                    viewModel.removeLocalSongs(selection.keys)
+                    onRemove(selection.keys)
                     sheet?.dismiss()
                 },
             )
         },
     ) {
         SongPickerContent(
-            title = "Remove from list",
-            songs = songs,
+            title = title,
+            songs = pickerSongs,
             selection = selection,
             loadingText = "",
-            emptyText = "No files from your phone in your library yet.",
-            hint = "The files stay on your phone.",
+            emptyText = emptyText,
+            hint = hint,
         )
     }
 }

@@ -40,6 +40,9 @@ class ModulesViewModel @Inject constructor(
 
     fun setOrder(ids: List<String>) = modules.setOrder(ids)
 
+    /** YouTube Music's switch; it's not a module, so it isn't in [entries] */
+    val youTubeEnabled = modules.youTubeEnabled
+
     fun isUsable(id: String): Boolean = modules.isUsable(id)
 
     fun nameOf(id: String): String = modules.nameOf(id)

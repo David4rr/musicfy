@@ -2,7 +2,10 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetActionCard
+import com.example.musicfy.ui.component.SheetActionCardRow
+import com.example.musicfy.ui.component.SheetDownloadCard
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
@@ -19,13 +22,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -52,7 +52,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
@@ -78,8 +77,6 @@ import com.example.musicfy.ui.component.ListDialog
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.NewAction
-import com.example.musicfy.ui.component.NewActionGrid
 import com.example.musicfy.ui.utils.ShowMediaInfo
 import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.joinByBullet
@@ -196,7 +193,6 @@ fun YouTubeSongMenu(
         trailing = {
             SheetHeaderButton(
                 icon = if (librarySong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border,
-                active = librarySong?.song?.liked == true,
                 tint = if (librarySong?.song?.liked == true) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     database.transaction {
@@ -217,7 +213,7 @@ fun YouTubeSongMenu(
         },
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val configuration = LocalConfiguration.current
@@ -232,32 +228,74 @@ fun YouTubeSongMenu(
         ),
     ) {
         item {
-            NewActionGrid(
-                actions = listOfNotNull(
-                    NewAction(
+            // Download and Play next are what people open a song's menu for, so they get the two
+            // big cards. Then the song-menu mock's four rows - add to playlist, share, album, artist.
+            SheetActionCardRow {
+                SheetDownloadCard(
+                    downloadState = download?.state,
+                    onDownload = {
+                        database.transaction {
+                            insert(song.toMediaMetadata())
+                        }
+                        val downloadRequest = DownloadRequest
+                            .Builder(song.id, song.id.toUri())
+                            .setCustomCacheKey(song.id)
+                            .setData(song.title.toByteArray())
+                            .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    },
+                    onRemove = {
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.id,
+                            false,
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                SheetActionCard(
+                    icon = R.drawable.playlist_play,
+                    title = stringResource(R.string.play_next),
+                    onClick = {
+                        playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(1200, 1200)).toMediaItem())
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(10.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items = listOfNotNull(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.add_to_an_playlist)) },
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.playlist_add),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.add_to_an_playlist),
                         onClick = {
                             showChoosePlaylistDialog = true
                         }
                     ),
-                    NewAction(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.share)) },
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.share),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.share),
                         onClick = {
                             val intent = Intent().apply {
                                 action = Intent.ACTION_SEND
@@ -269,14 +307,14 @@ fun YouTubeSongMenu(
                         }
                     ),
                     song.album?.let { album ->
-                        NewAction(
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.view_album)) },
                             icon = {
                                 Icon(
                                     painter = painterResource(R.drawable.album),
                                     contentDescription = null,
                                 )
                             },
-                            text = stringResource(R.string.view_album),
                             onClick = {
                                 navController.navigate("album/${album.id}")
                                 onDismiss()
@@ -284,14 +322,14 @@ fun YouTubeSongMenu(
                         )
                     },
                     if (artists.isNotEmpty()) {
-                        NewAction(
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.view_artist)) },
                             icon = {
                                 Icon(
                                     painter = painterResource(R.drawable.artist),
                                     contentDescription = null,
                                 )
                             },
-                            text = stringResource(R.string.view_artist),
                             onClick = {
                                 if (artists.size == 1) {
                                     navController.navigate("artist/${artists[0].id}")
@@ -302,28 +340,11 @@ fun YouTubeSongMenu(
                             }
                         )
                     } else null,
-                    if (true) {
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_play),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            text = stringResource(R.string.play_next),
-                            onClick = {
-                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(1200, 1200)).toMediaItem())
-                                onDismiss()
-                            }
-                        )
-                    } else null,
-                ),
-                columns = if (false) 2 else 3,
-                modifier = Modifier.padding(bottom = 12.dp)
+                )
             )
         }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
             Material3MenuGroup(
@@ -454,87 +475,6 @@ fun YouTubeSongMenu(
                         )
                     )
                 }
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items = listOf(
-                    when (download?.state) {
-                        Download.STATE_COMPLETED -> {
-                            Material3MenuItemData(
-                                title = {
-                                    Text(
-                                        text = stringResource(R.string.remove_download)
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
-                                icon = {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        else -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.action_download)) },
-                                description = { Text(text = stringResource(R.string.download_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    database.transaction {
-                                        insert(song.toMediaMetadata())
-                                    }
-                                    val downloadRequest = DownloadRequest
-                                        .Builder(song.id, song.id.toUri())
-                                        .setCustomCacheKey(song.id)
-                                        .setData(song.title.toByteArray())
-                                        .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                    }
-                )
             )
         }
 

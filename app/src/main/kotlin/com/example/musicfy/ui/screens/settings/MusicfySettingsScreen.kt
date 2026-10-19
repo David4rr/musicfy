@@ -89,8 +89,8 @@ private val SettingsIndex = listOf(
     SettingsEntry("Equalizer", "Audio Lab", "equalizer", "eq bass treble band parametric graph autoeq headphones correction preset"),
     SettingsEntry("AutoEQ", "Audio Lab", "equalizer", "headphones earbuds correction harman database model"),
     SettingsEntry("Audio Quality", "Audio Lab", "audio_quality", "bitrate stream high low lossless hi-res flac monochrome"),
-    SettingsEntry("Reverb", "Audio Lab", "audio_fx", "room hall echo space fx effect"),
     SettingsEntry("Loudness", "Audio Lab", "audio_fx", "boost louder compressor limiter night mode fx"),
+    SettingsEntry("Audio Normalization", "Audio Lab", "audio_fx", "even out songs loudness volume gain balance replaygain"),
     SettingsEntry("Spatial audio", "Audio Lab", "audio_fx", "crossfeed binaural hrtf virtual speakers 3d headphones"),
     SettingsEntry("Dolby Atmos", "Audio Lab", "audio_fx", "atmos spatial surround 3d immersive"),
     SettingsEntry("Playback speed", "Audio Lab", "audio_fx", "tempo pitch slowed nightcore preserve pitch"),
@@ -99,14 +99,12 @@ private val SettingsIndex = listOf(
     SettingsEntry("Apple Music", "Modules", "module/applemusic", "apple music itunes subscription stream aac"),
     SettingsEntry("Monochrome", "Modules", "module/monochrome", "monochrome lossless flac hi-res tidal"),
     SettingsEntry("Provider order", "Audio Lab", "audio_quality", "source order apple music monochrome youtube priority"),
-
-    // Audio
-    SettingsEntry("Skip Silence", "Audio", "audio_settings", "silence trim gap interval"),
-    SettingsEntry("Audio Normalization", "Audio", "audio_settings", "loudness volume gain balance"),
+    SettingsEntry("YouTube Music", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music"),
 
     // Playback
     SettingsEntry("Keep playing even when closed", "Playback", "playback_settings", "background close stop playback"),
     SettingsEntry("Save Player's last state", "Playback", "playback_settings", "persistent queue restore track state"),
+    SettingsEntry("Skip Silence", "Playback", "playback_settings", "silence trim gap interval"),
 
     // General
     SettingsEntry("Import Data", "General", "general_settings", "backup restore transfer library spotify"),
@@ -406,12 +404,6 @@ fun MusicfySettingsScreen(navController: NavController) {
                             title = "Playback",
                             iconRes = R.drawable.play,
                             onClick = { navController.navigate("playback_settings") }
-                        )
-
-                        CategoryBubble(
-                            title = "Audio",
-                            iconRes = R.drawable.graphic_eq,
-                            onClick = { navController.navigate("audio_settings") }
                         )
 
                         CategoryBubble(

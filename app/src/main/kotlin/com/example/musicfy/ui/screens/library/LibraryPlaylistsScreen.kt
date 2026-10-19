@@ -9,26 +9,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.menu.PlaylistMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
+import com.example.musicfy.viewmodels.LibraryShelfKind
 
 /**
- * The library's playlists, or with [localOnly] the Local tab's: only the playlists that have a
- * local song in them. With [source], only the playlists imported from that service.
+ * The library's playlists, or with a [shelf] the Local or Cached tab's: only the playlists that
+ * have one of that tab's songs in them. With [source], only the playlists imported from that service.
  */
 @Composable
 fun LibraryPlaylistsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
-    localOnly: Boolean = false,
+    shelf: LibraryShelfKind? = null,
     source: ImportSource? = null,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val all by (if (localOnly) viewModel.localPlaylists else viewModel.playlists).collectAsState()
+    val all by (shelf?.let(viewModel::shelf)?.playlists ?: viewModel.playlists).collectAsStateWithLifecycle()
     val playlistSources by viewModel.playlistSources.collectAsState()
     val playlists = remember(all, playlistSources, source) {
         if (source == null) all else all.filter { playlistSources[it.id] == source }
@@ -40,7 +42,8 @@ fun LibraryPlaylistsScreen(
         title = "Playlist",
         subtitle = when {
             source != null -> "Playlists imported from ${source.label}."
-            localOnly -> "Playlists with music on this device."
+            shelf == LibraryShelfKind.Local -> "Playlists with music on this device."
+            shelf == LibraryShelfKind.Cached -> "Playlists with songs in your cache."
             else -> "All playlist on your library listed here."
         },
         searchPlaceholder = "Find a playlist by its name",

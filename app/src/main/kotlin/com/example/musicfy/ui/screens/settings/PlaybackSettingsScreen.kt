@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.PersistentQueueKey
+import com.example.musicfy.constants.SkipSilenceKey
 import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
 import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.SettingsGroup
@@ -37,6 +38,10 @@ fun PlaybackSettingsScreen(navController: NavController) {
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(
         PersistentQueueKey,
         defaultValue = true
+    )
+    val (skipSilence, onSkipSilenceChange) = rememberPreference(
+        SkipSilenceKey,
+        defaultValue = false
     )
 
     val keepPlaying = !stopPlaybackOnTaskRemoved
@@ -74,6 +79,20 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     AppSwitch(
                         checked = persistentQueue,
                         onCheckedChange = onPersistentQueueChange,
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Skip Silence") },
+                highlightKey = "Skip Silence",
+                descriptionText = "Jump over the quiet gaps in songs",
+                icon = painterResource(R.drawable.skip_next),
+                iconShape = CircleShape,
+                onClick = { onSkipSilenceChange(!skipSilence) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = skipSilence,
+                        onCheckedChange = onSkipSilenceChange,
                     )
                 },
             ),

@@ -80,7 +80,8 @@ class DynamicResolvingMediaSource(
                 null
             }
 
-            onSourceResolved(mediaId, result?.source ?: "YouTube Music")
+            // a failed lookup plays from nowhere: announcing YouTube for it would be wrong
+            if (fetchError == null) onSourceResolved(mediaId, result?.source ?: "YouTube Music")
 
             if (result == null) {
                 if (fetchError == null) {

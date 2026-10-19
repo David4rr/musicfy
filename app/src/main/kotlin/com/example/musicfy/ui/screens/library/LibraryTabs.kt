@@ -1,7 +1,7 @@
 // LibraryTabs.kt
 //
-// The All / Local / Imported switch at the top of the Library, and the small pieces the tabs share:
-// the two-wide card grid, the caps section label and the "Manage" pill at the bottom of a tab.
+// The All / Local / Cached / Imported switch at the top of the Library, and the small pieces the
+// tabs share: the two-wide card grid, the caps section label and the "Manage" pill of a tab.
 
 package com.example.musicfy.ui.screens.library
 
@@ -34,11 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
+import com.example.musicfy.viewmodels.LibraryShelfKind
 
-/** What the Library shows: everything, only what plays from the phone, or only what was imported. */
-enum class LibraryTab(val label: String) {
+/**
+ * What the Library shows: everything, what plays from the phone, what the player has cached, or
+ * what was imported. [shelf] is the slice of the library a tab is built from, if it is one.
+ */
+enum class LibraryTab(val label: String, val shelf: LibraryShelfKind? = null) {
     All("All"),
-    Local("Local"),
+    Local("Local", LibraryShelfKind.Local),
+    Cached("Cached", LibraryShelfKind.Cached),
     Imported("Imported"),
 }
 
@@ -46,7 +51,7 @@ private val ChipTrack = Color(0xFF161618)
 private val Chip = Color(0xFF232326)
 private val ChipSelected = Color(0xFF3D3D41)
 
-/** The three tabs as small pills in one dark track, the picked one a step lighter. */
+/** The tabs as small pills in one dark track, the picked one a step lighter. */
 @Composable
 fun LibraryTabChips(
     selected: LibraryTab,

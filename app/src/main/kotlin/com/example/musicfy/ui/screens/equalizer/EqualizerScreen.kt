@@ -216,9 +216,9 @@ private fun Output(eq: EqSettings, headroom: Double, viewModel: AudioLabViewMode
         LabToggleRow(
             title = "Auto preamp",
             subtitle = if (eq.autoPreamp) {
-                if (headroom < -0.05) "Lowering by ${String.format("%.1f", -headroom)} dB so the boosts never clip"
-                else "Nothing boosted, nothing to lower"
-            } else "Off: loud boosts can distort",
+                if (headroom < -0.05) "Lowering by ${String.format("%.1f", -headroom)} dB, the limiter catches the rest"
+                else "Nothing to lower, the limiter catches any peaks"
+            } else "Off: louder, but big boosts get squashed on loud songs",
             checked = eq.autoPreamp,
             onCheckedChange = viewModel::setAutoPreamp,
         )

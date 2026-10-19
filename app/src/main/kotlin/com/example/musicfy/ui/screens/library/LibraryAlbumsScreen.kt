@@ -8,26 +8,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
+import com.example.musicfy.viewmodels.LibraryShelfKind
 
 /**
- * The library's albums, or with [localOnly] the Local page's: only the albums a local song is
- * from. Those can include an imported file's album, which is only a tag and has no page - opening
- * one plays its local songs instead.
+ * The library's albums, or with a [shelf] the Local or Cached tab's: only the albums one of that
+ * tab's songs is from. Those can include an imported file's album, which is only a tag and has no
+ * page - opening one plays its songs instead.
  */
 @Composable
 fun LibraryAlbumsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
-    localOnly: Boolean = false,
+    shelf: LibraryShelfKind? = null,
 ) {
-    if (localOnly) {
-        LocalAlbumsScreen(navController, modifier, pureBlack)
+    if (shelf != null) {
+        ShelfAlbumsScreen(navController, shelf, modifier, pureBlack)
         return
     }
 
@@ -63,13 +65,15 @@ fun LibraryAlbumsScreen(
 }
 
 @Composable
-private fun LocalAlbumsScreen(
+private fun ShelfAlbumsScreen(
     navController: NavController,
+    shelf: LibraryShelfKind,
     modifier: Modifier,
     pureBlack: Boolean,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val albums by viewModel.localAlbums.collectAsState()
+    // with the lifecycle: the Cached shelf looks at the cache every couple of seconds while watched
+    val albums by viewModel.shelf(shelf).albums.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current ?: return
 
     val entries = remember(albums) {
@@ -88,12 +92,15 @@ private fun LocalAlbumsScreen(
         val songs = albums.flatMap { it.songs }
         if (songs.isEmpty()) return
         val ordered = if (shuffle) songs.shuffled() else songs
-        playerConnection.playQueue(ListQueue(title = "Local", items = ordered.map { it.toMediaItem() }))
+        playerConnection.playQueue(ListQueue(title = shelf.label, items = ordered.map { it.toMediaItem() }))
     }
 
     LibraryGridScreen(
         title = "Albums",
-        subtitle = "Albums with music on this device.",
+        subtitle = when (shelf) {
+            LibraryShelfKind.Local -> "Albums with music on this device."
+            LibraryShelfKind.Cached -> "Albums with songs in your cache."
+        },
         searchPlaceholder = "Find an album listed here",
         entries = entries,
         onOpen = { entry ->
@@ -107,7 +114,7 @@ private fun LocalAlbumsScreen(
             }
         },
         // Every album here has its songs on hand, so these play them all for real: album by
-        // album, or every local album's songs shuffled together.
+        // album, or every album's songs here shuffled together.
         onPlay = { playAll(shuffle = false) },
         onShuffle = { playAll(shuffle = true) },
         modifier = modifier,

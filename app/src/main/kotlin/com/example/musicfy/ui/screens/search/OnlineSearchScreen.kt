@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -381,11 +382,16 @@ fun SuggestionItem(
             .clickable(onClick = onClick)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
     ) {
-        Icon(
-            painterResource(if (online) R.drawable.search else R.drawable.history),
-            contentDescription = null,
-            modifier = Modifier.padding(horizontal = 16.dp).alpha(0.5f)
-        )
+        // Past searches keep their clock so they read apart from suggestions, which start flush.
+        if (online) {
+            Spacer(Modifier.width(16.dp))
+        } else {
+            Icon(
+                painterResource(R.drawable.history),
+                contentDescription = null,
+                modifier = Modifier.padding(horizontal = 16.dp).alpha(0.5f)
+            )
+        }
 
         Text(
             text = query,

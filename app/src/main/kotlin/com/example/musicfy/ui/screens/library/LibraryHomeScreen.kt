@@ -1,9 +1,9 @@
 // LibraryHomeScreen.kt
 //
-// The Library tab's landing page: collapsing title + search, then All / Local / Imported. All has
-// the import banner, Pinned, the four category cards, Recently added and Liked; Local and Imported
-// are in LibraryLocalTab.kt and LibraryImportedTab.kt. While songs download or files come in from
-// the phone, a progress card sits at the top of All and Local.
+// The Library tab's landing page: collapsing title + search, then All / Local / Cached / Imported.
+// All has the import banner, Pinned, the four category cards, Recently added and Liked; the others
+// are in LibraryLocalTab.kt, LibraryCachedTab.kt and LibraryImportedTab.kt. While songs download or
+// files come in from the phone, a progress card sits at the top of All and Local.
 
 package com.example.musicfy.ui.screens.library
 
@@ -42,6 +42,7 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.navigateToTab
+import com.example.musicfy.ui.menu.SongMenu
 import com.example.musicfy.ui.screens.search.SearchAvatar
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.rememberCollapseProgress
@@ -76,17 +77,22 @@ fun LibraryHomeScreen(
     val localImports by importViewModel.localImports.collectAsState()
 
     var tab by rememberSaveable { mutableStateOf(LibraryTab.All) }
-    val localData = if (tab == LibraryTab.Local) collectLocalTabData(viewModel) else null
+    // only the open tab's shelf is collected; null while it is first read
+    val shelfData = tab.shelf?.let { collectShelfTabData(viewModel, it) }
     val localActions = rememberLocalImportActions(importViewModel)
+
+    // read inside the Cached tab's rows only, so playback changes don't recompose this screen
+    val nowPlaying = playerConnection?.mediaMetadata?.collectAsState()
+    val isPlaying = playerConnection?.isEffectivelyPlaying?.collectAsState()
 
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
     var query by remember { mutableStateOf(TextFieldValue()) }
-    val results = remember(query.text, songs, artists, albums, playlists, localData) {
+    val results = remember(query.text, songs, artists, albums, playlists, tab, shelfData) {
         val q = query.text.trim()
         when {
             q.isBlank() -> emptyList()
-            localData != null -> searchLocal(q, localData.songs, localData.artists, localData.albums, localData.playlists)
+            tab.shelf != null -> shelfData?.let { searchShelf(q, it.songs, it.artists, it.albums, it.playlists) }.orEmpty()
             else -> searchLibrary(q, songs, artists, albums, playlists)
         }
     }
@@ -109,6 +115,7 @@ fun LibraryHomeScreen(
             subtitle = null,
             searchPlaceholder = when (tab) {
                 LibraryTab.Local -> "Search your local music"
+                LibraryTab.Cached -> "Search your cached music"
                 else -> "Search anything on your library"
             },
             query = query,
@@ -139,8 +146,8 @@ fun LibraryHomeScreen(
                     results = results,
                     query = query.text,
                     onOpen = { item ->
-                        if (localData != null) {
-                            openLocalResult(item, localData.songs, navController, playerConnection)
+                        if (shelfData != null) {
+                            openShelfResult(item, shelfData, navController, playerConnection)
                         } else {
                             openLibraryItem(item, navController, playerConnection, songs)
                         }
@@ -177,7 +184,7 @@ fun LibraryHomeScreen(
                 }
 
                 LibraryTab.Local -> {
-                    val local = localData ?: return@LibraryScaffold
+                    val local = shelfData ?: return@LibraryScaffold
                     libraryProgressCards(downloads, localImports, openTransfer)
                     libraryLocalTab(
                         data = local,
@@ -189,6 +196,29 @@ fun LibraryHomeScreen(
                                 viewModel = importViewModel,
                                 onRescan = localActions::scanPhone,
                                 onRemoveFromList = { menuState.showRemoveLocalSheet(local.files, importViewModel) },
+                            )
+                        },
+                        navController = navController,
+                    )
+                }
+
+                LibraryTab.Cached -> {
+                    val cached = shelfData ?: return@LibraryScaffold
+                    libraryCachedTab(
+                        data = cached,
+                        nowPlayingId = { nowPlaying?.value?.id },
+                        isPlaying = { isPlaying?.value == true },
+                        onPlay = { song -> playShelf(cached, cached.songs.indexOf(song), playerConnection) },
+                        onMenu = { song ->
+                            menuState.show {
+                                SongMenu(originalSong = song, navController = navController, onDismiss = menuState::dismiss)
+                            }
+                        },
+                        onManage = {
+                            menuState.showManageCachedSheet(
+                                cachedSongs = cached.songs,
+                                onClearCache = viewModel::clearCache,
+                                onRemove = viewModel::removeFromCache,
                             )
                         },
                         navController = navController,
@@ -334,21 +364,34 @@ private fun LazyListScope.libraryAllTab(
 }
 
 /**
- * A song found on the Local tab plays among the local songs, from the files on this phone, rather
- * than as a radio that needs a connection.
+ * A song found on the Local or Cached tab plays among that tab's songs, from what is on this phone,
+ * rather than as a radio that needs a connection.
  */
-private fun openLocalResult(
+private fun openShelfResult(
     item: YTItem,
-    localSongs: List<Song>,
+    shelf: ShelfTabData,
     navController: NavController,
     playerConnection: com.example.musicfy.playback.PlayerConnection?,
 ) {
-    val index = if (item is SongItem) localSongs.indexOfFirst { it.id == item.id } else -1
+    val index = if (item is SongItem) shelf.songs.indexOfFirst { it.id == item.id } else -1
     if (index < 0) {
-        openLibraryItem(item, navController, playerConnection, localSongs)
+        openLibraryItem(item, navController, playerConnection, shelf.songs)
         return
     }
+    playShelf(shelf, index, playerConnection)
+}
+
+/** The shelf's songs as one queue, in the order the tab shows them, starting at [startIndex]. */
+private fun playShelf(
+    shelf: ShelfTabData,
+    startIndex: Int,
+    playerConnection: com.example.musicfy.playback.PlayerConnection?,
+) {
     playerConnection?.playQueue(
-        ListQueue(title = "Local", items = localSongs.map { it.toMediaItem() }, startIndex = index),
+        ListQueue(
+            title = shelf.kind.label,
+            items = shelf.songs.map { it.toMediaItem() },
+            startIndex = startIndex.coerceAtLeast(0),
+        ),
     )
 }

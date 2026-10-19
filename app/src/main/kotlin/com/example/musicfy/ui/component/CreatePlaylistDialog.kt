@@ -155,7 +155,7 @@ fun CreatePlaylistDialog(
                         SheetOptionRow(
                             title = stringResource(R.string.sync_playlist),
                             subtitle = stringResource(R.string.allows_for_sync_witch_youtube),
-                            leading = { SheetIconBadge(R.drawable.sync) },
+                            leading = { SheetIcon(R.drawable.sync) },
                             trailing = {
                                 AppSwitch(
                                     checked = form.sync,
