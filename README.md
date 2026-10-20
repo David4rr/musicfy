@@ -99,6 +99,12 @@ Musicfy is an independent, unofficial project made for personal and educational 
   </table>
 </details>
 
+---
+
+# Disclaimer
+- Musicfy is a fully open source project that is created purely for educationa and personal use. thats why, we dont sell this software, or monetize it. we do not have any intent to add commercial values in the future. thanks!
+- And were deeply respect the hardwork of artist musicians ajd contwnt creators. without them there is also no musicfy: i strongly suggest that you, as user, subscribe to Apple music or youtube premium, to support the creators you listen. I do not intend to hurt creator with this app.
+- We do not store / host any files, audio, or video that copyrigted on our own server. all content are purely accessed trough 3rd party app/apis. it depens of the 3rd platform to restrict, closing the access and we do not have any power to do that.
 
 ---
 
