@@ -1,13 +1,24 @@
 # Musicfy Roadmap
 
 ## List needed
-### 8.1.0
+### 8.1.x
 What to expect in the next version & is it done 
 
-- New music styles -
+- New music styles
 - bottom bar sould not using haze for blur, theres too much artiffact   
 - Lyrics share 
 - Better crossmix 
+- Device output -
+- Swipe to forward/backward still kina confusing -
+- Audio tab sould be removed - the option will be on playback +
+- Lyrics customizer /
+- AND BUGS FIXING =
+
+## Done
+- bottom bar sould not using haze for blur, theres too much artiffact
+- Massive revamp on the sheets option +
+- Remove import/undo +
+- Downloads should be clearer +
 - Yt music import separation +
 - Fastening search result 
 - Local scan to add +
@@ -15,17 +26,7 @@ What to expect in the next version & is it done
 - Edit page for profile +
 - Refining playlist add music +
 - Seekbar on poster +
-- Device output -
-- Swipe to forward/backward still kina confusing -
-- Audio tab sould be removed - the option will be on playback +
-- Lyrics customizer /
-- Massive revamp on the sheets option +
-- Remove import/undo +
-- Downloads should be clearer +
-- AND BUGS FIXING =
 
-## Done
-- 
 
 
 > Plans may change as development progresses.

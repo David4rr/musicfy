@@ -1,4 +1,4 @@
-<img width="1799" height="927" alt="Frame 116" src="https://github.com/user-attachments/assets/a18020a7-ba05-4bb4-83bb-ada35ac57338" />
+<img width="1799" height="927" alt="i" src="https://github.com/user-attachments/assets/1ecb7a39-2114-40ba-9306-51ebf385780a" />
 
 ---
 <div align="center">
@@ -39,10 +39,10 @@
 ---
 
 > [!WARNING]
-> Support for android 8+ is available but won’t get many features as on android 13+.
+> Support for android 8+ until 11 is available but expect any bugs. this app is intended only for android 13+
 
 > [!WARNING]
-> This app still on beta! or developer preview, expect some bugs! reporting it will be useful too.
+> This app still on beta!, expect some bugs! reporting it will be useful too.
 
 
 > [!WARNING]
@@ -74,6 +74,8 @@ Or read contribute.md there
 
 Musicfy is an independent, unofficial project made for personal and educational use. It is provided as is, without warranty of any kind.
 
+- Musicfy is a fully open source project that is created purely for educationa and personal use. thats why, we dont sell this software, or monetize it. we do not have any intent to add commercial values in the future. thanks!
+- And were deeply respect the hardwork of artist musicians ajd contwnt creators. without them there is also no musicfy: i strongly suggest that you, as user, subscribe to Apple music or youtube premium, to support the creators you listen. I do not intend to hurt creator with this app.
 - It is **not affiliated with, endorsed by, or sponsored by** YouTube, YouTube Music, Google, Spotify, Apple, Last.fm, Shazam, Discord or any other service it can connect to. All names, logos and brands belong to their respective owners.
 - Musicfy does not host, store or distribute any music. Everything is fetched from third-party services when you ask for it, and those services can change or stop working at any time.
 - You are responsible for how you use the app, including the terms of service of the accounts and services you connect and the copyright laws where you live.
@@ -98,6 +100,8 @@ Musicfy is an independent, unofficial project made for personal and educational 
     </tr>
   </table>
 </details>
+
+---
 
 
 ---
