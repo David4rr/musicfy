@@ -4,7 +4,7 @@
 ### 8.1.0
 What to expect in the next version & is it done 
 
-- New music styles
+- New music styles -
 - bottom bar sould not using haze for blur, theres too much artiffact   
 - Lyrics share 
 - Better crossmix 

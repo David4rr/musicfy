@@ -273,7 +273,7 @@ private fun StudioTopBar(studio: PlayerStudioState, glassState: GlassState) {
                     enter = fadeIn(tween(240)) + androidx.compose.animation.expandVertically(tween(300)),
                     exit = fadeOut(tween(160)) + androidx.compose.animation.shrinkVertically(tween(260)),
                 ) {
-                    Text("Tap a part to edit it", color = Color.White.copy(alpha = 0.7f), style = inter(StudioType.Subtitle, FontWeight.Medium))
+                    Text("Hold to adjust position, tap to edit", color = Color.White.copy(alpha = 0.7f), style = inter(StudioType.Subtitle, FontWeight.Medium))
                 }
             }
         }
@@ -310,6 +310,9 @@ private fun CoverEditor(
     val gapPx = with(density) { CardGap.toPx() }
     val maxW = with(density) { w.toDp() }
     val maxH = with(density) { h.toDp() }
+    // the other covers sit where the live one does, moved with the controls under it (nothing is
+    // held while this editor is open, so it's read once)
+    val coverOffset = with(density) { (parts.tweaks?.controlsOffset() ?: 0f).toDp() }
     val inBackdrop by remember(studio) { derivedStateOf { studio.backdrop.value > 0.5f } }
 
     Box(
@@ -388,7 +391,7 @@ private fun CoverEditor(
         // every other cover style, waiting beside the live cover; only the ones in view are drawn
         coverStyles.forEachIndexed { index, style ->
             key(style) {
-                val box = remember(style, maxW, maxH, statusTop) { coverArtBox(style, maxW, maxH, statusTop) }
+                val box = remember(style, maxW, maxH, statusTop, coverOffset) { coverArtBox(style, maxW, maxH, statusTop, coverOffset) }
                 Box(
                     modifier = Modifier
                         .offset(box.x, box.y)
@@ -431,7 +434,7 @@ private fun CoverEditor(
                 ) {
                     if (index != studio.backdropCommitted) {
                         PlayerBackgroundPreview(style = style, thumbnailUrl = track.thumbnailUrl, width = maxW, height = maxH, animate = false, warp = false, modifier = Modifier.fillMaxSize())
-                        val box = remember(coverStyle, maxW, maxH, statusTop) { coverArtBox(coverStyle, maxW, maxH, statusTop) }
+                        val box = remember(coverStyle, maxW, maxH, statusTop, coverOffset) { coverArtBox(coverStyle, maxW, maxH, statusTop, coverOffset) }
                         Box(Modifier.offset(box.x, box.y).size(box.width, box.height)) {
                             CoverArt(coverStyle, track, false, queue.currentIndex)
                         }

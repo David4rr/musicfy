@@ -76,6 +76,7 @@ import com.example.musicfy.LocalDatabase
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.db.entities.SongEntity
+import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.music.innertube.YouTube
@@ -104,6 +105,9 @@ class SwipeAction(
 /** sliding left queues a song (green), sliding right saves it or takes it out of your playlist (purple) */
 val SwipeQueueColor = Color(0xFF34C759)
 val SwipeSaveColor = Color(0xFF9B72F2)
+
+/** for a swipe that takes music out of the library for good, like removing an import */
+val SwipeRemoveColor = Color(0xFFFF453A)
 
 private val SwipePillIdle = Color.White.copy(alpha = 0.12f)
 
@@ -464,6 +468,34 @@ fun librarySwipeAction(song: SongEntity): SwipeAction {
             text = context.getString(if (inLibrary) R.string.removed_from_library else R.string.added_to_library),
             thumbnail = song.thumbnailUrl,
             iconRes = R.drawable.library_add_check,
+        )
+    }
+}
+
+/**
+ * Sliding right in "Imported from Spotify": the song stops being one of [source]'s imports and leaves
+ * the library, in one go. Red, since it doesn't come back with another swipe the way adding does.
+ */
+@Composable
+fun removeImportSwipeAction(song: SongEntity, source: ImportSource): SwipeAction {
+    val context = LocalContext.current
+    val database = LocalDatabase.current
+    return SwipeAction(
+        icon = R.drawable.delete,
+        color = SwipeRemoveColor,
+        label = stringResource(R.string.remove_from_import_and_library),
+    ) {
+        // the library part is the same as the library swipe's: the feedback token, then the local flag
+        if (song.inLibrary != null) song.libraryRemoveToken?.let { SwipeScope.launch { YouTube.feedback(listOf(it)) } }
+        database.transaction {
+            deleteImportedSong(song.id, source.key)
+            deleteImportSessionSong(song.id, source.key)
+            if (song.inLibrary != null) update(song.toggleLibrary())
+        }
+        TopToaster.show(
+            text = context.getString(R.string.removed_from_import_and_library, source.label),
+            thumbnail = song.thumbnailUrl,
+            iconRes = R.drawable.delete,
         )
     }
 }

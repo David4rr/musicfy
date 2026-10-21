@@ -1,7 +1,7 @@
 // LibraryProgressSheet.kt
 //
-// The progress sheet: the whole batch's bar, every song with its ring, and "Create playlist" to
-// keep what came in together. Opened from the Library's progress card, and right after a local
+// The progress sheet: the whole batch's bar, every song with its ring, and a button at the bottom:
+// "Cancel all downloads" for downloads, "Create playlist" for local imports to keep them together. Opened from the Library's progress card, and right after a local
 // import starts.
 
 package com.example.musicfy.ui.screens.library
@@ -61,13 +61,23 @@ fun PopupSheetState.showTransferSheet(kind: TransferKind, viewModel: LibraryImpo
     var sheet: PopupSheetHandle? = null
     sheet = showWithHandle(
         buttonBar = {
-            CreatePlaylistButton(
-                batchFlow = viewModel.batchOf(kind),
-                onCreated = { playlistId, songIds ->
-                    viewModel.fillPlaylist(playlistId, songIds)
-                    sheet?.dismiss()
-                },
-            )
+            if (kind == TransferKind.Downloads) {
+                CancelDownloadsButton(
+                    batchFlow = viewModel.batchOf(kind),
+                    onCancel = {
+                        viewModel.cancelAllDownloads()
+                        sheet?.dismiss()
+                    },
+                )
+            } else {
+                CreatePlaylistButton(
+                    batchFlow = viewModel.batchOf(kind),
+                    onCreated = { playlistId, songIds ->
+                        viewModel.fillPlaylist(playlistId, songIds)
+                        sheet?.dismiss()
+                    },
+                )
+            }
         },
         // a finished import has been seen through; the next one starts with a clean sheet
         onClosed = { if (kind == TransferKind.LocalImport) viewModel.clearLocalImport() },
@@ -154,6 +164,17 @@ private fun TransferRow(item: TransferItem) {
         Spacer(Modifier.width(12.dp))
         TransferRing(state = item.state, progress = item.progress)
     }
+}
+
+/** Stops the downloads still going. Greyed out once nothing is left to stop. */
+@Composable
+private fun CancelDownloadsButton(batchFlow: StateFlow<TransferBatch>, onCancel: () -> Unit) {
+    val batch by batchFlow.collectAsState()
+    SheetPillButton(
+        text = "Cancel all downloads",
+        enabled = batch.isRunning,
+        onClick = onCancel,
+    )
 }
 
 /**

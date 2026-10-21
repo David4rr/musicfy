@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -104,6 +107,10 @@ internal fun ProfileIdCard(
     partsAlpha: () -> Float = { 1f },
     /** False holds the side strip's text still, for while something covers the card. */
     marqueeRunning: () -> Boolean = { true },
+    /** Shows a tiny pencil after the number and the name, so people see the card can be edited. */
+    showEditHint: Boolean = false,
+    /** True while a finger is down on the card; the whole card lights up a little. */
+    pressed: () -> Boolean = { false },
 ) {
     val name = idCardName(username)
     val shape = RoundedCornerShape(22.dp)
@@ -116,7 +123,11 @@ internal fun ProfileIdCard(
             .aspectRatio(IdCardAspect)
             .then(if (anchors != null) Modifier.onPlaced { anchors.root = it } else Modifier)
             .clip(shape)
-            .then(if (silver) Modifier.silverSurface(sheen) else Modifier.background(Color(0xFF2F2F2F))),
+            .then(if (silver) Modifier.silverSurface(sheen) else Modifier.background(Color(0xFF2F2F2F)))
+            .drawWithContent {
+                drawContent()
+                if (pressed()) drawRect(Color.White.copy(alpha = if (silver) 0.28f else 0.14f))
+            },
     ) {
         // everything scales with the card, so it reads the same on a narrow phone and a tablet
         val unit = maxWidth / 332f
@@ -127,15 +138,18 @@ internal fun ProfileIdCard(
                     .fillMaxHeight()
                     .padding(start = unit * 22f, top = unit * 20f, end = unit * 12f, bottom = unit * 18f),
             ) {
-                Text(
-                    text = "PROFILE USR#$cardNumber",
-                    color = mutedText,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = (unit.value * 11f).sp,
-                    maxLines = 1,
-                    onTextLayout = { anchors?.numberLayout = it },
-                    modifier = Modifier.flyingPart(anchors, partsAlpha) { number = it },
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "PROFILE USR#$cardNumber",
+                        color = mutedText,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = (unit.value * 11f).sp,
+                        maxLines = 1,
+                        onTextLayout = { anchors?.numberLayout = it },
+                        modifier = Modifier.flyingPart(anchors, partsAlpha) { number = it },
+                    )
+                    if (showEditHint) EditHint(mutedText, unit * 10f, partsAlpha)
+                }
                 Spacer(Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -173,16 +187,26 @@ internal fun ProfileIdCard(
                                 fontSize = (unit.value * 10f).sp,
                             )
                         }
-                        Text(
-                            text = name,
-                            color = bodyText,
-                            fontSize = (unit.value * 21f).sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            onTextLayout = { anchors?.nameLayout = it },
-                            modifier = Modifier.flyingPart(anchors, partsAlpha) { this.name = it },
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // the pencil is dropped when the name is cut off, so it never squeezes a long name
+                            var nameCut by remember { mutableStateOf(false) }
+                            Text(
+                                text = name,
+                                color = bodyText,
+                                fontSize = (unit.value * 21f).sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                onTextLayout = {
+                                    anchors?.nameLayout = it
+                                    nameCut = it.hasVisualOverflow
+                                },
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .flyingPart(anchors, partsAlpha) { this.name = it },
+                            )
+                            if (showEditHint && !nameCut) EditHint(bodyText.copy(alpha = 0.7f), unit * 12f, partsAlpha)
+                        }
                         Text(
                             text = joinedText,
                             color = bodyText.copy(alpha = 0.85f),
@@ -206,6 +230,20 @@ internal fun ProfileIdCard(
             )
         }
     }
+}
+
+/** A tiny bare pencil, hidden with the other parts while the profile page's copies are flying. */
+@Composable
+private fun EditHint(tint: Color, size: Dp, alpha: () -> Float) {
+    Icon(
+        painter = painterResource(R.drawable.edit),
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier
+            .padding(start = size / 3f)
+            .size(size)
+            .graphicsLayer { this.alpha = alpha() },
+    )
 }
 
 /** Tracks where a flying part of the card is, and lets the morph hide it while its copy is out. */

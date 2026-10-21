@@ -5,6 +5,7 @@ package com.example.musicfy.ui.screens.settings.importsync
 import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,8 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +37,7 @@ import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
 import com.example.musicfy.R
 import com.example.musicfy.constants.YtmSyncKey
+import com.example.musicfy.importer.ResyncStart
 import com.example.musicfy.importer.account.AccountService
 import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
 import com.example.musicfy.ui.component.DefaultDialog
@@ -39,14 +45,25 @@ import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.ui.component.SubSettingsScaffold
+import com.example.musicfy.ui.menu.ResyncLinkDialog
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.importer.account.AccountImportState
 import com.example.musicfy.viewmodels.AccountImportViewModel
 import com.example.musicfy.viewmodels.ImportSyncViewModel
 import timber.log.Timber
 
-const val AccountImportRoutePattern = "account_import/{service}"
+const val AccountImportRoutePattern = "account_import/{service}?resync={resync}&then={then}"
 fun accountImportRoute(service: AccountService) = "account_import/${service.route}"
+
+/** The same sign-in, opened by a playlist's Re-sync: it reads just that playlist again. */
+fun accountResyncRoute(service: AccountService, playlistId: String) = "account_import/${service.route}?resync=$playlistId"
+
+/** What the page's resync argument says for Re-sync all. */
+const val ResyncAllArg = "all"
+
+/** Re-sync all through each service's sign-in in turn, [services] first to last. */
+fun accountResyncAllRoute(services: List<AccountService>) =
+    "account_import/${services.first().route}?resync=$ResyncAllArg&then=${services.drop(1).joinToString(",") { it.route }}"
 
 /** Reads MusicKit's own tokens once the user has signed in on music.apple.com. */
 internal const val ApplePageProbeJs = """
@@ -175,7 +192,22 @@ fun AccountImportScreen(
     val state by viewModel.state.collectAsState()
     val ready by viewModel.ready.collectAsState()
     val notice by viewModel.notice.collectAsState()
+    val resyncStart by viewModel.resyncStart.collectAsState()
     val signedInToYouTube = rememberYouTubeSignedIn()
+    val context = LocalContext.current
+    var askingForLink by remember { mutableStateOf(false) }
+
+    // a Re-sync carries on in the background once its songs are read; the toast at the end says how it went
+    LaunchedEffect(resyncStart) {
+        if (resyncStart != ResyncStart.Started) return@LaunchedEffect
+        val missing = viewModel.missingFromAccount
+        val started = "Looking for new songs on ${service.label}…" +
+            if (missing.isEmpty()) "" else " Couldn't find ${missing.joinToString(", ")} there."
+        Toast.makeText(context, started, Toast.LENGTH_LONG).show()
+        navController.navigateUp()
+        // Re-sync all: on to the next service that needs signing in
+        if (viewModel.nextServices.isNotEmpty()) navController.navigate(accountResyncAllRoute(viewModel.nextServices))
+    }
 
     // read and ready: on to the same review dialog every import uses
     LaunchedEffect(ready) {
@@ -199,7 +231,11 @@ fun AccountImportScreen(
     when (val current = state) {
         AccountImportState.SigningIn -> CaptureWebView(
             title = "Sign in to ${service.label}",
-            subtitle = "On ${service.label}'s own page. Musicfy only reads your playlists",
+            subtitle = if (viewModel.isResync) {
+                "On ${service.label}'s own page. Musicfy only reads the playlist you're re-syncing"
+            } else {
+                "On ${service.label}'s own page. Musicfy only reads your playlists"
+            },
             startUrl = service.loginUrl.orEmpty(),
             playerOrigins = service.playerOrigins,
             desktopSite = service.desktopSite,
@@ -283,7 +319,15 @@ fun AccountImportScreen(
                         },
                     )
                 }
-                is AccountImportState.Choosing -> ChoosingContent(
+                is AccountImportState.Choosing -> if (current.pickingFor != null) {
+                    PickForResyncContent(
+                        service = service,
+                        state = current,
+                        name = current.pickingFor,
+                        onPick = viewModel::pickForResync,
+                        onPasteLink = { askingForLink = true },
+                    )
+                } else ChoosingContent(
                     service = service,
                     state = current,
                     onToggle = viewModel::toggle,
@@ -307,7 +351,73 @@ fun AccountImportScreen(
         }
     }
 
+    (resyncStart as? ResyncStart.Failed)?.let { failed ->
+        DefaultDialog(
+            onDismiss = viewModel::clearResyncStart,
+            buttons = { TextButton(onClick = viewModel::clearResyncStart) { Text("OK") } },
+        ) {
+            Text(failed.message, style = MaterialTheme.typography.bodyLarge)
+        }
+    }
+
+    if (askingForLink) {
+        ResyncLinkDialog(
+            sourceLabel = service.label,
+            onDismiss = { askingForLink = false },
+            onDone = viewModel::resyncFromLink,
+        )
+    }
+
     PendingImportHost(viewModel = importViewModel, navController = navController)
+}
+
+/** A Re-sync that couldn't find its playlist by name: the user says which one in the account it is. */
+@Composable
+private fun PickForResyncContent(
+    service: AccountService,
+    state: AccountImportState.Choosing,
+    name: String,
+    onPick: (String) -> Unit,
+    onPasteLink: () -> Unit,
+) {
+    ImportInfoCard {
+        Text(
+            "Couldn't find \"$name\" in your ${service.label} library by its name. Which one is it?",
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+    Spacer(Modifier.height(16.dp))
+    SettingsGroup(
+        style = SettingsGroupStyle.Grouped,
+        items = listOf(
+            SettingsItem(
+                title = { Text("It's not in this account") },
+                descriptionText = "Paste the playlist's link instead",
+                icon = painterResource(R.drawable.link),
+                iconShape = CircleShape,
+                onClick = onPasteLink,
+            ),
+        ),
+    )
+    if (state.playlists.isEmpty()) return
+    Spacer(Modifier.height(16.dp))
+    SettingsGroup(
+        title = "${state.playlists.size} in your library",
+        style = SettingsGroupStyle.Grouped,
+        items = state.playlists.map { playlist ->
+            SettingsItem(
+                title = { Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                descriptionText = listOfNotNull(
+                    playlist.trackCount?.let { if (it == 1) "1 song" else "$it songs" },
+                    playlist.subtitle,
+                ).joinToString(" · ").ifEmpty { null },
+                icon = playlist.coverUrl?.let { rememberAsyncImagePainter(it) } ?: painterResource(R.drawable.playlist_play),
+                tintIcon = playlist.coverUrl == null,
+                iconShape = CircleShape,
+                onClick = { onPick(playlist.id) },
+            )
+        },
+    )
 }
 
 @Composable

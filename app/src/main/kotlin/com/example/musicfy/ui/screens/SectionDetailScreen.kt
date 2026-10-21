@@ -202,7 +202,7 @@ fun SectionDetailScreen(
                 is SongItem -> YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
                 is Album -> AlbumMenu(originalAlbum = item, navController = navController, onDismiss = menuState::dismiss)
                 is Artist -> ArtistMenu(originalArtist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
-                is Playlist -> PlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                is Playlist -> PlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss, navController = navController)
                 is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
                 is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
                 is PlaylistItem -> YouTubePlaylistMenu(

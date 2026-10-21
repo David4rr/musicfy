@@ -50,6 +50,9 @@ data class ImportSessionSong(
  * A playlist that came from a service, so the Library can count "Spotify playlists" and deleting
  * Spotify's imports can take its playlists with it. [sessionId] is null for a playlist that YouTube
  * sync brought in: it follows the account, so no import session owns it.
+ *
+ * [remoteId] and [remoteUrl] say where it lives on the service, so Re-sync can read it again.
+ * Imports from before version 41 have neither; Re-sync then looks the playlist up by its name.
  */
 @Immutable
 @Entity(
@@ -61,4 +64,24 @@ data class ImportedPlaylist(
     val source: String,
     val sessionId: Long?,
     val importedAt: LocalDateTime,
+    /** The playlist's id on the service, the one its account lists it under. */
+    val remoteId: String? = null,
+    /** The share link it was read from, when it came in by link. */
+    val remoteUrl: String? = null,
+    val lastSyncedAt: LocalDateTime? = null,
+)
+
+/**
+ * A song the service's playlist already had the last time it was read (see `trackKey`). Re-sync
+ * only adds what isn't listed here, so songs the user took out of the local copy stay out, and
+ * songs already matched aren't searched for again.
+ */
+@Immutable
+@Entity(
+    tableName = "imported_playlist_track",
+    primaryKeys = ["playlistId", "trackKey"],
+)
+data class ImportedPlaylistTrack(
+    val playlistId: String,
+    val trackKey: String,
 )

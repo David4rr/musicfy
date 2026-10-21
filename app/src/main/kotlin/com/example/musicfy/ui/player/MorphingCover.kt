@@ -5,16 +5,12 @@ package com.example.musicfy.ui.player
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,7 +84,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.media3.common.Player
-import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
@@ -104,13 +99,11 @@ import com.example.musicfy.ui.player.models.TrackInfo
 import com.example.musicfy.ui.utils.resize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.musicfy.ui.component.BlurEffectCache
 import com.example.musicfy.ui.component.rememberCoverBlurAvailable
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -135,6 +128,8 @@ import com.example.musicfy.ui.player.customize.DiscCoverStack
 import com.example.musicfy.ui.player.customize.PlayerBackgroundContent
 import com.example.musicfy.ui.player.customize.CoverGradientBackdrop
 import com.example.musicfy.ui.player.customize.coverArtBox
+import com.example.musicfy.ui.player.customize.coverArtBoxF
+import com.example.musicfy.ui.player.customize.usesBoxedStage
 import com.example.musicfy.ui.player.customize.isDisc
 import com.example.musicfy.ui.component.ChromeHighlightColor
 import com.example.musicfy.ui.component.FrostedChromeGlass
@@ -209,7 +204,22 @@ private class MorphEndpointsPx(
     val fullPlayYPx: Float,
     val miniHeightPx: Float,
     val fullHeightPx: Float,
-)
+    /** the cover's box is a square stage, not the edge-to-edge region */
+    val boxedStage: Boolean,
+    val statusTopPx: Float,
+    /** 1dp in px */
+    val dpPx: Float,
+    /** how far the controls under the cover were moved, px down; read while laying out */
+    val coverOffset: () -> Float,
+) {
+    /** the full-size cover's box (x, y, width, height), its region moved with the controls under it */
+    fun fullArt(): FloatArray {
+        val offset = coverOffset()
+        if (offset == 0f) return floatArrayOf(fullArtXPx, fullArtYPx, fullArtWidthPx, fullArtHeightPx)
+        val box = coverArtBoxF(boxedStage, fullWidthPx, fullHeightPx, statusTopPx, dpPx, offset)
+        return floatArrayOf(box.x, box.y, box.width, box.height)
+    }
+}
 
 private enum class MorphElement { ART, PLAY, SKIP, TEXT, BACKDROP }
 
@@ -256,10 +266,11 @@ private fun Modifier.morphLayout(
 
     val (x, y, w, h) = when (element) {
         MorphElement.ART -> {
-            val artW = lerpF(endpointsPx.miniArtWidthPx, endpointsPx.fullArtWidthPx, p)
-            val artH = lerpF(endpointsPx.miniArtHeightPx, endpointsPx.fullArtHeightPx, p)
-            val artX = lerpF(endpointsPx.miniArtXPx, endpointsPx.fullArtXPx, p) + hOffset
-            val artY = lerpF(endpointsPx.miniArtYPx, endpointsPx.fullArtYPx, p)
+            val (fullX, fullY, fullW, fullH) = endpointsPx.fullArt()
+            val artW = lerpF(endpointsPx.miniArtWidthPx, fullW, p)
+            val artH = lerpF(endpointsPx.miniArtHeightPx, fullH, p)
+            val artX = lerpF(endpointsPx.miniArtXPx, fullX, p) + hOffset
+            val artY = lerpF(endpointsPx.miniArtYPx, fullY, p)
 
             val lp = lyricsProgressProvider()
             if (lp <= 0f) {
@@ -291,7 +302,7 @@ private fun Modifier.morphLayout(
         MorphElement.TEXT -> {
 
             val textX = lerpF(endpointsPx.miniTextXPx, endpointsPx.fullTextXPx, p) + hOffset
-            val textY = lerpF(0f, endpointsPx.fullTextYPx, p)
+            val textY = lerpF(0f, endpointsPx.fullTextYPx + endpointsPx.coverOffset(), p)
             val textW = lerpF(endpointsPx.miniTextWidthPx, endpointsPx.fullTextWidthPx, p)
             floatArrayOf(textX, textY, textW, endpointsPx.miniHeightPx)
         }
@@ -355,52 +366,15 @@ fun MorphingCover(
      * backdrop, canvas, video and their clocks don't run at all.
      */
     alternateStyle: Boolean = false,
+    /**
+     * How far the controls under the cover were moved, px down (up when negative): its region
+     * ends where they start, so the cover zooms with them. Read while laying out only.
+     */
+    coverOffsetProvider: () -> Float = { 0f },
 ) {
-    val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val density = LocalDensity.current
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
-    val emptyQueue = remember { kotlinx.coroutines.flow.MutableStateFlow(com.example.musicfy.ui.player.models.QueueState()) }
-    val queueState by (playerConnection?.uiState?.queueState ?: emptyQueue).collectAsState()
-    var previousQueueIndex by remember { mutableIntStateOf(queueState.currentIndex) }
-    var skipDirection by remember { mutableIntStateOf(1) }
-
-    LaunchedEffect(queueState.currentIndex) {
-        if (queueState.currentIndex != previousQueueIndex) {
-            skipDirection = if (queueState.currentIndex < previousQueueIndex) -1 else 1
-            previousQueueIndex = queueState.currentIndex
-        }
-    }
-
-    if (playerConnection != null) {
-        LaunchedEffect(queueState.currentIndex, queueState.items) {
-            val nextUrl = queueState.items.getOrNull(queueState.currentIndex + 1)
-                ?.artworkUri?.toString()?.resize(1200, 1200)
-            val prevUrl = queueState.items.getOrNull(queueState.currentIndex - 1)
-                ?.artworkUri?.toString()?.resize(1200, 1200)
-
-            val loader = SingletonImageLoader.get(context)
-            if (nextUrl != null) {
-                loader.enqueue(
-                    ImageRequest.Builder(context)
-                        .data(nextUrl)
-                        .size(CoilSize(1200, 1200))
-                        .precision(Precision.INEXACT)
-                        .build()
-                )
-            }
-            if (prevUrl != null) {
-                loader.enqueue(
-                    ImageRequest.Builder(context)
-                        .data(prevUrl)
-                        .size(CoilSize(1200, 1200))
-                        .precision(Precision.INEXACT)
-                        .build()
-                )
-            }
-        }
-    }
 
     val isDiscStyle = coverStyle.isDisc && !alternateStyle
 
@@ -513,6 +487,7 @@ fun MorphingCover(
         )
     }
 
+    val currentCoverOffset by androidx.compose.runtime.rememberUpdatedState(coverOffsetProvider)
     val endpointsPx = remember(endpoints, density) {
         with(density) {
             MorphEndpointsPx(
@@ -541,6 +516,10 @@ fun MorphingCover(
                 fullPlayYPx = endpoints.fullPlayY.toPx(),
                 miniHeightPx = endpoints.miniHeight.toPx(),
                 fullHeightPx = endpoints.fullHeight.toPx(),
+                boxedStage = coverStyle.usesBoxedStage,
+                statusTopPx = statusBarTop.toPx(),
+                dpPx = density.density,
+                coverOffset = { currentCoverOffset() },
             )
         }
     }
@@ -561,18 +540,17 @@ fun MorphingCover(
         derivedStateOf { !editMode && progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
     }
 
-    // Swiping the full-size cover sideways: the cover follows the finger, and past a distance or a
-    // flick it skips (left) or goes back (right). Only while the cover is the full-size one - the
-    // mini player's cover is swiped by the sheet itself, and in the lyrics header it is a thumbnail.
-    val coverSwipeX = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    val coverSwipeScope = androidx.compose.runtime.rememberCoroutineScope()
+    // Swiping the full-size cover sideways slides the player's row of songs under the finger (see
+    // SongCarousel): the next song's cover comes in as this one goes, and letting go carries on into
+    // it. Only while the cover is the full-size one - the mini player's swipe is the sheet's, and in
+    // the lyrics header it's a thumbnail. On a record, the swipe runs the row of records instead,
+    // the arm and the room staying put.
+    val carousel = LocalSongCarousel.current
+    val currentCarousel by androidx.compose.runtime.rememberUpdatedState(carousel)
     val coverSwipeEnabled by remember(editMode) {
         derivedStateOf { !editMode && progressProvider() > 0.98f && lyricsProgressProvider() < 0.02f }
     }
     val currentPlayerConnection by androidx.compose.runtime.rememberUpdatedState(playerConnection)
-    // On a record the swipe runs the row of records instead (see DiscCarousel): the record goes
-    // with the finger and the next comes in behind it, the arm and the room staying put.
-    val discCarousel = remember { com.example.musicfy.ui.player.customize.DiscCarousel() }
     val swipesDisc by androidx.compose.runtime.rememberUpdatedState(isDiscStyle)
     val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(coverStyle)
 
@@ -720,7 +698,6 @@ fun MorphingCover(
                         val p = progressProvider()
                         if (alternateStyle) alpha = (1f - p / 0.4f).coerceIn(0f, 1f)
 
-                        if (!isDiscStyle) translationX = coverSwipeX.floatValue
                         scaleX = animatedPauseScale
                         scaleY = animatedPauseScale
                         // A colour filter on a layer forces it offscreen - the whole cover rendered
@@ -780,13 +757,8 @@ fun MorphingCover(
                     )
                     .pointerInput(Unit) {
                         val velocityTracker = VelocityTracker()
-                        var settleJob: kotlinx.coroutines.Job? = null
-                        // Past this much travel, or a flick faster than this, the swipe skips.
-                        val commitPx = size.width * 0.22f
+                        // A flick faster than this skips however short it was.
                         val flingPx = 500.dp.toPx()
-                        // The cover trails the finger a little, and never leaves the screen.
-                        val resistance = 0.6f
-                        val limitPx = size.width * 0.5f
 
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -800,63 +772,37 @@ fun MorphingCover(
                                 travelled += over
                             } ?: return@awaitEachGesture
 
-                            if (swipesDisc) {
-                                // the row of records under the finger, one to one
-                                val player = currentPlayerConnection?.player
-                                val boxSize = androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat())
-                                val hasPrevious = player?.hasPreviousMediaItem() == true
-                                val hasNext = player?.hasNextMediaItem() == true
-                                discCarousel.startDrag(coverSwipeScope)
-                                velocityTracker.resetTracking()
-                                velocityTracker.addPointerInputChange(slopped)
-                                discCarousel.dragTo(coverSwipeScope, travelled, boxSize, hasPrevious, hasNext)
-                                val completed = horizontalDrag(slopped.id) { change ->
-                                    change.consume()
-                                    velocityTracker.addPointerInputChange(change)
-                                    travelled += change.positionChange().x
-                                    discCarousel.dragTo(coverSwipeScope, travelled, boxSize, hasPrevious, hasNext)
-                                }
-                                val velocity = if (completed) velocityTracker.calculateVelocity().x else 0f
-                                discCarousel.release(coverSwipeScope, if (completed) travelled else 0f, velocity, boxSize, flingPx, player)
-                                return@awaitEachGesture
+                            val player = currentPlayerConnection?.player
+                            val row = currentCarousel ?: return@awaitEachGesture
+                            // how far the finger goes for one song: a record's spacing in the row,
+                            // or the cover's own width
+                            val spacing = if (swipesDisc) {
+                                com.example.musicfy.ui.player.customize.discSpacingPx(
+                                    currentCoverStyle,
+                                    androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()),
+                                )
+                            } else {
+                                size.width.toFloat()
                             }
-
-                            settleJob?.cancel()
+                            val hasPrevious = player?.hasPreviousMediaItem() == true
+                            val hasNext = player?.hasNextMediaItem() == true
                             velocityTracker.resetTracking()
                             velocityTracker.addPointerInputChange(slopped)
-                            coverSwipeX.floatValue = (travelled * resistance).coerceIn(-limitPx, limitPx)
+                            row.startDrag()
+                            row.dragTo(travelled, spacing, hasPrevious, hasNext)
 
                             val completed = horizontalDrag(slopped.id) { change ->
                                 change.consume()
                                 velocityTracker.addPointerInputChange(change)
                                 travelled += change.positionChange().x
-                                coverSwipeX.floatValue = (travelled * resistance).coerceIn(-limitPx, limitPx)
+                                row.dragTo(travelled, spacing, hasPrevious, hasNext)
                             }
 
-                            val velocity = velocityTracker.calculateVelocity().x
-                            val player = currentPlayerConnection?.player
-                            if (completed && player != null) {
-                                if ((travelled < -commitPx || velocity < -flingPx) && player.hasNextMediaItem()) {
-                                    player.seekToNext()
-                                } else if ((travelled > commitPx || velocity > flingPx) && player.hasPreviousMediaItem()) {
-                                    player.seekToPreviousMediaItem()
-                                }
+                            if (!completed) {
+                                row.cancelDrag()
+                                return@awaitEachGesture
                             }
-
-                            // Back to rest. A new song's cover arrives with its own zoom and blur,
-                            // so this only has to bring the old frame home.
-                            val from = coverSwipeX.floatValue
-                            settleJob = coverSwipeScope.launch {
-                                androidx.compose.animation.core.animate(
-                                    initialValue = from,
-                                    targetValue = 0f,
-                                    initialVelocity = 0f,
-                                    animationSpec = androidx.compose.animation.core.spring(
-                                        dampingRatio = 0.8f,
-                                        stiffness = 380f,
-                                    ),
-                                ) { value, _ -> coverSwipeX.floatValue = value }
-                            }
+                            row.release(travelled, velocityTracker.calculateVelocity().x, spacing, flingPx, player)
                         }
                     }
                     .then(
@@ -896,34 +842,47 @@ fun MorphingCover(
                         )
                 ) {
 
-                CoverArtworkCrossfade(
-                    thumbnailUrl = trackInfo.thumbnailUrl,
-                    mediaId = trackInfo.mediaId,
-                    direction = skipDirection,
-                    modifier = Modifier.fillMaxSize()
-                )
+                CarouselPictures(
+                    carousel = carousel,
+                    fallbackUrl = trackInfo.thumbnailUrl,
+                    modifier = Modifier.fillMaxSize(),
+                ) { url, pictureModifier ->
+                    CoverPicture(thumbnailUrl = url, modifier = pictureModifier)
+                }
 
-                CoverCanvasLayer(
-                    trackInfo = trackInfo,
-                    alternateStyle = alternateStyle,
-                    isDiscStyle = isDiscStyle,
-                    editMode = editMode,
-                    progressProvider = progressProvider,
-                )
-
-                if (!isDiscStyle && playVideoBackground && videoInfo != null) {
-                    YouTubeVideoBackground(
-                        streamUrl = videoInfo?.streamUrl,
-                        isPlaying = isPlaying,
-                        positionMsProvider = { playerConnection?.player?.currentPosition ?: 0L },
-                        lyricVideoAnchors = lyricVideoAnchors,
-                        glassState = videoGlassState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
-                            }
+                // The playing song's canvas and video ride on its cover's page, so a swipe takes
+                // them along with the picture under them.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val o = carousel?.playingOffset ?: 0f
+                            translationX = o * size.width
+                            alpha = if (kotlin.math.abs(o) >= 1f) 0f else 1f
+                        }
+                ) {
+                    CoverCanvasLayer(
+                        trackInfo = trackInfo,
+                        alternateStyle = alternateStyle,
+                        isDiscStyle = isDiscStyle,
+                        editMode = editMode,
+                        progressProvider = progressProvider,
                     )
+
+                    if (!isDiscStyle && playVideoBackground && videoInfo != null) {
+                        YouTubeVideoBackground(
+                            streamUrl = videoInfo?.streamUrl,
+                            isPlaying = isPlaying,
+                            positionMsProvider = { playerConnection?.player?.currentPosition ?: 0L },
+                            lyricVideoAnchors = lyricVideoAnchors,
+                            glassState = videoGlassState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    alpha = (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
+                                }
+                        )
+                    }
                 }
                 }
 
@@ -935,7 +894,7 @@ fun MorphingCover(
                         isPlaying = isPlaying,
                         spinActive = discSpinActive,
                         editMode = editMode,
-                        carousel = discCarousel,
+                        carousel = carousel,
                         // greyed here only where the cover's layer above doesn't grey it already
                         saturationProvider = {
                             if (discWeight(progressProvider, lyricsProgressProvider) < 0.5f) 1f else animatedPauseSaturation
@@ -949,8 +908,8 @@ fun MorphingCover(
         }
 
         MiniSongInfo(
+            carousel = carousel,
             trackInfo = trackInfo,
-            skipDirection = { skipDirection },
             progressProvider = progressProvider,
             horizontalOffsetProvider = horizontalOffsetProvider,
             endpointsPx = endpointsPx,
@@ -1066,8 +1025,8 @@ private fun MiniPlayerButton(
  */
 @Composable
 private fun MiniSongInfo(
+    carousel: SongCarousel?,
     trackInfo: TrackInfo,
-    skipDirection: () -> Int,
     progressProvider: () -> Float,
     horizontalOffsetProvider: () -> Float,
     endpointsPx: MorphEndpointsPx,
@@ -1103,182 +1062,68 @@ private fun MiniSongInfo(
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        val miniSongDisplay = remember(trackInfo.mediaId, trackInfo.title, trackInfo.artist, trackInfo.album) {
-            trackInfo
-        }
-        AnimatedContent(
-            targetState = miniSongDisplay,
-            modifier = Modifier
-                .fillMaxSize()
-                .align(Alignment.CenterStart),
-            contentAlignment = Alignment.CenterStart,
-            transitionSpec = {
-                val isForward = skipDirection() >= 0
-                if (isForward) {
-                    (slideInHorizontally(tween(360, easing = FastOutSlowInEasing)) { (-it * 0.45f).toInt() } + fadeIn(tween(300)))
-                        .togetherWith(slideOutHorizontally(tween(360, easing = FastOutSlowInEasing)) { (it * 0.45f).toInt() } + fadeOut(tween(220)))
-                } else {
-                    (slideInHorizontally(tween(360, easing = FastOutSlowInEasing)) { (it * 0.45f).toInt() } + fadeIn(tween(300)))
-                        .togetherWith(slideOutHorizontally(tween(360, easing = FastOutSlowInEasing)) { (-it * 0.45f).toInt() } + fadeOut(tween(220)))
-                }.using(SizeTransform(clip = false))
-            },
-            label = "MiniSongInfoSlide"
-        ) { currentTrack ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.CenterVertically),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = currentTrack.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                val subtitle = listOf(currentTrack.artist, currentTrack.album)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" — ")
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
+        // the leaving and arriving songs' lines ride the row with the cover
+        if (carousel == null) {
+            MiniSongLines(trackInfo.title, trackInfo.artist, trackInfo.album, Modifier)
+        } else {
+            for (slot in rememberTextSlots(carousel)) {
+                key(slot.uid) {
+                    MiniSongLines(slot.title, slot.artist, slot.album, Modifier.carouselText(carousel, slot))
                 }
             }
         }
     }
 }
 
-private data class CoverItem(
-    val mediaId: String,
-    val thumbnailUrl: String?,
-)
-
 @Composable
-private fun CoverArtworkCrossfade(
-    thumbnailUrl: String?,
-    mediaId: String,
-    direction: Int,
-    modifier: Modifier = Modifier,
-) {
-    var currentCover by remember { mutableStateOf(CoverItem(mediaId, thumbnailUrl)) }
-    var outgoingCover by remember { mutableStateOf<CoverItem?>(null) }
-    var transitionDirection by remember { mutableIntStateOf(direction) }
-
-    val animProgress = remember { androidx.compose.animation.core.Animatable(1f) }
-
-    LaunchedEffect(mediaId, thumbnailUrl) {
-        if (mediaId != currentCover.mediaId || thumbnailUrl != currentCover.thumbnailUrl) {
-            outgoingCover = currentCover
-            currentCover = CoverItem(mediaId, thumbnailUrl)
-            transitionDirection = if (direction != 0) direction else 1
-            animProgress.snapTo(0f)
-            animProgress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = 600,
-                    easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
-                )
-            )
-            outgoingCover = null
-        }
-    }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        val p = animProgress.value
-        val isForward = transitionDirection >= 0
-
-        val outgoing = outgoingCover
-        if (outgoing != null && p < 0.999f) {
-            // 1. Outgoing cover underneath:
-            // Zooms dramatically and blurs whole frame as it fades out
-            val outgoingScale = if (isForward) 1f + 0.22f * p else 1f - 0.22f * p
-            val outgoingBlur = p * 20f
-            val outgoingAlpha = if (p < 0.30f) 1f else ((1f - p) / 0.70f).coerceIn(0f, 1f)
-            CoverImageLayer(
-                item = outgoing,
-                scale = outgoingScale,
-                alpha = outgoingAlpha,
-                blurPx = outgoingBlur,
-                isAnimating = true,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // 2. Incoming cover on top:
-            // Zooms dramatically from initial scale (0.78f or 1.22f) to 1.0f while unblurring whole frame
-            val incomingScale = if (isForward) 0.78f + 0.22f * p else 1.22f - 0.22f * p
-            val incomingBlur = (1f - p) * 20f
-            val incomingAlpha = p.coerceIn(0f, 1f)
-            CoverImageLayer(
-                item = currentCover,
-                scale = incomingScale,
-                alpha = incomingAlpha,
-                blurPx = incomingBlur,
-                isAnimating = true,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            CoverImageLayer(
-                item = currentCover,
-                scale = 1f,
-                alpha = 1f,
-                blurPx = 0f,
-                isAnimating = false,
-                modifier = Modifier.fillMaxSize()
+private fun MiniSongLines(title: String, artist: String, album: String, modifier: Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight(Alignment.CenterVertically),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            softWrap = false,
+        )
+        val subtitle = listOf(artist, album)
+            .filter { it.isNotBlank() }
+            .joinToString(" — ")
+        if (subtitle.isNotBlank()) {
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false,
             )
         }
     }
 }
 
 @Composable
-private fun CoverImageLayer(
-    item: CoverItem,
-    scale: Float,
-    alpha: Float,
-    blurPx: Float,
-    isAnimating: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
+private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val imageRequest = remember(item.thumbnailUrl) {
+    val imageRequest = remember(thumbnailUrl) {
         ImageRequest.Builder(context)
-            .data(item.thumbnailUrl?.resize(1200, 1200))
+            .data(thumbnailUrl?.resize(1200, 1200))
             .allowHardware(true)
             .size(CoilSize(1200, 1200))
             .precision(Precision.INEXACT)
             .crossfade(false)
             .build()
     }
-
-    // Quantize blur to 0.5f steps to reuse GPU RenderEffect instances & prevent lag
-    val quantizedBlur = if (blurPx > 0.3f) (kotlin.math.round(blurPx * 2f) / 2f) else 0f
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                this.alpha = alpha.coerceIn(0f, 1f)
-                scaleX = scale
-                scaleY = scale
-                if (isAnimating) {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
-                renderEffect = if (quantizedBlur > 0f) BlurEffectCache.get(quantizedBlur) else null
-                clip = true
-            }
-    ) {
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    AsyncImage(
+        model = imageRequest,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1293,8 +1138,6 @@ private fun PlayerBackdropCrossfade(
     maxHeight: Dp,
     warpShader: Any?,
     warpTimeState: androidx.compose.runtime.MutableFloatState,
-    /** Whether a song change fades the picture over; when not (nothing of it shows), it swaps. */
-    fadeChanges: () -> Boolean,
     lyricsProgressProvider: () -> Float = { 0f },
     modifier: Modifier = Modifier,
 ) {
@@ -1337,7 +1180,6 @@ private fun PlayerBackdropCrossfade(
                     height = maxHeight,
                     warpShader = warpShader,
                     warpTimeState = warpTimeState,
-                    fadeChanges = fadeChanges,
                 )
             }
         }
@@ -1354,40 +1196,11 @@ private fun PlayerBackdropCrossfade(
     }
 }
 
-/** A song's backdrop picture. Wrapped so a slot with no picture (null) differs from one with no art. */
-private data class BackdropPicture(val url: String?)
-
-/** The two slots the backdrop fade takes turns with - see [CoverBackdropFade]. */
-@Stable
-private class BackdropSlots(first: String?) {
-    val pictures = arrayOf(
-        mutableStateOf<BackdropPicture?>(BackdropPicture(first)),
-        mutableStateOf<BackdropPicture?>(null),
-    )
-
-    /** Whether each slot's picture has loaded yet. */
-    val loaded = arrayOf(mutableStateOf(false), mutableStateOf(false))
-
-    /** The slot holding the current song's picture, drawn over the other. */
-    var front by mutableIntStateOf(0)
-}
-
-/** How long a new backdrop picture is waited for before the fade goes ahead without it. */
-private const val BackdropLoadTimeoutMs = 1500L
-private const val BackdropFadeMs = 750
-
 /**
- * The cover-gradient backdrop, fading from one song's picture to the next.
- *
- * Two slots take turns. The next picture goes into the free one, is waited for, and only then fades
- * in *over* the one showing, which stays fully opaque underneath until the fade is done and is then
- * dropped. The old way faded the outgoing picture out while the new one came in, so the dark
- * container behind both showed through the middle of every change - and both pictures were built
- * from scratch, with nothing to draw for their first frames. Here neither is ever transparent
- * before the other is solid behind it.
- *
- * Songs are shown one at a time: skipping through several while a fade runs shows only the newest
- * once it finishes.
+ * The cover-gradient backdrop, one per song in the player's row, crossfading along it: a swipe
+ * toward the next song fades its backdrop in by exactly how far the finger has gone, and a skip
+ * from anywhere fades it over as the row slides. The song before and after are kept built, their
+ * pictures loaded, so a fade never waits on one or starts from nothing.
  */
 @Composable
 private fun CoverBackdropFade(
@@ -1396,72 +1209,21 @@ private fun CoverBackdropFade(
     height: Dp,
     warpShader: Any?,
     warpTimeState: androidx.compose.runtime.MutableFloatState,
-    fadeChanges: () -> Boolean,
 ) {
-    val slots = remember { BackdropSlots(thumbnailUrl) }
-    val frontAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
-    val latest by androidx.compose.runtime.rememberUpdatedState(thumbnailUrl)
-    val currentFadeChanges by androidx.compose.runtime.rememberUpdatedState(fadeChanges)
-
-    LaunchedEffect(slots) {
-        snapshotFlow { latest }.collect { next ->
-            // Nothing to show for a song without art: the backdrop is dropped altogether then.
-            if (next == null || slots.pictures[slots.front].value?.url == next) return@collect
-
-            val incoming = 1 - slots.front
-            slots.loaded[incoming].value = false
-            slots.pictures[incoming].value = BackdropPicture(next)
-            frontAlpha.snapTo(0f)
-            slots.front = incoming
-
-            // A picture that never loads must not hold the fade up forever.
-            withTimeoutOrNull(BackdropLoadTimeoutMs) {
-                snapshotFlow { slots.loaded[incoming].value }.first { it }
-            }
-            // Behind the collapsed player the backdrop is composed but not drawn: a fade there
-            // would only be frames for nothing.
-            if (currentFadeChanges()) {
-                frontAlpha.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(
-                        durationMillis = BackdropFadeMs,
-                        easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
-                    )
-                )
-            } else {
-                frontAlpha.snapTo(1f)
-            }
-            slots.pictures[1 - incoming].value = null
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        // The slot in front is drawn last. Keyed, so swapping the order moves the layers instead
-        // of rebuilding them - the one that was showing keeps its picture through the fade.
-        val drawOrder = if (slots.front == 0) intArrayOf(1, 0) else intArrayOf(0, 1)
-        for (index in drawOrder) {
-            key(index) {
-                val picture = slots.pictures[index].value
-                if (picture != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = if (index == slots.front) frontAlpha.value else 1f }
-                    ) {
-                        CoverGradientBackdrop(
-                            thumbnailUrl = picture.url,
-                            width = width,
-                            height = height,
-                            // the clock is the player's (timeProvider), so this one never runs
-                            animate = false,
-                            shader = warpShader,
-                            timeProvider = { warpTimeState.floatValue },
-                            onLoaded = { slots.loaded[index].value = true },
-                        )
-                    }
-                }
-            }
-        }
+    CarouselCrossfade(
+        carousel = LocalSongCarousel.current,
+        fallbackUrl = thumbnailUrl,
+        modifier = Modifier.fillMaxSize(),
+    ) { url ->
+        CoverGradientBackdrop(
+            thumbnailUrl = url,
+            width = width,
+            height = height,
+            // the clock is the player's (timeProvider), so this one never runs
+            animate = false,
+            shader = warpShader,
+            timeProvider = { warpTimeState.floatValue },
+        )
     }
 }
 
@@ -1770,7 +1532,6 @@ private fun SheetBackdrop(
                 maxHeight = maxHeight,
                 warpShader = warpShader,
                 warpTimeState = warpTimeState,
-                fadeChanges = { progressProvider() > 0f },
                 lyricsProgressProvider = lyricsProgressProvider,
                 modifier = Modifier.fillMaxSize()
             )

@@ -2,23 +2,11 @@
 
 package com.example.musicfy.importer
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import com.example.musicfy.R
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.ImportSession
-import com.example.musicfy.db.entities.ImportSessionSong
-import com.example.musicfy.db.entities.ImportedPlaylist
-import com.example.musicfy.db.entities.ImportedSong
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.models.toMediaMetadata
-import com.music.innertube.YouTube
-import com.music.innertube.models.SongItem
+import com.example.musicfy.importer.account.AccountImportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -26,24 +14,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
-import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
-import kotlin.coroutines.coroutineContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -61,29 +39,30 @@ class MusicImportService @Inject constructor(
     private val importScope = CoroutineScope(Dispatchers.IO + importJob + exceptionHandler)
     private var runningJob: Job? = null
 
-    /** Where the import being run comes from; read by the steps below, one import runs at a time. */
-    @Volatile private var source: ImportSource = ImportSource.OTHER
-
-    /** The session the running import records what it changes under, so it can be undone. */
-    @Volatile private var sessionId: Long? = null
-
     private val _progress = MutableStateFlow(ImportProgress())
     val progress: StateFlow<ImportProgress> = _progress.asStateFlow()
+
+    /** The work itself; one import or re-sync runs at a time, so they share it. */
+    private val steps = ImportSteps(context, database, _progress)
+
+    /** Re-syncs waiting behind the one running, and whether a re-sync run is going (guarded by the queue). */
+    private val resyncQueue = ArrayDeque<ResyncRequest>()
+    private var resyncing = false
 
     val isRunning: Boolean get() = runningJob?.isActive == true
 
     /** Starts an import in the background; false if one is already running. */
     fun startImport(parsed: ParsedImport, options: ImportOptions = ImportOptions()): Boolean {
         if (isRunning) return false
-        source = parsed.provider ?: ImportSource.OTHER
+        steps.source = parsed.provider ?: ImportSource.OTHER
         _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs, source = parsed.provider)
         runningJob = importScope.launch {
             try {
-                sessionId = database.insert(ImportSession(source = source.key, startedAt = LocalDateTime.now()))
-                runImport(parsed, options)
+                steps.sessionId = database.insert(ImportSession(source = steps.source.key, startedAt = LocalDateTime.now()))
+                steps.runImport(parsed, options)
                 _progress.update { it.copy(isRunning = false, isDone = true, currentLabel = "") }
                 val done = _progress.value
-                notifyImportComplete(done.matchedTracks, done.totalTracks)
+                ImportNotices.importFinished(context, done.matchedTracks, done.totalTracks)
             } catch (e: CancellationException) {
                 _progress.update { it.copy(isRunning = false, isDone = true, cancelled = true, currentLabel = "") }
                 throw e
@@ -93,11 +72,111 @@ class MusicImportService @Inject constructor(
                     it.copy(isRunning = false, isDone = true, currentLabel = "", error = e.message ?: "Import failed")
                 }
             } finally {
-                sessionId?.let { database.deleteImportSessionIfEmpty(it) }
-                sessionId = null
+                steps.sessionId?.let { database.deleteImportSessionIfEmpty(it) }
+                steps.sessionId = null
             }
         }
         return true
+    }
+
+    /**
+     * Reads imported playlists from their service again ([ResyncRequest.read]) and adds the songs
+     * that are new there to their end, in the service's order. New means the service didn't have
+     * it last time, so a song the user took out of a playlist here stays out. Ends with a toast
+     * saying what changed, since the menu that started it is long closed.
+     *
+     * Requests that arrive while a re-sync runs join it (Re-sync all hands over one service at a
+     * time). False if an import is running instead.
+     */
+    fun startResync(requests: List<ResyncRequest>): Boolean {
+        val first = requests.firstOrNull() ?: return true
+        synchronized(resyncQueue) {
+            if (resyncing) {
+                resyncQueue.addAll(requests)
+                _progress.update { it.copy(resync = it.resync?.copy(playlists = it.resync.playlists + requests.size)) }
+                return true
+            }
+            if (isRunning) return false
+            resyncQueue.addAll(requests)
+            resyncing = true
+        }
+        _progress.value = ImportProgress(isRunning = true, source = first.source, resync = ResyncSummary(first.playlistName, playlists = requests.size))
+        runningJob = importScope.launch {
+            try {
+                while (true) {
+                    val next = synchronized(resyncQueue) {
+                        resyncQueue.removeFirstOrNull().also { if (it == null) resyncing = false }
+                    } ?: break
+                    resyncOne(next)
+                }
+                _progress.update { it.copy(isRunning = false, isDone = true, currentLabel = "") }
+                ImportNotices.resyncFinished(context, _progress.value)
+            } catch (e: CancellationException) {
+                synchronized(resyncQueue) {
+                    resyncQueue.clear()
+                    resyncing = false
+                }
+                _progress.update { it.copy(isRunning = false, isDone = true, cancelled = true, currentLabel = "") }
+                throw e
+            }
+        }
+        return true
+    }
+
+    /** One playlist of a re-sync run. A playlist that fails is noted and the run goes on. */
+    private suspend fun resyncOne(request: ResyncRequest) {
+        steps.source = request.source
+        _progress.update {
+            it.copy(
+                source = request.source,
+                currentLabel = "Reading \"${request.playlistName}\" on ${request.source.label}",
+                resync = it.resync?.copy(playlistName = request.playlistName),
+            )
+        }
+        var ownSession: Long? = null
+        try {
+            val read = request.read()
+            val playlist = database.playlist(request.playlistId).first()?.playlist
+                ?: throw LinkImportException("That playlist isn't in your library any more.")
+            // new songs go in under the import that brought the playlist, so undoing it takes
+            // them too; a playlist copied from a YouTube page never put its songs in the library
+            val owner = database.getImportedPlaylist(playlist.id)?.sessionId
+            if (owner != null) {
+                steps.sessionId = owner.takeIf { database.importSessionExists(it) }
+                    ?: database.insert(ImportSession(source = steps.source.key, startedAt = LocalDateTime.now())).also { ownSession = it }
+            }
+            val fresh = steps.record.newTracks(playlist.id, read.tracks)
+            _progress.update { it.copy(totalTracks = it.totalTracks + fresh.size) }
+            val added = steps.topUp(TrackMatcher(), playlist, fresh, context.isUserLoggedIn(), intoLibrary = owner != null)
+            steps.record.remember(steps.source, playlist.id, read.tracks, read.origin)
+            _progress.update { progress ->
+                progress.copy(resync = progress.resync?.let {
+                    it.copy(
+                        done = it.done + 1,
+                        added = it.added + added.size,
+                        playlistsChanged = it.playlistsChanged + if (added.isEmpty()) 0 else 1,
+                        note = it.note ?: read.note,
+                    )
+                })
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Re-sync of ${request.playlistName} failed")
+            val reason = when (e) {
+                is LinkImportException, is AccountImportException -> e.message
+                else -> null
+            } ?: "Check your connection and try again."
+            _progress.update { progress ->
+                progress.copy(
+                    error = reason,
+                    resync = progress.resync?.let { it.copy(done = it.done + 1, failed = it.failed + request.playlistName) },
+                )
+            }
+        } finally {
+            ownSession?.let { database.deleteImportSessionIfEmpty(it) }
+            steps.sessionId = null
+        }
     }
 
     /** Stops after the current song; everything imported so far stays. */
@@ -108,88 +187,6 @@ class MusicImportService @Inject constructor(
     /** Forgets a finished import's summary so the next one starts clean. */
     fun clearFinished() {
         if (!isRunning) _progress.value = ImportProgress()
-    }
-
-    private suspend fun runImport(parsed: ParsedImport, options: ImportOptions) {
-        val matcher = TrackMatcher()
-        val signedIn = context.isUserLoggedIn()
-        val mirror = options.mirrorToYouTube && signedIn
-
-        if (parsed.likedSongs.isNotEmpty()) importLiked(matcher, parsed.likedSongs, mirror)
-        if (parsed.librarySongs.isNotEmpty()) importLibrarySongs(matcher, parsed.librarySongs)
-
-        for ((name, tracks) in parsed.playlists) {
-            coroutineContext.ensureActive()
-            importPlaylist(matcher, name, tracks, parsed.playlistCovers[name], mirror, signedIn)
-        }
-    }
-
-    private suspend fun importLiked(matcher: TrackMatcher, tracks: List<ImportedTrack>, mirror: Boolean) {
-        val matched = matchAll(matcher, tracks, playlistName = null, label = "Liked songs").distinctBy { it.item.id }
-        if (matched.isEmpty()) return
-
-        database.withTransaction {
-            matched.forEach { insert(it.item.toMediaMetadata()) }
-        }
-        val dates = sourceDates(matched)
-        fileIntoLibrary(matched.map { it.item.id }, dates)
-
-        // liked when they were liked on the source, so they sit among the existing likes in that order
-        val newlyLiked = mutableListOf<String>()
-        matched.forEach { (_, item) ->
-            val song = database.getSongById(item.id)?.song ?: return@forEach
-            if (!song.liked) {
-                database.update(song.copy(liked = true, likedDate = dates.getValue(item.id)))
-                sessionId?.let { database.markLikedByImport(it, item.id) }
-                newlyLiked += item.id
-            }
-        }
-        _progress.update { it.copy(likedAdded = it.likedAdded + newlyLiked.size) }
-
-        // remembered either way: a like that fails now (or before signing in) goes up on the next sync
-        PendingYouTubeLikes.add(context, newlyLiked)
-        if (mirror && newlyLiked.isNotEmpty()) {
-            _progress.update { it.copy(currentLabel = "Liking songs on YouTube") }
-            val pushed = mutableListOf<String>()
-            newlyLiked.forEach { id ->
-                coroutineContext.ensureActive()
-                if (YouTube.likeVideo(id, true).isSuccess) pushed += id
-                delay(LIKE_DELAY_MS)
-            }
-            PendingYouTubeLikes.remove(context, pushed)
-            if (pushed.size < newlyLiked.size) {
-                _progress.update { it.copy(youtubeFailures = it.youtubeFailures + "Liked songs (${newlyLiked.size - pushed.size} will retry on next sync)") }
-            }
-        }
-    }
-
-    /** An account's whole song library: into the Library's Songs, and nowhere else. */
-    private suspend fun importLibrarySongs(matcher: TrackMatcher, tracks: List<ImportedTrack>) {
-        val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.item.id }
-        if (matched.isEmpty()) return
-        database.withTransaction {
-            matched.forEach { insert(it.item.toMediaMetadata()) }
-        }
-        fileIntoLibrary(matched.map { it.item.id }, sourceDates(matched))
-    }
-
-    /**
-     * When each song was added on the source, so the Library and Liked songs list them in the
-     * source's order. A song the source gave no date gets one just before the song above it - a
-     * source without dates lists newest first.
-     */
-    private fun sourceDates(matched: List<Matched>): Map<String, LocalDateTime> {
-        val now = LocalDateTime.now()
-        val dates = HashMap<String, LocalDateTime>()
-        var previous: LocalDateTime? = null
-        matched.forEach { (track, item) ->
-            val date = track.addedAtMs?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }
-                ?: previous?.minusSeconds(1)
-                ?: now
-            dates[item.id] = date
-            previous = date
-        }
-        return dates
     }
 
     /**
@@ -210,170 +207,14 @@ class MusicImportService @Inject constructor(
                 id !in tagged || database.getSongById(id)?.song?.inLibrary == null
             }
             if (missing.isEmpty()) continue
-            source = LegacyLibraryPlaylists.getValue(playlist.playlist.name)
-            fileIntoLibrary(missing)
+            steps.source = LegacyLibraryPlaylists.getValue(playlist.playlist.name)
+            steps.fileIntoLibrary(missing)
         }
-        source = ImportSource.OTHER
-    }
-
-    /** [cover] is the playlist's own picture on the source; without one the app shows its songs' covers. */
-    private suspend fun importPlaylist(
-        matcher: TrackMatcher,
-        name: String,
-        tracks: List<ImportedTrack>,
-        cover: String?,
-        mirror: Boolean,
-        signedIn: Boolean,
-    ) {
-        val matched = matchAll(matcher, tracks, playlistName = name, label = name).map { it.item }
-        val songIds = matched.map { it.id }.distinct()
-        // nothing found: don't leave an empty playlist behind (an intentionally empty one has no tracks at all)
-        if (songIds.isEmpty() && tracks.isNotEmpty()) return
-
-        // re-importing the same playlist (e.g. a Musicfy backup) tops it up instead of duplicating it
-        val existing = database.playlistsByNameAsc().first()
-            .firstOrNull { it.playlist.name == name && it.playlist.isEditable }
-            ?.playlist
-
-        val playlist = existing ?: PlaylistEntity(
-            name = name,
-            bookmarkedAt = LocalDateTime.now(),
-            isEditable = true,
-            thumbnailUrl = cover,
-        )
-
-        val start = if (existing == null) 0 else database.playlistSongs(playlist.id).first().size
-        var newIds: List<String> = emptyList()
-        database.withTransaction {
-            if (existing == null) {
-                insert(playlist)
-                insert(ImportedPlaylist(playlistId = playlist.id, source = source.key, sessionId = sessionId, importedAt = LocalDateTime.now()))
-            }
-            // topping up one that has no picture of its own: it gets the source's
-            else if (existing.thumbnailUrl == null && cover != null) update(existing.copy(thumbnailUrl = cover))
-            matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
-            val already = if (existing == null || songIds.isEmpty()) emptySet() else playlistDuplicates(playlist.id, songIds).toSet()
-            newIds = songIds.filterNot { it in already }
-            newIds.forEachIndexed { index, songId ->
-                insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = start + index))
-            }
-        }
-        fileIntoLibrary(songIds)
-        if (existing == null) _progress.update { it.copy(playlistsCreated = it.playlistsCreated + 1) }
-
-        val browseId = existing?.browseId
-        when {
-            // already linked to YouTube: keep both sides in step
-            browseId != null && signedIn && newIds.isNotEmpty() -> {
-                _progress.update { it.copy(currentLabel = "Adding to \"$name\" on YouTube") }
-                YouTube.addVideosToPlaylist(browseId, newIds).onFailure {
-                    _progress.update { p -> p.copy(youtubeFailures = p.youtubeFailures + name) }
-                }
-            }
-            browseId == null && mirror && (newIds.isNotEmpty() || existing == null) -> {
-                _progress.update { it.copy(currentLabel = "Creating \"$name\" on YouTube") }
-                mirrorPlaylist(playlist.id, name)
-            }
-        }
-    }
-
-    /**
-     * Puts imported songs where all music lives. The Library's Songs, Artists and Albums list what
-     * is `inLibrary`, so an imported song that only sat in a playlist - or in Liked songs - never
-     * showed up there. Each is also recorded as imported from [source], which is what the
-     * "Imported from" cards list and what the YouTube library sync reads to leave these songs be.
-     *
-     * Local only: this does not touch the user's YouTube library (see mirrorToYouTube for that).
-     */
-    private suspend fun fileIntoLibrary(songIds: List<String>, addedAt: Map<String, LocalDateTime> = emptyMap()) {
-        if (songIds.isEmpty()) return
-        val now = LocalDateTime.now()
-        val from = source.key
-        val session = sessionId
-        database.withTransaction {
-            songIds.distinct().forEach { id ->
-                val song = getSongById(id)?.song ?: return@forEach
-                val adding = song.inLibrary == null
-                if (adding) update(song.copy(inLibrary = addedAt[id] ?: now))
-                insert(ImportedSong(songId = id, source = from, importedAt = now))
-                // the first step to touch a song records it; a later one finds it already in
-                if (session != null) insert(ImportSessionSong(session, id, addedToLibrary = adding, liked = false))
-            }
-        }
-    }
-
-    private suspend fun mirrorPlaylist(playlistId: String, name: String) {
-        if (!YouTubePlaylistMirror.mirror(database, playlistId, name)) {
-            _progress.update { it.copy(youtubeFailures = it.youtubeFailures + name) }
-        }
-    }
-
-    /** A source track and the YouTube Music song found for it. */
-    private data class Matched(val track: ImportedTrack, val item: SongItem)
-
-    /** Matches in parallel (a few searches at a time) and keeps the source order. */
-    private suspend fun matchAll(
-        matcher: TrackMatcher,
-        tracks: List<ImportedTrack>,
-        playlistName: String?,
-        label: String,
-    ): List<Matched> = coroutineScope {
-        val semaphore = Semaphore(MATCH_PARALLELISM)
-        tracks.map { track ->
-            async {
-                semaphore.withPermit {
-                    val item = try {
-                        matcher.match(track)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Timber.w(e, "Match failed for ${track.title}")
-                        null
-                    }
-                    _progress.update { p ->
-                        p.copy(
-                            processedTracks = p.processedTracks + 1,
-                            matchedTracks = p.matchedTracks + if (item != null) 1 else 0,
-                            currentLabel = "$label — ${track.title}",
-                            unmatched = if (item == null) p.unmatched + UnmatchedTrack(track, playlistName) else p.unmatched,
-                        )
-                    }
-                    item?.let { Matched(track, it) }
-                }
-            }
-        }.awaitAll().filterNotNull()
-    }
-
-    private fun notifyImportComplete(matched: Int, total: Int) {
-        val channelId = "music_import"
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            ?: return
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            notificationManager.createNotificationChannel(
-                NotificationChannel(channelId, "Music import", NotificationManager.IMPORTANCE_DEFAULT)
-            )
-        }
-        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED &&
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
-        ) {
-            return
-        }
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.musicfy_notification)
-            .setContentTitle("Import finished")
-            .setContentText("Matched $matched of $total songs")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .build()
-        runCatching { notificationManager.notify(4242, notification) }
+        steps.source = ImportSource.OTHER
     }
 
     private companion object {
         /** What earlier versions named the playlist they made of a service's whole library. */
         val LegacyLibraryPlaylists = mapOf("Apple Music library" to ImportSource.APPLE_MUSIC)
-
-        const val MATCH_PARALLELISM = 4
-        const val LIKE_DELAY_MS = 120L
     }
 }

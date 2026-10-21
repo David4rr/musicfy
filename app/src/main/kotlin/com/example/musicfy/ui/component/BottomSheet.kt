@@ -89,6 +89,15 @@ private val PlayerSheetAnimationSpec = spring<Dp>(
  */
 private val SheetSwipeCommit = 8.dp
 
+/**
+ * How far a swipe down on the open sheet has to go before it closes, summed over the drag. Any
+ * 2px move used to close it, which threw the player away on a swipe that was meant for something
+ * else. A quick flick still closes it early ([SheetCloseFlick] past [SheetCloseFlickTravel]).
+ */
+private val SheetCloseCommit = 36.dp
+private val SheetCloseFlick = 900.dp
+private val SheetCloseFlickTravel = 12.dp
+
 private val PlayerSheetHorizontalAnimationSpec = spring<Float>(
     dampingRatio = 0.92f,
     stiffness = 90f
@@ -159,6 +168,11 @@ fun BottomSheet(
     /** Offered vertical swipes on the fully expanded sheet first (pill transition only). */
     expandedSwipe: ExpandedSwipe? = null,
     /**
+     * Takes sideways swipes on the collapsed sheet (the mini player) instead of the sheet sliding
+     * them itself (pill transition only).
+     */
+    collapsedSwipe: CollapsedSwipe? = null,
+    /**
      * Told when a finger comes down anywhere on the sheet (true) and when the last one lifts
      * (false), whatever on it takes the touch (pill transition only).
      */
@@ -168,6 +182,7 @@ fun BottomSheet(
 ) {
     val density = LocalDensity.current
     val currentSwipe by androidx.compose.runtime.rememberUpdatedState(expandedSwipe)
+    val currentSideSwipe by androidx.compose.runtime.rememberUpdatedState(collapsedSwipe)
     val currentOnTouchActivity by androidx.compose.runtime.rememberUpdatedState(onTouchActivity)
 
     if (!isPillTransition) {
@@ -458,11 +473,16 @@ fun BottomSheet(
                             // small to ever pass it: the player wouldn't swipe closed.
                             var dragSum = Offset.Zero
                             val commitPx = SheetSwipeCommit.toPx()
+                            val closePx = SheetCloseCommit.toPx()
+                            val flickPx = SheetCloseFlick.toPx()
+                            val flickTravelPx = SheetCloseFlickTravel.toPx()
                             // Whether this drag began on the open player (or one all but settled
                             // open: the open spring's tail runs on for a second after it looks up).
                             var startedOpen = false
                             // The sheet was sent on its way by this drag: once is enough.
                             var acted = false
+                            // A sideways swipe on the mini player handed to [collapsedSwipe].
+                            var sideSwipe: CollapsedSwipe? = null
 
                             detectDragGestures(
                                 onDragStart = { start ->
@@ -470,6 +490,7 @@ fun BottomSheet(
                                     totalHorizontalDrag = 0f
                                     velocityTracker.resetTracking()
                                     swipe = null
+                                    sideSwipe = null
                                     dragSum = Offset.Zero
                                     acted = false
                                     startedOpen = state.isExpanded ||
@@ -486,7 +507,7 @@ fun BottomSheet(
                                     dragSum += dragAmount
                                     val vertical = abs(dragSum.y) > abs(dragSum.x)
                                     val pulledUp = vertical && dragSum.y < -commitPx
-                                    val pulledDown = vertical && dragSum.y > commitPx
+                                    val pulledDown = vertical && dragSum.y > closePx
 
                                     val claimed = swipe ?: currentSwipe?.takeIf { handler ->
                                         state.isExpanded && handler.onStart(swipeStart, dragAmount)
@@ -495,8 +516,20 @@ fun BottomSheet(
                                     if (claimed != null) {
                                         claimed.onDrag(dragAmount.y)
                                         change.consume()
+                                    } else if (sideSwipe != null) {
+                                        totalHorizontalDrag += dragAmount.x
+                                        sideSwipe?.onDrag(totalHorizontalDrag, size.width.toFloat())
+                                        change.consume()
                                     } else if (kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y) && state.isCollapsed) {
                                         totalHorizontalDrag += dragAmount.x
+                                        val handler = currentSideSwipe
+                                        if (handler != null) {
+                                            sideSwipe = handler
+                                            handler.onStart()
+                                            handler.onDrag(totalHorizontalDrag, size.width.toFloat())
+                                            change.consume()
+                                            return@detectDragGestures
+                                        }
                                         val resistance = 1f - (kotlin.math.abs(state.horizontalOffset) / (size.width / 2f)).coerceIn(0f, 0.8f)
                                         state.horizontalOffset += dragAmount.x * resistance
                                     } else {
@@ -504,7 +537,7 @@ fun BottomSheet(
                                             state.expandSoft()
                                             change.consume()
                                         } else if (
-                                            !acted && startedOpen && (dragAmount.y > 2f || pulledDown) &&
+                                            !acted && startedOpen && pulledDown &&
                                             !state.isCollapsed &&
                                             currentSwipe?.canCollapseFrom(swipeStart) != false
                                         ) {
@@ -522,6 +555,8 @@ fun BottomSheet(
                                     velocityTracker.resetTracking()
                                     swipe?.onEnd(0f)
                                     swipe = null
+                                    sideSwipe?.onEnd(totalHorizontalDrag, 0f, size.width.toFloat(), cancelled = true)
+                                    sideSwipe = null
                                     coroutineScope.launch {
                                         state.animateHorizontalOffsetTo(0f)
                                     }
@@ -533,7 +568,26 @@ fun BottomSheet(
                                         swipe = null
                                         return@detectDragGestures
                                     }
+                                    sideSwipe?.let { handler ->
+                                        handler.onEnd(totalHorizontalDrag, velocityTracker.calculateVelocity().x, size.width.toFloat(), cancelled = false)
+                                        velocityTracker.resetTracking()
+                                        sideSwipe = null
+                                        return@detectDragGestures
+                                    }
+                                    val velocityY = velocityTracker.calculateVelocity().y
                                     velocityTracker.resetTracking()
+
+                                    // a quick flick down that ended before it got far enough
+                                    if (
+                                        !acted && startedOpen && !state.isCollapsed &&
+                                        abs(dragSum.y) > abs(dragSum.x) && dragSum.y > flickTravelPx &&
+                                        velocityY > flickPx &&
+                                        currentSwipe?.canCollapseFrom(swipeStart) != false
+                                    ) {
+                                        acted = true
+                                        state.collapseSoft()
+                                        return@detectDragGestures
+                                    }
 
                                     if (state.isCollapsed || state.progress < 0.2f) {
                                         val dragDuration = System.currentTimeMillis() - dragStartTime
@@ -877,6 +931,20 @@ fun rememberBottomSheetState(
             anchor = { previousAnchor },
         )
     }
+}
+
+/**
+ * A sideways swipe on the collapsed sheet, the mini player. The player hands it to its row of
+ * songs, so the mini player's cover and title slide under the finger like the open player's do.
+ */
+interface CollapsedSwipe {
+    fun onStart()
+
+    /** The finger is [travelledPx] from where it went down, on a sheet [widthPx] wide. */
+    fun onDrag(travelledPx: Float, widthPx: Float)
+
+    /** It lifted moving at [velocityPx] px/s, or was taken away ([cancelled]). */
+    fun onEnd(travelledPx: Float, velocityPx: Float, widthPx: Float, cancelled: Boolean)
 }
 
 /**

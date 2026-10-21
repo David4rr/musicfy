@@ -200,29 +200,46 @@ val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
-val DiscordTokenKey = stringPreferencesKey("discordToken")
-val DiscordInfoDismissedKey = booleanPreferencesKey("discordInfoDismissed")
-val DiscordUsernameKey = stringPreferencesKey("discordUsername")
-val DiscordNameKey = stringPreferencesKey("discordName")
+// Discord: signed in on Discord's own page in the browser (OAuth), so Musicfy only ever holds a
+// token Discord gave it for this, never the account's password or login token
+val DiscordAccessTokenKey = stringPreferencesKey("discordAccessToken")
+val DiscordRefreshTokenKey = stringPreferencesKey("discordRefreshToken")
+val DiscordTokenExpiresAtKey = longPreferencesKey("discordTokenExpiresAt")
+/** the signed-in account's name, picture, banner and bio, as JSON, for the profile preview */
+val DiscordProfileKey = stringPreferencesKey("discordProfile")
+/** a login started in the browser, kept on disk in case Android closes Musicfy meanwhile */
+val DiscordLoginStateKey = stringPreferencesKey("discordLoginState")
+val DiscordLoginVerifierKey = stringPreferencesKey("discordLoginVerifier")
+
 val EnableDiscordRPCKey = booleanPreferencesKey("discordRPCEnable")
-val DiscordUseDetailsKey = booleanPreferencesKey("discordUseDetails")
-val DiscordAvatarKey = stringPreferencesKey("discordAvatar")
-val DiscordStatusKey = stringPreferencesKey("discordStatus")
-val DiscordButton1TextKey = stringPreferencesKey("discordButton1Text")
-val DiscordButton1VisibleKey = booleanPreferencesKey("discordButton1Visible")
-val DiscordButton2TextKey = stringPreferencesKey("discordButton2Text")
-val DiscordButton2VisibleKey = booleanPreferencesKey("discordButton2Visible")
 val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
-val DiscordActivityNameKey = stringPreferencesKey("discordActivityName")
-val DiscordAdvancedModeKey = booleanPreferencesKey("discordAdvancedMode")
+val DiscordRefreshSecondsKey = intPreferencesKey("discordPresenceRefreshSeconds")
+val DiscordActivityNameKey = stringPreferencesKey("discordPresenceName")
+val DiscordDetailsKey = stringPreferencesKey("discordPresenceDetails")
+val DiscordStateKey = stringPreferencesKey("discordPresenceState")
+val DiscordLargeTextKey = stringPreferencesKey("discordPresenceLargeText")
+val DiscordSmallTextKey = stringPreferencesKey("discordPresenceSmallText")
+val DiscordLargeImageKey = stringPreferencesKey("discordPresenceLargeImage")
+val DiscordSmallImageKey = stringPreferencesKey("discordPresenceSmallImage")
+val DiscordSpinSecondsKey = intPreferencesKey("discordPresenceSpinSeconds")
+val DiscordSpinFpsKey = intPreferencesKey("discordPresenceSpinFps")
+val DiscordButton1TextKey = stringPreferencesKey("discordPresenceButton1Text")
+val DiscordButton1TargetKey = stringPreferencesKey("discordPresenceButton1Target")
+val DiscordButton2TextKey = stringPreferencesKey("discordPresenceButton2Text")
+val DiscordButton2TargetKey = stringPreferencesKey("discordPresenceButton2Target")
 
 val EnableGoogleCastKey = booleanPreferencesKey("enableGoogleCast")
 
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
 val EnableLastFMScrobblingKey = booleanPreferencesKey("lastfmScrobblingEnable")
-val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 
+val LibreFmSessionKey = stringPreferencesKey("librefmSession")
+val LibreFmUsernameKey = stringPreferencesKey("librefmUsername")
+val EnableLibreFmScrobblingKey = booleanPreferencesKey("librefmScrobblingEnable")
+
+/** Now Playing and loves go to every signed-in scrobbling service, not only Last.fm. */
+val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 val LastFMUseSendLikes = booleanPreferencesKey("lastfmUseSendLikes")
 
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
@@ -538,11 +555,17 @@ val PlayerSideButtonKey = stringPreferencesKey("playerSideButton")
 enum class PlayerBottomBarStyle(val displayName: String) {
     /** the lyrics and queue cards, one behind the other */
     STACK("Stack"),
-    /** the phone's volume, with lyrics, queue, repeat and shuffle buttons under it */
+    /** the phone's volume, with the lyrics and queue buttons under it */
     VOLUME("Volume"),
 }
 
 val PlayerBottomBarStyleKey = stringPreferencesKey("playerBottomBarStyle")
+
+/** how far the player's controls were held and dragged from their usual place in the editor, in dp (down is positive) */
+val PlayerControlsShiftKey = floatPreferencesKey("playerControlsShift")
+
+/** how much taller the player's card was pulled in the editor, in dp: room for readings and the next line */
+val PlayerCardGrowthKey = floatPreferencesKey("playerCardGrowth")
 
 /** what the disc's label shows */
 enum class DiscLabelContent { CUSTOM, MUSIC_NAME, ARTIST_NAME, ALBUM_NAME, MUSIC_AND_ARTIST, NONE }
@@ -978,6 +1001,15 @@ val HapticFocusKey = stringPreferencesKey("hapticFocus")
 val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")
 
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
+
+/**
+ * How much work the glass blur does. Low is the lighter glass from before 8.1: the bottom bar
+ * blurs only what's right under it with no grain on top, and glass draws its backdrop at a lower
+ * resolution. High is the newer frosted glass.
+ */
+val BlurQualityKey = stringPreferencesKey("blurQuality")
+
+enum class BlurQuality { LOW, HIGH }
 val EnableProgressiveBlurKey = booleanPreferencesKey("enableProgressiveBlur")
 val EnableElementBlurAnimatorKey = booleanPreferencesKey("enableElementBlurAnimator")
 val BlurStrengthPxKey = floatPreferencesKey("blurStrengthPx")

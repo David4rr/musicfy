@@ -248,6 +248,8 @@ private fun ImportProgressBanner(progress: ImportProgress, onClick: () -> Unit) 
         Spacer(Modifier.height(24.dp))
         Text(
             text = when {
+                progress.resync != null && total <= 0 -> "Checking \"${progress.resync.playlistName}\" for new songs…"
+                progress.resync != null -> "Adding $done of $total new songs to \"${progress.resync.playlistName}\""
                 total <= 0 -> "Getting your tracks ready…"
                 progress.source != null -> "Adding $done of $total tracks from ${progress.source.label}"
                 else -> "Adding $done of $total tracks"

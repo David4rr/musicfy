@@ -30,6 +30,7 @@ import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.ImportSession
 import com.example.musicfy.db.entities.ImportSessionSong
 import com.example.musicfy.db.entities.ImportedPlaylist
+import com.example.musicfy.db.entities.ImportedPlaylistTrack
 import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSongMap
@@ -130,13 +131,14 @@ class MusicDatabase(
         ImportSession::class,
         ImportSessionSong::class,
         ImportedPlaylist::class,
+        ImportedPlaylistTrack::class,
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 40,
+    version = 41,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -192,6 +194,7 @@ val AllMigrations: Array<Migration>
         MIGRATION_37_38,
         MIGRATION_38_39,
         MIGRATION_39_40,
+        MIGRATION_40_41,
     )
 
 val MIGRATION_1_2 =
@@ -822,6 +825,25 @@ val MIGRATION_39_40 =
                     "GROUP BY `m`.`playlistId`, `i`.`source` " +
                     "HAVING COUNT(DISTINCT `m`.`songId`) = " +
                     "(SELECT COUNT(DISTINCT `songId`) FROM `playlist_song_map` WHERE `playlistId` = `m`.`playlistId`)",
+            )
+        }
+    }
+
+val MIGRATION_40_41 =
+    object : Migration(40, 41) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Where each imported playlist lives on its service, for Re-sync. Columns are checked
+            // first, the way the tables above use IF NOT EXISTS: adding one that's already there
+            // fails the upgrade, and a failed upgrade falls into the destructive reset.
+            val columns = db.query("PRAGMA table_info(`imported_playlist`)").use { cursor ->
+                val name = cursor.getColumnIndex("name")
+                buildSet { while (cursor.moveToNext()) add(cursor.getString(name)) }
+            }
+            if ("remoteId" !in columns) db.execSQL("ALTER TABLE `imported_playlist` ADD COLUMN `remoteId` TEXT")
+            if ("remoteUrl" !in columns) db.execSQL("ALTER TABLE `imported_playlist` ADD COLUMN `remoteUrl` TEXT")
+            if ("lastSyncedAt" !in columns) db.execSQL("ALTER TABLE `imported_playlist` ADD COLUMN `lastSyncedAt` INTEGER")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `imported_playlist_track` (`playlistId` TEXT NOT NULL, `trackKey` TEXT NOT NULL, PRIMARY KEY(`playlistId`, `trackKey`))",
             )
         }
     }

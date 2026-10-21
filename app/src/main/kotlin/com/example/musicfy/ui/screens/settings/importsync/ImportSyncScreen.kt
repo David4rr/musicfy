@@ -48,11 +48,16 @@ fun ImportSyncScreen(
         onBack = { navController.navigateUp() },
     ) {
         if (progress.isRunning || progress.isDone) {
+            val resync = progress.resync
             ImportInfoCard {
                 Text(
                     text = when {
+                        resync != null && progress.isRunning -> "Re-syncing \"${resync.playlistName}\"…"
                         progress.isRunning -> "Importing… ${progress.processedTracks} of ${progress.totalTracks}"
                         progress.cancelled -> "Import stopped"
+                        resync != null && resync.failed.size < resync.playlists ->
+                            (if (resync.playlists == 1) "Re-synced \"${resync.playlistName}\": " else "Re-synced ${resync.playlists} playlists: ") +
+                                if (resync.added == 1) "1 new song" else "${resync.added} new songs"
                         progress.error != null -> "Import failed"
                         else -> "Import finished: ${progress.matchedTracks} of ${progress.totalTracks} songs"
                     },

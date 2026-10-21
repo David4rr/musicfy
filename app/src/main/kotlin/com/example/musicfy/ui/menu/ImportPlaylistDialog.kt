@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.R
 import com.example.musicfy.db.entities.PlaylistEntity
+import com.example.musicfy.importer.PlaylistSourceRecord
 import com.example.musicfy.ui.component.TextFieldDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -28,6 +29,8 @@ fun ImportPlaylistDialog(
     playlistTitle: String,
     onDismiss: () -> Unit,
     onImportedPlaylist: (String) -> Unit = {},
+    /** The YouTube playlist being copied, so the copy can be re-synced with it later. */
+    sourcePlaylistId: String? = null,
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
@@ -52,6 +55,9 @@ fun ImportPlaylistDialog(
                         if (playlist != null) {
                             val importedSongIds = onGetSong()
                             database.addSongToPlaylist(playlist, importedSongIds)
+                            sourcePlaylistId?.let {
+                                PlaylistSourceRecord(database).rememberYouTubeCopy(newPlaylist.id, it, importedSongIds)
+                            }
                         }
 
                         newPlaylist.id

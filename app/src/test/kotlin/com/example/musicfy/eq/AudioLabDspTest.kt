@@ -5,6 +5,8 @@ import androidx.media3.common.audio.AudioProcessor
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessParams
+import com.example.musicfy.eq.audio.ReverbAudioProcessor
+import com.example.musicfy.eq.audio.ReverbParams
 import com.example.musicfy.eq.audio.SpatialAudioProcessor
 import com.example.musicfy.eq.audio.SpatialMode
 import com.example.musicfy.eq.audio.SpatialParams
@@ -141,6 +143,27 @@ class AudioLabDspTest {
         }
         // a 200 Hz sine moves at most ~plain per sample; boosted up to 4x, a click would be far more
         assertTrue("step ${maxStep(out)} vs plain $plain", maxStep(out) < plain * 4.5)
+    }
+
+    @Test
+    fun `reverb leaves a tail that dies away, and is off by default`() {
+        val fx = AudioFxService()
+        val reverb = ReverbAudioProcessor(fx)
+        configure(reverb)
+        val burst = stereo(rate * 2) { f ->
+            val v = if (f < 2000) 0.5 * sin(2 * PI * 300.0 * f / rate) else 0.0
+            v to v
+        }
+        assertArrayEquals(burst, run(reverb, burst))
+
+        fx.reverb = ReverbParams(enabled = true, mix = 1f, roomSize = 0.8f, wet = 0.8f)
+        reverb.flush()
+        val out = run(reverb, burst)
+        // interleaved stereo: sample index = seconds * rate * 2
+        val tail = rmsDb(out, from = rate / 4 * 2, to = rate * 3 / 4 * 2)
+        val late = rmsDb(out, from = rate * 7 / 4 * 2, to = rate * 2 * 2)
+        assertTrue("tail $tail dB after the burst", tail > -60)
+        assertTrue("dies away: late $late < tail $tail", late < tail)
     }
 
     @Test

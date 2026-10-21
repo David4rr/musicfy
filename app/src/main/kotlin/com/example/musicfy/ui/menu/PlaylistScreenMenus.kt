@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.PlaylistSong
@@ -37,8 +38,9 @@ import com.example.musicfy.ui.component.SheetSearchLauncher
 
 /**
  * The menu behind a playlist screen's "more" button, laid out as in the mock: a search that opens
- * the screen's own song search, Download and Edit playlist as two cards, then Play next, Sort by,
- * Edit order and Add to playlist - and the rest of the options as they were.
+ * the screen's own song search, Download and Edit playlist as two cards (with Re-sync as a third
+ * for a playlist imported from a service), then Play next, Sort by, Edit order and Add to
+ * playlist - and the rest of the options as they were.
  *
  * Sort by and Edit order are the screen's sort dialog and its lock on reordering; they used to be
  * "Sort order" and "Lock/Unlock editing" further down the list.
@@ -60,8 +62,11 @@ fun LocalPlaylistMenu(
     onShowSortDialog: () -> Unit = {},
     onSearch: () -> Unit = {},
     onPlayNext: () -> Unit = {},
+    /** Lets Re-sync open a service's sign-in page; without it, it can only run the ones that need none. */
+    navController: NavController? = null,
 ) {
     val isYouTubePlaylist = playlist.playlist.browseId != null
+    val resync = rememberPlaylistResync(playlist.id, playlist.playlist.browseId, navController, onDismiss)
     var showAddToPlaylist by remember { mutableStateOf(false) }
     val topSong = remember(songs) {
         songs.minWithOrNull(compareBy({ it.map.position }, { it.map.id }))?.song
@@ -116,6 +121,14 @@ fun LocalPlaylistMenu(
                 onClick = onEdit,
                 modifier = Modifier.weight(1f),
             )
+            resync.title?.let { title ->
+                SheetActionCard(
+                    icon = R.drawable.sync,
+                    title = title,
+                    onClick = resync::start,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         Spacer(Modifier.height(10.dp))
@@ -274,8 +287,10 @@ fun AutoPlaylistMenu(
     downloadState: Int,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
-    onDismiss: () -> Unit
-) = QueueAndDownloadCards(downloadState, onQueue, onDownload, onDismiss)
+    onDismiss: () -> Unit,
+    /** opens the list's own song search, as on a playlist's menu */
+    onSearch: (() -> Unit)? = null,
+) = QueueAndDownloadCards(downloadState, onQueue, onDownload, onDismiss, onSearch)
 
 @Composable
 fun TopPlaylistMenu(
@@ -295,7 +310,8 @@ fun CachePlaylistMenu(
 
 /**
  * The menu of a playlist the app makes for you (auto, top, cache). Queueing it up and saving it
- * offline are the only two things it offers, so both are big cards.
+ * offline are the two things it offers, so both are big cards; with [onSearch], a search for its
+ * songs leads, as on a playlist's menu.
  */
 @Composable
 private fun QueueAndDownloadCards(
@@ -303,7 +319,18 @@ private fun QueueAndDownloadCards(
     onQueue: () -> Unit,
     onDownload: () -> Unit,
     onDismiss: () -> Unit,
+    onSearch: (() -> Unit)? = null,
 ) {
+    if (onSearch != null) {
+        SheetSearchLauncher(
+            placeholder = "Search any song here",
+            onClick = {
+                onDismiss()
+                onSearch()
+            },
+        )
+        Spacer(Modifier.height(16.dp))
+    }
     SheetActionCardRow(
         modifier = Modifier.padding(bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()),
     ) {

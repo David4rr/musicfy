@@ -4,6 +4,7 @@ package com.example.musicfy.eq
 
 import com.example.musicfy.eq.audio.LoudnessParams
 import com.example.musicfy.eq.audio.ReplayGainParams
+import com.example.musicfy.eq.audio.ReverbParams
 import com.example.musicfy.eq.audio.SpatialParams
 import com.example.musicfy.eq.audio.VolumeCurve
 import javax.inject.Inject
@@ -12,6 +13,9 @@ import javax.inject.Singleton
 /** The Audio FX settings every player's effects read at the start of each buffer. */
 @Singleton
 class AudioFxService @Inject constructor() {
+    @Volatile
+    var reverb: ReverbParams = ReverbParams()
+
     @Volatile
     var loudness: LoudnessParams = LoudnessParams()
 

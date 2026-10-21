@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -348,7 +349,8 @@ fun rememberStyleRotation(style: PlayerStyle): Pair<Boolean, (Boolean) -> Unit> 
 }
 
 /**
- * Double tap plays or pauses; a horizontal swipe skips (right) or goes back (left). The alternate
+ * Double tap plays or pauses; a sideways swipe slides the player's row of songs under the finger
+ * (see SongCarousel), on to the next song or back to the last when it's let go. The alternate
  * styles have no big transport buttons, so the whole screen is the transport. Only while
  * [interactive] says the player is open.
  */
@@ -356,30 +358,60 @@ fun Modifier.styleGestures(
     enabled: Boolean,
     interactive: () -> Boolean,
     onToggle: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
+    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    player: () -> androidx.media3.common.Player?,
 ): Modifier =
     if (!enabled) this else this
         .pointerInput(enabled, interactive) {
             whileStyleInteractive(interactive) { detectTapGestures(onDoubleTap = { onToggle() }) }
         }
-        .pointerInput(enabled, interactive) {
-            var total = 0f
-            whileStyleInteractive(interactive) {
-                detectHorizontalDragGestures(
-                    onDragStart = { total = 0f },
-                    onDragEnd = {
-                        when {
-                            total < -SwipeSkipPx -> onNext()
-                            total > SwipeSkipPx -> onPrevious()
+        .then(
+            if (carousel == null) Modifier else Modifier.pointerInput(enabled, interactive, carousel) {
+                val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                val flingPx = SwipeFling.toPx()
+                var travelled = 0f
+                var hasPrevious = false
+                var hasNext = false
+                // whether the row is this swipe's to put back if the swipe is cut off
+                var mine = false
+                whileStyleInteractive(interactive) {
+                    try {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                travelled = 0f
+                                tracker.resetTracking()
+                                val p = player()
+                                hasPrevious = p?.hasPreviousMediaItem() == true
+                                hasNext = p?.hasNextMediaItem() == true
+                                carousel.startDrag()
+                                mine = true
+                            },
+                            onDragEnd = {
+                                mine = false
+                                carousel.release(travelled, tracker.calculateVelocity().x, size.width.toFloat(), flingPx, player())
+                            },
+                            onDragCancel = {
+                                mine = false
+                                carousel.cancelDrag()
+                            },
+                            onHorizontalDrag = { change, amount ->
+                                tracker.addPointerInputChange(change)
+                                travelled += amount
+                                carousel.dragTo(travelled, size.width.toFloat(), hasPrevious, hasNext)
+                            },
+                        )
+                    } finally {
+                        if (mine) {
+                            mine = false
+                            carousel.cancelDrag()
                         }
-                    },
-                    onHorizontalDrag = { _, amount -> total += amount },
-                )
+                    }
+                }
             }
-        }
+        )
 
-private const val SwipeSkipPx = 120f
+/** A flick faster than this skips however short it was. */
+private val SwipeFling = 500.dp
 
 /**
  * The chevron and the little menu it opens: lyrics, other menu, rotate and edit player,
@@ -517,12 +549,21 @@ internal fun ReportSplit(landscape: Boolean, boundary: () -> Float) {
 }
 
 /** the played/remaining split as [progressSplit] draws it, into any draw scope */
-internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: StyleTones, vertical: Boolean, boundary: Float) {
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: StyleTones, vertical: Boolean, boundary: Float) =
+    drawSplit(tones.played, tones.remaining, vertical, boundary)
+
+/** the split in two given colours, for a frame whose tones are fading to the next song's */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(
+    played: Color,
+    remaining: Color,
+    vertical: Boolean,
+    boundary: Float,
+) {
     val b = boundary.coerceIn(0f, 1f)
     if (vertical) {
         val y = size.height * b
-        drawRect(tones.played, size = size.copy(height = y))
-        drawRect(tones.remaining, topLeft = Offset(0f, y), size = size.copy(height = size.height - y))
+        drawRect(played, size = size.copy(height = y))
+        drawRect(remaining, topLeft = Offset(0f, y), size = size.copy(height = size.height - y))
         // light falls on the played part from the top, the line itself catches a highlight
         drawRect(
             Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.Transparent), endY = y.coerceAtLeast(1f)),
@@ -540,8 +581,8 @@ internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: S
         drawRect(Color.White.copy(alpha = 0.10f), topLeft = Offset(0f, y - 1f), size = size.copy(height = 1.5f))
     } else {
         val x = size.width * b
-        drawRect(tones.played, size = size.copy(width = x))
-        drawRect(tones.remaining, topLeft = Offset(x, 0f), size = size.copy(width = size.width - x))
+        drawRect(played, size = size.copy(width = x))
+        drawRect(remaining, topLeft = Offset(x, 0f), size = size.copy(width = size.width - x))
         drawRect(
             Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), endX = x.coerceAtLeast(1f)),
             size = size.copy(width = x),
@@ -583,6 +624,11 @@ fun RotatingFrame(
     var leaving by remember { mutableStateOf<Boolean?>(null) }
     val turn = remember { Animatable(1f) }
     val splits = remember { StyleSplits() }
+    // A new song's tones fade in rather than snap: the split is the whole background of these
+    // styles, and it used to change colour in one frame. Read only while drawing, so the fade
+    // repaints the background without recomposing the style.
+    val played = androidx.compose.animation.animateColorAsState(tones.played, tween(ToneFadeMs), label = "playedTone")
+    val remaining = androidx.compose.animation.animateColorAsState(tones.remaining, tween(ToneFadeMs), label = "remainingTone")
     LaunchedEffect(rotated) {
         if (rotated == shown) return@LaunchedEffect
         leaving = shown
@@ -599,13 +645,13 @@ fun RotatingFrame(
                 if (background != null) Modifier else Modifier.drawBehind {
                     val now = splits[shown]
                     if (now == null) {
-                        drawRect(tones.played)
+                        drawRect(played.value)
                         return@drawBehind
                     }
                     val from = leaving?.let { splits[it] }
                     val t = turn.value.coerceIn(0f, 1f)
                     val b = if (from != null) from() + (now() - from()) * t else now()
-                    drawSplit(tones, vertical = true, boundary = b)
+                    drawSplit(played.value, remaining.value, vertical = true, boundary = b)
                 }
             ),
     ) {
@@ -652,6 +698,9 @@ fun RotatingFrame(
         }
     }
 }
+
+/** how long a style's background takes to fade to a new song's colours */
+private const val ToneFadeMs = 700
 
 /**
  * How far a layer [w] x [h] (as laid out, before its own [restAngle]) must shrink, turned a further

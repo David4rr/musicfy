@@ -25,6 +25,7 @@ import com.example.musicfy.R
 import com.example.musicfy.db.MusicDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,6 +45,14 @@ class MusicfyWidgetManager @Inject constructor(
     private var cachedAlbumArt: Bitmap? = null
     private var cachedCircularAlbumArt: Bitmap? = null
 
+    /** One update at a time: they share the cached artwork, and they no longer run on one thread. */
+    private val updating = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * Redraws every placed widget. Runs off the main thread: the system calls and bitmap work here
+     * used to run on it every 200ms while music played, taking frames from whatever was on screen.
+     * Does nothing at all, not even load the artwork, when no widget is placed.
+     */
     suspend fun updateWidgets(
         title: String,
         artist: String,
@@ -52,8 +61,27 @@ class MusicfyWidgetManager @Inject constructor(
         isLiked: Boolean,
         duration: Long = 0,
         currentPosition: Long = 0
+    ) = withContext(Dispatchers.Default) {
+        updating.withLock {
+            drawWidgets(title, artist, artworkUri, isPlaying, isLiked, duration, currentPosition)
+        }
+    }
+
+    private suspend fun drawWidgets(
+        title: String,
+        artist: String,
+        artworkUri: String?,
+        isPlaying: Boolean,
+        isLiked: Boolean,
+        duration: Long,
+        currentPosition: Long,
     ) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
+        val componentName = ComponentName(context, MusicWidgetReceiver::class.java)
+        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
+        val turntableComponentName = ComponentName(context, TurntableWidgetReceiver::class.java)
+        val turntableWidgetIds = appWidgetManager.getAppWidgetIds(turntableComponentName)
+        if (widgetIds.isEmpty() && turntableWidgetIds.isEmpty()) return
 
         val albumArt: Bitmap?
         val circularAlbumArt: Bitmap?
@@ -70,8 +98,6 @@ class MusicfyWidgetManager @Inject constructor(
             cachedCircularAlbumArt = circularAlbumArt
         }
 
-        val componentName = ComponentName(context, MusicWidgetReceiver::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         if (widgetIds.isNotEmpty()) {
             widgetIds.forEach { widgetId ->
                 val options = appWidgetManager.getAppWidgetOptions(widgetId)
@@ -89,8 +115,6 @@ class MusicfyWidgetManager @Inject constructor(
             }
         }
 
-        val turntableComponentName = ComponentName(context, TurntableWidgetReceiver::class.java)
-        val turntableWidgetIds = appWidgetManager.getAppWidgetIds(turntableComponentName)
         if (turntableWidgetIds.isNotEmpty()) {
             val turntableViews = createTurntableRemoteViews(
                 circularAlbumArt,

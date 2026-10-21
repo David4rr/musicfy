@@ -1,8 +1,9 @@
 // AudioFxScreen.kt
 //
 // Audio Lab's effects. Each one is its own card: a live picture of what it does, its switch, and
-// its options, which fold away while it's off. Loudness leads, then spatial, mono, Dolby Atmos,
-// speed and pitch, and the volume curve.
+// its options, which fold away while it's off. Reverb leads, as in the design, then loudness,
+// spatial, mono, Dolby Atmos, speed and pitch, and the volume curve. Reverb has its own file.
+// The header shows the effects that are on as a stack of cards (FxCardStack).
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -50,8 +51,8 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.AudioNormalizationKey
 import com.example.musicfy.eq.MaxSpeed
 import com.example.musicfy.eq.MinSpeed
+import com.example.musicfy.eq.ReverbPresets
 import com.example.musicfy.eq.audio.SpatialMode
-import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.AudioLabViewModel
@@ -67,11 +68,20 @@ fun AudioFxScreen(
     viewModel: AudioLabViewModel = hiltViewModel(),
 ) {
     ListenToAudio()
-    SubSettingsScaffold(
-        title = "Audio FX",
-        backLabel = "Audio Lab",
+    val reverb by viewModel.reverb.collectAsState()
+    val loudness by viewModel.loudness.collectAsState()
+    val spatial by viewModel.spatial.collectAsState()
+    val playback by viewModel.playback.collectAsState()
+    val volume by viewModel.volume.collectAsState()
+    val effects = activeEffects(reverb, loudness, spatial, playback, volume)
+
+    AudioLabPage(
+        title = LabTitle("Audio", "FX", firstSize = 40.sp, secondSize = 84.sp, firstDim = true),
         onBack = { navController.navigateUp() },
+        art = { hidden -> FxCardStack(effects, hidden) },
     ) {
+        ReverbCard(viewModel)
+        Spacer(Modifier.height(14.dp))
         LoudnessCard(viewModel)
         Spacer(Modifier.height(14.dp))
         SpatialCard(viewModel)
@@ -83,13 +93,12 @@ fun AudioFxScreen(
         SpeedCard(viewModel)
         Spacer(Modifier.height(14.dp))
         VolumeCard(viewModel)
-        Spacer(Modifier.height(120.dp))
     }
 }
 
 /** the shape every effect takes: picture, switch, then its options */
 @Composable
-private fun EffectCard(
+internal fun EffectCard(
     picture: @Composable () -> Unit,
     header: @Composable () -> Unit,
     expanded: Boolean,
@@ -108,7 +117,7 @@ private fun EffectCard(
     }
 }
 
-private fun pct(v: Float) = "${(v * 100).roundToInt()}%"
+internal fun pct(v: Float) = "${(v * 100).roundToInt()}%"
 
 // ---- Loudness ------------------------------------------------------------------------------
 
@@ -343,11 +352,12 @@ private fun SupportPill(label: String, value: String) {
 
 // ---- Speed & pitch -------------------------------------------------------------------------
 
-private class SpeedPreset(val key: String, val label: String, val speed: Float, val preservePitch: Boolean)
+private class SpeedPreset(val key: String, val label: String, val speed: Float, val preservePitch: Boolean, val withReverb: Boolean = false)
 
 private val SpeedPresets = listOf(
     SpeedPreset("normal", "Normal", 1f, true),
     SpeedPreset("slowed", "Slowed", 0.85f, false),
+    SpeedPreset("slowed_reverb", "Slowed + reverb", 0.85f, false, withReverb = true),
     SpeedPreset("nightcore", "Nightcore", 1.25f, false),
     SpeedPreset("0.75", "0.75×", 0.75f, true),
     SpeedPreset("1.25", "1.25×", 1.25f, true),
@@ -358,6 +368,7 @@ private val SpeedPresets = listOf(
 @Composable
 private fun SpeedCard(viewModel: AudioLabViewModel) {
     val playback by viewModel.playback.collectAsState()
+    val reverb by viewModel.reverb.collectAsState()
     EffectCard(
         picture = { SpeedPicture(playback) },
         header = {
@@ -382,13 +393,25 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
         options = {
             LabChips(
                 chips = SpeedPresets.map { LabChip(it.key, it.label) },
-                selectedKey = SpeedPresets.firstOrNull { p ->
-                    p.speed == playback.speed && p.preservePitch == playback.preservePitch &&
-                        (!p.preservePitch || playback.pitchSemitones == 0f)
-                }?.key,
+                selectedKey = if (playback.speed == 0.85f && !playback.preservePitch) {
+                    if (reverb.enabled) "slowed_reverb" else "slowed"
+                } else {
+                    SpeedPresets.firstOrNull { p ->
+                        !p.withReverb && p.speed == playback.speed && p.preservePitch == playback.preservePitch &&
+                            (!p.preservePitch || playback.pitchSemitones == 0f)
+                    }?.key
+                },
                 onSelect = { key ->
                     val p = SpeedPresets.first { it.key == key }
                     viewModel.updatePlayback { it.copy(speed = p.speed, preservePitch = p.preservePitch, pitchSemitones = 0f) }
+                    if (p.withReverb) {
+                        ReverbPresets.All.firstOrNull { it.id == "hall" }?.let { hall ->
+                            viewModel.updateReverb { it.withPreset(hall).copy(enabled = true) }
+                        }
+                    } else if (key == "slowed" && reverb.enabled) {
+                        // otherwise the tap does nothing: the chip stays on "Slowed + reverb" while the reverb plays
+                        viewModel.updateReverb { it.copy(enabled = false) }
+                    }
                 },
             )
             Spacer(Modifier.height(10.dp))

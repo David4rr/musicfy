@@ -10,11 +10,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
-import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.database.SQLException
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -75,7 +73,6 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
-import com.music.lastfm.LastFM
 import com.example.musicfy.MainActivity
 import com.example.musicfy.R
 import com.example.musicfy.constants.AudioNormalizationKey
@@ -96,22 +93,9 @@ import com.example.musicfy.constants.DisableLoadMoreWhenRepeatAllKey
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.example.musicfy.constants.DiscordActivityNameKey
-import com.example.musicfy.constants.DiscordActivityTypeKey
-import com.example.musicfy.constants.DiscordAdvancedModeKey
-import com.example.musicfy.constants.DiscordButton1TextKey
-import com.example.musicfy.constants.DiscordButton1VisibleKey
-import com.example.musicfy.constants.DiscordButton2TextKey
-import com.example.musicfy.constants.DiscordButton2VisibleKey
-import com.example.musicfy.constants.DiscordStatusKey
-import com.example.musicfy.constants.DiscordTokenKey
-import com.example.musicfy.constants.DiscordUseDetailsKey
-import com.example.musicfy.constants.EnableDiscordRPCKey
-import com.example.musicfy.constants.EnableLastFMScrobblingKey
 import com.example.musicfy.constants.HideExplicitKey
 import com.example.musicfy.constants.HideVideoSongsKey
 import com.example.musicfy.constants.HistoryDuration
-import com.example.musicfy.constants.LastFMUseNowPlaying
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleLike
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleRepeatMode
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleShuffle
@@ -155,6 +139,7 @@ import com.example.musicfy.eq.AudioLabStore
 import com.example.musicfy.eq.EqualizerService
 import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
 import com.example.musicfy.eq.audio.LoudnessAudioProcessor
+import com.example.musicfy.eq.audio.ReverbAudioProcessor
 import com.example.musicfy.eq.audio.SpatialAudioProcessor
 import com.example.musicfy.extensions.SilentHandler
 import com.example.musicfy.extensions.collect
@@ -190,9 +175,9 @@ import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.playback.queues.filterExplicit
 import com.example.musicfy.playback.queues.filterVideoSongs
 import com.example.musicfy.utils.CoilBitmapLoader
-import com.example.musicfy.utils.DiscordRPC
 import com.example.musicfy.utils.NetworkConnectivityObserver
-import com.example.musicfy.utils.ScrobbleManager
+import com.example.musicfy.scrobble.ScrobbleTimer
+import com.example.musicfy.scrobble.Scrobbler
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.YTPlayerUtils
 import com.example.musicfy.constants.ShowStreamSourceToastKey
@@ -273,6 +258,13 @@ class MusicService :
     @Inject
     lateinit var audioFx: AudioFxService
 
+    @Inject
+    lateinit var scrobbler: Scrobbler
+
+    /** the Discord status; it does nothing until the user signs in on the Discord page */
+    @Inject
+    lateinit var discordPresence: com.example.musicfy.discord.DiscordPresence
+
     /** source modules (Apple Music): asked for a stream before YouTube */
     @Inject
     lateinit var sourceModules: com.example.musicfy.modules.SourceModules
@@ -302,6 +294,14 @@ class MusicService :
             Timber.tag(TAG).e(error, "Secondary player error")
             secondaryPlayer?.stop()
             secondaryPlayer?.clearMediaItems()
+            // dropped without this, its decoders and audio track stayed alive with nothing to free them
+            secondaryPlayer?.let { failed ->
+                failed.removeListener(this)
+                playerCrossmixProcessors.remove(failed)
+                playerSilenceProcessors.remove(failed)
+                unregisterEqualizer(failed)
+                failed.release()
+            }
             secondaryPlayer = null
         }
     }
@@ -475,11 +475,8 @@ class MusicService :
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private lateinit var hapticAudioProcessor: HapticAudioProcessor
 
-    private var discordRpc: DiscordRPC? = null
-    private var lastPlaybackSpeed = 1.0f
-    private var discordUpdateJob: kotlinx.coroutines.Job? = null
-
-    private var scrobbleManager: ScrobbleManager? = null
+    /** When a play counts for Last.fm and Libre.fm; the scrobbler skips services that aren't signed in. */
+    private val scrobbleTimer by lazy { ScrobbleTimer(scope, scrobbler) }
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
@@ -511,29 +508,6 @@ class MusicService :
 
     var castConnectionHandler: CastConnectionHandler? = null
         private set
-
-    private val screenStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    if (!player.isPlaying) {
-                        scope.launch(Dispatchers.IO) {
-                            discordRpc?.closeRPC()
-                        }
-                    }
-                }
-                Intent.ACTION_SCREEN_ON -> {
-                    if (player.isPlaying) {
-                        scope.launch {
-                            currentSong.value?.let { song ->
-                                updateDiscordRPC(song)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     private val audioDeviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
@@ -663,12 +637,6 @@ class MusicService :
         connectivityManager = getSystemService()!!
         connectivityObserver = NetworkConnectivityObserver(this)
 
-        val screenStateFilter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_SCREEN_OFF)
-        }
-        registerReceiver(screenStateReceiver, screenStateFilter)
-
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
 
         audioQuality = dataStore.get(AudioQualityKey).toEnum(com.example.musicfy.constants.AudioQuality.AUTO)
@@ -698,14 +666,8 @@ class MusicService :
                     triggerRetry()
                 }
 
-                if (isConnected && discordRpc != null && player.isPlaying) {
-                    val mediaId = player.currentMetadata?.id
-                    if (mediaId != null) {
-                        database.song(mediaId).first()?.let { song ->
-                            updateDiscordRPC(song)
-                        }
-                    }
-                }
+                // a status that didn't go through while offline goes now, not at the next song
+                if (isConnected) discordPresence.nudge()
             }
         }
 
@@ -872,93 +834,26 @@ class MusicService :
              secondaryPlayer?.setOffloadEnabled(useOffload)
         }
 
-        dataStore.data
-            .map { it[DiscordTokenKey] to (it[EnableDiscordRPCKey] ?: true) }
-            .debounce(300)
+        // Discord needs the artist's picture (from the library) and the codec (from the decoder),
+        // which both turn up a moment after the song starts
+        currentSong.collect(scope) { publishPresence() }
+        streamFacts.map { facts -> player.currentMediaItem?.mediaId?.let { facts[it] } }
             .distinctUntilChanged()
-            .collect(scope) { (key, enabled) ->
-                if (discordRpc?.isRpcRunning() == true) {
-                    discordRpc?.closeRPC()
-                }
-                discordRpc = null
-                if (key != null && enabled) {
-                    discordRpc = DiscordRPC(this, key)
-                    if (player.playbackState == Player.STATE_READY && player.playWhenReady) {
-                        currentSong.value?.let {
-                            updateDiscordRPC(it, true)
-                        }
-                    }
-                }
-            }
-
-        dataStore.data
-            .map {
-                listOf(
-                    it[DiscordUseDetailsKey],
-                    it[DiscordAdvancedModeKey],
-                    it[DiscordStatusKey],
-                    it[DiscordButton1TextKey],
-                    it[DiscordButton1VisibleKey],
-                    it[DiscordButton2TextKey],
-                    it[DiscordButton2VisibleKey],
-                    it[DiscordActivityTypeKey],
-                    it[DiscordActivityNameKey]
-                )
-            }
-            .debounce(300)
-            .distinctUntilChanged()
-            .collect(scope) {
-                if (player.playbackState == Player.STATE_READY) {
-                    currentSong.value?.let { song ->
-                        updateDiscordRPC(song, true)
-                    }
-                }
-            }
-
-        dataStore.data
-            .map { it[EnableLastFMScrobblingKey] ?: false }
-            .debounce(300)
-            .distinctUntilChanged()
-            .collect(scope) { enabled ->
-                if (enabled && scrobbleManager == null) {
-                    val delayPercent = dataStore.get(ScrobbleDelayPercentKey, LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT)
-                    val minSongDuration = dataStore.get(ScrobbleMinSongDurationKey, LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION)
-                    val delaySeconds = dataStore.get(ScrobbleDelaySecondsKey, LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS)
-                    scrobbleManager = ScrobbleManager(
-                        scope,
-                        minSongDuration = minSongDuration,
-                        scrobbleDelayPercent = delayPercent,
-                        scrobbleDelaySeconds = delaySeconds
-                    )
-                    scrobbleManager?.useNowPlaying = dataStore.get(LastFMUseNowPlaying, false)
-                } else if (!enabled && scrobbleManager != null) {
-                    scrobbleManager?.destroy()
-                    scrobbleManager = null
-                }
-            }
-
-        dataStore.data
-            .map { it[LastFMUseNowPlaying] ?: false }
-            .distinctUntilChanged()
-            .collectLatest(scope) {
-                scrobbleManager?.useNowPlaying = it
-            }
+            .collect(scope) { publishPresence() }
 
         dataStore.data
             .map { prefs ->
                 Triple(
-                    prefs[ScrobbleDelayPercentKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT,
-                    prefs[ScrobbleMinSongDurationKey] ?: LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION,
-                    prefs[ScrobbleDelaySecondsKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
+                    prefs[ScrobbleDelayPercentKey] ?: ScrobbleTimer.DEFAULT_PLAYED_FRACTION,
+                    prefs[ScrobbleMinSongDurationKey] ?: ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS,
+                    prefs[ScrobbleDelaySecondsKey] ?: ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS,
                 )
             }
             .distinctUntilChanged()
-            .collect(scope) { (delayPercent, minSongDuration, delaySeconds) ->
-                scrobbleManager?.let {
-                    it.scrobbleDelayPercent = delayPercent
-                    it.minSongDuration = minSongDuration
-                    it.scrobbleDelaySeconds = delaySeconds
-                }
+            .collect(scope) { (playedFraction, minSongSeconds, maxWaitSeconds) ->
+                scrobbleTimer.playedFraction = playedFraction
+                scrobbleTimer.minSongSeconds = minSongSeconds
+                scrobbleTimer.maxWaitSeconds = maxWaitSeconds
             }
 
         dataStore.data.map { prefs ->
@@ -1092,6 +987,7 @@ class MusicService :
         val replayGain = com.example.musicfy.eq.audio.ReplayGainTags()
         val fxProcessors = arrayOf<androidx.media3.common.audio.AudioProcessor>(
             SpatialAudioProcessor(audioFx),
+            ReverbAudioProcessor(audioFx),
             LoudnessAudioProcessor(audioFx),
         )
 
@@ -2554,15 +2450,11 @@ class MusicService :
 
         mediaItem?.mediaId?.let { announceStreamSource(it) }
 
-        lastPlaybackSpeed = -1.0f
-
         setupLoudnessEnhancer()
 
-        discordUpdateJob?.cancel()
-
-        scrobbleManager?.onSongStop()
+        scrobbleTimer.onSongStop()
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-            scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
+            scrobbleTimer.onSongStart(player.currentMetadata, player.duration)
         }
 
         if (castConnectionHandler?.isCasting?.value == true &&
@@ -2624,7 +2516,7 @@ class MusicService :
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
-            scrobbleManager?.onSongStop()
+            scrobbleTimer.onSongStop()
         }
     }
 
@@ -2682,27 +2574,25 @@ class MusicService :
             } else {
                 stopWidgetUpdates()
             }
-            if (!player.isPlaying && !events.containsAny(Player.EVENT_POSITION_DISCONTINUITY, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
-                scope.launch {
-                    discordRpc?.close()
-                }
-            }
         }
 
-        if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED) && player.isPlaying) {
-            val mediaId = player.currentMetadata?.id
-            if (mediaId != null) {
-                scope.launch {
-
-                    database.song(mediaId).first()?.let { song ->
-                        updateDiscordRPC(song)
-                    }
-                }
-            }
+        if (events.containsAny(
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_POSITION_DISCONTINUITY,
+            )
+        ) {
+            publishPresence()
         }
 
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
-            scrobbleManager?.onPlayerStateChanged(player.isPlaying, player.currentMetadata, duration = player.duration)
+            scrobbleTimer.onPlayingChanged(player.isPlaying, player.currentMetadata, player.duration)
+            // a pause is often the last thing before the app is closed, and the timed saves only
+            // run every 30 seconds while paused: save the exact place now so it comes back there
+            if (!player.isPlaying && player.playbackState == Player.STATE_READY && dataStore.get(PersistentQueueKey, true)) {
+                saveQueueToDisk()
+            }
         }
 
     }
@@ -2823,19 +2713,8 @@ class MusicService :
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
         super.onPlaybackParametersChanged(playbackParameters)
-        if (playbackParameters.speed != lastPlaybackSpeed) {
-            lastPlaybackSpeed = playbackParameters.speed
-            discordUpdateJob?.cancel()
-
-            discordUpdateJob = scope.launch {
-                delay(1000)
-                if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-                    currentSong.value?.let { song ->
-                        updateDiscordRPC(song)
-                    }
-                }
-            }
-        }
+        // a faster song ends sooner: Discord's bar has to know
+        publishPresence()
     }
 
     private fun getHttpResponseCode(error: PlaybackException): Int? {
@@ -3111,6 +2990,11 @@ class MusicService :
         }
 
         incrementRetryCount(mediaId)
+        // A song brought back after the app was closed asks its old, expired stream for the place
+        // it stopped, which is what answers 416. A fresh stream at the same place plays, so the
+        // first retry keeps it; going back to the start used to throw the restored progress away.
+        // Only a song that keeps failing starts over.
+        val fromStart = (currentMediaIdRetryCount[mediaId] ?: 0) > 1
 
         retryJob?.cancel()
         retryJob = scope.launch {
@@ -3120,10 +3004,10 @@ class MusicService :
             delay(RETRY_DELAY_MS)
 
             val currentIndex = player.currentMediaItemIndex
-            player.seekTo(currentIndex, 0)
+            player.seekTo(currentIndex, if (fromStart) 0 else player.currentPosition)
             player.prepare()
 
-            Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (from position 0)")
+            Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (${if (fromStart) "from the start" else "where it was"})")
         }
     }
 
@@ -3311,43 +3195,35 @@ class MusicService :
         }
     }
 
-    private fun updateDiscordRPC(song: Song, showFeedback: Boolean = false) {
-        // offline mode: no status goes to Discord
-        if (com.example.musicfy.utils.OfflineMode.isOn) return
-        val useDetails = dataStore.get(DiscordUseDetailsKey, false)
-        val advancedMode = dataStore.get(DiscordAdvancedModeKey, false)
-
-        val status = if (advancedMode) dataStore.get(DiscordStatusKey, "online") else "online"
-        val b1Text = if (advancedMode) dataStore.get(DiscordButton1TextKey, "") else ""
-        val b1Visible = if (advancedMode) dataStore.get(DiscordButton1VisibleKey, true) else true
-        val b2Text = if (advancedMode) dataStore.get(DiscordButton2TextKey, "") else ""
-        val b2Visible = if (advancedMode) dataStore.get(DiscordButton2VisibleKey, true) else true
-        val activityType = if (advancedMode) dataStore.get(DiscordActivityTypeKey, "listening") else "listening"
-        val activityName = if (advancedMode) dataStore.get(DiscordActivityNameKey, "") else ""
-
-        discordUpdateJob?.cancel()
-        discordUpdateJob = scope.launch {
-            discordRpc?.updateSong(
-                song,
-                player.currentPosition,
-                player.playbackParameters.speed,
-                useDetails,
-                status,
-                b1Text,
-                b1Visible,
-                b2Text,
-                b2Visible,
-                activityType,
-                activityName
-            )?.onFailure {
-
-                if (showFeedback) {
-                    Handler(Looper.getMainLooper()).post {
-                        Toast.makeText(this@MusicService, "Discord RPC update failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+    /** Tells the Discord status what's playing; it ignores this when Discord isn't signed in or is off. */
+    private fun publishPresence() {
+        val metadata = player.currentMetadata
+        val state = player.playbackState
+        if (metadata == null || state == Player.STATE_IDLE || state == Player.STATE_ENDED) {
+            discordPresence.update(null)
+            return
         }
+        // the library's record lags a moment behind a song change; use it only once it's this song
+        val song = currentSong.value?.takeIf { it.id == metadata.id }
+        val facts = streamFacts.value[metadata.id]
+        discordPresence.update(
+            com.example.musicfy.discord.NowPlaying(
+                mediaId = metadata.id,
+                title = metadata.title,
+                artist = metadata.artists.joinToString { it.name },
+                album = metadata.album?.title ?: song?.song?.albumName,
+                artworkUrl = metadata.thumbnailUrl,
+                artistArtworkUrl = song?.artists?.firstNotNullOfOrNull { it.thumbnailUrl },
+                durationMs = player.duration.takeIf { it > 0 } ?: (metadata.duration * 1000L),
+                positionMs = player.currentPosition,
+                readAtMs = System.currentTimeMillis(),
+                speed = player.playbackParameters.speed,
+                // buffering with play pressed still counts as playing, so the status doesn't flicker
+                isPlaying = player.playWhenReady,
+                quality = facts?.describe(song?.format?.takeIf { !facts.fromModule }),
+                isYouTube = song?.song?.isLocal != true && metadata.localUri == null,
+            ),
+        )
     }
 
     /**
@@ -3655,7 +3531,7 @@ class MusicService :
                 .setAudioProcessorChain(
                     DefaultAudioSink.DefaultAudioProcessorChain(
 
-                        // Audio Lab first (equalizer, then spatial, loudness), so Crossmix
+                        // Audio Lab first (equalizer, then spatial, reverb, loudness), so Crossmix
                         // blends the two songs as they're heard
                         arrayOf(
                             eqProcessor,
@@ -3799,20 +3675,12 @@ class MusicService :
     override fun onDestroy() {
         isRunning = false
 
-        try {
-            unregisterReceiver(screenStateReceiver)
-        } catch (e: Exception) {
-
-        }
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         castConnectionHandler?.release()
         if (dataStore.get(PersistentQueueKey, true)) {
             saveQueueToDisk()
         }
-        if (discordRpc?.isRpcRunning() == true) {
-            discordRpc?.closeRPC()
-        }
-        discordRpc = null
+        discordPresence.update(null)
         connectivityObserver.unregister()
         abandonAudioFocus()
         releaseLoudnessEnhancer()
@@ -3826,7 +3694,6 @@ class MusicService :
         playerReplayGain.remove(player)
 
         player.release()
-        discordUpdateJob?.cancel()
         super.onDestroy()
     }
 
@@ -3900,7 +3767,9 @@ class MusicService :
                 if (player.isPlaying) {
                     updateWidgetUI(true)
                 }
-                delay(200)
+                // the widget's progress bar moves in whole seconds anyway; more often only cost
+                // frames in the app
+                delay(WidgetProgressIntervalMs)
             }
         }
     }
@@ -4510,3 +4379,6 @@ class MusicService :
             private set
     }
 }
+
+/** How often a placed home screen widget's progress is redrawn while playing. */
+private const val WidgetProgressIntervalMs = 1_000L

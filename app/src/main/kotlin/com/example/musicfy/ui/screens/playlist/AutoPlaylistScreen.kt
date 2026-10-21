@@ -109,6 +109,7 @@ import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
 import com.example.musicfy.ui.component.detail.PlaylistHeader
 import com.example.musicfy.ui.component.detail.PlaylistInset
 import com.example.musicfy.ui.component.detail.PlaylistSortControl
+import com.example.musicfy.ui.component.detail.PlaylistSearchControl
 import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
 import com.example.musicfy.ui.component.detail.PlaylistTrackBones
 import com.example.musicfy.ui.component.detail.PlaylistTrackRow
@@ -380,7 +381,8 @@ fun AutoPlaylistScreen(
                             }
                         }
                     },
-                    onDismiss = { menuState.dismiss() }
+                    onDismiss = { menuState.dismiss() },
+                    onSearch = { isSearching = true },
                 )
             }
         },
@@ -483,6 +485,8 @@ fun AutoPlaylistScreen(
                     },
                     onShuffleClick = { playAll(current.shuffled()) },
                     sortControl = {
+                        // downloads and liked songs run long: search finds one without scrolling
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isLiked) {
                             PlaylistSortControl(
                                 current = likedSortType,
@@ -518,6 +522,9 @@ fun AutoPlaylistScreen(
                                 onSelect = onSortTypeChange,
                                 onToggleDirection = { onSortDescendingChange(!sortDescending) },
                             )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        PlaylistSearchControl(onClick = { isSearching = true })
                         }
                     },
                 )

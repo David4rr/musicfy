@@ -6,6 +6,7 @@ import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
+import androidx.navigation.NavController
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -81,6 +82,8 @@ fun PlaylistMenu(
     autoPlaylist: Boolean? = false,
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
+    /** Lets Re-sync open a service's sign-in page for a playlist imported from an account. */
+    navController: NavController? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -110,6 +113,7 @@ fun PlaylistMenu(
     val editable: Boolean = playlist.playlist.isEditable == true
 
     val isPinned by database.speedDialDao.isPinned(playlist.id).collectAsState(initial = false)
+    val resync = rememberPlaylistResync(playlist.id, playlist.playlist.browseId, navController, onDismiss)
 
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect
@@ -448,6 +452,7 @@ fun PlaylistMenu(
                             }
                         )
                     )
+                    resync.menuItem()?.let(::add)
                     if (downloadPlaylist != true) {
                         add(
                             when (downloadState) {

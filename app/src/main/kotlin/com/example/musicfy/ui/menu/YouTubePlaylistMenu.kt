@@ -286,7 +286,8 @@ fun YouTubePlaylistMenu(
         },
         playlistTitle = playlist.title,
         onDismiss = { showImportPlaylistDialog = false },
-        onImportedPlaylist = onImportedPlaylist
+        onImportedPlaylist = onImportedPlaylist,
+        sourcePlaylistId = playlist.id,
     )
 
     if (showErrorPlaylistAddDialog) {

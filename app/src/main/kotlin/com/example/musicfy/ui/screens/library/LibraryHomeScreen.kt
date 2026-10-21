@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.musicfy.ui.menu.rememberResyncAll
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.ProfilePicUriKey
@@ -107,6 +108,7 @@ fun LibraryHomeScreen(
 
     val openImportSheet = { menuState.showLibraryImportSheet() }
     val openImportProgress = { navController.navigate(ImportProgressRoute) }
+    val resyncAll = rememberResyncAll(navController)
     val openTransfer = { kind: TransferKind -> menuState.showTransferSheet(kind, importViewModel) }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -233,7 +235,11 @@ fun LibraryHomeScreen(
                     onOpenSongs = { navController.navigate("library/imported/${it.key}") },
                     onOpenPlaylists = { navController.navigate("library/imported/${it.key}/playlists") },
                     onManage = {
-                        menuState.showManageImportsSheet(services.filterNot { it.isEmpty }.map { it.source }, importViewModel)
+                        menuState.showManageImportsSheet(
+                            sources = services.filterNot { it.isEmpty }.map { it.source },
+                            viewModel = importViewModel,
+                            onResyncAll = resyncAll,
+                        )
                     },
                 )
             }

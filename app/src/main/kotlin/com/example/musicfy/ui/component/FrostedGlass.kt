@@ -76,10 +76,12 @@ fun FrostedChromeGlass(
     modifier: Modifier = Modifier,
 ) {
     val color = if (pureBlack) Color.Black else GlassChromeColor
+    // the grain only matters on the finer, high quality glass
+    val grain = LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
     Box(
         modifier = modifier.drawWithContent {
             drawContent()
-            drawRect(brush = FrostGrainBrush, alpha = FrostGrainAlpha)
+            if (grain) drawRect(brush = FrostGrainBrush, alpha = FrostGrainAlpha)
         }
     ) {
         GlassPillBackground(

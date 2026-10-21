@@ -2,8 +2,6 @@
 
 package com.example.musicfy.ui.player
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -11,9 +9,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -32,9 +27,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,7 +52,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.Player
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerHorizontalPadding
@@ -69,11 +63,6 @@ import androidx.compose.foundation.layout.width
 import com.example.musicfy.constants.ShowFormatBadgeKey
 import com.example.musicfy.constants.ShowFormatSampleRateKey
 import com.example.musicfy.utils.rememberPreference
-private data class SongDisplayInfo(
-    val mediaId: String,
-    val title: String,
-    val artist: String,
-)
 
 @Composable
 fun SongInfoRow(
@@ -99,32 +88,24 @@ fun SongInfoRow(
     chevronModifier: Modifier = Modifier,
     /** A tap on the title and artist: the song's details sheet (its artists, album, about). */
     onSongInfoClick: (() -> Unit)? = null,
+    /**
+     * How much of the title and artist shows. The page header's title takes their place as a page
+     * opens, drawn exactly like them, so this hides them the moment it does. Read while drawing.
+     */
+    infoAlpha: () -> Float = { 1f },
+    /** How much of the format badge shows; it has nowhere to go in the header, so it fades. */
+    badgeAlpha: () -> Float = { 1f },
+    /** Where the side button goes as a page opens (into the page's button column, or behind the chevron). */
+    sideLayer: (androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit)? = null,
+    onSidePositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val trackInfo by playerConnection.uiState.trackInfo.collectAsState()
-    val transportState by playerConnection.uiState.transportState.collectAsState()
-    val queueState by playerConnection.uiState.queueState.collectAsState()
-
-    var previousQueueIndex by remember { mutableIntStateOf(queueState.currentIndex) }
-    var slideDirection by remember { mutableIntStateOf(1) }
-
-    LaunchedEffect(queueState.currentIndex) {
-        if (queueState.currentIndex != previousQueueIndex) {
-            slideDirection = if (queueState.currentIndex < previousQueueIndex) -1 else 1
-            previousQueueIndex = queueState.currentIndex
-        }
-    }
+    // the player's row of songs: the title rides it with the cover
+    val carousel = LocalSongCarousel.current
 
     val (showFormatBadge) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (showSampleRate) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
-
-    val songDisplay = remember(trackInfo.mediaId, trackInfo.title, trackInfo.artist) {
-        SongDisplayInfo(
-            mediaId = trackInfo.mediaId,
-            title = trackInfo.title,
-            artist = trackInfo.artist,
-        )
-    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -148,7 +129,8 @@ fun SongInfoRow(
 
                 // Only the last few dp fade here, softening what slides past the edge on a song
                 // change; each line fades its own overflow, so the format badge after the title
-                // stays crisp.
+                // stays crisp. The left edge fades too, only while a title is crossing it: cut
+                // straight there, the outgoing title's first letters were sliced off.
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
                     val edge = (TitleEdgeFade.toPx() / size.width).coerceIn(0f, 1f)
@@ -157,97 +139,70 @@ fun SongInfoRow(
                         (1f - edge) to Color.Black,
                         1f to Color.Transparent,
                     )
+                    val leftFadeWidth = TitleEdgeFade.toPx() * 2f
+                    val leftFade = Brush.horizontalGradient(
+                        0f to Color.Black,
+                        1f to Color.Transparent,
+                        endX = leftFadeWidth,
+                    )
                     onDrawWithContent {
                         drawContent()
                         drawRect(brush = fade, blendMode = BlendMode.DstIn)
+                        val crossing = carousel?.let { row ->
+                            // strongest half way between two songs, none at either end
+                            val between = row.position - kotlin.math.floor(row.position)
+                            (minOf(between, 1f - between) * 8f).coerceIn(0f, 1f)
+                        } ?: 0f
+                        if (crossing > 0f) {
+                            drawRect(
+                                brush = leftFade,
+                                size = androidx.compose.ui.geometry.Size(leftFadeWidth, size.height),
+                                alpha = crossing,
+                                blendMode = BlendMode.DstOut,
+                            )
+                        }
                     }
                 }
         ) {
-            AnimatedContent(
-                targetState = songDisplay,
-                transitionSpec = {
-                    val isForward = slideDirection >= 0
-                    if (isForward) {
-                        (slideInHorizontally(
-                            animationSpec = tween(380, easing = FastOutSlowInEasing)
-                        ) { width -> (-width * 0.45f).toInt() } +
-                                fadeIn(animationSpec = tween(320)))
-                            .togetherWith(
-                                slideOutHorizontally(
-                                    animationSpec = tween(380, easing = FastOutSlowInEasing)
-                                ) { width -> (width * 0.45f).toInt() } +
-                                        fadeOut(animationSpec = tween(220))
-                            )
-                    } else {
-                        (slideInHorizontally(
-                            animationSpec = tween(380, easing = FastOutSlowInEasing)
-                        ) { width -> (width * 0.45f).toInt() } +
-                                fadeIn(animationSpec = tween(320)))
-                            .togetherWith(
-                                slideOutHorizontally(
-                                    animationSpec = tween(380, easing = FastOutSlowInEasing)
-                                ) { width -> (-width * 0.45f).toInt() } +
-                                        fadeOut(animationSpec = tween(220))
-                            )
-                    }.using(SizeTransform(clip = false))
-                },
-                label = "SongInfoSlideAnimation",
-                modifier = Modifier.fillMaxWidth()
-            ) { targetSong ->
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    // each song keeps its own badge through the slide
-                    val facts by remember(targetSong.mediaId) {
-                        playerConnection.streamFacts(targetSong.mediaId)
-                    }.collectAsState(initial = null)
-                    val badge = if (showFormatBadge) streamBadgeText(facts, showSampleRate) else null
-                    // what the badge said, so it can still say it while it leaves
-                    val lastBadge = remember { arrayOfNulls<String>(1) }
-                    if (badge != null) lastBadge[0] = badge
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+            // the leaving and arriving songs' lines, riding the row with the cover
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (carousel == null) {
+                    SongLines(
+                        mediaId = trackInfo.mediaId,
+                        title = trackInfo.title,
+                        artist = trackInfo.artist,
+                        showFormatBadge = showFormatBadge,
+                        showSampleRate = showSampleRate,
+                        infoAlpha = infoAlpha,
+                        badgeAlpha = badgeAlpha,
                         modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        // A long title gives way to the badge: it ends short of it, fades out where
-                        // it's cut and scrolls by, as it did against the buttons.
-                        FadingOverflowText(
-                            text = targetSong.title,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        AnimatedVisibility(
-                            visible = badge != null,
-                            enter = fadeIn(tween(220)) + expandHorizontally(tween(280, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
-                            exit = fadeOut(tween(160)) + shrinkHorizontally(tween(240, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(Modifier.width(8.dp))
-                                StreamFormatBadge(text = badge ?: lastBadge[0].orEmpty())
-                                // clear of the row's edge fade
-                                Spacer(Modifier.width(TitleEdgeFade))
-                            }
+                    )
+                } else {
+                    for (slot in rememberTextSlots(carousel)) {
+                        key(slot.uid) {
+                            SongLines(
+                                mediaId = slot.mediaId,
+                                title = slot.title,
+                                artist = slot.artist,
+                                showFormatBadge = showFormatBadge,
+                                showSampleRate = showSampleRate,
+                                infoAlpha = infoAlpha,
+                                badgeAlpha = badgeAlpha,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .carouselText(carousel, slot),
+                            )
                         }
-                    }
-                    if (targetSong.artist.isNotBlank()) {
-                        Text(
-                            text = targetSong.artist,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .trailingFade()
-                                .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
-                        )
                     }
                 }
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            val sidePlaced = (onSidePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier).then(sideModifier)
+            val sidePlaced = (onSidePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier)
+                .onGloballyPositioned { onSidePositioned(it.boundsInRoot()) }
+                .then(sideModifier)
+                .then(if (sideLayer != null) Modifier.graphicsLayer(sideLayer) else Modifier)
             if (sideAction == com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE) {
                 PressScaleActionButton(
                     icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
@@ -311,6 +266,74 @@ fun SongInfoRow(
                         scaleY = arrowScale
                         alpha = if (isExpandMenuOpen || hideChevron) 0f else 1f
                     }
+            )
+        }
+    }
+}
+
+/** One song's title, format badge and artist. */
+@Composable
+private fun SongLines(
+    mediaId: String,
+    title: String,
+    artist: String,
+    showFormatBadge: Boolean,
+    showSampleRate: Boolean,
+    infoAlpha: () -> Float,
+    badgeAlpha: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    val playerConnection = LocalPlayerConnection.current ?: return
+    Column(modifier = modifier) {
+        // each song keeps its own badge through the slide
+        val facts by remember(mediaId) {
+            playerConnection.streamFacts(mediaId)
+        }.collectAsState(initial = null)
+        val badge = if (showFormatBadge) streamBadgeText(facts, showSampleRate) else null
+        // what the badge said, so it can still say it while it leaves
+        val lastBadge = remember { arrayOfNulls<String>(1) }
+        if (badge != null) lastBadge[0] = badge
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            // A long title gives way to the badge: it ends short of it, fades out where
+            // it's cut and scrolls by, as it did against the buttons.
+            FadingOverflowText(
+                text = title,
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .graphicsLayer { alpha = infoAlpha() },
+            )
+            AnimatedVisibility(
+                visible = badge != null,
+                modifier = Modifier.graphicsLayer { alpha = badgeAlpha() },
+                enter = fadeIn(tween(220)) + expandHorizontally(tween(280, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
+                exit = fadeOut(tween(160)) + shrinkHorizontally(tween(240, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(8.dp))
+                    StreamFormatBadge(text = badge ?: lastBadge[0].orEmpty())
+                    // clear of the row's edge fade
+                    Spacer(Modifier.width(TitleEdgeFade))
+                }
+            }
+        }
+        if (artist.isNotBlank()) {
+            Text(
+                text = artist,
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = infoAlpha() }
+                    .trailingFade()
+                    .basicMarquee(iterations = 1, initialDelayMillis = 3000, velocity = 30.dp)
             )
         }
     }

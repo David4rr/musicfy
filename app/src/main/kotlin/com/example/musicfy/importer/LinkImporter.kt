@@ -126,6 +126,7 @@ object LinkImporter {
             ?: throw LinkImportException("Paste a Spotify playlist or album link.")
         val (type, id) = match.destructured
         return parseSpotifyEmbed(getOk("https://open.spotify.com/embed/$type/$id", "Spotify"), type)
+            .from(PlaylistOrigin(remoteId = id, remoteUrl = "https://open.spotify.com/$type/$id"))
     }
 
     internal fun parseSpotifyEmbed(html: String, type: String): ParsedImport {
@@ -168,7 +169,7 @@ object LinkImporter {
         )
     }
 
-    private const val SPOTIFY_EMBED_LIMIT = 100
+    internal const val SPOTIFY_EMBED_LIMIT = 100
 
     // ---- Apple Music: the web page embeds its own data as serialized-server-data ----
 
@@ -176,7 +177,9 @@ object LinkImporter {
         val match = APPLE_REGEX.find(url)
             ?: throw LinkImportException("Paste an Apple Music playlist or album link.")
         val type = match.groupValues[1]
-        return parseApplePage(getOk(url.substringBefore('#'), "Apple Music"), type)
+        val page = url.substringBefore('#')
+        return parseApplePage(getOk(page, "Apple Music"), type)
+            .from(PlaylistOrigin(remoteId = match.groupValues[2], remoteUrl = page))
     }
 
     internal fun parseApplePage(html: String, type: String): ParsedImport {
@@ -260,6 +263,7 @@ object LinkImporter {
         if (tracks.isEmpty()) throw LinkImportException("That Deezer $type has no songs we can read.")
         val cover = info.string("picture_xl") ?: info.string("cover_xl")
         return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), provider = ImportSource.DEEZER, playlistCovers = coverFor(name, cover))
+            .from(PlaylistOrigin(remoteId = id, remoteUrl = "https://www.deezer.com/$type/$id"))
     }
 
     private suspend fun deezerJson(url: String): JsonObject {
@@ -297,7 +301,7 @@ object LinkImporter {
             playlists = mapOf(page.playlist.title to tracks),
             provider = ImportSource.YOUTUBE_MUSIC,
             playlistCovers = coverFor(page.playlist.title, page.playlist.thumbnail),
-        )
+        ).from(PlaylistOrigin(remoteId = playlistId, remoteUrl = "https://music.youtube.com/playlist?list=$playlistId"))
     }
 
     private suspend fun fetchYouTubeAlbum(browseId: String): ParsedImport {
@@ -311,9 +315,12 @@ object LinkImporter {
             playlists = mapOf(page.album.title to tracks),
             provider = ImportSource.YOUTUBE_MUSIC,
             playlistCovers = coverFor(page.album.title, page.album.thumbnail),
-        )
+        ).from(PlaylistOrigin(remoteId = browseId, remoteUrl = "https://music.youtube.com/browse/$browseId"))
     }
 
     private fun coverFor(name: String, cover: String?): Map<String, String> =
         if (cover.isNullOrBlank()) emptyMap() else mapOf(name to cover)
+
+    /** A link reads one playlist, so [origin] is where that one lives. */
+    private fun ParsedImport.from(origin: PlaylistOrigin) = copy(playlistOrigins = playlists.keys.associateWith { origin })
 }

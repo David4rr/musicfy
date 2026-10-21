@@ -139,7 +139,7 @@ data class VolumeSettings(
 
 /**
  * Everything Audio Lab sets, in one place: the equalizer (curve, presets, headphone correction)
- * and Audio FX (loudness, spatial, speed and pitch, volume curve). Each change goes
+ * and Audio FX (reverb, loudness, spatial, speed and pitch, volume curve). Each change goes
  * straight to the players, live, and is saved a moment later, so a slider can be dragged freely.
  */
 @Singleton
@@ -161,6 +161,9 @@ class AudioLabStore @Inject constructor(
 
     private val _eq = MutableStateFlow(load("eq") ?: EqSettings())
     val eq: StateFlow<EqSettings> = _eq.asStateFlow()
+
+    private val _reverb = MutableStateFlow(load("reverb") ?: ReverbSettings())
+    val reverb: StateFlow<ReverbSettings> = _reverb.asStateFlow()
 
     private val _presets = MutableStateFlow(load<List<EqPreset>>("presets") ?: emptyList())
     val presets: StateFlow<List<EqPreset>> = _presets.asStateFlow()
@@ -185,14 +188,20 @@ class AudioLabStore @Inject constructor(
      * Whether anything here is changing the sound. Offloaded playback hands decoding to the phone's
      * audio chip and skips every effect, so it has to stay off while this is true.
      */
-    val shapesSound: Flow<Boolean> = combine(eq, loudness, spatial) { eq, loudness, spatial ->
-        eq.enabled || loudness.enabled || spatial.enabled || spatial.mono
+    val shapesSound: Flow<Boolean> = combine(eq, reverb, loudness, spatial) { eq, reverb, loudness, spatial ->
+        eq.enabled || reverb.enabled || loudness.enabled || spatial.enabled || spatial.mono
     }.distinctUntilChanged()
 
     init {
         migrateLegacyEqualizer()
         pushEq()
         pushFx()
+    }
+
+    fun updateReverb(transform: (ReverbSettings) -> ReverbSettings) {
+        _reverb.update(transform)
+        pushFx()
+        scheduleSave()
     }
 
     fun updateLoudness(transform: (LoudnessSettings) -> LoudnessSettings) {
@@ -278,6 +287,7 @@ class AudioLabStore @Inject constructor(
     private fun pushEq() = equalizerService.apply(design(_eq.value))
 
     private fun pushFx() {
+        audioFx.reverb = _reverb.value.toParams()
         audioFx.loudness = _loudness.value.toParams()
         audioFx.spatial = _spatial.value.toParams()
         audioFx.replayGain = _normalize.value.toParams()
@@ -291,8 +301,7 @@ class AudioLabStore @Inject constructor(
             delay(400)
             prefs.edit {
                 putString("eq", json.encodeToString(EqSettings.serializer(), _eq.value))
-                // reverb was taken out of Audio Lab; its old settings go with it
-                remove("reverb")
+                putString("reverb", json.encodeToString(ReverbSettings.serializer(), _reverb.value))
                 putString("loudness", json.encodeToString(LoudnessSettings.serializer(), _loudness.value))
                 putString("spatial", json.encodeToString(SpatialSettings.serializer(), _spatial.value))
                 putString("playback", json.encodeToString(PlaybackSettings.serializer(), _playback.value))

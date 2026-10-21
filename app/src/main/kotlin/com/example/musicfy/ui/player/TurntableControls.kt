@@ -2,19 +2,15 @@
 
 package com.example.musicfy.ui.player
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -272,55 +268,63 @@ private fun ChevronButton(open: Boolean, hidden: Boolean, onClick: () -> Unit, m
     }
 }
 
-private data class TitleLines(val mediaId: String, val title: String, val artist: String)
-
+/** The song's title, badge and artist, riding the player's row of songs with the record. */
 @Composable
 private fun TitleBlock(title: String, artist: String, mediaId: String, modifier: Modifier = Modifier) {
+    val carousel = LocalSongCarousel.current
+    Box(modifier = modifier) {
+        if (carousel == null) {
+            TitleLines(mediaId, title, artist, Modifier)
+        } else {
+            for (slot in rememberTextSlots(carousel)) {
+                key(slot.uid) {
+                    TitleLines(slot.mediaId, slot.title, slot.artist, Modifier.carouselText(carousel, slot))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TitleLines(mediaId: String, title: String, artist: String, modifier: Modifier) {
     val connection = LocalPlayerConnection.current ?: return
     val (showBadge) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (showSampleRate) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
-    AnimatedContent(
-        targetState = TitleLines(mediaId, title, artist),
-        transitionSpec = { fadeIn(tween(320)) togetherWith fadeOut(tween(200)) },
-        label = "turntableTitle",
-        modifier = modifier,
-    ) { lines ->
-        Column {
-            val facts by remember(lines.mediaId) { connection.streamFacts(lines.mediaId) }.collectAsState(initial = null)
-            val badge = if (showBadge) streamBadgeText(facts, showSampleRate) else null
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                FadingOverflowText(
-                    text = lines.title,
-                    style = TextStyle(
-                        fontFamily = InterFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 27.sp,
-                        lineHeight = 31.sp,
-                        letterSpacing = (-0.035).em,
-                    ),
-                    color = Color.White,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (badge != null) {
-                    Spacer(Modifier.width(8.dp))
-                    StreamFormatBadge(text = badge, height = 18.dp)
-                }
+    Column(modifier = modifier) {
+        val facts by remember(mediaId) { connection.streamFacts(mediaId) }.collectAsState(initial = null)
+        val badge = if (showBadge) streamBadgeText(facts, showSampleRate) else null
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            FadingOverflowText(
+                text = title,
+                style = TextStyle(
+                    fontFamily = InterFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 27.sp,
+                    lineHeight = 31.sp,
+                    letterSpacing = (-0.035).em,
+                ),
+                color = Color.White,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (badge != null) {
+                Spacer(Modifier.width(8.dp))
+                StreamFormatBadge(text = badge, height = 18.dp)
             }
-            if (lines.artist.isNotBlank()) {
-                Text(
-                    text = lines.artist,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(
-                        fontFamily = InterFontFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
-                        lineHeight = 20.sp,
-                        letterSpacing = (-0.02).em,
-                        color = Color.White.copy(alpha = 0.55f),
-                    ),
-                )
-            }
+        }
+        if (artist.isNotBlank()) {
+            Text(
+                text = artist,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(
+                    fontFamily = InterFontFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    lineHeight = 20.sp,
+                    letterSpacing = (-0.02).em,
+                    color = Color.White.copy(alpha = 0.55f),
+                ),
+            )
         }
     }
 }

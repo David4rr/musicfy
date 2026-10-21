@@ -115,6 +115,7 @@ import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.ExoDownloadService
 import com.example.musicfy.playback.queues.ListQueue
+import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.BoneColor
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
@@ -487,6 +488,7 @@ fun LocalPlaylistScreen(
                         onPlayNext = {
                             playerConnection.playNext(songs.map { it.song.toMediaItem() })
                         },
+                        navController = navController,
                     )
                 }
             }
@@ -832,11 +834,14 @@ fun LocalPlaylistScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             items(relatedPlaylists, key = { it.id }) { related ->
+                                // no clip on the whole card: its rounded corner cut into the song count
+                                // under the cover. The press shows Home's highlight around it instead.
                                 Column(
                                     modifier = Modifier
                                         .width(137.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable { navController.navigate("local_playlist/${related.id}") }
+                                        .clickable(interactionSource = null, indication = HomeCardHighlight) {
+                                            navController.navigate("local_playlist/${related.id}")
+                                        }
                                 ) {
                                     Box(
                                         modifier = Modifier

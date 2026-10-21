@@ -1,9 +1,10 @@
 // AudioLabScreen.kt
 //
-// Audio Lab: the home of Musicfy's sound. Big cards for the equalizer and the effects, then
-// quality and transitions. Each card's drawing shows its
-// state: the equalizer's knobs sit where your curve is, the FX lights when an effect is on, the
-// quality waveform is as fine as what's streaming.
+// Audio Lab: the home of Musicfy's sound, to the user's mock. The title sits on the page, and
+// the cards on a sheet that slides up over it: big cards for the equalizer and the effects, each
+// with a green dot and its state in small type, then quality and transitions. Each card's drawing
+// shows its state: the equalizer's knobs sit where your curve is, the FX lights when an effect is
+// on, the quality waveform is as fine as what's streaming. Two columns on a tablet.
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -15,6 +16,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +58,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -58,7 +68,6 @@ import com.example.musicfy.constants.CrossmixMode
 import com.example.musicfy.constants.CrossmixModeKey
 import com.example.musicfy.eq.EqPresets
 import com.example.musicfy.eq.EqSettings
-import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.damageBoundary
 import com.example.musicfy.ui.component.pressBounce
 import com.example.musicfy.ui.theme.InterFontFamily
@@ -78,6 +87,7 @@ fun AudioLabScreen(
 ) {
     val eq by viewModel.eq.collectAsState()
     val presets by viewModel.presets.collectAsState()
+    val reverb by viewModel.reverb.collectAsState()
     val loudness by viewModel.loudness.collectAsState()
     val spatial by viewModel.spatial.collectAsState()
     val playback by viewModel.playback.collectAsState()
@@ -94,66 +104,92 @@ fun AudioLabScreen(
     }
     val (mode) = rememberEnumPreference(CrossmixModeKey, defaultValue = CrossmixMode.AUTO_CROSSFADE)
 
-    val activeFx = buildList {
-        if (loudness.enabled) add("Loudness")
-        if (spatial.enabled) add("Spatial")
-        if (!playback.isNormal) add(String.format("%.2f×", playback.speed))
-        if (volume.enabled) add("Volume curve")
-    }
+    val effects = activeEffects(reverb, loudness, spatial, playback, volume)
 
-    SubSettingsScaffold(
-        title = "Audio Lab",
+    AudioLabPage(
+        title = LabTitle("Audio", "Lab"),
         onBack = { navController.navigateUp() },
     ) {
-        Text(
-            "Let's customize your music experience!",
-            fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Color.White,
-        )
-        Spacer(Modifier.height(18.dp))
+        val equalizer: @Composable (Modifier) -> Unit = { modifier ->
+            BigHubCard(
+                title = "Equalizer",
+                status = equalizerStatus(eq, presets.associate { it.id to it.name }),
+                on = eq.enabled,
+                onClick = { navController.navigate("equalizer") },
+                modifier = modifier,
+            ) { EqualizerSketch(eq) }
+        }
+        val effect: @Composable (Modifier) -> Unit = { modifier ->
+            BigHubCard(
+                title = "Audio Effect",
+                status = effectsStatus(effects),
+                on = effects.isNotEmpty(),
+                onClick = { navController.navigate("audio_fx") },
+                modifier = modifier,
+            ) { FxSketch(active = effects.isNotEmpty()) }
+        }
+        val qualityCard: @Composable (Modifier) -> Unit = { modifier ->
+            SmallHubCard(
+                title = "Audio Quality",
+                status = qualityName(quality, firstProvider),
+                onClick = { navController.navigate("audio_quality") },
+                modifier = modifier,
+            ) { QualitySketch(quality, firstProvider) }
+        }
+        val transition: @Composable (Modifier) -> Unit = { modifier ->
+            SmallHubCard(
+                title = "Transition",
+                status = when (mode) {
+                    CrossmixMode.OFF -> "Off"
+                    CrossmixMode.AUTO_CROSSFADE -> "Auto"
+                    CrossmixMode.MANUAL_CROSSFADE -> "Manual"
+                    CrossmixMode.CROSSMIX -> "CrossMix"
+                },
+                onClick = { navController.navigate("crossmix_settings") },
+                modifier = modifier,
+            ) { TransitionSketch(active = mode != CrossmixMode.OFF) }
+        }
 
-        HubTile(
-            title = "Equalizer",
-            status = equalizerStatus(eq, presets.associate { it.id to it.name }),
-            height = 112.dp,
-            big = true,
-            onClick = { navController.navigate("equalizer") },
-        ) { EqualizerSketch(eq) }
-        Spacer(Modifier.height(10.dp))
-        HubTile(
-            title = "Audio Effect",
-            status = if (activeFx.isEmpty()) "All off" else activeFx.joinToString(" · "),
-            height = 112.dp,
-            big = true,
-            onClick = { navController.navigate("audio_fx") },
-        ) { FxSketch(active = activeFx.isNotEmpty()) }
-        Spacer(Modifier.height(10.dp))
-        HubTile(
-            title = "Audio Quality",
-            status = qualityName(quality, firstProvider),
-            height = 58.dp,
-            onClick = { navController.navigate("audio_quality") },
-        ) { QualitySketch(quality, firstProvider) }
-        Spacer(Modifier.height(10.dp))
-        HubTile(
-            title = "Transition",
-            status = when (mode) {
-                CrossmixMode.OFF -> "Off"
-                CrossmixMode.AUTO_CROSSFADE -> "Auto"
-                CrossmixMode.MANUAL_CROSSFADE -> "Manual"
-                CrossmixMode.CROSSMIX -> "CrossMix"
-            },
-            height = 58.dp,
-            onClick = { navController.navigate("crossmix_settings") },
-        ) { TransitionSketch(active = mode != CrossmixMode.OFF) }
-        Spacer(Modifier.height(120.dp))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 560.dp) {
+                // a tablet: side by side, so the cards don't stretch into long thin bars
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(IntrinsicSize.Min)) {
+                        equalizer(Modifier.weight(1f).fillMaxHeight())
+                        effect(Modifier.weight(1f).fillMaxHeight())
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.height(IntrinsicSize.Min)) {
+                        qualityCard(Modifier.weight(1f).fillMaxHeight())
+                        transition(Modifier.weight(1f).fillMaxHeight())
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    equalizer(Modifier)
+                    effect(Modifier)
+                    qualityCard(Modifier)
+                    transition(Modifier)
+                }
+            }
+        }
+    }
+}
+
+/** "REVERB, SURROUND and 2 more", as in the mock */
+private fun effectsStatus(effects: List<ActiveEffect>): String {
+    val names = effects.map { it.label.uppercase() }
+    return when {
+        names.isEmpty() -> "ALL OFF"
+        names.size <= 2 -> names.joinToString(", ")
+        else -> names.take(2).joinToString(", ") + " and ${names.size - 2} more"
     }
 }
 
 private fun equalizerStatus(eq: EqSettings, userPresets: Map<String, String>): String {
-    if (!eq.enabled) return "Off"
+    if (!eq.enabled) return "OFF"
     val curve = eq.presetId?.let { id -> EqPresets.BuiltIn.firstOrNull { it.id == id }?.name ?: userPresets[id] } ?: "Custom"
     val correction = eq.correction?.takeIf { eq.correctionEnabled }?.model
-    return if (correction != null) "$curve · $correction" else curve
+    return (if (correction != null) "$curve · $correction" else curve).uppercase()
 }
 
 private fun qualityName(q: AudioQuality, firstProvider: String?): String = when (firstProvider) {
@@ -167,41 +203,87 @@ private fun qualityName(q: AudioQuality, firstProvider: String?): String = when 
     }
 }
 
+/** The equalizer's and the effects' card: a green dot and the state in small type, the name under it. */
 @Composable
-private fun HubTile(
+private fun BigHubCard(
     title: String,
     status: String,
-    height: Dp,
+    on: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    big: Boolean = false,
     sketch: @Composable BoxScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(height)
+            // at least the mock's height; a big system font makes it taller instead of cutting it
+            .heightIn(min = 128.dp)
             .pressBounce(interaction, pressedScale = 0.97f)
-            .clip(RoundedCornerShape(if (big) 24.dp else 18.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(HubCard)
             .clickable(interaction, null, onClick = onClick)
             .damageBoundary(),
     ) {
-        sketch()
-        Column(
-            modifier = Modifier
-                .align(if (big) Alignment.BottomStart else Alignment.CenterStart)
-                .padding(horizontal = if (big) 22.dp else 16.dp, vertical = if (big) 18.dp else 0.dp),
-        ) {
-            if (big) {
-                Text(status, fontFamily = InterFontFamily, fontSize = 12.sp, color = Color(0xFF9A9AA0), maxLines = 1)
-                Text(title, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 28.sp, color = Color.White)
-            } else {
-                Text(title, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
-                Text(status, fontFamily = InterFontFamily, fontSize = 11.sp, color = Color(0xFF9A9AA0), maxLines = 1)
-            }
+        Box(Modifier.matchParentSize()) { sketch() }
+        Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 18.dp)) {
+            StatusLine(status, on, Modifier.fillMaxWidth(0.66f))
+            Spacer(Modifier.height(30.dp))
+            Text(
+                title,
+                fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 30.sp,
+                letterSpacing = (-0.03).em, color = Color.White,
+            )
         }
+    }
+}
+
+/** Quality's and transitions' shorter card: the name, its state under it, the drawing at the right. */
+@Composable
+private fun SmallHubCard(
+    title: String,
+    status: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    sketch: @Composable BoxScope.() -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .pressBounce(interaction, pressedScale = 0.97f)
+            .clip(RoundedCornerShape(20.dp))
+            .background(HubCard)
+            .clickable(interaction, null, onClick = onClick)
+            .damageBoundary(),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(Modifier.matchParentSize()) { sketch() }
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth(0.62f)) {
+            Text(title, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+            Text(
+                status.uppercase(),
+                fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = Color(0xFF8A8A8E),
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusLine(status: String, on: Boolean, modifier: Modifier = Modifier) {
+    val dot by androidx.compose.animation.animateColorAsState(
+        if (on) Color(0xFF8BE07A) else Color(0xFF5C5C63), tween(300), label = "dot",
+    )
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(dot))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            status,
+            fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Color(0xFF8A8A8E),
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -233,16 +315,16 @@ private fun BoxScope.EqualizerSketch(eq: EqSettings) {
         val panel = size.height * 1.05f
         val origin = Offset(size.width - panel * 0.78f, size.height * 0.05f)
         rotate(-14f, Offset(origin.x + panel / 2, origin.y + panel / 2)) {
-            drawRoundRect(Sketch, origin, Size(panel, panel), CornerRadius(panel * 0.2f), style = Stroke(2.dp.toPx()))
+            drawRoundRect(Sketch, origin, Size(panel, panel), CornerRadius(panel * 0.2f), style = Stroke(3.5.dp.toPx()))
             listOf(low, mid, high).forEachIndexed { i, gain ->
                 val x = origin.x + panel * (0.25f + i * 0.22f)
                 val top = origin.y + panel * 0.16f
                 val bottom = origin.y + panel * 0.84f
-                drawLine(Sketch, Offset(x, top), Offset(x, bottom), 2.5.dp.toPx(), StrokeCap.Round)
+                drawLine(Sketch, Offset(x, top), Offset(x, bottom), 4.dp.toPx(), StrokeCap.Round)
                 val bob = level.punch * 4.dp.toPx() * sin(t * 9f + i * 2f)
                 val y = (top + bottom) / 2 - (gain / 12f) * (bottom - top) / 2 + bob
-                drawCircle(HubCard, 9.dp.toPx(), Offset(x, y))
-                drawCircle(if (eq.enabled) Color(0xFF9A9AA0) else Sketch, 9.dp.toPx(), Offset(x, y), style = Stroke(2.5.dp.toPx()))
+                drawCircle(HubCard, 11.dp.toPx(), Offset(x, y))
+                drawCircle(if (eq.enabled) Color(0xFF9A9AA0) else Sketch, 11.dp.toPx(), Offset(x, y), style = Stroke(4.dp.toPx()))
             }
         }
     }

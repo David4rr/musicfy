@@ -39,6 +39,7 @@ import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.ImportSession
 import com.example.musicfy.db.entities.ImportSessionSong
 import com.example.musicfy.db.entities.ImportedPlaylist
+import com.example.musicfy.db.entities.ImportedPlaylistTrack
 import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.ImportedSourceCount
 import com.example.musicfy.db.entities.PlaylistEvent
@@ -1681,8 +1682,18 @@ interface DatabaseDao {
     @Query("DELETE FROM import_session_song WHERE songId = :songId")
     fun deleteImportSessionSong(songId: String)
 
+    /** Forgets that [source]'s imports brought the song in; other services' imports keep it. */
+    @Query(
+        "DELETE FROM import_session_song WHERE songId = :songId " +
+            "AND sessionId IN (SELECT id FROM import_session WHERE source = :source)"
+    )
+    fun deleteImportSessionSong(songId: String, source: String)
+
     @Query("DELETE FROM import_session WHERE id = :sessionId")
     fun deleteImportSession(sessionId: Long)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM import_session WHERE id = :sessionId)")
+    fun importSessionExists(sessionId: Long): Boolean
 
     /** A session that ended up bringing nothing in has nothing to undo, so it isn't kept. */
     @Query(
@@ -1701,11 +1712,48 @@ interface DatabaseDao {
     @Query("SELECT * FROM imported_playlist")
     fun importedPlaylists(): Flow<List<ImportedPlaylist>>
 
+    /** Where one playlist came from, for its menu's Re-sync; null for a playlist made here. */
+    @Query("SELECT * FROM imported_playlist WHERE playlistId = :playlistId")
+    fun importedPlaylist(playlistId: String): Flow<ImportedPlaylist?>
+
+    @Query("SELECT * FROM imported_playlist WHERE playlistId = :playlistId")
+    fun getImportedPlaylist(playlistId: String): ImportedPlaylist?
+
+    /** The local copy of a service's playlist, found by its id there; the newest, if one was deleted and imported again. */
+    @Query("SELECT * FROM imported_playlist WHERE source = :source AND remoteId = :remoteId ORDER BY importedAt DESC LIMIT 1")
+    fun importedPlaylistByRemoteId(source: String, remoteId: String): ImportedPlaylist?
+
+    /** Remembers where the playlist lives (an unknown id or link keeps the one already saved). */
+    @Query(
+        "UPDATE imported_playlist SET remoteId = COALESCE(:remoteId, remoteId), " +
+            "remoteUrl = COALESCE(:remoteUrl, remoteUrl), lastSyncedAt = :syncedAt WHERE playlistId = :playlistId"
+    )
+    fun updateImportedPlaylistOrigin(playlistId: String, remoteId: String?, remoteUrl: String?, syncedAt: LocalDateTime)
+
+    @Query("SELECT trackKey FROM imported_playlist_track WHERE playlistId = :playlistId")
+    fun importedPlaylistTrackKeys(playlistId: String): List<String>
+
+    /** About how many songs the playlist had on its service the last time it was read. */
+    @Query("SELECT COUNT(*) FROM imported_playlist_track WHERE playlistId = :playlistId")
+    fun importedPlaylistTrackCount(playlistId: String): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertImportedPlaylistTracks(tracks: List<ImportedPlaylistTrack>)
+
     @Query("SELECT playlistId FROM imported_playlist WHERE sessionId = :sessionId")
     fun importSessionPlaylistIds(sessionId: Long): List<String>
 
     @Query("DELETE FROM imported_playlist WHERE playlistId = :playlistId")
-    fun deleteImportedPlaylist(playlistId: String)
+    fun deleteImportedPlaylistRow(playlistId: String)
+
+    @Query("DELETE FROM imported_playlist_track WHERE playlistId = :playlistId")
+    fun deleteImportedPlaylistTracks(playlistId: String)
+
+    @Transaction
+    fun deleteImportedPlaylist(playlistId: String) {
+        deleteImportedPlaylistRow(playlistId)
+        deleteImportedPlaylistTracks(playlistId)
+    }
 
     // ---- files imported from the phone ----
 

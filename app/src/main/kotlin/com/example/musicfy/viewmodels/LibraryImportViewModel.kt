@@ -13,8 +13,11 @@ import com.example.musicfy.importer.DeviceSong
 import com.example.musicfy.importer.ImportHistory
 import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.importer.LocalImportService
+import androidx.media3.exoplayer.offline.DownloadService
 import com.example.musicfy.models.TransferBatch
+import com.example.musicfy.models.TransferState
 import com.example.musicfy.playback.DownloadUtil
+import com.example.musicfy.playback.ExoDownloadService
 import com.example.musicfy.ui.component.TopToaster
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -72,6 +75,18 @@ class LibraryImportViewModel @Inject constructor(
     fun importDeviceSongs(songs: List<DeviceSong>): Boolean = localImport.importDeviceSongs(songs)
 
     fun clearLocalImport() = localImport.clearFinished()
+
+    /** Stops every download that hasn't finished. The ones already done stay in the library. */
+    fun cancelAllDownloads() {
+        val running = downloads.value.items.filter { it.state == TransferState.Waiting || it.state == TransferState.Running }
+        running.forEach { item ->
+            DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, item.key, false)
+        }
+        TopToaster.show(
+            if (running.size == 1) "Cancelled 1 download" else "Cancelled ${running.size} downloads",
+            iconRes = R.drawable.library_music,
+        )
+    }
 
     // ---- Manage imports ----
 

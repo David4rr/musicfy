@@ -91,10 +91,14 @@ constructor(
     private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
     private val downloadQuality by enumPreference(context, DownloadQualityKey, DownloadQuality.HIGH)
     private val ipVersion by enumPreference(context, IpVersionKey, IpVersion.AUTO)
-    private val songUrlCache = HashMap<String, Pair<String, Long>>()
+    /** Each song's stream url and when it stops working (ms since 1970); read on the download threads. */
+    private val songUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+
+    /** Songs whose Monochrome download failed: their next try comes from YouTube instead. */
+    private val losslessFailed = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** Per-track stream request headers, so a cached url is replayed with its client's Origin. */
-    private val songStreamHeaders = HashMap<String, Map<String, String>>()
+    private val songStreamHeaders = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
 
     /** Monochrome's FLAC for each song being downloaded lossless: its url and request headers. */
     private val losslessStreams = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<String, String>>>()
@@ -145,7 +149,7 @@ constructor(
             val mediaId = dataSpec.key ?: error("No media id")
             val length = if (dataSpec.length >= 0) dataSpec.length else 1
 
-            if (downloadQuality == DownloadQuality.LOSSLESS) {
+            if (downloadQuality == DownloadQuality.LOSSLESS && mediaId !in losslessFailed) {
                 losslessStream(mediaId)?.let { (url, headers) ->
                     return@Factory dataSpec.buildUpon()
                         .setUri(url.toUri())
@@ -161,7 +165,9 @@ constructor(
                 return@Factory dataSpec
             }
 
-            songUrlCache[mediaId]?.takeIf { it.second < System.currentTimeMillis() }?.let {
+            // only while it still works. This used to keep the url's lifetime instead of when it ends,
+            // and compare the wrong way round, so a dead url was reused for every retry of a download
+            songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let {
                 return@Factory dataSpec
                     .withUri(it.first.toUri())
                     .withRequestHeaders(dataSpec.httpRequestHeaders + songStreamHeaders[mediaId].orEmpty())
@@ -185,7 +191,9 @@ constructor(
                         codecs = format.mimeType.substringAfter("codecs=", "").removeSurrounding("\""),
                         bitrate = format.bitrate,
                         sampleRate = format.audioSampleRate,
-                        contentLength = format.contentLength!!,
+                        // some formats don't say; the real size is saved when the download finishes.
+                        // Asserting it here failed those songs' downloads every time they were tried
+                        contentLength = format.contentLength ?: 0L,
                         loudnessDb = playbackData.audioConfig?.loudnessDb,
                         perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
                         playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl
@@ -228,7 +236,7 @@ constructor(
                 "${it}&range=0-${format.contentLength ?: 10000000}"
             }
 
-            songUrlCache[mediaId] = streamUrl to playbackData.streamExpiresInSeconds * 1000L
+            songUrlCache[mediaId] = streamUrl to System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L
             songStreamHeaders[mediaId] = playbackData.streamHeaders
             dataSpec
                 .withUri(streamUrl.toUri())
@@ -269,7 +277,12 @@ constructor(
                                     losslessStreams.remove(download.request.id)
                                     saveLyrics(download.request.id)
                                 }
-                                Download.STATE_FAILED,
+                                Download.STATE_FAILED -> {
+                                    database.updateDownloadedInfo(download.request.id, false, null)
+                                    forgetStream(download.request.id)
+                                    // kept by R8 in release builds, unlike Timber: the reason is the only clue
+                                    android.util.Log.w(LOG_TAG, "Download of ${download.request.id} failed", finalException)
+                                }
                                 Download.STATE_STOPPED,
                                 Download.STATE_REMOVING -> {
                                     database.updateDownloadedInfo(download.request.id, false, null)
@@ -312,6 +325,16 @@ constructor(
                     wasOffline = offline
                 }
         }
+    }
+
+    /**
+     * A failed download tries again with a fresh stream: the url it had may be the reason. One that
+     * failed from Monochrome comes from YouTube next time.
+     */
+    private fun forgetStream(mediaId: String) {
+        songUrlCache.remove(mediaId)
+        songStreamHeaders.remove(mediaId)
+        if (losslessStreams.remove(mediaId) != null) losslessFailed += mediaId
     }
 
     /**
@@ -459,5 +482,6 @@ constructor(
     private companion object {
         /** the key a lossless download is fetched under, below the download cache */
         const val LosslessKeyPrefix = "lossless|"
+        const val LOG_TAG = "MusicfyDownload"
     }
 }

@@ -142,7 +142,7 @@ import com.example.musicfy.ui.component.HomeCardSpacing
 import com.example.musicfy.ui.component.HomeContentInset
 import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.HomeRowHeight
+import com.example.musicfy.ui.component.homeRowHeight
 import com.example.musicfy.ui.component.HomeSectionBones
 import com.example.musicfy.ui.component.HeroCarouselBones
 import com.example.musicfy.ui.launch.launchMarkTarget
@@ -270,7 +270,7 @@ private fun <T> HomeTrackGrid(
         verticalArrangement = Arrangement.spacedBy(rowSpacing),
         modifier = Modifier
             .fillMaxWidth()
-            .height(HomeRowHeight * rows + rowSpacing * (rows - 1)),
+            .height(homeRowHeight() * rows + rowSpacing * (rows - 1)),
     ) {
         itemsIndexed(items = items, key = key) { index, item ->
             Box(modifier = Modifier.width(columnWidth)) {

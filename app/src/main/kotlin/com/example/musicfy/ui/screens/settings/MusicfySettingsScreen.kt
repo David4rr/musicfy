@@ -49,6 +49,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.musicfy.R
+import com.example.musicfy.scrobble.ScrobbleSite
+import com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute
+import com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute
+import com.example.musicfy.ui.screens.settings.integrations.scrobbleServiceRoute
 import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.SettingsHighlight
@@ -89,6 +93,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Equalizer", "Audio Lab", "equalizer", "eq bass treble band parametric graph autoeq headphones correction preset"),
     SettingsEntry("AutoEQ", "Audio Lab", "equalizer", "headphones earbuds correction harman database model"),
     SettingsEntry("Audio Quality", "Audio Lab", "audio_quality", "bitrate stream high low lossless hi-res flac monochrome"),
+    SettingsEntry("Reverb", "Audio Lab", "audio_fx", "room hall echo space fx effect"),
     SettingsEntry("Loudness", "Audio Lab", "audio_fx", "boost louder compressor limiter night mode fx"),
     SettingsEntry("Audio Normalization", "Audio Lab", "audio_fx", "even out songs loudness volume gain balance replaygain"),
     SettingsEntry("Spatial audio", "Audio Lab", "audio_fx", "crossfeed binaural hrtf virtual speakers 3d headphones"),
@@ -100,6 +105,13 @@ private val SettingsIndex = listOf(
     SettingsEntry("Monochrome", "Modules", "module/monochrome", "monochrome lossless flac hi-res tidal"),
     SettingsEntry("Provider order", "Audio Lab", "audio_quality", "source order apple music monochrome youtube priority"),
     SettingsEntry("YouTube Music", "Audio Lab", "audio_quality", "youtube turn off disable provider only monochrome apple music"),
+
+    // Integrations
+    SettingsEntry("Discord", "Integrations", DiscordRoute, "discord rich presence rpc status activity listening playing profile"),
+    SettingsEntry("Last.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "lastfm scrobble scrobbling history stats account sign in"),
+    SettingsEntry("Libre.fm", "Integrations", scrobbleServiceRoute(ScrobbleSite.LIBREFM), "librefm scrobble scrobbling history stats account sign in"),
+    SettingsEntry("Now Playing", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "scrobble now playing status profile lastfm librefm"),
+    SettingsEntry("Send likes", "Integrations", scrobbleServiceRoute(ScrobbleSite.LASTFM), "love loved songs lastfm librefm scrobble"),
 
     // Playback
     SettingsEntry("Keep playing even when closed", "Playback", "playback_settings", "background close stop playback"),
@@ -416,6 +428,12 @@ fun MusicfySettingsScreen(navController: NavController) {
                             title = "Modules",
                             iconRes = R.drawable.library_add,
                             onClick = { navController.navigate("modules") }
+                        )
+
+                        CategoryBubble(
+                            title = "Integrations",
+                            iconRes = R.drawable.integration,
+                            onClick = { navController.navigate(IntegrationsRoute) }
                         )
                     }
                 }

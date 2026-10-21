@@ -438,6 +438,15 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // "Keep screen on" (the player's menu, or a chevron button): the phone doesn't sleep while
+        // Musicfy is on screen. A window flag only holds while the app is in front, which is the point.
+        val keepScreenOn by rememberPreference(com.example.musicfy.constants.KeepScreenOn, defaultValue = false)
+        val rootView = androidx.compose.ui.platform.LocalView.current
+        DisposableEffect(keepScreenOn) {
+            rootView.keepScreenOn = keepScreenOn
+            onDispose { rootView.keepScreenOn = false }
+        }
+
         LaunchedEffect(enableHighRefreshRate) {
             val window = this@MainActivity.window
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -855,6 +864,10 @@ class MainActivity : ComponentActivity() {
 
                 val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
                 val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+                val blurQuality by rememberEnumPreference(
+                    com.example.musicfy.constants.BlurQualityKey,
+                    com.example.musicfy.constants.BlurQuality.HIGH,
+                )
                 val swipeToSong by rememberPreference(SwipeToSongKey, false)
 
                 val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
@@ -883,6 +896,7 @@ class MainActivity : ComponentActivity() {
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
                     LocalLaunchIntro provides launchIntro,
+                    com.example.musicfy.ui.component.LocalBlurQuality provides blurQuality,
                 ) {
                     com.example.musicfy.ui.component.PopupSheetHost(
                         states = listOf(

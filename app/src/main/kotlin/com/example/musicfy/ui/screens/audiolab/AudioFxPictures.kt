@@ -45,7 +45,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /** a frame clock and a music follower, shared by every picture */
-private class PictureClock {
+internal class PictureClock {
     val level = LevelFollower()
     private var lastTime = -1f
 
@@ -66,7 +66,7 @@ private class PictureClock {
 }
 
 @Composable
-private fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Unit) {
+internal fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Unit) {
     val onScreen = rememberOnScreen()
     val held = rememberPicturesHeld(onScreen)
     val time = rememberLabTime(held)

@@ -1,18 +1,19 @@
 package com.example.musicfy.ui.player.studio
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -21,16 +22,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.musicfy.constants.PlayerBottomBarStyle
+import com.example.musicfy.ui.player.HeldPart
+import com.example.musicfy.ui.player.PlayerLayoutTweaks
+import kotlin.math.roundToInt
 
 /** 0..1 eased in and out, for the stretches of a move that run off one spring */
 internal fun ease(t: Float): Float {
@@ -60,6 +70,9 @@ class StudioParts(
 
     /** the middle part's pieces, lifted off the player while it's being edited */
     internal var pieces: StudioPieces? = null
+
+    /** where holding a tile has moved the controls and how tall it's pulled the card */
+    internal var tweaks: PlayerLayoutTweaks? = null
 
     /**
      * The middle part is a camera move over a still of the player (the editor draws it), so the
@@ -174,13 +187,24 @@ fun Modifier.studioBarLayer(parts: StudioParts?, slot: (StudioAnchors) -> Mutabl
  * The tiles' outlines and their tap targets, drawn inside the player sheet so they shrink and grow
  * with it on the way between the selector and the editor. While the editor is up nothing else on
  * the player takes a touch.
+ *
+ * A tap opens a tile. Holding one picks its part up: the controls then follow the finger up and
+ * down (the cover zooming with them), and the card is pulled taller or shorter.
  */
 @Composable
 fun EditTiles(parts: StudioParts, modifier: Modifier = Modifier) {
     val studio = parts.studio
     val editing by remember(studio) { derivedStateOf { studio.editing } }
     if (!editing) return
-    val density = LocalDensity.current
+    val tweaks = parts.tweaks
+    val haptics = LocalHapticFeedback.current
+    val controlsHold = remember(tweaks, haptics) { tweaks?.let { TileHold(it, HeldPart.CONTROLS, haptics) } }
+    val cardHold = remember(tweaks, haptics) { tweaks?.let { TileHold(it, HeldPart.CARD, haptics) } }
+    val holdGlow = animateFloatAsState(
+        targetValue = if (tweaks?.held != null) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 420f),
+        label = "tileHold",
+    )
     Box(modifier = modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -192,31 +216,131 @@ fun EditTiles(parts: StudioParts, modifier: Modifier = Modifier) {
                 },
         )
         // while the middle part's pieces are lifted the editor draws the tiles itself, over its still
-        Canvas(modifier = Modifier.fillMaxSize()) { if (parts.pieces?.lifted != true) drawTiles(parts) }
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            if (parts.pieces?.lifted != true) {
+                drawTiles(parts)
+                drawHoldMarks(parts, holdGlow.value)
+            }
+        }
         if (studio.stage == StudioStage.EDIT) {
-            val l = parts.layout()
-            TileTarget(l.coverTile, density) { studio.go(StudioStage.COVER) }
-            TileTarget(l.middleTile, density) { studio.go(StudioStage.MIDDLE) }
-            TileTarget(l.controlsTile, density) { studio.openSheet(StudioSheet.CONTROLS) }
-            l.barTile?.let { TileTarget(it, density) { studio.go(StudioStage.BAR) } }
+            val hasBar by remember(parts) { derivedStateOf { parts.layout().barTile != null } }
+            TileTarget({ parts.layout().coverTile }) { studio.go(StudioStage.COVER) }
+            TileTarget({ parts.layout().middleTile }, controlsHold) { studio.go(StudioStage.MIDDLE) }
+            TileTarget({ parts.layout().controlsTile }, controlsHold) { studio.openSheet(StudioSheet.CONTROLS) }
+            if (hasBar) TileTarget({ parts.layout().barTile ?: Rect.Zero }, cardHold) { studio.go(StudioStage.BAR) }
         }
     }
 }
 
-@Composable
-private fun TileTarget(rect: Rect, density: Density, onClick: () -> Unit) {
-    with(density) {
-        Box(
-            modifier = Modifier
-                .offset(rect.left.toDp(), rect.top.toDp())
-                .size(rect.width.toDp(), rect.height.toDp())
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick,
-                ),
-        )
+/**
+ * What holding a tile does: picks its part up, moves it with the finger, and puts it down where
+ * it's let go. A tick as it meets an end, and as the controls pass where they usually sit.
+ */
+private class TileHold(
+    private val tweaks: PlayerLayoutTweaks,
+    private val part: HeldPart,
+    private val haptics: HapticFeedback,
+) {
+    private var stopped = false
+    private var side = 0
+
+    /** the part can be moved on this player right now */
+    fun available(): Boolean = when (part) {
+        HeldPart.CONTROLS -> tweaks.controlsMovable
+        HeldPart.CARD -> tweaks.cardGrowable
     }
+
+    fun start() {
+        tweaks.hold(part)
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        stopped = false
+        side = side()
+    }
+
+    fun drag(dy: Float) {
+        val atEnd = when (part) {
+            HeldPart.CONTROLS -> tweaks.dragControls(dy)
+            HeldPart.CARD -> tweaks.dragCard(dy)
+        }
+        if (atEnd && !stopped) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        stopped = atEnd
+        val now = side()
+        if (now != 0 && side != 0 && now != side) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        if (now != 0) side = now
+    }
+
+    fun end() = tweaks.hold(null)
+
+    /** which side of their usual place the controls are on (0 right at it); the card has no middle to pass */
+    private fun side(): Int {
+        if (part != HeldPart.CONTROLS) return 0
+        val offset = tweaks.controlsOffset()
+        return if (offset > 0.5f) 1 else if (offset < -0.5f) -1 else 0
+    }
+}
+
+private const val Tapped = 1
+private const val Cancelled = 2
+
+/**
+ * A tile's touch target, at [rect] (read while placing, so it follows a part being dragged without
+ * recomposing). A tap opens it; with a [hold], holding it picks its part up instead.
+ */
+@Composable
+private fun TileTarget(rect: () -> Rect, hold: TileHold? = null, onClick: () -> Unit) {
+    val currentOnClick by rememberUpdatedState(onClick)
+    Box(
+        modifier = Modifier
+            .layout { measurable, constraints ->
+                val r = rect()
+                val placeable = measurable.measure(
+                    Constraints.fixed(r.width.roundToInt().coerceAtLeast(0), r.height.roundToInt().coerceAtLeast(0))
+                )
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    placeable.place(r.left.roundToInt(), r.top.roundToInt())
+                }
+            }
+            .pointerInput(hold) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    val holds = hold != null && hold.available()
+                    // let go first: a tap. moved away first: a swipe, nothing to do here. Without a
+                    // hold to pick up, a long press is still a tap.
+                    val early = withTimeoutOrNull(if (holds) viewConfiguration.longPressTimeoutMillis else Long.MAX_VALUE) {
+                        var outcome = 0
+                        while (outcome == 0) {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                            outcome = when {
+                                change == null || change.isConsumed -> Cancelled
+                                !change.pressed -> Tapped
+                                (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> Cancelled
+                                else -> 0
+                            }
+                        }
+                        outcome
+                    }
+                    when {
+                        early == Tapped -> currentOnClick()
+                        early == null && hold != null -> {
+                            hold.start()
+                            try {
+                                while (true) {
+                                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                    if (!change.pressed) break
+                                    val dy = change.positionChange().y
+                                    if (dy != 0f) {
+                                        change.consume()
+                                        hold.drag(dy)
+                                    }
+                                }
+                            } finally {
+                                hold.end()
+                            }
+                        }
+                    }
+                }
+            },
+    )
 }
 
 internal fun DrawScope.drawTiles(parts: StudioParts) {
@@ -257,6 +381,60 @@ internal fun DrawScope.drawTiles(parts: StudioParts) {
     drawTileOutline(l.middleTile, a, ink)
     drawTileOutline(l.controlsTile, a, ink)
     l.barTile?.let { drawTileOutline(it, a, ink) }
+}
+
+/** the outline laid over a held tile's, so the part a finger has picked up stands out */
+private val HeldTileInk = TileInk(stroke = 5.dp, top = 1f, bottom = 0.85f)
+
+private val ChevronWidth = 16.dp
+private val ChevronHeight = 6.dp
+private val ChevronGap = 16.dp
+
+/**
+ * While a part is held: its tiles brighten, and chevrons say which way it can still go (dimmed at
+ * an end). The controls get them above and below the whole block, the card above and inside its top.
+ */
+private fun DrawScope.drawHoldMarks(parts: StudioParts, glow: Float) {
+    val tweaks = parts.tweaks ?: return
+    val a = glow * parts.studio.edit.value
+    if (a <= 0.01f) return
+    val l = parts.layout()
+    val gap = ChevronGap.toPx()
+    fun dim(can: Boolean) = if (can) a else a * 0.35f
+    when (tweaks.lastHeld) {
+        HeldPart.CONTROLS -> {
+            drawTileOutline(l.middleTile, a * 0.5f, HeldTileInk)
+            drawTileOutline(l.controlsTile, a * 0.5f, HeldTileInk)
+            drawChevron(Offset(l.middleTile.center.x, l.middleTile.top - gap), up = true, alpha = dim(tweaks.canMoveControls(up = true)))
+            // in the room above the bar when there's one, else just under the play buttons
+            val belowY = l.barTile?.let { (l.controlsTile.bottom + it.top) / 2f } ?: (l.controlsTile.bottom + gap)
+            drawChevron(Offset(l.controlsTile.center.x, belowY), up = false, alpha = dim(tweaks.canMoveControls(up = false)))
+        }
+        HeldPart.CARD -> l.barTile?.let { bar ->
+            drawTileOutline(bar, a * 0.5f, HeldTileInk)
+            drawChevron(Offset(bar.center.x, bar.top - gap), up = true, alpha = dim(tweaks.canGrowCard(taller = true)))
+            drawChevron(Offset(bar.center.x, bar.top + gap), up = false, alpha = dim(tweaks.canGrowCard(taller = false)))
+        }
+        null -> Unit
+    }
+}
+
+/** a small open chevron centred on [center], pointing up or down */
+private fun DrawScope.drawChevron(center: Offset, up: Boolean, alpha: Float) {
+    if (alpha <= 0.01f) return
+    val half = ChevronWidth.toPx() / 2f
+    val rise = ChevronHeight.toPx() / 2f
+    val tip = if (up) -rise else rise
+    val path = Path().apply {
+        moveTo(center.x - half, center.y - tip)
+        lineTo(center.x, center.y + tip)
+        lineTo(center.x + half, center.y - tip)
+    }
+    drawPath(
+        path,
+        Color.White.copy(alpha = alpha.coerceIn(0f, 1f)),
+        style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+    )
 }
 
 /** how a tile's outline is drawn: its width, and how bright it is along its top and its bottom */

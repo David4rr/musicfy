@@ -282,6 +282,21 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
         return true
     }
 
+    /**
+     * Starts a swipe that pushes the open page back down into the card, following the finger the
+     * way [beginDrag] pulls it up; [release] then settles it open or closed. Only for a page that
+     * grew out of the card: one opened over the other page goes back to that one ([back]), and one
+     * whose close has to build the deck first closes on its own.
+     */
+    fun beginCloseDrag(): Boolean {
+        if (page == PlayerPage.NONE || previous != PlayerPage.NONE || linked != page || dragging) return false
+        if (closeNeedsPreparing()) return false
+        job?.cancel()
+        dragValue = header.value.coerceIn(0f, 1f)
+        dragging = true
+        return true
+    }
+
     /** Follows the finger. [delta] is in progress units: + opens. */
     fun dragBy(delta: Float) {
         if (!dragging) return

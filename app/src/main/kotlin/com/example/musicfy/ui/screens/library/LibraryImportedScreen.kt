@@ -20,6 +20,7 @@ import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.SwipeActionsBox
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.queueSwipeAction
+import com.example.musicfy.ui.component.removeImportSwipeAction
 import com.example.musicfy.ui.menu.SongMenu
 import com.example.musicfy.viewmodels.LibraryImportedViewModel
 
@@ -80,7 +81,7 @@ fun LibraryImportedScreen(
         rowWrapper = { song, row ->
             SwipeActionsBox(
                 slab = false,
-                start = { librarySwipeAction(song.song) },
+                start = { if (source != null) removeImportSwipeAction(song.song, source) else librarySwipeAction(song.song) },
                 end = { queueSwipeAction { song.toMediaItem() } },
             ) {
                 row()

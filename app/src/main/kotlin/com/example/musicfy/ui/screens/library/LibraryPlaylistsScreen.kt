@@ -61,6 +61,7 @@ fun LibraryPlaylistsScreen(
                     playlist = playlist,
                     coroutineScope = coroutineScope,
                     onDismiss = menuState::dismiss,
+                    navController = navController,
                 )
             }
         },

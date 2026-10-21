@@ -46,8 +46,13 @@ fun ImportProgressScreen(
         if (!navController.popBackStack(ImportSyncRoute, inclusive = false)) navController.navigateUp()
     }
 
+    val resync = progress.resync
     SubSettingsScaffold(
-        title = if (progress.isRunning) "Importing" else "Import",
+        title = when {
+            resync != null -> "Re-sync"
+            progress.isRunning -> "Importing"
+            else -> "Import"
+        },
         onBack = { navController.navigateUp() },
     ) {
         ImportInfoCard {
@@ -56,7 +61,7 @@ fun ImportProgressScreen(
                 text = when {
                     progress.isRunning -> "${progress.processedTracks} of ${progress.totalTracks} songs"
                     progress.cancelled -> "Stopped"
-                    progress.error != null -> "Import failed"
+                    progress.error != null -> if (resync != null) "Re-sync failed" else "Import failed"
                     progress.isDone -> "Done"
                     else -> "No import running"
                 },
@@ -84,6 +89,7 @@ fun ImportProgressScreen(
                 Spacer(Modifier.height(12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     SummaryLine("Found on YouTube Music", "${progress.matchedTracks} of ${progress.totalTracks}")
+                    if (resync != null && progress.isDone) SummaryLine("Added to \"${resync.playlistName}\"", resync.added.toString())
                     if (progress.playlistsCreated > 0) SummaryLine("New playlists", progress.playlistsCreated.toString())
                     if (progress.likedAdded > 0) SummaryLine("Songs liked", progress.likedAdded.toString())
                     if (progress.unmatched.isNotEmpty()) SummaryLine("Not found", progress.unmatched.size.toString())

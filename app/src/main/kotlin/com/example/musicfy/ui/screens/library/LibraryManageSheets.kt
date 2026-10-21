@@ -1,7 +1,8 @@
 // LibraryManageSheets.kt
 //
-// "Manage imports", "Manage local" and "Manage cache": two big tiles and a row per action, as in the mocks.
-// Anything that takes music out of the library asks once more on a sheet pushed over this one.
+// "Manage imports", "Manage local" and "Manage cache": big tiles for the main actions and a row per
+// other action, as in the mocks. Anything that takes music out of the library asks once more on a
+// sheet pushed over this one.
 
 package com.example.musicfy.ui.screens.library
 
@@ -40,8 +41,15 @@ import com.example.musicfy.ui.player.menu.MenuRowSurface
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.viewmodels.LibraryImportViewModel
 
-/** [sources] are the services that have brought music in, one "Delete ... imports" row each. */
-fun PopupSheetState.showManageImportsSheet(sources: List<ImportSource>, viewModel: LibraryImportViewModel) {
+/**
+ * [sources] are the services that have brought music in, one "Delete ... imports" row each.
+ * [onResyncAll] checks every imported playlist for new songs: a long tile under the two others.
+ */
+fun PopupSheetState.showManageImportsSheet(
+    sources: List<ImportSource>,
+    viewModel: LibraryImportViewModel,
+    onResyncAll: () -> Unit,
+) {
     var sheet: PopupSheetHandle? = null
     fun confirmThen(title: String, message: String, action: String, run: () -> Unit) =
         showConfirm(title, message, action) {
@@ -50,7 +58,7 @@ fun PopupSheetState.showManageImportsSheet(sources: List<ImportSource>, viewMode
         }
     sheet = showWithHandle {
         ManageLayout(
-            first = ManageAction(R.drawable.delete, "Delete all imports") {
+            ManageAction(R.drawable.delete, "Delete all imports") {
                 confirmThen(
                     title = "Delete all imports?",
                     message = "Every song, like and playlist you imported leaves your library. Songs that were " +
@@ -59,7 +67,7 @@ fun PopupSheetState.showManageImportsSheet(sources: List<ImportSource>, viewMode
                     run = viewModel::deleteAllImports,
                 )
             },
-            second = ManageAction(R.drawable.undo, "Undo import session") {
+            ManageAction(R.drawable.undo, "Undo import session") {
                 confirmThen(
                     title = "Undo your last import?",
                     message = "The songs, likes and playlists your last import brought in leave your library. " +
@@ -67,6 +75,10 @@ fun PopupSheetState.showManageImportsSheet(sources: List<ImportSource>, viewMode
                     action = "Undo import",
                     run = viewModel::undoLatestImport,
                 )
+            },
+            wide = ManageAction(R.drawable.sync, "Re-sync all") {
+                sheet?.dismiss()
+                onResyncAll()
             },
             rows = sources.map { source ->
                 ManageAction(R.drawable.delete, "Delete ${source.label} imports") {
@@ -92,11 +104,11 @@ fun PopupSheetState.showManageLocalSheet(
     var sheet: PopupSheetHandle? = null
     sheet = showWithHandle {
         ManageLayout(
-            first = ManageAction(R.drawable.refresh, "Re-scan local") {
+            ManageAction(R.drawable.refresh, "Re-scan local") {
                 sheet?.dismiss()
                 onRescan()
             },
-            second = ManageAction(R.drawable.delete, "Delete from list") {
+            ManageAction(R.drawable.delete, "Delete from list") {
                 sheet?.dismiss()
                 onRemoveFromList()
             },
@@ -128,7 +140,7 @@ fun PopupSheetState.showManageCachedSheet(
     var sheet: PopupSheetHandle? = null
     sheet = showWithHandle {
         ManageLayout(
-            first = ManageAction(R.drawable.clear_all, "Clear cache") {
+            ManageAction(R.drawable.clear_all, "Clear cache") {
                 showConfirm(
                     title = "Clear your cache?",
                     message = "Every cached song is deleted from this phone and streams again the next time " +
@@ -139,7 +151,7 @@ fun PopupSheetState.showManageCachedSheet(
                     sheet?.dismiss()
                 }
             },
-            second = ManageAction(R.drawable.delete, "Remove songs") {
+            ManageAction(R.drawable.delete, "Remove songs") {
                 sheet?.dismiss()
                 showRemoveCachedSheet(cachedSongs, onRemove)
             },
@@ -172,7 +184,7 @@ private fun PopupSheetState.showConfirm(title: String, message: String, action: 
 private class ManageAction(@DrawableRes val icon: Int, val label: String, val onClick: () -> Unit)
 
 @Composable
-private fun ManageLayout(first: ManageAction, second: ManageAction, rows: List<ManageAction>) {
+private fun ManageLayout(first: ManageAction, second: ManageAction, wide: ManageAction? = null, rows: List<ManageAction>) {
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(bottom = 16.dp),
@@ -181,6 +193,8 @@ private fun ManageLayout(first: ManageAction, second: ManageAction, rows: List<M
             ManageTile(first, Modifier.weight(1f))
             ManageTile(second, Modifier.weight(1f))
         }
+        // a third big action spans the width under the two, rather than squeezing three into a row
+        wide?.let { ManageTile(it, Modifier.fillMaxWidth()) }
         rows.forEach { ManageRow(it) }
     }
 }

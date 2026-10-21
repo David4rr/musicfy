@@ -32,6 +32,7 @@ import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.utils.rememberSettled
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -57,6 +58,25 @@ fun YouTubeVideoBackground(
     modifier: Modifier = Modifier,
 ) {
     if (streamUrl.isNullOrBlank()) return
+    // Skipping through songs started a video decoder for every one passed on the way, each holding
+    // its frames, while the last few were still closing. Memory climbed past a gigabyte in thirty
+    // quick skips and weaker phones killed the app. The video starts once the song has stayed.
+    val settledUrl = rememberSettled(streamUrl, VideoSettleMs) ?: return
+    YouTubeVideoPlayer(settledUrl, isPlaying, positionMsProvider, lyricVideoAnchors, glassState, modifier)
+}
+
+/** how long a song has to stay before its video starts */
+private const val VideoSettleMs = 700L
+
+@Composable
+private fun YouTubeVideoPlayer(
+    streamUrl: String,
+    isPlaying: Boolean,
+    positionMsProvider: () -> Long,
+    lyricVideoAnchors: List<LyricVideoAnchor>?,
+    glassState: GlassState,
+    modifier: Modifier,
+) {
     val context = LocalContext.current
     var isVideoReady by remember(streamUrl) { mutableStateOf(false) }
 

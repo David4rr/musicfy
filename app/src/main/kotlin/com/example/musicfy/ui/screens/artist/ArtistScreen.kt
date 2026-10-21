@@ -93,7 +93,7 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.HomeCardSpacing
 import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.HomeRowHeight
+import com.example.musicfy.ui.component.homeRowHeight
 import com.example.musicfy.ui.component.HomeTrackRow
 import com.example.musicfy.ui.component.HomeVideoCard
 import com.example.musicfy.ui.component.LocalMenuState
@@ -566,7 +566,7 @@ private fun LazyListScope.artistShelves(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(HomeRowHeight * rows + 6.dp * (rows - 1).coerceAtLeast(0))
+                    .height(homeRowHeight() * rows + 6.dp * (rows - 1).coerceAtLeast(0))
                     .revealOnAppear(key = "top_songs", seenState = revealSeen),
             ) {
                 itemsIndexed(items = songs, key = { _, song -> song.id }) { _, song ->

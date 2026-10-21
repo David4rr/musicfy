@@ -362,6 +362,24 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
     }
 
+    composable(com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute) {
+        com.example.musicfy.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute) {
+        com.example.musicfy.ui.screens.settings.integrations.discord.DiscordScreen(navController = navController)
+    }
+
+    composable(
+        route = com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceRoute,
+        arguments = listOf(navArgument("site") { type = NavType.StringType }),
+    ) { entry ->
+        val site = com.example.musicfy.scrobble.ScrobbleSite.entries
+            .find { it.name == entry.arguments?.getString("site") }
+            ?: com.example.musicfy.scrobble.ScrobbleSite.LASTFM
+        com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
+    }
+
     composable("playback_settings") {
         com.example.musicfy.ui.screens.settings.PlaybackSettingsScreen(navController = navController)
     }
@@ -400,7 +418,20 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(
         route = com.example.musicfy.ui.screens.settings.importsync.AccountImportRoutePattern,
-        arguments = listOf(navArgument("service") { type = NavType.StringType }),
+        arguments = listOf(
+            navArgument("service") { type = NavType.StringType },
+            // what a Re-sync opened the page for, and the services Re-sync all goes on to
+            navArgument("resync") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            },
+            navArgument("then") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            },
+        ),
     ) {
         com.example.musicfy.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
     }

@@ -8,6 +8,8 @@ import com.example.musicfy.extensions.isUserLoggedIn
 import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.importer.ImportedTrack
 import com.example.musicfy.importer.ParsedImport
+import com.example.musicfy.importer.PlaylistOrigin
+import com.example.musicfy.importer.ResyncRead
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
 import com.music.innertube.YouTube
@@ -37,10 +39,18 @@ sealed interface AccountImportState {
         val accountName: String?,
         val playlists: List<RemotePlaylist>,
         val selected: Set<String>,
+        /** A Re-sync that couldn't find this playlist by name: the user picks which one it is. */
+        val pickingFor: String? = null,
     ) : AccountImportState
     data class Reading(val label: String, val done: Int, val total: Int) : AccountImportState
     data class Failed(val message: String, val signedOut: Boolean) : AccountImportState
 }
+
+/** The imported playlist a Re-sync reads again: its id here, its name, and its id on the service if saved. */
+data class ResyncTarget(val playlistId: String, val name: String, val remoteId: String?)
+
+/** What a Re-sync read after sign-in, by playlist id here, and the names it couldn't find. */
+data class ResyncReads(val reads: Map<String, ResyncRead>, val missing: List<String>)
 
 /**
  * One sign-in → list → pick → read pass against one service, shared by the Import settings page
@@ -69,6 +79,13 @@ class AccountImportSession(
     private val _notice = MutableStateFlow<String?>(null)
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
+    /** Set for a Re-sync: after sign-in these playlists are read, instead of listing them all to pick from. */
+    @Volatile private var resyncTargets: List<ResyncTarget> = emptyList()
+
+    /** A Re-sync's playlists, read and ready to be matched. */
+    private val _resyncReads = MutableStateFlow<ResyncReads?>(null)
+    val resyncReads: StateFlow<ResyncReads?> = _resyncReads.asStateFlow()
+
     private val credentials = CapturedCredentials()
     private val connectSignal = Channel<Unit>(Channel.CONFLATED)
 
@@ -80,6 +97,12 @@ class AccountImportSession(
 
     fun start() {
         if (service == AccountService.YOUTUBE_MUSIC) refreshYouTube() else startSignIn()
+    }
+
+    /** Signs in like an import does, then reads only [targets]. */
+    fun startResync(targets: List<ResyncTarget>) {
+        resyncTargets = targets
+        start()
     }
 
     // ---- sign-in ----
@@ -95,7 +118,7 @@ class AccountImportSession(
                 try {
                     val connected = connector?.connect(credentials) ?: continue
                     library = connected
-                    loadPlaylists()
+                    afterConnect()
                     break
                 } catch (e: CancellationException) {
                     // only a real cancellation ends sign-in; a stray one from a request mustn't
@@ -166,14 +189,19 @@ class AccountImportSession(
                     accountPhotoUrl = info?.thumbnailUrl,
                 )
             }
-            loadPlaylists()
+            afterConnect()
         }
     }
 
     // ---- choosing ----
 
     fun retry() {
-        if (library != null) scope.launch(Dispatchers.IO) { loadPlaylists() } else signInAgain()
+        if (library != null) scope.launch(Dispatchers.IO) { afterConnect() } else signInAgain()
+    }
+
+    private suspend fun afterConnect() {
+        val targets = resyncTargets
+        if (targets.isEmpty()) loadPlaylists() else readForResync(targets)
     }
 
     private suspend fun loadPlaylists() {
@@ -223,6 +251,7 @@ class AccountImportSession(
             val librarySongs = mutableListOf<ImportedTrack>()
             val playlists = linkedMapOf<String, List<ImportedTrack>>()
             val covers = mutableMapOf<String, String>()
+            val origins = mutableMapOf<String, PlaylistOrigin>()
             val failed = mutableListOf<String>()
             var signedOut = false
 
@@ -237,6 +266,7 @@ class AccountImportSession(
                             val name = uniqueName(playlist.name, playlists.keys)
                             playlists[name] = tracks
                             playlist.coverUrl?.let { covers[name] = it }
+                            origins[name] = PlaylistOrigin(remoteId = playlist.id)
                         }
                     }
                 } catch (e: CancellationException) {
@@ -270,7 +300,87 @@ class AccountImportSession(
                 warnings = if (failed.isEmpty()) emptyList() else listOf("Couldn't read: ${failed.joinToString(", ")}. The rest imports fine."),
                 provider = ImportSource.fromKey(service.route),
                 playlistCovers = covers,
+                playlistOrigins = origins,
             )
+        }
+    }
+
+    // ---- reading playlists again, for a Re-sync ----
+
+    private suspend fun readForResync(targets: List<ResyncTarget>) {
+        val lib = library ?: return
+        val single = targets.singleOrNull()
+        try {
+            val reads = linkedMapOf<String, ResyncRead>()
+            val missing = mutableListOf<ResyncTarget>()
+            var listed: List<RemotePlaylist>? = null
+            for ((index, target) in targets.withIndex()) {
+                _state.value = AccountImportState.Reading("Reading \"${target.name}\"", index, targets.size)
+                // straight to it when the import saved its id: no need to list the whole library
+                val byId = target.remoteId?.let { readById(lib, it, target.name) }
+                if (!byId.isNullOrEmpty()) {
+                    reads[target.playlistId] = ResyncRead(byId, PlaylistOrigin(remoteId = target.remoteId))
+                    continue
+                }
+                val playlists = listed ?: lib.playlists().filterNot { it.isLiked || it.isLibrary }.also { listed = it }
+                val found = playlists.firstOrNull { it.id == target.remoteId } ?: playlists.named(target.name)
+                if (found == null) {
+                    missing += target
+                    continue
+                }
+                reads[target.playlistId] = ResyncRead(lib.tracks(found), PlaylistOrigin(remoteId = found.id))
+            }
+            if (single != null && missing.isNotEmpty()) {
+                // renamed on one side, or never in this account: the user says which one it is
+                val choosing = AccountImportState.Choosing(lib.accountName, listed.orEmpty(), emptySet(), pickingFor = single.name)
+                lastChoosing = choosing
+                _state.value = choosing
+                return
+            }
+            _resyncReads.value = ResyncReads(reads, missing.map { it.name })
+        } catch (e: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            Timber.w(e, "${service.label} re-sync read was cut short")
+            _state.value = AccountImportState.Failed("Couldn't read your playlists on ${service.label}.", signedOut = false)
+        } catch (e: AccountImportException) {
+            if (e.signedOut) library = null
+            _state.value = AccountImportState.Failed(e.message ?: "Couldn't read your playlists.", e.signedOut)
+        } catch (e: Exception) {
+            Timber.e(e, "${service.label} re-sync read failed")
+            _state.value = AccountImportState.Failed("Couldn't read your playlists on ${service.label}.", signedOut = false)
+        }
+    }
+
+    /** Null when the service no longer knows that id (deleted, or a link to someone else's playlist). */
+    private suspend fun readById(lib: AccountLibrary, id: String, name: String): List<ImportedTrack>? = try {
+        lib.tracks(RemotePlaylist(id, name, trackCount = null))
+    } catch (e: AccountImportException) {
+        if (e.signedOut) throw e
+        Timber.w(e, "${service.label} has no playlist $id any more")
+        null
+    }
+
+    /** The user picked which of the account's playlists a single Re-sync is for. */
+    fun pickForResync(id: String) {
+        val target = resyncTargets.singleOrNull() ?: return
+        val choosing = _state.value as? AccountImportState.Choosing ?: return
+        val lib = library ?: return
+        val picked = choosing.playlists.firstOrNull { it.id == id } ?: return
+        workJob?.cancel()
+        workJob = scope.launch(Dispatchers.IO) {
+            try {
+                _state.value = AccountImportState.Reading("Reading \"${picked.name}\"", 0, 1)
+                val read = ResyncRead(lib.tracks(picked), PlaylistOrigin(remoteId = picked.id))
+                _resyncReads.value = ResyncReads(mapOf(target.playlistId to read), missing = emptyList())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: AccountImportException) {
+                if (e.signedOut) library = null
+                _state.value = AccountImportState.Failed(e.message ?: "Couldn't read \"${picked.name}\".", e.signedOut)
+            } catch (e: Exception) {
+                Timber.e(e, "Reading ${picked.name} failed")
+                _state.value = AccountImportState.Failed("Couldn't read \"${picked.name}\" on ${service.label}.", signedOut = false)
+            }
         }
     }
 

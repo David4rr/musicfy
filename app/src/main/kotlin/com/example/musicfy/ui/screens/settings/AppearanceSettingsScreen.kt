@@ -87,6 +87,10 @@ fun AppearanceSettingsScreen(navController: NavController) {
         DisableBlurKey,
         defaultValue = false
     )
+    var blurQuality by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.BlurQualityKey,
+        com.example.musicfy.constants.BlurQuality.HIGH,
+    )
     val (progressiveBlur, onProgressiveBlurChange) = rememberPreference(
         EnableProgressiveBlurKey,
         defaultValue = true
@@ -349,6 +353,34 @@ fun AppearanceSettingsScreen(navController: NavController) {
                     AppSwitch(
                         checked = !disableBlur,
                         onCheckedChange = { enabled -> onDisableBlurChange(!enabled) },
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Blur quality") },
+                highlightKey = "Blur quality",
+                descriptionText = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) {
+                    "Lighter glass, like before 8.1. Smoother on slower phones"
+                } else {
+                    "Finer frosted glass on the bar and the player"
+                },
+                icon = painterResource(R.drawable.tune),
+                iconShape = CircleShape,
+                isVisible = !disableBlur,
+                isSubOption = true,
+                onClick = {
+                    blurQuality = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) {
+                        com.example.musicfy.constants.BlurQuality.HIGH
+                    } else {
+                        com.example.musicfy.constants.BlurQuality.LOW
+                    }
+                },
+                trailingContent = {
+                    Text(
+                        text = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) "Low" else "High",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.70f),
                     )
                 },
             ),

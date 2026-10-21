@@ -62,7 +62,9 @@ import com.example.musicfy.LocalDatabase
 import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.constants.KeepScreenOn
 import com.example.musicfy.playback.ExoDownloadService
+import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.SheetActionCard
 import com.example.musicfy.ui.component.SheetActionCardRow
 import com.example.musicfy.ui.component.SheetDownloadCard
@@ -70,6 +72,7 @@ import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.ui.menu.AddToPlaylistDialog
 import com.example.musicfy.ui.utils.resize
+import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -272,6 +275,8 @@ fun PlayerActionMenu(
                 Spacer(modifier = Modifier.height(8.dp))
                 SleepTimerRow(onClick = { showSleepTimer = true })
                 Spacer(modifier = Modifier.height(8.dp))
+                KeepScreenOnRow()
+                Spacer(modifier = Modifier.height(8.dp))
                 MenuRow(
                     icon = R.drawable.speed,
                     title = "Playback speed and tempo",
@@ -391,6 +396,18 @@ private fun MenuRow(
         )
         trailing?.invoke()
     }
+}
+
+/** The phone doesn't sleep while Musicfy is open: for following lyrics, or a phone on a car mount. */
+@Composable
+private fun KeepScreenOnRow() {
+    val (keepScreenOn, setKeepScreenOn) = rememberPreference(KeepScreenOn, defaultValue = false)
+    MenuRow(
+        icon = R.drawable.lock_open,
+        title = "Keep screen on",
+        onClick = { setKeepScreenOn(!keepScreenOn) },
+        trailing = { AppSwitch(checked = keepScreenOn, onCheckedChange = setKeepScreenOn) },
+    )
 }
 
 @Composable

@@ -1,8 +1,9 @@
 // ProviderOrder.kt
 //
 // The provider order card (Audio Quality, from the user's design): one row per provider with its
-// logo, name and a drag handle, an arrow between each. Drag a row by its handle and the others
-// slide out of its way; let go and the new order is saved. Providers that are off read dimmed.
+// logo, name and a drag handle, a chevron between each. Drag a row by its handle and the others
+// slide out of its way; let go and the new order is saved. A tap on a row is the page's to handle
+// (turn it on or off, or sign in). Providers that are off read dimmed.
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -11,7 +12,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,8 +55,7 @@ import androidx.compose.ui.zIndex
 import com.example.musicfy.ui.theme.InterFontFamily
 import kotlin.math.roundToInt
 
-private val RowHeight = 76.dp
-private val ArrowGap = 30.dp
+private val ArrowGap = 26.dp
 
 @Composable
 fun ProviderOrder(
@@ -62,10 +64,15 @@ fun ProviderOrder(
     logo: (String) -> Int?,
     usable: (String) -> Boolean,
     onReorder: (List<String>) -> Unit,
+    /** the small line under a provider's name */
+    status: (String) -> String? = { null },
+    onTap: (String) -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
-    val slotPx = with(density) { (RowHeight + ArrowGap).toPx() }
+    // rows sit on fixed slots so they can slide; a big system font makes the slots taller
+    val rowHeight = 68.dp + 26.dp * (density.fontScale - 1f).coerceAtLeast(0f)
+    val slotPx = with(density) { (rowHeight + ArrowGap).toPx() }
     var items by remember { mutableStateOf(order) }
     var dragging by remember { mutableStateOf<String?>(null) }
     // a saved order coming back in mustn't yank the list while a row is held
@@ -78,26 +85,26 @@ fun ProviderOrder(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(30.dp))
-            .background(LabColors.Card)
-            .padding(18.dp),
+            .background(Color(0xFF1A1A1C))
+            .padding(12.dp),
     ) {
-        Box(Modifier.fillMaxWidth().height(RowHeight * items.size + ArrowGap * (items.size - 1).coerceAtLeast(0))) {
+        Box(Modifier.fillMaxWidth().height(rowHeight * items.size + ArrowGap * (items.size - 1).coerceAtLeast(0))) {
             // the arrows stay put between the slots; the rows move over them
             for (i in 0 until items.size - 1) {
                 Canvas(
                     Modifier
                         .align(Alignment.TopCenter)
-                        .offset(y = RowHeight * (i + 1) + ArrowGap * i)
+                        .offset(y = rowHeight * (i + 1) + ArrowGap * i)
                         .size(width = 24.dp, height = ArrowGap),
                 ) {
-                    val c = Color.White.copy(alpha = 0.35f)
+                    // the mock's chevron: this one hands on to the next
+                    val c = Color.White.copy(alpha = 0.3f)
                     val stroke = 2.dp.toPx()
-                    val top = size.height * 0.22f
-                    val bottom = size.height * 0.78f
                     val cx = size.width / 2
-                    drawLine(c, Offset(cx, top), Offset(cx, bottom), stroke, StrokeCap.Round)
-                    drawLine(c, Offset(cx - 6.dp.toPx(), bottom - 6.dp.toPx()), Offset(cx, bottom), stroke, StrokeCap.Round)
-                    drawLine(c, Offset(cx + 6.dp.toPx(), bottom - 6.dp.toPx()), Offset(cx, bottom), stroke, StrokeCap.Round)
+                    val cy = size.height / 2
+                    val half = 7.dp.toPx()
+                    drawLine(c, Offset(cx - half, cy - half / 2), Offset(cx, cy + half / 2), stroke, StrokeCap.Round)
+                    drawLine(c, Offset(cx + half, cy - half / 2), Offset(cx, cy + half / 2), stroke, StrokeCap.Round)
                 }
             }
             items.forEachIndexed { index, id ->
@@ -126,24 +133,29 @@ fun ProviderOrder(
                                 scaleY = 1f + 0.03f * lift
                             }
                             .fillMaxWidth()
-                            .height(RowHeight)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(if (isDragged) Color(0xFF242428) else Color(0xFF141416))
-                            .padding(horizontal = 16.dp),
+                            .height(rowHeight)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(if (isDragged) Color(0xFF242428) else Color(0xFF111113))
+                            .clickable { onTap(id) }
+                            .padding(start = 16.dp, end = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.graphicsLayer { alpha = if (on) 1f else 0.45f }) {
-                            ProviderLogo(logo(id), size = 44)
+                            ProviderLogo(logo(id), size = 38)
                         }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f).graphicsLayer { alpha = if (on) 1f else 0.45f }) {
-                            Text(name(id), fontFamily = InterFontFamily, fontWeight = FontWeight.Medium, fontSize = 19.sp, color = Color.White)
-                            if (!on) Text("Off", fontFamily = InterFontFamily, fontSize = 12.sp, color = LabColors.Secondary)
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f).graphicsLayer { alpha = if (on) 1f else 0.5f }) {
+                            Text(name(id), fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White, maxLines = 1)
+                            status(id)?.let {
+                                Text(it, fontFamily = InterFontFamily, fontSize = 11.sp, color = LabColors.Secondary, maxLines = 1)
+                            }
                         }
-                        // the handle: dragging it moves the row
+                        // the handle: dragging it moves the row. A tap on it does nothing, rather
+                        // than reaching the row and switching the provider
                         Canvas(
                             Modifier
                                 .size(48.dp)
+                                .pointerInput(Unit) { detectTapGestures {} }
                                 .pointerInput(id) {
                                     detectDragGestures(
                                         onDragStart = {

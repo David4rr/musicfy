@@ -224,10 +224,18 @@ fun rememberChromeAccentWash(): () -> Color {
  * the first passes of the blur, every frame the glass or what's under it moves. Small radii keep
  * full resolution: there the detail still shows.
  */
-internal fun glassDownscale(effectiveRadius: Float): Int = when {
+internal fun glassDownscale(effectiveRadius: Float, low: Boolean = false): Int = when {
     effectiveRadius >= 64f -> 4
+    // low quality drops a step sooner: a little softer, a quarter of the pixels to draw and blur
+    low && effectiveRadius >= 32f -> 4
     effectiveRadius >= 16f -> 2
+    low && effectiveRadius >= 8f -> 2
     else -> 1
+}
+
+/** The blur quality chosen in Appearance, for every glass surface under it. */
+val LocalBlurQuality = androidx.compose.runtime.staticCompositionLocalOf {
+    com.example.musicfy.constants.BlurQuality.HIGH
 }
 
 /** Lays its content out [margin] px bigger on every side, centred over the space it takes. */
@@ -308,7 +316,8 @@ internal fun DownscaledBlur(
     val currentRadius by rememberUpdatedState(radius)
     val currentOffscreen by rememberUpdatedState(offscreen)
     // A radius that animates only re-lays this out when it crosses into another resolution step.
-    val downscale by remember { derivedStateOf { glassDownscale(currentRadius()) } }
+    val low = LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.LOW
+    val downscale by remember(low) { derivedStateOf { glassDownscale(currentRadius(), low) } }
     val maskCache = remember { MaskedEffectCache() }
     val full = remember { FullSize() }
 
@@ -426,8 +435,11 @@ fun GlassPillBackground(
         modifier = modifier
             .then(if (shape != null) Modifier.clip(shape) else Modifier)
             .then(
-                // no blur below Android 12, so nothing to read past the edges
-                if (bleed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // no blur below Android 12, so nothing to read past the edges; and low quality
+                // keeps to what's right under the glass, a much smaller area to blur
+                if (bleed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+                ) {
                     Modifier.bleed { kotlin.math.ceil(radius()).toInt() }
                 } else Modifier
             )

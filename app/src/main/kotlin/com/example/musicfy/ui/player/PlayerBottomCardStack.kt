@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
@@ -51,10 +52,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -66,6 +69,7 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.viewmodels.LyricsScreenViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** The card's visible height. Its body carries on below the screen edge - see [BottomBleed]. */
 internal val PlayerCardHeight = 54.dp
@@ -107,6 +111,16 @@ private val QueueContentStart = 14.dp
 /** The card content fades as it flies, handing over to the page's copy of it. */
 private const val FlightFadeEnd = 0.38f
 
+/** How many songs after the next a taller queue card lists. */
+private const val LaterSongsShown = 3
+
+/** [height], and [extra] px more (read while measuring, so it can change every frame without recomposing). */
+private fun Modifier.heightPlus(height: Dp, extra: () -> Float): Modifier = layout { measurable, constraints ->
+    val h = (height.toPx() + extra()).roundToInt().coerceAtLeast(0)
+    val placeable = measurable.measure(constraints.copy(minHeight = h, maxHeight = h))
+    layout(placeable.width, h) { placeable.place(0, 0) }
+}
+
 @Composable
 internal fun PlayerBottomCardStack(
     glassState: GlassState,
@@ -123,6 +137,11 @@ internal fun PlayerBottomCardStack(
      * off the screen: the bar's editor lifts the deck up to the middle of the screen.
      */
     closedProvider: () -> Float = { 0f },
+    /**
+     * How much taller than usual the cards are, px: pulled up in the player editor to show more of
+     * the lyrics (and of the queue). Read while laying out and drawing only.
+     */
+    growthProvider: () -> Float = { 0f },
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
 
@@ -149,6 +168,17 @@ internal fun PlayerBottomCardStack(
 
     val nextSong = remember(queueItems, currentMediaItemIndex) {
         queueItems.getOrNull(currentMediaItemIndex + 1)
+    }
+    // what a taller queue card lists under the next song
+    val laterSongs = remember(queueItems, currentMediaItemIndex) {
+        queueItems.drop(currentMediaItemIndex + 2).take(LaterSongsShown)
+    }
+
+    // A taller lyric card shows each line's reading and translation, so it fills them in the way the
+    // lyrics page does. Only while it's tall: otherwise nothing here would show them.
+    val tall by remember { derivedStateOf { growthProvider() > 0.5f } }
+    if (tall && lines.isNotEmpty()) {
+        LyricsReadings(lines, mediaMetadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
     }
 
     val flipDistancePx = with(density) { FlipDistance.toPx() }
@@ -194,12 +224,12 @@ internal fun PlayerBottomCardStack(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(PlayerDeckHeight)
+            .heightPlus(PlayerDeckHeight, growthProvider)
             .onGloballyPositioned { coords ->
                 // The front card's slot, through to the screen's bottom edge: where the expanding
                 // surface starts from and shrinks back into.
                 val bounds = coords.boundsInRoot()
-                val cardTop = bounds.bottom - with(density) { PlayerCardHeight.toPx() }
+                val cardTop = bounds.bottom - with(density) { PlayerCardHeight.toPx() } - growthProvider()
                 val slot = Rect(bounds.left, cardTop, bounds.right, bounds.bottom + with(density) { BottomBleed.toPx() })
                 if (morph.cardRect != slot) morph.cardRect = slot
             }
@@ -280,12 +310,14 @@ internal fun PlayerBottomCardStack(
                     transition = transition,
                     morph = morph,
                     closedProvider = closedProvider,
+                    growthProvider = growthProvider,
                 ) {
                     if (page == PlayerPage.LYRICS) {
                         MiniLyricsTicker(
                             lines = lines,
                             loaded = lyricsEntity != null,
                             morph = morph,
+                            growthProvider = growthProvider,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(start = LyricContentStart, end = LyricContentStart),
@@ -295,6 +327,10 @@ internal fun PlayerBottomCardStack(
                             nextTitle = nextSong?.title,
                             nextArtist = nextSong?.artist,
                             artworkUri = nextSong?.artworkUri?.toString(),
+                            later = if (tall) laterSongs.map { song ->
+                                listOfNotNull(song.title, song.artist.takeIf { it.isNotBlank() }).joinToString(" - ")
+                            } else emptyList(),
+                            growthProvider = growthProvider,
                         )
                     }
                 }
@@ -310,6 +346,7 @@ private fun BoxScope.DeckCard(
     transition: PlayerPageTransition,
     morph: CardMorphState,
     closedProvider: () -> Float,
+    growthProvider: () -> Float,
     content: @Composable () -> Unit,
 ) {
     // Growing into its page: the card's surface is handed to the expanding one (drawn by the
@@ -325,7 +362,7 @@ private fun BoxScope.DeckCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(PlayerCardHeight)
+            .heightPlus(PlayerCardHeight, growthProvider)
             .align(Alignment.BottomCenter)
             .graphicsLayer {
                 val f = frontness()
@@ -344,8 +381,8 @@ private fun BoxScope.DeckCard(
                 // card's top sits CardHeight above the bottom; this card's sits higher by the peek.
                 val scale = mixF(BackCardScale, 1f, f)
                 val otherF = 1f - f
-                val thisTop = PlayerCardHeight.toPx() * scale + mixF(PeekOffset.toPx(), 0f, f)
-                val otherTop = PlayerCardHeight.toPx() * mixF(BackCardScale, 1f, otherF) +
+                val thisTop = size.height * scale + mixF(PeekOffset.toPx(), 0f, f)
+                val otherTop = size.height * mixF(BackCardScale, 1f, otherF) +
                     mixF(PeekOffset.toPx(), 0f, otherF)
                 val exposed = (thisTop - otherTop) / scale
                 val bottom = size.height + BottomBleed.toPx() * (1f - closedProvider().coerceIn(0f, 1f))
@@ -382,12 +419,14 @@ private fun BoxScope.DeckCard(
                     if (flightProgress() > 0.0005f || frontnessProvider() < 0.999f) return@onGloballyPositioned
                     val r = coords.boundsInRoot()
                     with(density) {
+                        // the card's own row: all of a usual card, the top of a taller one
+                        val rowCenter = r.top + PlayerCardHeight.toPx() / 2f
                         if (page == PlayerPage.LYRICS) {
-                            morph.cardLyricAnchor = Offset(r.left + LyricContentStart.toPx(), r.center.y)
+                            morph.cardLyricAnchor = Offset(r.left + LyricContentStart.toPx(), rowCenter)
                         } else {
                             morph.cardArtAnchor = Offset(
                                 r.left + QueueContentStart.toPx(),
-                                r.center.y - ArtworkSize.toPx() / 2f,
+                                rowCenter - ArtworkSize.toPx() / 2f,
                             )
                         }
                     }
@@ -426,10 +465,11 @@ private fun BoxScope.DeckCard(
                     } else {
                         QueueContentStart.toPx()
                     }
+                    val rowCenter = PlayerCardHeight.toPx() / 2f
                     val pivotY = if (page == PlayerPage.LYRICS) {
-                        size.height / 2f
+                        rowCenter
                     } else {
-                        size.height / 2f - ArtworkSize.toPx() / 2f
+                        rowCenter - ArtworkSize.toPx() / 2f
                     }
                     transformOrigin = TransformOrigin(
                         (start / size.width).coerceIn(-4f, 4f),
@@ -454,11 +494,33 @@ private fun QueueCardContent(
     nextTitle: String?,
     nextArtist: String?,
     artworkUri: String?,
+    /** the songs after the next, for a taller card */
+    later: List<String>,
+    growthProvider: () -> Float,
+) {
+    Column(modifier = Modifier.fillMaxSize().clipToBounds()) {
+        NextSongRow(nextTitle, nextArtist, artworkUri)
+        if (later.isNotEmpty()) {
+            // lined up with the next song's title, past its artwork
+            CardExtraLines(growthProvider, Modifier.padding(start = QueueContentStart + ArtworkSize + 8.dp, end = QueueContentStart)) {
+                later.forEach { CardExtraLine(it, alpha = 0.5f) }
+            }
+        }
+    }
+}
+
+/** the queue card's own row: the next song's artwork, and its title and artist */
+@Composable
+private fun NextSongRow(
+    nextTitle: String?,
+    nextArtist: String?,
+    artworkUri: String?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .height(PlayerCardHeight)
             .padding(horizontal = QueueContentStart)
     ) {
         if (artworkUri != null) {

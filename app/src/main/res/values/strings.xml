@@ -104,6 +104,8 @@
     <string name="remove_from_library">Remove from library</string>
     <string name="added_to_library">Added to library</string>
     <string name="removed_from_library">Removed from library</string>
+    <string name="remove_from_import_and_library">Remove from import and library</string>
+    <string name="removed_from_import_and_library">Removed from your %1$s imports and your library</string>
     <string name="remove_all_from_library">Remove all from library</string>
     <string name="action_download">Download</string>
     <string name="downloading">Downloading</string>

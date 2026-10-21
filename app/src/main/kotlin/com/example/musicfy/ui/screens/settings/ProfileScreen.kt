@@ -57,6 +57,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -235,6 +237,8 @@ fun ProfileScreen(navController: NavController) {
 
     // the profile page that opens out of the card (ui/screens/profile)
     val profile = rememberProfileMorphState()
+    val cardPress = remember { MutableInteractionSource() }
+    val cardPressed by cardPress.collectIsPressedAsState()
     val profileViewModel: UserProfileViewModel = hiltViewModel()
 
     var liveAccountName by remember { mutableStateOf<String?>(null) }
@@ -578,7 +582,7 @@ fun ProfileScreen(navController: NavController) {
                                     cameraDistance = 14f * this.density
                                     alpha = if (cardHidden) 0f else 1f
                                 }
-                                .clickable(enabled = stage == HeaderStage.Collapsed, interactionSource = null, indication = null) {
+                                .clickable(enabled = stage == HeaderStage.Collapsed, interactionSource = cardPress, indication = null) {
                                     if (expand > 0f) return@clickable
                                     haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                                     profile.open()
@@ -594,6 +598,8 @@ fun ProfileScreen(navController: NavController) {
                                     anchors = profile.card,
                                     partsAlpha = { if (profile.coversCard) 0f else 1f },
                                     marqueeRunning = { !profile.holdsPage },
+                                    showEditHint = true,
+                                    pressed = { cardPressed && stage == HeaderStage.Collapsed },
                                 )
                             } else {
                                 val range = (recap as? RecapAvailability.Ready)?.stats?.range

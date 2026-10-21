@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import com.example.musicfy.ui.utils.rememberSettled
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,9 @@ private object CanvasVideoCache {
         }
 }
 
+/** how long a canvas has to stay before its video starts */
+private const val CanvasSettleMs = 700L
+
 @Composable
 fun CanvasArtworkPlayer(
     primaryUrl: String?,
@@ -63,7 +67,8 @@ fun CanvasArtworkPlayer(
     val context = LocalContext.current
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
     val fallback = fallbackUrl?.takeIf { it.isNotBlank() }
-    val initial = primary ?: fallback ?: return
+    // like the video background: no decoder for each canvas skipped past, only once it has stayed
+    val initial = rememberSettled(primary ?: fallback ?: return, CanvasSettleMs) ?: return
     var currentUrl by remember(initial) { mutableStateOf(initial) }
     var isVideoReady by remember(initial) { mutableStateOf(false) }
 
