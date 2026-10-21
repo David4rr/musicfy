@@ -12,7 +12,12 @@ What to expect in the next version & is it done
 - Swipe to forward/backward still kina confusing -
 - Audio tab sould be removed - the option will be on playback +
 - Lyrics customizer /
+- LastFM integration
+- Voice and music recognition
+- Lyrics offset
+- Lyrics checkers
 - AND BUGS FIXING =
+
 
 ## Done
 - bottom bar sould not using haze for blur, theres too much artiffact
@@ -26,6 +31,7 @@ What to expect in the next version & is it done
 - Edit page for profile +
 - Refining playlist add music +
 - Seekbar on poster +
+- Discord integration +
 
 
 
