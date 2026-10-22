@@ -119,7 +119,7 @@ internal fun pct(v: Float) = "${(v * 100).roundToInt()}%"
 @Composable
 private fun LoudnessCard(viewModel: AudioLabViewModel) {
     val loudness by viewModel.loudness.collectAsState()
-    val (normalize, onNormalize) = rememberPreference(AudioNormalizationKey, defaultValue = true)
+    val (normalize, onNormalize) = rememberPreference(AudioNormalizationKey, defaultValue = false)
     EffectCard(
         picture = { LoudnessPicture(loudness, viewModel.fx) },
         header = {
@@ -129,10 +129,17 @@ private fun LoudnessCard(viewModel: AudioLabViewModel) {
         expanded = loudness.enabled,
         options = {
             LabChips(
-                chips = listOf(LabChip("gentle", "Gentle"), LabChip("punchy", "Punchy"), LabChip("night", "Night mode"), LabChip("max", "Max")),
+                chips = listOf(
+                    LabChip("gentle", "Gentle"),
+                    LabChip("punchy", "Punchy"),
+                    LabChip("tiktok", "TikTok"),
+                    LabChip("night", "Night mode"),
+                    LabChip("max", "Max"),
+                ),
                 selectedKey = when {
                     loudness.boostDb == 2f && loudness.compression == 0.15f -> "gentle"
                     loudness.boostDb == 4f && loudness.compression == 0.3f -> "punchy"
+                    loudness.boostDb == 6f && loudness.compression == 0.5f -> "tiktok"
                     loudness.boostDb == 3f && loudness.compression == 0.85f -> "night"
                     loudness.boostDb == 9f && loudness.compression == 0.5f -> "max"
                     else -> null
@@ -140,9 +147,11 @@ private fun LoudnessCard(viewModel: AudioLabViewModel) {
                 onSelect = { key ->
                     val (boost, comp) = when (key) {
                         "gentle" -> 2f to 0.15f
+                        "punchy" -> 4f to 0.3f
+                        "tiktok" -> 6f to 0.5f
                         "night" -> 3f to 0.85f
                         "max" -> 9f to 0.5f
-                        else -> 4f to 0.3f
+                        else -> 6f to 0.5f
                     }
                     viewModel.updateLoudness { it.copy(boostDb = boost, compression = comp) }
                 },
@@ -478,7 +487,7 @@ private fun VolumeCard(viewModel: AudioLabViewModel) {
             Spacer(Modifier.height(10.dp))
             LabPanel {
                 LabSlider("Curve", String.format("x^%.1f", volume.exponent), volume.exponent,
-                    { v -> viewModel.updateVolume { it.copy(exponent = (v * 10).roundToInt() / 10f) } }, 1f..4f)
+                    { v -> viewModel.updateVolume { it.copy(exponent = (v * 10).roundToInt() / 10f) } }, 0.5f..4f)
                 LabSlider("Volume limit", pct(volume.limit), volume.limit,
                     { v -> viewModel.updateVolume { it.copy(limit = (v * 100).roundToInt() / 100f) } }, 0.2f..1f)
                 Text(
