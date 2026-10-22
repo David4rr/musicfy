@@ -17,6 +17,6 @@ data class VolumeCurve(
     fun gain(volume: Float): Float {
         val v = volume.coerceIn(0f, 1f)
         if (!enabled) return v
-        return limit.coerceIn(0.05f, 1f) * v.pow(exponent.coerceIn(1f, 5f))
+        return limit.coerceIn(0.05f, 1f) * v.pow(exponent.coerceIn(0.2f, 5f))
     }
 }

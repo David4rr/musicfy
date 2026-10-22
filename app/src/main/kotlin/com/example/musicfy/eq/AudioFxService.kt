@@ -28,7 +28,7 @@ class AudioFxService @Inject constructor() {
 
     /** "Even out songs": YouTube's loudness numbers, or a file's own ReplayGain */
     @Volatile
-    var normalize: Boolean = true
+    var normalize: Boolean = false
 
     @Volatile
     var replayGain: ReplayGainParams = ReplayGainParams()

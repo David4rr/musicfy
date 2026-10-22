@@ -82,9 +82,9 @@ data class EqSettings(
 
 @Serializable
 data class LoudnessSettings(
-    val enabled: Boolean = false,
-    val boostDb: Float = 4f,
-    val compression: Float = 0.3f,
+    val enabled: Boolean = true,
+    val boostDb: Float = 6f,
+    val compression: Float = 0.5f,
 ) {
     fun toParams() = LoudnessParams(enabled, boostDb, compression)
 }
@@ -194,6 +194,11 @@ class AudioLabStore @Inject constructor(
 
     init {
         migrateLegacyEqualizer()
+        if (prefs.getString("loudness_v2_tiktok", null) == null) {
+            _loudness.value = LoudnessSettings(enabled = true, boostDb = 6f, compression = 0.5f)
+            prefs.edit().putString("loudness_v2_tiktok", "true").apply()
+            scheduleSave()
+        }
         pushEq()
         pushFx()
     }

@@ -812,7 +812,7 @@ class MusicService :
         combine(
             currentFormat,
             dataStore.data
-                .map { it[AudioNormalizationKey] ?: true }
+                .map { it[AudioNormalizationKey] ?: false }
                 .distinctUntilChanged(),
         ) { format, normalizeAudio ->
             format to normalizeAudio
@@ -2313,40 +2313,29 @@ class MusicService :
             return
         }
 
-        if (loudnessEnhancer != null && loudnessEnhancerSessionId != audioSessionId) {
-            // the player changed (a crossfade): the old enhancer stays with the outgoing song,
-            // at its own gain, until that player is let go
-            fadingLoudnessEnhancer?.runCatching { release() }
-            fadingLoudnessEnhancer = loudnessEnhancer
-            loudnessEnhancer = null
-        }
-        if (loudnessEnhancer == null) {
-            try {
-                loudnessEnhancerSessionId = audioSessionId
-                loudnessEnhancer = LoudnessEnhancer(audioSessionId)
-                Timber.tag(TAG).d("LoudnessEnhancer created for sessionId=$audioSessionId")
-            } catch (e: Exception) {
-                reportException(e)
-                loudnessEnhancer = null
-                return
-            }
-        }
-
         scope.launch {
             try {
-                val currentMediaId = withContext(Dispatchers.Main) {
-                    player.currentMediaItem?.mediaId
+                val normalizeAudio = withContext(Dispatchers.IO) {
+                    dataStore.data.map { it[AudioNormalizationKey] ?: false }.first()
                 }
 
-                val normalizeAudio = withContext(Dispatchers.IO) {
-                    dataStore.data.map { it[AudioNormalizationKey] ?: true }.first()
+                if (!normalizeAudio) {
+                    withContext(Dispatchers.Main) {
+                        releaseLoudnessEnhancer()
+                        Timber.tag(TAG).d("setupLoudnessEnhancer: normalization disabled, released LoudnessEnhancer")
+                    }
+                    return@launch
+                }
+
+                val currentMediaId = withContext(Dispatchers.Main) {
+                    player.currentMediaItem?.mediaId
                 }
 
                 // YouTube's loudness numbers describe YouTube's stream: a song from a module plays
                 // another master, and evens out by its own ReplayGain in the sink instead
                 val fromModule = currentMediaId != null &&
                     resolvedSourceIds[currentMediaId].let { it != null && it != com.example.musicfy.modules.SourceModules.YouTubeId }
-                if (normalizeAudio && currentMediaId != null && !fromModule) {
+                if (currentMediaId != null && !fromModule) {
                     val format = withContext(Dispatchers.IO) {
                         database.format(currentMediaId).first()
                     }
@@ -2358,6 +2347,22 @@ class MusicService :
 
                     withContext(Dispatchers.Main) {
                         if (loudness != null) {
+                            if (loudnessEnhancer != null && loudnessEnhancerSessionId != audioSessionId) {
+                                fadingLoudnessEnhancer?.runCatching { release() }
+                                fadingLoudnessEnhancer = loudnessEnhancer
+                                loudnessEnhancer = null
+                            }
+                            if (loudnessEnhancer == null) {
+                                try {
+                                    loudnessEnhancerSessionId = audioSessionId
+                                    loudnessEnhancer = LoudnessEnhancer(audioSessionId)
+                                    Timber.tag(TAG).d("LoudnessEnhancer created for sessionId=$audioSessionId")
+                                } catch (e: Exception) {
+                                    reportException(e)
+                                    loudnessEnhancer = null
+                                    return@withContext
+                                }
+                            }
                             val loudnessDb = loudness.toFloat()
                             val targetGain = (-loudnessDb * 100).toInt()
                             val clampedGain = targetGain.coerceIn(MIN_GAIN_MB, MAX_GAIN_MB)
@@ -2374,14 +2379,14 @@ class MusicService :
                                 releaseLoudnessEnhancer()
                             }
                         } else {
-                            loudnessEnhancer?.enabled = false
+                            releaseLoudnessEnhancer()
                             Timber.tag(TAG).w("Normalization enabled but no loudness data available - no normalization applied")
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        loudnessEnhancer?.enabled = false
-                        Timber.tag(TAG).d("setupLoudnessEnhancer: normalization disabled or mediaId unavailable")
+                        releaseLoudnessEnhancer()
+                        Timber.tag(TAG).d("setupLoudnessEnhancer: mediaId unavailable or from module")
                     }
                 }
             } catch (e: Exception) {
@@ -2393,12 +2398,17 @@ class MusicService :
 
     private fun releaseLoudnessEnhancer() {
         try {
-            loudnessEnhancer?.release()
+            fadingLoudnessEnhancer?.runCatching { release() }
+            loudnessEnhancer?.runCatching {
+                enabled = false
+                release()
+            }
             Timber.tag(TAG).d("LoudnessEnhancer released")
         } catch (e: Exception) {
             reportException(e)
             Timber.tag(TAG).e(e, "Error releasing LoudnessEnhancer: ${e.message}")
         } finally {
+            fadingLoudnessEnhancer = null
             loudnessEnhancer = null
         }
     }
