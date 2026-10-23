@@ -26,7 +26,9 @@ What to expect in the next version & is it done
 - LastFM integration
 - Voice and music recognition
 - Lyrics offset with automatic one
-- Playlist options
+- Playlist options refining
+- Playlist transition
+- Playlust descriptions
 - Playlist reordering
 - AND BUGS FIXING =
 
