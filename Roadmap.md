@@ -4,10 +4,10 @@
 ### 8.1.x
 What to expect in the next version & is it done 
 
-- New ipod like styles
+- New ipod like styles -
 - Bottom section fixes
 - Merged pull request of android 7 supports wi=hile ficing its problem
-- re-vamped profile
+- re-vamped profile -
 - nightly builds support
 - Issue [#100](https://github.com/realidkroo/musicfy/issues/100) Import enchantments
 - Issue [#99](https://github.com/realidkroo/musicfy/issues/99) Downloaded music not playing
@@ -16,21 +16,21 @@ What to expect in the next version & is it done
 - Issue [#93](https://github.com/realidkroo/musicfy/issues/93) 
 - Enchantments [#89](https://github.com/realidkroo/musicfy/issues/89) Searcb bar on downloads folder - exist on main page though
 - Arabic and other characters lyrics problem
-- Storage usage
-- Gesture custom
-- Lyrics share 
+- Storage usage -
+- Gesture custom -
+- Lyrics share -
 - Better crossmix 
 - Device output -
 - Swipe to forward/backward still kina confusing -
-- Lyrics customizer /
-- LastFM integration
+- Lyrics customizer -
+- LastFM integration 
 - Voice and music recognition
-- Lyrics offset with automatic one
-- Playlist options refining
-- Playlist transition
-- Playlust descriptions
-- Playlist reordering
-- AND BUGS FIXING =
+- Lyrics offset with automatic one -
+- Playlist options refining -
+- Playlist transition -
+- Playlust descriptions -
+- Playlist reordering -
+- AND BUGS FIXING = 
 
 
 ## Done
