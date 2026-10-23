@@ -6,6 +6,7 @@ What to expect in the next version & is it done
 
 - New ipod like styles
 - Bottom section fixes
+- Merged pull request of android 7 supports wi=hile ficing its problem
 - re-vamped profile
 - nightly builds support
 - Issue [#100](https://github.com/realidkroo/musicfy/issues/100) Import enchantments
