@@ -2,7 +2,8 @@
 //
 // Audio Lab's effects. Each one is its own card: a live picture of what it does, its switch, and
 // its options, which fold away while it's off. Reverb leads, as in the design, then loudness,
-// spatial, Dolby Atmos, speed and pitch, and the volume curve.
+// spatial, mono, Dolby Atmos, speed and pitch, and the volume curve. Reverb has its own file.
+// The header shows the effects that are on as a stack of cards (FxCardStack).
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -52,7 +53,6 @@ import com.example.musicfy.eq.MaxSpeed
 import com.example.musicfy.eq.MinSpeed
 import com.example.musicfy.eq.ReverbPresets
 import com.example.musicfy.eq.audio.SpatialMode
-import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.AudioLabViewModel
@@ -68,10 +68,17 @@ fun AudioFxScreen(
     viewModel: AudioLabViewModel = hiltViewModel(),
 ) {
     ListenToAudio()
-    SubSettingsScaffold(
-        title = "Audio FX",
-        backLabel = "Audio Lab",
+    val reverb by viewModel.reverb.collectAsState()
+    val loudness by viewModel.loudness.collectAsState()
+    val spatial by viewModel.spatial.collectAsState()
+    val playback by viewModel.playback.collectAsState()
+    val volume by viewModel.volume.collectAsState()
+    val effects = activeEffects(reverb, loudness, spatial, playback, volume)
+
+    AudioLabPage(
+        title = LabTitle("Audio", "FX", firstSize = 40.sp, secondSize = 84.sp, firstDim = true),
         onBack = { navController.navigateUp() },
+        art = { hidden -> FxCardStack(effects, hidden) },
     ) {
         ReverbCard(viewModel)
         Spacer(Modifier.height(14.dp))
@@ -86,13 +93,12 @@ fun AudioFxScreen(
         SpeedCard(viewModel)
         Spacer(Modifier.height(14.dp))
         VolumeCard(viewModel)
-        Spacer(Modifier.height(120.dp))
     }
 }
 
 /** the shape every effect takes: picture, switch, then its options */
 @Composable
-private fun EffectCard(
+internal fun EffectCard(
     picture: @Composable () -> Unit,
     header: @Composable () -> Unit,
     expanded: Boolean,
@@ -111,53 +117,7 @@ private fun EffectCard(
     }
 }
 
-private fun pct(v: Float) = "${(v * 100).roundToInt()}%"
-
-// ---- Reverb --------------------------------------------------------------------------------
-
-@Composable
-private fun ReverbCard(viewModel: AudioLabViewModel) {
-    val reverb by viewModel.reverb.collectAsState()
-    EffectCard(
-        picture = { ReverbPicture(reverb) },
-        header = {
-            LabToggleRow("Reverb", "Reverb the music", reverb.enabled, { on -> viewModel.updateReverb { it.copy(enabled = on) } })
-        },
-        expanded = reverb.enabled,
-        options = {
-            LabChips(
-                chips = ReverbPresets.All.map { LabChip(it.id, it.name) } +
-                    (if (reverb.presetId == null) listOf(LabChip("custom", "Custom")) else emptyList()),
-                selectedKey = reverb.presetId ?: "custom",
-                onSelect = { id -> ReverbPresets.All.firstOrNull { it.id == id }?.let { p -> viewModel.updateReverb { it.withPreset(p) } } },
-            )
-            Spacer(Modifier.height(10.dp))
-            LabPanel {
-                LabSlider("Mix", pct(reverb.mix), reverb.mix, { v -> viewModel.updateReverb { it.copy(mix = v, presetId = null) } }, 0f..1f)
-                LabSlider("Room size", pct(reverb.roomSize), reverb.roomSize, { v -> viewModel.updateReverb { it.copy(roomSize = v, presetId = null) } }, 0f..1f)
-                LabSlider("Damping", pct(reverb.damping), reverb.damping, { v -> viewModel.updateReverb { it.copy(damping = v, presetId = null) } }, 0f..1f)
-                LabSlider("Wet", pct(reverb.wet), reverb.wet, { v -> viewModel.updateReverb { it.copy(wet = v, presetId = null) } }, 0f..1f)
-                FineTuneLabel()
-                LabSlider("Dry", pct(reverb.dry), reverb.dry, { v -> viewModel.updateReverb { it.copy(dry = v, presetId = null) } }, 0f..1f)
-                LabSlider("Width", pct(reverb.width), reverb.width, { v -> viewModel.updateReverb { it.copy(width = v, presetId = null) } }, 0f..1f)
-                LabSlider("Pre-delay", "${reverb.preDelayMs.roundToInt()} ms", reverb.preDelayMs,
-                    { v -> viewModel.updateReverb { it.copy(preDelayMs = v.roundToInt().toFloat(), presetId = null) } }, 0f..120f)
-                LabSlider("Low cut", "${reverb.lowCutHz.roundToInt()} Hz", log10(reverb.lowCutHz),
-                    { v -> viewModel.updateReverb { it.copy(lowCutHz = 10f.pow(v).roundToInt().toFloat(), presetId = null) } },
-                    log10(20f)..log10(1000f))
-            }
-        },
-    )
-}
-
-@Composable
-private fun FineTuneLabel() {
-    Text(
-        "FINE TUNE",
-        fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 1.3.sp,
-        color = LabColors.Secondary, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-    )
-}
+internal fun pct(v: Float) = "${(v * 100).roundToInt()}%"
 
 // ---- Loudness ------------------------------------------------------------------------------
 
@@ -448,6 +408,9 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
                         ReverbPresets.All.firstOrNull { it.id == "hall" }?.let { hall ->
                             viewModel.updateReverb { it.withPreset(hall).copy(enabled = true) }
                         }
+                    } else if (key == "slowed" && reverb.enabled) {
+                        // otherwise the tap does nothing: the chip stays on "Slowed + reverb" while the reverb plays
+                        viewModel.updateReverb { it.copy(enabled = false) }
                     }
                 },
             )

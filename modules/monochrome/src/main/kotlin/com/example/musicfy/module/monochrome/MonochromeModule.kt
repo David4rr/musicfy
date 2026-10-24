@@ -162,6 +162,7 @@ class MonochromeModule : SourceModule {
                 sourceLabel = "Monochrome",
                 qualityLabel = info.shortLabel,
                 codec = "FLAC",
+                sampleRateHz = info.sampleRate,
                 matched = MatchedTrack(
                     id = found.id,
                     title = found.title,

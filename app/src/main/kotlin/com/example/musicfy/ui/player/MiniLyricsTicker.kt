@@ -4,6 +4,7 @@ package com.example.musicfy.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
@@ -13,7 +14,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,12 +25,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -36,9 +45,11 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.LocalPlayerConnection
@@ -47,11 +58,12 @@ import com.example.musicfy.constants.LyricsMotionStyle
 import com.example.musicfy.constants.LyricsMotionStyleKey
 import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.lyrics.LyricsEntry
+import com.example.musicfy.lyrics.RubyToken
 import com.example.musicfy.lyrics.LyricsUtils
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
 private val TickerFontSize = 17.sp
 private val TickerLineHeight = 22.sp
@@ -140,16 +152,23 @@ internal fun MiniLyricsTicker(
     loaded: Boolean,
     morph: CardMorphState,
     modifier: Modifier = Modifier,
+    /**
+     * How much taller than usual the card is, px (pulled in the player editor). The line keeps the
+     * card's usual row at the top; under it go its reading, its translation and the lines after it.
+     */
+    growthProvider: () -> Float = { 0f },
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val tall by remember { derivedStateOf { growthProvider() > 0.5f } }
+    val rowPx = with(LocalDensity.current) { PlayerCardHeight.roundToPx() }
     val positionProvider = remember(playerConnection) {
-        { playerConnection.progressState.value.position }
+        { playerConnection.progressState.value.position + playerConnection.lyricsOffsetMs.value }
     }
     val slot by remember(lines, playerConnection) {
-        playerConnection.progressState
-            .map { tickerSlot(lines, it.position) }
-            .distinctUntilChanged()
-    }.collectAsState(initial = tickerSlot(lines, playerConnection.progressState.value.position))
+        combine(playerConnection.progressState, playerConnection.lyricsOffsetMs) { progress, offsetMs ->
+            tickerSlot(lines, progress.position + offsetMs)
+        }.distinctUntilChanged()
+    }.collectAsState(initial = tickerSlot(lines, positionProvider()))
 
     val (motionStyle) = rememberEnumPreference(LyricsMotionStyleKey, defaultValue = LyricsMotionStyle.MOTION)
     val (waveEnabled) = rememberPreference(LyricsWaveAnimationKey, defaultValue = true)
@@ -159,66 +178,187 @@ internal fun MiniLyricsTicker(
     // "No lyrics") with the same roll as any line change.
     val shown = if (!loaded && slot.kind == TickerSlot.EMPTY) TickerSlot(TickerSlot.LOADING, -1) else slot
 
-    AnimatedContent(
-        targetState = shown,
-        transitionSpec = {
-            // Next line: the old one rolls up and out, the new one up and in - the lyrics page's
-            // scroll, in a card.
-            (slideInVertically(LineChangeSpring) { it } + fadeIn(LineFadeSpring))
-                .togetherWith(slideOutVertically(LineChangeSpring) { -it } + fadeOut(LineFadeSpring))
-                .using(SizeTransform(clip = false))
-        },
-        contentAlignment = Alignment.CenterStart,
-        label = "miniLyricsLine",
-        modifier = modifier.clipToBounds(),
-    ) { current ->
-        Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.fillMaxSize()) {
-            when (current.kind) {
-                TickerSlot.LINE, TickerSlot.END -> lines.getOrNull(current.index)?.let { entry ->
-                    TickerLine(
-                        entry = entry,
-                        dim = current.kind == TickerSlot.END,
-                        lineEndMs = LyricsUtils.lineEndMs(lines, current.index),
-                        positionProvider = positionProvider,
-                        motionStyle = motionStyle,
-                        waveEnabled = waveEnabled,
-                        highBloom = highBloom,
-                        morph = morph,
+    // The line gets the card's own row; a taller card lists what comes next under it, as its own
+    // list that scrolls up a line at a time (see TickerUpcoming). Clipped as a whole, so a new line
+    // rises into the row from where it sat in that list.
+    Column(modifier = modifier.clipToBounds()) {
+        AnimatedContent(
+            targetState = shown,
+            transitionSpec = {
+                // Next line: the old one rolls up and out, the new one up and in - the lyrics page's
+                // scroll, in a card. One row's height, however tall the card is.
+                (slideInVertically(LineChangeSpring) { minOf(it, rowPx) } + fadeIn(LineFadeSpring))
+                    .togetherWith(slideOutVertically(LineChangeSpring) { -minOf(it, rowPx) } + fadeOut(LineFadeSpring))
+                    .using(SizeTransform(clip = false))
+            },
+            contentAlignment = Alignment.CenterStart,
+            label = "miniLyricsLine",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PlayerCardHeight),
+        ) { current ->
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (current.kind) {
+                    TickerSlot.LINE, TickerSlot.END -> lines.getOrNull(current.index)?.let { entry ->
+                        TickerLine(
+                            entry = entry,
+                            dim = current.kind == TickerSlot.END,
+                            lineEndMs = LyricsUtils.lineEndMs(lines, current.index),
+                            positionProvider = positionProvider,
+                            motionStyle = motionStyle,
+                            waveEnabled = waveEnabled,
+                            highBloom = highBloom,
+                            morph = morph,
+                        )
+                    }
+
+                    TickerSlot.GAP -> {
+                        val startMs = if (current.index < 0) 0L else LyricsUtils.lineEndMs(lines, current.index)
+                        val endMs = lines.getOrNull(current.index + 1)?.time ?: startMs
+                        LyricsInterludeDots(
+                            startMs = startMs,
+                            endMs = endMs,
+                            positionProvider = positionProvider,
+                            accentColor = Color.White,
+                            alignment = LyricsAlignment.START,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = DotsScale
+                                scaleY = DotsScale
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                                translationX = -DotsRowInset.toPx() * DotsScale
+                            },
+                        )
+                    }
+
+                    TickerSlot.LOADING -> LyricsLoadingDots(alignStart = true)
+
+                    else -> Text(
+                        text = "No lyrics for this song",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.55f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+        }
+        if (tall) TickerUpcoming(lines, shown, growthProvider)
+    }
+}
 
-                TickerSlot.GAP -> {
-                    val startMs = if (current.index < 0) 0L else LyricsUtils.lineEndMs(lines, current.index)
-                    val endMs = lines.getOrNull(current.index + 1)?.time ?: startMs
-                    LyricsInterludeDots(
-                        startMs = startMs,
-                        endMs = endMs,
-                        positionProvider = positionProvider,
-                        accentColor = Color.White,
-                        alignment = LyricsAlignment.START,
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = DotsScale
-                            scaleY = DotsScale
-                            transformOrigin = TransformOrigin(0f, 0.5f)
-                            translationX = -DotsRowInset.toPx() * DotsScale
-                        },
-                    )
-                }
+/** How bright the next line is under a tall card's current one; each line after it a little dimmer. */
+private const val NextLineAlpha = 0.38f
+private const val NextLineDimStep = 0.14f
 
-                TickerSlot.LOADING -> LyricsLoadingDots(alignStart = true)
+/** Lines after the current one a tall card lists at most. The ones that don't fit stay hidden. */
+private const val UpcomingLinesMax = 6
 
-                else -> Text(
-                    text = "No lyrics for this song",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.55f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+/** The first line after the current one is barely soft; each one further down a little softer. */
+private val UpcomingBlurFirst = 0.6.dp
+private val UpcomingBlurStep = 0.45.dp
+
+/** The upcoming lines' line height, which is also how far the list moves for each new line. */
+private val UpcomingLineHeight = 17.sp
+
+private val UpcomingScrollSpring = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow)
+
+/**
+ * What a taller card shows under its line: how the line is pronounced and what it means (when
+ * translation is on), then the lines after it, as many as the card has room for, each dimmer and a
+ * little more blurred than the one above. When the song moves on, the list scrolls up one line, so
+ * the next line rises into the card's row rather than everything being swapped out at once.
+ *
+ * The reading and the translation fill in as the lyrics' readings pass gets to the line; what isn't
+ * there takes no room.
+ */
+@Composable
+private fun TickerUpcoming(lines: List<LyricsEntry>, slot: TickerSlot, growthProvider: () -> Float) {
+    // during a break, the lines after it; at the end, nothing
+    val firstUpcoming = when (slot.kind) {
+        TickerSlot.LINE, TickerSlot.GAP -> slot.index + 1
+        else -> return
+    }
+    val current = if (slot.kind == TickerSlot.LINE) lines.getOrNull(slot.index) else null
+    val upcoming = remember(lines, firstUpcoming) {
+        lines.drop(firstUpcoming.coerceAtLeast(0)).filter { it.text.isNotBlank() }.take(UpcomingLinesMax)
+    }
+
+    val stepPx = with(LocalDensity.current) { UpcomingLineHeight.toPx() }
+    val scroll = remember { Animatable(0f) }
+    var shownFrom by remember { mutableIntStateOf(firstUpcoming) }
+    LaunchedEffect(firstUpcoming) {
+        val movedOn = firstUpcoming > shownFrom
+        shownFrom = firstUpcoming
+        // moving on starts the list where it was and glides it up; a seek back just shows the new spot
+        if (movedOn) {
+            scroll.snapTo(stepPx)
+            scroll.animateTo(0f, UpcomingScrollSpring)
+        } else {
+            scroll.snapTo(0f)
+        }
+    }
+
+    Box(modifier = Modifier.graphicsLayer { translationY = scroll.value }) {
+        CardExtraLines(growthProvider) {
+            current?.let { TickerReadings(it) }
+            upcoming.forEachIndexed { i, entry ->
+                UpcomingLine(
+                    text = entry.text,
+                    alpha = NextLineAlpha * (1f - NextLineDimStep * i).coerceAtLeast(0.3f),
+                    blur = UpcomingBlurFirst + UpcomingBlurStep * i,
                 )
             }
         }
     }
 }
+
+/** The current line's reading and translation, under it on a tall card. */
+@Composable
+private fun TickerReadings(entry: LyricsEntry) {
+    val romanized by entry.romanizedTextFlow.collectAsState()
+    val ruby by entry.rubyFlow.collectAsState()
+    val translated by entry.translatedTextFlow.collectAsState()
+    // Japanese and Chinese carry their reading word by word over the text; in one line it's those
+    // readings in order
+    val reading = romanized ?: ruby?.takeIf { it.isNotEmpty() }?.let { rubyReading(entry.text, it) }
+    reading?.let { CardExtraLine(it, alpha = 0.62f, italic = true) }
+    translated?.takeIf { it.isNotBlank() }?.let { CardExtraLine(it, alpha = 0.82f) }
+}
+
+/**
+ * One line further down the lyrics. Blurred through a layer of its own, so the list scrolling
+ * moves the finished picture rather than blurring it again each frame. Android 12+ only: on older
+ * phones the line is just dimmer.
+ */
+@Composable
+private fun UpcomingLine(text: String, alpha: Float, blur: Dp) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = UpcomingLineHeight),
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White.copy(alpha = alpha),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.blur(blur, BlurredEdgeTreatment.Unbounded),
+    )
+}
+
+/** [text] read out: each run with a reading replaced by it, the rest (Latin words, say) kept as it is. */
+private fun rubyReading(text: String, ruby: List<RubyToken>): String = buildString {
+    var at = 0
+    ruby.sortedBy { it.start }.forEach { token ->
+        if (token.start > at) append(text, at, token.start.coerceAtMost(text.length))
+        if (isNotEmpty() && !last().isWhitespace()) append(' ')
+        append(token.text)
+        at = maxOf(at, token.end)
+    }
+    if (at < text.length) append(text, at, text.length)
+}.trim()
 
 @Composable
 private fun TickerLine(

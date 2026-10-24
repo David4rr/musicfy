@@ -237,12 +237,26 @@ edit playlist - `ui/menu/AddToPlaylistDialog.kt`, `ui/component/CreatePlaylistDi
   shrinks by the same amount. It sits between the size cap and the height measurement, so the stack
   geometry still works from the sheet's own height.
 
-The pieces the playlist sheets share - the field, the pill button, the search field, the header, the
-two-up action card, the divider - live in `ui/component/PlaylistSheetKit.kt`. They only have minimum
+The pieces the sheets share - the field, the pill button, the search field, the header, the plain
+`SheetIcon`, and the two big action cards (`SheetActionCardRow` + `SheetActionCard`, with
+`SheetDownloadCard` for anything downloadable) - live in `ui/component/PlaylistSheetKit.kt`. They only have minimum
 heights and use `sp` text, so a large font scale grows them instead of clipping; use them for new sheets
 instead of redrawing the mock again. Anything that can overflow wraps itself in `verticalScroll` (the
 content slot does not scroll), and a row of cards that should run off the screen edge uses
 `Modifier.bleedHorizontally(20.dp)` to undo the sheet's side padding.
+
+### The menu sheet layout (asked for on 2026-10-19)
+
+Every menu sheet follows the same mock: the header, a gap (`SheetHeaderGap`), then **two big cards**
+for the two actions people use every time they open that menu (Play/Shuffle on an album, Download/Play
+next on a song, Add to playlist/Download in the player menu...), then the rest as rows. `NewActionGrid`
+draws its first two actions as those cards, so put the two that matter most first.
+
+- **No lines.** No divider under the header, none between groups. Space separates them.
+- **No discs behind icons.** Icons are drawn plain and white (`SheetIcon`, or a bare `Icon` in a
+  `Material3MenuGroup` row, which tints it white). The white circle with a dark glyph is gone everywhere.
+- **No search icon in search fields.** The old `R.drawable.search` vector drew as a broken half circle
+  and was deleted. A search field is just the field with its placeholder.
 
 Playlist covers (`playlistcover/PlaylistCovers.kt`) are generated images, not assets: a bitmap drawn from
 the playlist's title and the colours of its top song, stored as a small file in `filesDir/playlist_covers`.

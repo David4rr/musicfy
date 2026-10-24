@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,7 +43,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,15 +61,35 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerStyle
 import com.example.musicfy.constants.playerStyleRotatedKey
+import com.example.musicfy.ui.component.LocalPlayerBottomSheetState
 import com.example.musicfy.utils.rememberPreference
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * Whether a style takes touches: only on the open player. Collapsed into the mini pill the style
  * is still composed under it, and its gestures would swallow the swipe and tap that open the player.
+ *
+ * Asked when a touch lands ([whileStyleInteractive]), never in composition. As a plain value it
+ * changed on the first frame of every close and rebuilt the whole style just as the sheet began to move.
  */
-val LocalStyleInteractive = androidx.compose.runtime.compositionLocalOf { true }
+val LocalStyleInteractive = androidx.compose.runtime.compositionLocalOf<() -> Boolean> { { true } }
+
+/**
+ * Runs [detect] only while the style takes touches ([interactive]). The rest of the time nothing
+ * here listens, so a touch goes on to the player. A flow starts and stops it, so the player opening
+ * or closing recomposes nothing.
+ */
+internal suspend fun PointerInputScope.whileStyleInteractive(
+    interactive: () -> Boolean,
+    detect: suspend PointerInputScope.() -> Unit,
+) {
+    snapshotFlow { interactive() }.collectLatest { on -> if (on) detect() }
+}
 
 /**
  * The two tones every alternate style is built from, taken from the cover: [played] is the part of
@@ -144,32 +167,68 @@ class LivePosition internal constructor(private val read: () -> Long, private va
         }
         return value
     }
+
+    /** The same clock moved by [shiftMs], so lyrics can run early or late without touching the rest. */
+    fun shifted(shiftMs: () -> Long) = LivePosition(read = { read() + shiftMs() }, tick = tick)
 }
 
-/** [animated] false (a selector card's preview): it follows the player's own updates, not every frame */
+/** The playback clock the lyrics follow: [this] plus the song's own lyrics offset. */
+@Composable
+fun LivePosition.withLyricsOffset(): LivePosition {
+    val connection = LocalPlayerConnection.current ?: return this
+    return remember(this, connection) { shifted { connection.lyricsOffsetMs.value.toLong() } }
+}
+
+/**
+ * [animated] false (a selector card's preview): it follows the player's own updates, not every frame.
+ *
+ * The player's updates are followed in an effect, not in composition: they come 15 times a second,
+ * and reading them here rebuilt the whole style that often, through every open and close too.
+ * Collapsed into the mini player the style can't be seen, so the clock waits for it to open again.
+ */
 @Composable
 fun rememberLivePosition(animated: Boolean = true): LivePosition {
     val connection = LocalPlayerConnection.current
     val tick = remember { mutableLongStateOf(0L) }
-    val transport = connection?.uiState?.transportState?.collectAsState()
-    val progress = connection?.uiState?.progressState?.collectAsState()
-    val playing = transport?.value?.isPlaying == true
-    LaunchedEffect(playing, progress?.value?.position, animated) {
-        // a seek or a pause still moves the boundary once; playing, it moves every frame
-        tick.longValue++
-        while (playing && animated) withFrameMillis { tick.longValue = it }
+    val showing = rememberStyleShowing()
+    LaunchedEffect(connection, animated, showing) {
+        val ui = connection?.uiState ?: return@LaunchedEffect
+        combine(
+            ui.transportState.map { it.isPlaying }.distinctUntilChanged(),
+            ui.progressState.map { it.position }.distinctUntilChanged(),
+            snapshotFlow { showing() },
+        ) { playing, _, shown -> playing to shown }
+            .collectLatest { (playing, shown) ->
+                if (!shown) return@collectLatest
+                // a seek or a pause still moves the boundary once; playing, it moves every frame
+                tick.longValue++
+                while (playing && animated) withFrameMillis { tick.longValue = it }
+            }
     }
     return remember(connection) {
         LivePosition(read = { connection?.player?.currentPosition ?: 0L }, tick = { tick.longValue })
     }
 }
 
+/**
+ * Whether any of the open player is on screen. A style is still composed while it's collapsed into
+ * the mini player, and holds its clocks still there. Read it in effects and gestures, not composition.
+ */
+@Composable
+internal fun rememberStyleShowing(): () -> Boolean {
+    val sheet = LocalPlayerBottomSheetState.current
+    return remember(sheet) { { sheet == null || sheet.progress > 0f } }
+}
+
 /** the song's length in ms, never 0 */
 @Composable
 fun rememberDurationMs(): Long {
     val connection = LocalPlayerConnection.current ?: return 1L
-    val progress by connection.uiState.progressState.collectAsState()
-    return progress.duration.takeIf { it > 0L } ?: 1L
+    // the length alone: the whole progress state changes 15 times a second, and recomposed the style with it
+    val duration by remember(connection) {
+        connection.uiState.progressState.map { it.duration }.distinctUntilChanged()
+    }.collectAsState(initial = connection.uiState.progressState.value.duration)
+    return duration.takeIf { it > 0L } ?: 1L
 }
 
 /** the whole seconds played, recomposing once a second, for the big timestamp */
@@ -199,6 +258,8 @@ fun StyleCircle(
     modifier: Modifier = Modifier,
     size: Dp = 30.dp,
     enabled: Boolean = true,
+    /** dressed as the Turntable's pills (a faint white fill, a white icon), for a style wearing them */
+    pill: Boolean = false,
 ) {
     val press = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
@@ -212,28 +273,33 @@ fun StyleCircle(
             }
             .size(size)
             .clip(CircleShape)
-            .background(tones.chip)
+            .background(if (pill) PillFill else tones.chip)
             .pointerInput(enabled, interactive) {
-                if (!enabled || !interactive) return@pointerInput
-                detectTapGestures(
-                    onPress = {
-                        scope.launch { press.animateTo(0.86f, spring(dampingRatio = 0.6f, stiffness = 900f)) }
-                        tryAwaitRelease()
-                        scope.launch { press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f)) }
-                    },
-                    onTap = { onClick() },
-                )
+                if (!enabled) return@pointerInput
+                whileStyleInteractive(interactive) {
+                    detectTapGestures(
+                        onPress = {
+                            scope.launch { press.animateTo(0.86f, spring(dampingRatio = 0.6f, stiffness = 900f)) }
+                            tryAwaitRelease()
+                            scope.launch { press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f)) }
+                        },
+                        onTap = { onClick() },
+                    )
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = tones.ink,
-            modifier = Modifier.size(size * 0.5f),
+            tint = if (pill) Color.White.copy(alpha = 0.9f) else tones.ink,
+            modifier = Modifier.size(if (pill) 20.dp else size * 0.5f),
         )
     }
 }
+
+/** the Turntable's pill fill */
+private val PillFill = Color.White.copy(alpha = 0.08f)
 
 /** previous, play/pause and next as three [StyleCircle]s, laid out by the caller's [Row] or [Column] */
 @Composable
@@ -281,6 +347,8 @@ fun TransportCircles(tones: StyleTones, size: Dp = 30.dp, vertical: Boolean = fa
 class StyleActions(
     val onOtherMenu: () -> Unit,
     val onEditPlayer: () -> Unit,
+    /** opens the song's whole lyrics over the style; no item without it (the selector's cards) */
+    val onLyrics: (() -> Unit)? = null,
 )
 
 /** whether [style] is turned sideways, and the switch for it */
@@ -291,30 +359,72 @@ fun rememberStyleRotation(style: PlayerStyle): Pair<Boolean, (Boolean) -> Unit> 
 }
 
 /**
- * Double tap plays or pauses; a horizontal swipe skips (right) or goes back (left). The alternate
- * styles have no big transport buttons, so the whole screen is the transport.
+ * Double tap plays or pauses; a sideways swipe slides the player's row of songs under the finger
+ * (see SongCarousel), on to the next song or back to the last when it's let go. The alternate
+ * styles have no big transport buttons, so the whole screen is the transport. Only while
+ * [interactive] says the player is open.
  */
-fun Modifier.styleGestures(enabled: Boolean, onToggle: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit): Modifier =
+fun Modifier.styleGestures(
+    enabled: Boolean,
+    interactive: () -> Boolean,
+    onToggle: () -> Unit,
+    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    player: () -> androidx.media3.common.Player?,
+): Modifier =
     if (!enabled) this else this
-        .pointerInput(enabled) { detectTapGestures(onDoubleTap = { onToggle() }) }
-        .pointerInput(enabled) {
-            var total = 0f
-            detectHorizontalDragGestures(
-                onDragStart = { total = 0f },
-                onDragEnd = {
-                    when {
-                        total < -SwipeSkipPx -> onNext()
-                        total > SwipeSkipPx -> onPrevious()
-                    }
-                },
-                onHorizontalDrag = { _, amount -> total += amount },
-            )
+        .pointerInput(enabled, interactive) {
+            whileStyleInteractive(interactive) { detectTapGestures(onDoubleTap = { onToggle() }) }
         }
+        .then(
+            if (carousel == null) Modifier else Modifier.pointerInput(enabled, interactive, carousel) {
+                val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                val flingPx = SwipeFling.toPx()
+                var travelled = 0f
+                var hasPrevious = false
+                var hasNext = false
+                // whether the row is this swipe's to put back if the swipe is cut off
+                var mine = false
+                whileStyleInteractive(interactive) {
+                    try {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                travelled = 0f
+                                tracker.resetTracking()
+                                val p = player()
+                                hasPrevious = p?.hasPreviousMediaItem() == true
+                                hasNext = p?.hasNextMediaItem() == true
+                                carousel.startDrag()
+                                mine = true
+                            },
+                            onDragEnd = {
+                                mine = false
+                                carousel.release(travelled, tracker.calculateVelocity().x, size.width.toFloat(), flingPx, player())
+                            },
+                            onDragCancel = {
+                                mine = false
+                                carousel.cancelDrag()
+                            },
+                            onHorizontalDrag = { change, amount ->
+                                tracker.addPointerInputChange(change)
+                                travelled += amount
+                                carousel.dragTo(travelled, size.width.toFloat(), hasPrevious, hasNext)
+                            },
+                        )
+                    } finally {
+                        if (mine) {
+                            mine = false
+                            carousel.cancelDrag()
+                        }
+                    }
+                }
+            }
+        )
 
-private const val SwipeSkipPx = 120f
+/** A flick faster than this skips however short it was. */
+private val SwipeFling = 500.dp
 
 /**
- * The ••• button and the little menu it opens: other menu, rotate (in the middle) and edit player,
+ * The chevron and the little menu it opens: lyrics, other menu, rotate and edit player,
  * rising out of the button the way the flagship's chevron menu does. The button sits [edge] from
  * the top (or the bottom, [atBottom]) and [end] from the right; the menu opens away from that edge.
  * Call it last in the style's Box so the dimmed backdrop and the menu draw over the style.
@@ -332,6 +442,8 @@ fun BoxScope.StyleMenu(
     edge: Dp,
     buttonSize: Dp = 30.dp,
     showButton: Boolean = true,
+    /** the button and the menu's circles dressed as the Turntable's pills */
+    pill: Boolean = false,
 ) {
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(open) {
@@ -344,7 +456,8 @@ fun BoxScope.StyleMenu(
                 .drawBehind { drawRect(Color.Black.copy(alpha = 0.42f * reveal.value.coerceIn(0f, 1f))) }
                 .pointerInput(Unit) { detectTapGestures { onOpenChange(false) } },
         )
-        val items = listOf(
+        val items = listOfNotNull(
+            actions.onLyrics?.let { open -> Triple("Lyrics", R.drawable.lyrics) { onOpenChange(false); open() } },
             Triple("Other menu", R.drawable.more_horiz) { onOpenChange(false); actions.onOtherMenu() },
             Triple(if (rotated) "Turn upright" else "Rotate", R.drawable.screen_rotation) { onOpenChange(false); onRotate(!rotated) },
             Triple("Edit player", R.drawable.tune) { onOpenChange(false); actions.onEditPlayer() },
@@ -379,8 +492,8 @@ fun BoxScope.StyleMenu(
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
                     },
                 ) {
-                    Text(text = label, color = tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
-                    StyleCircle(icon = icon, tones = tones, size = buttonSize + 6.dp, onClick = onClick)
+                    Text(text = label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
+                    StyleCircle(icon = icon, tones = tones, size = buttonSize + 6.dp, onClick = onClick, pill = pill)
                 }
             }
         }
@@ -391,21 +504,27 @@ fun BoxScope.StyleMenu(
                 .align(if (atBottom) Alignment.BottomEnd else Alignment.TopEnd)
                 .padding(end = end, top = if (atBottom) 0.dp else edge, bottom = if (atBottom) edge else 0.dp),
         ) {
-            MoreButton(open, tones, buttonSize, onOpenChange)
+            MenuChevron(open, tones, buttonSize, pill, opensDown = !atBottom, onOpenChange)
         }
     }
 }
 
+/**
+ * The menu's button: a chevron, as on the Turntable, pointing the way the menu opens and flipping
+ * round once it's open.
+ */
 @Composable
-private fun MoreButton(open: Boolean, tones: StyleTones, size: Dp, onOpenChange: (Boolean) -> Unit) {
-    val turn = remember { Animatable(0f) }
-    LaunchedEffect(open) { turn.animateTo(if (open) 1f else 0f, spring(dampingRatio = 0.6f, stiffness = 380f)) }
+private fun MenuChevron(open: Boolean, tones: StyleTones, size: Dp, pill: Boolean, opensDown: Boolean, onOpenChange: (Boolean) -> Unit) {
+    val turn = remember { Animatable(if (open) 1f else 0f) }
+    LaunchedEffect(open) { turn.animateTo(if (open) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = 380f)) }
     StyleCircle(
-        icon = if (open) R.drawable.close else R.drawable.more_horiz,
+        icon = R.drawable.expand_less,
         tones = tones,
         size = size,
+        pill = pill,
         onClick = { onOpenChange(!open) },
-        modifier = Modifier.graphicsLayer { rotationZ = turn.value * 90f },
+        // up-pointing art: turned to point down at rest when the menu drops below it
+        modifier = Modifier.graphicsLayer { rotationZ = (if (opensDown) 180f else 0f) + turn.value * 180f },
     )
 }
 
@@ -440,12 +559,21 @@ internal fun ReportSplit(landscape: Boolean, boundary: () -> Float) {
 }
 
 /** the played/remaining split as [progressSplit] draws it, into any draw scope */
-internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: StyleTones, vertical: Boolean, boundary: Float) {
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: StyleTones, vertical: Boolean, boundary: Float) =
+    drawSplit(tones.played, tones.remaining, vertical, boundary)
+
+/** the split in two given colours, for a frame whose tones are fading to the next song's */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(
+    played: Color,
+    remaining: Color,
+    vertical: Boolean,
+    boundary: Float,
+) {
     val b = boundary.coerceIn(0f, 1f)
     if (vertical) {
         val y = size.height * b
-        drawRect(tones.played, size = size.copy(height = y))
-        drawRect(tones.remaining, topLeft = Offset(0f, y), size = size.copy(height = size.height - y))
+        drawRect(played, size = size.copy(height = y))
+        drawRect(remaining, topLeft = Offset(0f, y), size = size.copy(height = size.height - y))
         // light falls on the played part from the top, the line itself catches a highlight
         drawRect(
             Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.Transparent), endY = y.coerceAtLeast(1f)),
@@ -463,8 +591,8 @@ internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSplit(tones: S
         drawRect(Color.White.copy(alpha = 0.10f), topLeft = Offset(0f, y - 1f), size = size.copy(height = 1.5f))
     } else {
         val x = size.width * b
-        drawRect(tones.played, size = size.copy(width = x))
-        drawRect(tones.remaining, topLeft = Offset(x, 0f), size = size.copy(width = size.width - x))
+        drawRect(played, size = size.copy(width = x))
+        drawRect(remaining, topLeft = Offset(x, 0f), size = size.copy(width = size.width - x))
         drawRect(
             Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), endX = x.coerceAtLeast(1f)),
             size = size.copy(width = x),
@@ -506,6 +634,11 @@ fun RotatingFrame(
     var leaving by remember { mutableStateOf<Boolean?>(null) }
     val turn = remember { Animatable(1f) }
     val splits = remember { StyleSplits() }
+    // A new song's tones fade in rather than snap: the split is the whole background of these
+    // styles, and it used to change colour in one frame. Read only while drawing, so the fade
+    // repaints the background without recomposing the style.
+    val played = androidx.compose.animation.animateColorAsState(tones.played, tween(ToneFadeMs), label = "playedTone")
+    val remaining = androidx.compose.animation.animateColorAsState(tones.remaining, tween(ToneFadeMs), label = "remainingTone")
     LaunchedEffect(rotated) {
         if (rotated == shown) return@LaunchedEffect
         leaving = shown
@@ -522,13 +655,13 @@ fun RotatingFrame(
                 if (background != null) Modifier else Modifier.drawBehind {
                     val now = splits[shown]
                     if (now == null) {
-                        drawRect(tones.played)
+                        drawRect(played.value)
                         return@drawBehind
                     }
                     val from = leaving?.let { splits[it] }
                     val t = turn.value.coerceIn(0f, 1f)
                     val b = if (from != null) from() + (now() - from()) * t else now()
-                    drawSplit(tones, vertical = true, boundary = b)
+                    drawSplit(played.value, remaining.value, vertical = true, boundary = b)
                 }
             ),
     ) {
@@ -575,6 +708,9 @@ fun RotatingFrame(
         }
     }
 }
+
+/** how long a style's background takes to fade to a new song's colours */
+private const val ToneFadeMs = 700
 
 /**
  * How far a layer [w] x [h] (as laid out, before its own [restAngle]) must shrink, turned a further

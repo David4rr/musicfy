@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
+import java.security.MessageDigest
 import java.net.URL
 
 val localProperties = Properties()
@@ -27,20 +28,38 @@ extensions.configure<ApplicationExtension> {
         minSdk = 24
         targetSdk = 36
         versionCode = 71
-        versionName = "8.0.0 build#1150"
+        versionName = "8.1.0 build#1163"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
-        // LastFM API keys from GitHub Secrets
-//        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
-//        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
-        
-        val lastFmKey = "694cbaa17c78202a133eac4656dff651"
-        val lastFmSecret = "a0fdaf6060f19128c4a84f297c71e627"
+        // LastFM API keys from local.properties locally, GitHub Secrets on CI. never commit them
+        val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
+        val lastFmSecret = localProperties.getProperty("LASTFM_SECRET") ?: System.getenv("LASTFM_SECRET") ?: ""
 
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastFmKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastFmSecret\"")
+
+        // Libre.fm the same way. It takes any 32-character key and never checks the secret, so a
+        // build without its own (a fork, a CI run with no secrets) gets one made from the app id
+        // instead of losing Libre.fm
+        fun libreFmStandIn(name: String) = MessageDigest.getInstance("MD5")
+            .digest("$applicationId.librefm.$name".toByteArray()).joinToString("") { "%02x".format(it) }
+        val libreFmKey = localProperties.getProperty("LIBREFM_API_KEY")
+            ?: System.getenv("LIBREFM_API_KEY")?.takeIf { it.isNotEmpty() } ?: libreFmStandIn("key")
+        val libreFmSecret = localProperties.getProperty("LIBREFM_SECRET")
+            ?: System.getenv("LIBREFM_SECRET")?.takeIf { it.isNotEmpty() } ?: libreFmStandIn("secret")
+        buildConfigField("String", "LIBREFM_API_KEY", "\"$libreFmKey\"")
+        buildConfigField("String", "LIBREFM_SECRET", "\"$libreFmSecret\"")
+
+        // The Discord app Musicfy signs in through (Developer Portal → your app → Application ID).
+        // Discord sends the login back to discord-<id>:/authorize/callback, so the manifest needs it too.
+        // Without one, the Discord page says so instead of opening a login that can't come back.
+        val discordClientId = localProperties.getProperty("DISCORD_CLIENT_ID")
+            ?: System.getenv("DISCORD_CLIENT_ID") ?: ""
+        buildConfigField("String", "DISCORD_CLIENT_ID", "\"$discordClientId\"")
+        manifestPlaceholders["discordRedirectScheme"] =
+            if (discordClientId.isNotBlank()) "discord-$discordClientId" else "musicfy-discord-unset"
 
 //add nightly build label support
         val isNightly = project.hasProperty("nightly") && project.property("nightly") == "true"
@@ -181,6 +200,7 @@ extensions.configure<ApplicationExtension> {
             // The provider modules only publish debug/release variants; without this, resolving
             // a "profileable" variant of :providers:* fails.
             matchingFallbacks += listOf("release")
+            proguardFiles("proguard-profileable.pro")
         }
     }
 
@@ -318,6 +338,9 @@ dependencies {
     implementation(libs.datastore)
 
     implementation(libs.compose.runtime)
+    // the profiling build names every composable in system traces, so a slow frame says what it was
+    "profileableImplementation"("androidx.compose.runtime:runtime-tracing:1.10.2")
+    "profileableImplementation"("androidx.tracing:tracing-perfetto-binary:1.0.1")
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
@@ -375,7 +398,6 @@ dependencies {
     implementation(project(":providers:innertube"))
     implementation(project(":providers:kugou"))
     implementation(project(":providers:lrclib"))
-    implementation(project(":providers:kizzy"))
     implementation(project(":providers:lastfm"))
     implementation(project(":providers:betterlyrics"))
     implementation(project(":providers:simpmusic"))
@@ -385,6 +407,7 @@ dependencies {
     implementation(project(":providers:artistvideo"))
     implementation(project(":providers:applecanvas"))
     implementation(project(":providers:paxsenixlyrics"))
+    implementation(project(":providers:directlyrics"))
     implementation(project(":modules:api"))
     implementation(project(":modules:applemusic"))
     implementation(project(":modules:monochrome"))

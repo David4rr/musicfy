@@ -35,6 +35,7 @@ import com.example.musicfy.utils.sabr.EjsNTransformSolver
 import com.example.musicfy.utils.PlaybackLogLevel
 import com.example.musicfy.utils.PlaybackLogManager
 import com.music.innertube.models.IpVersion
+import io.ktor.client.plugins.ResponseException
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import timber.log.Timber
@@ -199,7 +200,11 @@ object YTPlayerUtils {
     ): Result<PlaybackData> {
         val firstAttempt = resolvePlaybackData(videoId, playlistId, audioQuality, connectivityManager)
 
-        if (firstAttempt.isFailure && YouTube.cookie == null) {
+        // a rate limit is the whole network, not the session: rotating asks YouTube again and
+        // retrying walks every client again, which only keeps the limit in place
+        if (firstAttempt.isFailure && YouTube.cookie == null &&
+            firstAttempt.exceptionOrNull() !is YouTubeRateLimitedException
+        ) {
             Timber.tag(TAG).w("Playback failed for guest. Rotating session and retrying...")
             PlaybackLogManager.log(PlaybackLogLevel.BOT, "Playback failed for guest", "Triggering bot detection mitigation (rotating guest session)")
             BotDetectionMitigator.rotateGuestSession()
@@ -243,6 +248,9 @@ object YTPlayerUtils {
         // an ordinary play never touches it, and only a ciphered web client pays the cost.
         val signatureTimestamp: SignatureTimestampResult by lazy { getSignatureTimestampOrNull(videoId) }
 
+        // why each client couldn't play, in the order tried: what the error says when none can
+        val failures = mutableListOf<String>()
+
         var poToken: PoTokenResult? = null
         val sessionId = if (isLoggedIn) YouTube.dataSyncId else YouTube.visitorData
         if (MAIN_CLIENT.useWebPoTokens && sessionId != null) {
@@ -260,7 +268,13 @@ object YTPlayerUtils {
         Timber.tag(logTag).d("Attempting to get player response using MAIN_CLIENT: ${MAIN_CLIENT.clientName}")
         PlaybackLogManager.log(PlaybackLogLevel.DEBUG, "Trying ${MAIN_CLIENT.clientName} (Main)")
         val mainSigTimestamp = if (MAIN_CLIENT.useSignatureTimestamp) signatureTimestamp.timestamp else null
-        var mainPlayerResponse = YouTube.player(videoId, playlistId, MAIN_CLIENT, mainSigTimestamp, poToken?.playerRequestPoToken).getOrThrow()
+        var mainPlayerResponse = YouTube.player(videoId, playlistId, MAIN_CLIENT, mainSigTimestamp, poToken?.playerRequestPoToken)
+            .getOrElse { e ->
+                if (e.isRateLimit()) throw YouTubeRateLimitedException()
+                // Ktor's message carries the whole request url and response body
+                if (e is ResponseException) throw Exception("YouTube refused the request (${e.shortReason()})", e)
+                throw e
+            }
 
         var metadataResponse: PlayerResponse? = null
         if (isLoggedIn) {
@@ -387,8 +401,13 @@ object YTPlayerUtils {
                     } else {
                         signatureTimestamp.timestamp
                     }
-                streamPlayerResponse =
-                    YouTube.player(videoId, playlistId, client, clientSigTimestamp, clientPoToken).getOrNull()
+                val result = YouTube.player(videoId, playlistId, client, clientSigTimestamp, clientPoToken)
+                result.exceptionOrNull()?.let { e ->
+                    // every client asks the same host: the rest would be refused too
+                    if (e.isRateLimit()) throw YouTubeRateLimitedException()
+                    failures += "${client.clientName}: ${e.shortReason()}"
+                }
+                streamPlayerResponse = result.getOrNull()
             }
 
             if (streamPlayerResponse?.playabilityStatus?.status == "OK") {
@@ -478,14 +497,17 @@ object YTPlayerUtils {
 
                 val isPrivatelyOwned = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
-                if (isPrivatelyOwned || clientIndex == STREAM_FALLBACK_CLIENTS.size - 1) {
+                // The last client used to be taken untested too, as better than nothing. It isn't:
+                // a cut-off url plays ~30 seconds, reaches READY and resets the skip counter, so
+                // the player kept going down the queue - failing cleanly here stops that.
+                if (isPrivatelyOwned) {
                     Timber.tag(logTag).d("Using stream without validation: ${currentClient.clientName}")
                     successClient = currentClient
                     Log.i(TAG, "Playback: client=${currentClient.clientName}, videoId=$videoId, private=$isPrivatelyOwned")
                     break
                 }
 
-                if (validateStatus(streamUrl!!, currentClient.streamHeaders())) {
+                if (validateStatus(streamUrl!!, currentClient.streamHeaders(), format.contentLength)) {
 
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
                     successClient = currentClient
@@ -509,7 +531,7 @@ object YTPlayerUtils {
                             val nTransformed = CipherDeobfuscator.transformNParamInUrl(streamUrl!!)
                             if (nTransformed != streamUrl) {
                                 Timber.tag(logTag).d("CipherDeobfuscator n-transform applied, re-validating...")
-                                if (validateStatus(nTransformed, currentClient.streamHeaders())) {
+                                if (validateStatus(nTransformed, currentClient.streamHeaders(), format.contentLength)) {
                                     Timber.tag(logTag).d("N-transformed URL VALIDATED OK!")
                                     streamUrl = nTransformed
                                     nTransformWorked = true
@@ -523,22 +545,40 @@ object YTPlayerUtils {
 
                         if (nTransformWorked) break
                     }
+                    failures += "${currentClient.clientName}: stream cut off"
                 }
             } else {
                 val status = streamPlayerResponse?.playabilityStatus?.status ?: "Unknown"
                 val reason = streamPlayerResponse?.playabilityStatus?.reason ?: "No reason"
                 Timber.tag(logTag).d("Player response status not OK: $status, reason: $reason")
                 PlaybackLogManager.log(PlaybackLogLevel.WARNING, "Client failed: ${client.clientName}", "$status: $reason")
+                // a request that failed outright was noted where it was made
+                if (streamPlayerResponse != null) {
+                    failures += "${client.clientName}: $status" +
+                        streamPlayerResponse.playabilityStatus.reason?.let { " ($it)" }.orEmpty()
+                }
 
                 Timber.tag(logTag).d("Player response status not OK: ${streamPlayerResponse?.playabilityStatus?.status}, reason: ${streamPlayerResponse?.playabilityStatus?.reason}")
             }
         }
 
-        if (streamPlayerResponse == null) {
-            Timber.tag(logTag).e("Bad stream player response - all clients failed")
+        // Every client failed. The error used to describe only the last one tried - MOBILE, whose
+        // request failing outright came out as "Bad stream player response" - so the reason the
+        // song couldn't play (VISIONOS refused it, the others cut off) never reached the user.
+        if (successClient == null) {
+            Timber.tag(logTag).e("All clients failed for $videoId: ${failures.joinToString(" | ")}")
             if (isUploadedTrack) {
                 println("[PLAYBACK_DEBUG] FAILURE: All clients failed for uploaded track videoId=$videoId")
             }
+            val summary = failureSummary(failures)
+            val last = streamPlayerResponse
+            if (last != null && last.playabilityStatus.status != "OK") {
+                throw PlaybackException(summary, null, PlaybackException.ERROR_CODE_REMOTE_ERROR)
+            }
+            throw Exception(summary)
+        }
+
+        if (streamPlayerResponse == null) {
             throw Exception("Bad stream player response")
         }
 
@@ -760,26 +800,32 @@ object YTPlayerUtils {
     }
 
     /**
-     * Checks a resolved stream URL is actually fetchable.
+     * Checks whether a stream url serves the whole song.
      *
-     * Uses a one-byte ranged GET rather than HEAD: googlevideo answers HEAD with 403
-     * on URLs issued by the iOS/iPadOS clients even when the URL is perfectly good,
-     * which previously caused every working stream to be thrown away.
-     */
-    /**
-     * Checks whether a stream url actually serves bytes.
+     * It asks for the song's last byte. Untokened urls (IPADOS, ANDROID_VR) serve only the first
+     * ~786 KB and answer 403 past it, so the first byte - what this used to ask for - came back
+     * fine, the song was taken, and it died about 30 seconds in. Each of those reached READY,
+     * which resets the skip-after-failure counter, so the player went down the whole queue
+     * downloading 30 seconds of every song and playing none. Measured 2026-10-18: VISIONOS 206
+     * at byte 0, at 1 MiB and at the end; IPADOS and ANDROID_VR 1.65 206 up to 786 KB, 403 from
+     * 1 MiB on.
      *
      * The headers matter: googlevideo validates Origin/Referer against the client named in the
      * url, so probing without them can fail on a url that plays perfectly well. HEAD is not
      * usable here - googlevideo answers it with 403 even for good urls - so this is a ranged GET.
      */
-    private fun validateStatus(url: String, headers: Map<String, String> = emptyMap()): Boolean {
-        Timber.tag(logTag).d("Validating stream URL status")
+    private fun validateStatus(
+        url: String,
+        headers: Map<String, String> = emptyMap(),
+        contentLength: Long? = null,
+    ): Boolean {
+        val offset = contentLength?.takeIf { it > 1 }?.minus(1) ?: UNTOKENED_WINDOW_PROBE_BYTE
+        Timber.tag(logTag).d("Validating stream URL status at byte $offset")
         try {
             val requestBuilder = okhttp3.Request.Builder()
                 .get()
                 .url(url)
-                .header("Range", "bytes=0-0")
+                .header("Range", "bytes=$offset-$offset")
 
             headers.forEach { (name, value) -> requestBuilder.header(name, value) }
             if (headers["User-Agent"] == null) {
@@ -791,7 +837,10 @@ object YTPlayerUtils {
             }
 
             httpClient.newCall(requestBuilder.build()).execute().use {
-                val isSuccessful = it.isSuccessful || it.code == 206
+                // with no length to aim at, a song shorter than the probe answers 416: served, not
+                // refused (a cut-off url answers 403)
+                val isSuccessful = it.isSuccessful || it.code == 206 ||
+                    (it.code == 416 && contentLength == null)
                 Timber.tag(logTag).d("Stream URL validation result: ${if (isSuccessful) "Success" else "Failed"} (${it.code})")
                 return isSuccessful
             }
@@ -893,4 +942,36 @@ object YTPlayerUtils {
     fun forceRefreshForVideo(videoId: String) {
         Timber.tag(logTag).d("Force refreshing for videoId: $videoId")
     }
+
+    /** Past the ~786 KB an untokened url serves; probed when the song's length isn't known. */
+    private const val UNTOKENED_WINDOW_PROBE_BYTE = 1_048_576L
+
+    /** One line for the notification: the first client's reason, which is the main client's. */
+    private fun failureSummary(failures: List<String>): String {
+        val first = failures.firstOrNull() ?: return "YouTube didn't return a playable stream"
+        val others = failures.size - 1
+        return if (others > 0) {
+            "YouTube wouldn't stream this song ($first; $others other clients failed too)"
+        } else {
+            "YouTube wouldn't stream this song ($first)"
+        }
+    }
+
+    private fun Throwable.isRateLimit(): Boolean =
+        this is ResponseException && response.status.value == 429
+
+    /** Short: Ktor's own message carries the whole request url and response body. */
+    private fun Throwable.shortReason(): String = when (this) {
+        is ResponseException -> "HTTP ${response.status.value}"
+        is java.net.SocketTimeoutException -> "timed out"
+        is java.net.UnknownHostException, is java.net.ConnectException -> "no connection"
+        else -> javaClass.simpleName
+    }
 }
+
+/**
+ * YouTube answered 429: it's refusing this network for a while. Nothing else is asked - every
+ * client goes to the same host, and more requests only keep the limit in place.
+ */
+class YouTubeRateLimitedException :
+    Exception("YouTube is limiting requests from this network. Try again in a few minutes.")

@@ -16,6 +16,8 @@ data class ImportedTrack(
     val ytItem: SongItem? = null,
     /** When it was added to the source's list (liked, saved to the library), so imports keep that order. */
     val addedAtMs: Long? = null,
+    /** The track's own id on its service ("spotify:track:..."), which a hand-picked version is saved under. */
+    val sourceId: String? = null,
 )
 
 /**
@@ -51,10 +53,53 @@ data class ParsedImport(
     val provider: ImportSource? = null,
     /** Each playlist's own cover on the source service, by its name in [playlists]. */
     val playlistCovers: Map<String, String> = emptyMap(),
+    /** Where each playlist lives on the service, by its name in [playlists], so it can be re-synced. */
+    val playlistOrigins: Map<String, PlaylistOrigin> = emptyMap(),
 ) {
     val totalSongs: Int get() = likedSongs.size + librarySongs.size + playlists.values.sumOf { it.size }
     val totalPlaylists: Int get() = playlists.size
 }
+
+/** Where a playlist lives on its service. Either is enough for Re-sync to read it again. */
+data class PlaylistOrigin(
+    /** Its id on the service: what the service's account lists it under. */
+    val remoteId: String? = null,
+    /** The share link it was read from. */
+    val remoteUrl: String? = null,
+)
+
+/** One Re-sync run: the playlist being read now, and what the run has done so far. */
+data class ResyncSummary(
+    val playlistName: String,
+    /** How many playlists the run re-syncs (Re-sync all), and how many are finished. */
+    val playlists: Int = 1,
+    val done: Int = 0,
+    /** New songs added over every playlist so far, and how many playlists got any. */
+    val added: Int = 0,
+    val playlistsChanged: Int = 0,
+    /** Playlists that couldn't be read or added to. */
+    val failed: List<String> = emptyList(),
+    /** Something to know about how one was read, like a link that only shares part of the playlist. */
+    val note: String? = null,
+)
+
+/** A Re-sync's read of a playlist: its songs on the service now, and where it was found. */
+data class ResyncRead(
+    val tracks: List<ImportedTrack>,
+    val origin: PlaylistOrigin,
+    val note: String? = null,
+)
+
+/**
+ * One playlist for MusicImportService to re-sync. [read] runs inside the re-sync, so the wait for
+ * the service already shows as progress.
+ */
+class ResyncRequest(
+    val playlistId: String,
+    val playlistName: String,
+    val source: ImportSource,
+    val read: suspend () -> ResyncRead,
+)
 
 data class ImportOptions(
     /** Also create the playlists (and likes) on the signed-in YouTube account. */
@@ -83,6 +128,8 @@ data class ImportProgress(
     /** Playlists that imported locally but couldn't be created or filled on YouTube. */
     val youtubeFailures: List<String> = emptyList(),
     val error: String? = null,
+    /** Set while this run is a Re-sync of one playlist rather than an import. */
+    val resync: ResyncSummary? = null,
 )
 
 /** A YouTube song needs no matching: the id is exact, and the full item is kept. */

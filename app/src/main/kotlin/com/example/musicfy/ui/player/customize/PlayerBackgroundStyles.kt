@@ -65,6 +65,8 @@ fun PlayerBackgroundPreview(
     modifier: Modifier = Modifier,
 
     warp: Boolean = true,
+    /** a clock shared by several of these (crossfading copies), so they don't each run their own */
+    timeProvider: (() -> Float)? = null,
 ) {
     if (style != PlayerBackgroundStyle.COVER_GRADIENT) {
         PlayerBackgroundContent(
@@ -82,6 +84,7 @@ fun PlayerBackgroundPreview(
             height = height,
             animate = animate,
             shader = if (warp) rememberWarpShader() else null,
+            timeProvider = timeProvider,
         )
     }
 }

@@ -435,26 +435,7 @@ internal fun ProfilePage(
     ) {
         Text("what's your username?", color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
-        BasicTextField(
-            value = username,
-            onValueChange = { onUsernameChange(it.take(32)) },
-            singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontFamily = InterFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.03).em),
-            cursorBrush = SolidColor(Color.White),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            decorationBox = { inner ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(CircleShape)
-                        .background(Onb.Field)
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                ) {
-                    if (username.isEmpty()) Text("username", color = Onb.Faint, fontSize = 16.sp)
-                    inner()
-                }
-            },
-        )
+        OnbTextField(value = username, onValueChange = { onUsernameChange(it.take(32)) }, placeholder = "username")
         Spacer(Modifier.height(24.dp))
         Text("Set a profile picture here!", color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))

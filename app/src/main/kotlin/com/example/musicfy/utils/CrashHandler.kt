@@ -25,6 +25,9 @@ class CrashHandler private constructor(
             // Timber isn't planted in release builds, and the process is killed right after: without
             // this a release crash left nothing behind at all. Log.e is kept by R8.
             android.util.Log.e("MusicfyCrash", crashLog)
+            // and on the phone, because logcat has long moved on by the time a crash gets looked at.
+            // Read it back with `adb shell run-as <package> cat files/last_crash.txt`.
+            runCatching { java.io.File(applicationContext.filesDir, LAST_CRASH_FILE).writeText(crashLog) }
 
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(1)
@@ -59,6 +62,7 @@ class CrashHandler private constructor(
 
     companion object {
         const val EXTRA_CRASH_LOG = "crash_log"
+        const val LAST_CRASH_FILE = "last_crash.txt"
 
         fun install(context: Context) {
             val handler = CrashHandler(context.applicationContext)

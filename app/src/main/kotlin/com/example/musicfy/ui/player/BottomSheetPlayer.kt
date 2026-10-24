@@ -46,16 +46,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.example.musicfy.ui.player.studio.playHoldRamp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import android.os.Build
 import androidx.compose.ui.layout.layout
@@ -82,6 +81,8 @@ import com.example.musicfy.constants.DefaultPlayerCoverStyle
 import com.example.musicfy.constants.PlayerCoverStyleKey
 import com.example.musicfy.constants.PlayerStyle
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
+import com.example.musicfy.constants.PlayerBottomBarStyle
+import com.example.musicfy.constants.PlayerBottomBarStyleKey
 import com.example.musicfy.constants.InfiniteQueueKey
 import androidx.activity.compose.BackHandler
 import com.example.musicfy.ui.component.BottomSheet
@@ -95,7 +96,10 @@ import com.example.musicfy.ui.player.studio.StudioSheets
 import com.example.musicfy.ui.player.studio.StudioStage
 import com.example.musicfy.ui.player.studio.studioAnchor
 import com.example.musicfy.ui.player.studio.studioCaptureSource
-import com.example.musicfy.ui.player.studio.studioCardLayer
+import com.example.musicfy.ui.player.studio.studioBarLayer
+import com.example.musicfy.ui.player.studio.LiftedPart
+import com.example.musicfy.ui.player.studio.StudioCameraEffect
+import com.example.musicfy.ui.player.studio.StudioPieces
 import com.example.musicfy.ui.player.studio.studioCoverLayer
 import com.example.musicfy.ui.player.studio.studioMiddleLayer
 import com.example.musicfy.ui.player.studio.studioSheetLayer
@@ -148,15 +152,40 @@ private enum class PlayerSwipe {
     /** Up on the strip below the seek bar with a page open: the page the card offers. */
     OPEN_OTHER,
 
-    /** Down on that strip: back to the page before, or to the player. */
+    /** Down on that strip: the open page following the finger back down into the card. */
+    PUSH,
+
+    /** Down on that strip over a page opened from the other one: back to that one. */
     BACK,
 }
+
+/** A flick on the mini player faster than this skips however short it was. */
+private val MiniSwipeFling = 500.dp
+
+/**
+ * The strip along the top of the open player, under the status bar, where a swipe down closes it
+ * (as well as the whole cover, when it's the edge-to-edge one).
+ */
+private val PlayerCloseStrip = 64.dp
 
 /** The old gap from the seek bar down to the buttons (24dp plus the bar's lift). */
 private val TransportGapAboveRow = 24.dp + SeekBarLift
 
-/** How far the title row rises as a page opens and its title moves into the header. */
-private val TitleRowDrift = 22.dp
+/** From the top of the page column's chevron to the top of the button under it (34dp + a 7dp gap). */
+private val PageButtonStep = 41.dp
+
+/**
+ * A page's own buttons (shuffle and autoplay on the queue, like when it isn't the player's side
+ * button) open out from behind the chevron once it has nearly arrived: this far into the page's
+ * progress they start, and they're out at the end.
+ */
+private const val PageButtonsFrom = 0.3f
+
+/** Eases out, so the buttons spring out from behind the chevron and settle softly. */
+private fun pageButtonsOut(pageProgress: Float): Float {
+    val t = ((pageProgress - PageButtonsFrom) / (1f - PageButtonsFrom)).coerceIn(0f, 1f)
+    return 1f - (1f - t) * (1f - t) * (1f - t)
+}
 
 /**
  * A slot whose height (and a gap under it) is read at measure time, with its content pinned to the
@@ -183,6 +212,22 @@ fun BottomSheetPlayer(
     state: BottomSheetState,
     navController: NavController,
     modifier: Modifier = Modifier,
+    pureBlack: Boolean,
+) {
+    val playerConnection = LocalPlayerConnection.current ?: return
+    // one row of songs for every part of the player (cover, record, title, background), so they
+    // all slide together whichever style is showing
+    val songCarousel = rememberSongCarousel(playerConnection)
+    androidx.compose.runtime.CompositionLocalProvider(LocalSongCarousel provides songCarousel) {
+        PlayerSheet(state = state, navController = navController, modifier = modifier, pureBlack = pureBlack)
+    }
+}
+
+@Composable
+private fun PlayerSheet(
+    state: BottomSheetState,
+    navController: NavController,
+    modifier: Modifier,
     pureBlack: Boolean,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -217,46 +262,25 @@ fun BottomSheetPlayer(
     val menuLayout = com.example.musicfy.ui.player.studio.rememberPlayerMenuLayout()
     val studioFrame = androidx.compose.ui.graphics.rememberGraphicsLayer()
     val studioCapture = remember(studioFrame) { com.example.musicfy.ui.player.studio.StudioCapture(studioFrame) }
-    // the middle part's pieces (side button, chevron, seek bar, end time), lifted off the player
-    // while it's edited, so the editor moves the player's own drawing of each
+    // the pieces the editor lifts off the player while a part is edited (the middle part's, or the
+    // transport and the bottom bar), so it moves the player's own drawing of each
     val studioPieces = com.example.musicfy.ui.player.studio.rememberStudioPieces()
-    androidx.compose.runtime.SideEffect { studioParts.pieces = studioPieces }
-    // The middle part is a camera move over a still of the player: on opening it the pieces are
-    // lifted and the rest of the player is taken as one picture (the camera waits for it, a frame
-    // or two); the live player stops drawing under it until the camera is back out.
-    LaunchedEffect(studio, studioCapture, studioPieces) {
-        androidx.compose.runtime.snapshotFlow { studio.stage == StudioStage.MIDDLE || studio.stage == StudioStage.MENU }
-            .collectLatest { inMiddle ->
-                if (!inMiddle) {
-                    androidx.compose.runtime.snapshotFlow { studio.middle.value }.first { it < 0.002f }
-                    studio.sheetCovered = false
-                    // the live player is back under the still for a frame before the pieces go home
-                    androidx.compose.runtime.withFrameNanos { }
-                    studioPieces.lifted = false
-                    studioCapture.image = null
-                    studioCapture.soft = null
-                    return@collectLatest
-                }
-                if (studioCapture.image != null) return@collectLatest
-                studio.middle.value = 0f
-                studioPieces.lifted = true
-                studioCapture.recording = true
-                androidx.compose.runtime.withFrameNanos { }
-                androidx.compose.runtime.withFrameNanos { }
-                val frame = runCatching { studioFrame.toImageBitmap() }.getOrNull()
-                studioCapture.recording = false
-                studioCapture.image = frame
-                if (frame != null) studio.sheetCovered = true
-                studio.middle.animateTo(1f)
-                if (frame != null) {
-                    studioCapture.soft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                        runCatching { com.example.musicfy.ui.player.studio.softBackdrop(frame) }.getOrNull()
-                    }
-                }
-            }
+    // where the editor's hold put the controls (and so how big the cover is) and how tall the card is
+    val layoutTweaks = rememberPlayerLayoutTweaks()
+    androidx.compose.runtime.SideEffect {
+        studioParts.pieces = studioPieces
+        studioParts.tweaks = layoutTweaks
     }
+    // what sits under the play buttons: the card deck, or the volume with its four buttons
+    val (barStyle, onBarStyle) = rememberEnumPreference(PlayerBottomBarStyleKey, PlayerBottomBarStyle.STACK)
+    StudioCameraEffect(studio, studioCapture, studioPieces, barStyle)
+    // while the bar is edited both its styles are built, each lifted off the player for the editor
+    val barLifted by remember { derivedStateOf { studioPieces.liftedPart == LiftedPart.BAR } }
+    val showDeck = showPlayerBottomCard && barStyle == PlayerBottomBarStyle.STACK
+    val showVolumeBar = barStyle == PlayerBottomBarStyle.VOLUME
     var showPlaybackSpeed by remember { mutableStateOf(false) }
     var showDeviceOutput by remember { mutableStateOf(false) }
+    var showLyricsSource by remember { mutableStateOf(false) }
 
     var showExpandMenu by remember { mutableStateOf(false) }
     var seeVideo by remember { mutableStateOf(false) }
@@ -272,10 +296,22 @@ fun BottomSheetPlayer(
     val menuReveal = remember { mutableFloatStateOf(0f) }
 
     var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
-    val (playerStyle, onPlayerStyleChange) = rememberEnumPreference(
+    val (savedPlayerStyle, savePlayerStyle) = rememberEnumPreference(
         com.example.musicfy.constants.PlayerStyleKey,
         com.example.musicfy.constants.PlayerStyle.DEFAULT,
     )
+    // A style picked in the studio shows at once. The saved one only comes back after the
+    // settings file is written, which landed in the middle of the player growing back out of its
+    // card - the old style grew, then the new one was built mid-spring, and the spring stuttered.
+    var pickedPlayerStyle by remember { mutableStateOf<PlayerStyle?>(null) }
+    val playerStyle = pickedPlayerStyle ?: savedPlayerStyle
+    LaunchedEffect(savedPlayerStyle) {
+        if (savedPlayerStyle == pickedPlayerStyle) pickedPlayerStyle = null
+    }
+    val onPlayerStyleChange: (PlayerStyle) -> Unit = { style ->
+        pickedPlayerStyle = style
+        savePlayerStyle(style)
+    }
     // the Turntable is the flagship around a record player, whatever cover the flagship is set to
     val isTurntable = playerStyle == com.example.musicfy.constants.PlayerStyle.TURNTABLE
     val shownCoverStyle = if (isTurntable) PlayerCoverStyle.TURNTABLE else coverStyle
@@ -333,6 +369,10 @@ fun BottomSheetPlayer(
         kotlinx.coroutines.delay(180)
         openStudio()
     }
+    // the song's whole lyrics, opened over an alternate style from its ••• menu
+    var styleLyricsOpen by remember { mutableStateOf(false) }
+    // that page fully up: the style under it stops drawing
+    var styleCovered by remember { mutableStateOf(false) }
     val styleActions = remember(openStudio) {
         com.example.musicfy.ui.player.styles.StyleActions(
             onOtherMenu = {
@@ -342,6 +382,7 @@ fun BottomSheetPlayer(
                 showActionMenu = true
             },
             onEditPlayer = openStudio,
+            onLyrics = { styleLyricsOpen = true },
         )
     }
 
@@ -381,6 +422,11 @@ fun BottomSheetPlayer(
     var songInfoSourceRect by remember {
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     }
+    // the side button by the chevron, measured on the plain player: the lyrics column's like
+    // flies from here, and anything else tucks in behind the chevron from here
+    var sideButtonRect by remember {
+        mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    }
     var chevronButtonRect by remember {
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     }
@@ -393,6 +439,10 @@ fun BottomSheetPlayer(
     val density = LocalDensity.current
 
     var controlsInset by remember { mutableStateOf(220.dp) }
+
+    // The bar at the top of the open player, on every style: bright while it's touched, faint
+    // once left alone. The sheet tells it about every touch.
+    val handleState = rememberPlayerHandleState()
 
     /**
      * Distance from the top of the seek bar to the bottom of the screen.
@@ -424,13 +474,48 @@ fun BottomSheetPlayer(
     // here: the open spring's little landing bounce belongs to the page, not to the cover.
     val lyricsProgress by remember { derivedStateOf { transition.headerProgress.coerceIn(0f, 1f) } }
 
+
+    // Where the chevron is on its flight from the row to the page's column (root px), or null
+    // before both ends are measured. Read while drawing.
+    fun flyingChevronCenter(): Offset? {
+        val from = chevronButtonRect ?: return null
+        val to = lyricsChevronRect ?: return null
+        val k = 1f - lyricsProgress
+        return Offset(to.center.x + (from.center.x - to.center.x) * k, to.center.y + (from.center.y - to.center.y) * k)
+    }
+
+    // A button of the page's own opening out from behind the chevron as the page's progress goes
+    // 0 to 1, from wherever the chevron is on its flight: it grows as it slides down into its
+    // place, and stays hidden while it's still tucked in behind. [below] is how far under the
+    // chevron's top its own place is laid out.
+    fun androidx.compose.ui.graphics.GraphicsLayerScope.openOutFromChevron(pageProgress: Float, below: Float) {
+        val out = pageButtonsOut(pageProgress)
+        val from = chevronButtonRect
+        val to = lyricsChevronRect
+        val k = 1f - lyricsProgress
+        val flightX = if (from != null && to != null) (from.center.x - to.center.x) * k else 0f
+        val flightY = if (from != null && to != null) (from.center.y - to.center.y) * k else 0f
+        translationX = flightX * (1f - out)
+        translationY = (flightY - below) * (1f - out)
+        val scale = 0.7f + 0.3f * out
+        scaleX = scale
+        scaleY = scale
+        alpha = (out * 4f).coerceIn(0f, 1f)
+    }
+
+    // The lyrics page's like is the player's side button itself, flown over, when that button is
+    // the like and the page is growing out of (or back into) the card. Switching over from the
+    // queue it opens out from behind the chevron like the page's other buttons.
+    fun likeMovesToLyrics(): Boolean =
+        menuLayout.side == com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE &&
+            transition.isCardMorph(PlayerPage.LYRICS)
+
     // Each page's own content. Opened from the player it is the header's progress (one motion);
     // switching pages crossfades the content under a header that stays put.
     val lyricsPageProgress by remember { derivedStateOf { transition.lyricsProgress.coerceIn(0f, 1f) } }
     val queuePageProgress by remember { derivedStateOf { transition.queueProgress.coerceIn(0f, 1f) } }
     // the Turntable's pages: lyrics or queue, whichever is opening
     val turntablePageProgress by remember { derivedStateOf { maxOf(lyricsPageProgress, queuePageProgress) } }
-    val turntablePageUp by remember { derivedStateOf { turntablePageProgress >= 0.5f } }
     // Also while the page is being built, just before it grows (PlayerPageTransition.preparing)
     val lyricsPageMounted by remember {
         derivedStateOf { lyricsPageProgress > 0.001f || transition.preparing == PlayerPage.LYRICS }
@@ -455,9 +540,8 @@ fun BottomSheetPlayer(
         derivedStateOf { controlsHidden < 0.99f || transition.preparingClose || transition.page == PlayerPage.NONE }
     }
     androidx.compose.runtime.SideEffect {
-        transition.closeNeedsPreparing = { showPlayerBottomCard && controlsHidden >= 0.99f }
+        transition.closeNeedsPreparing = { (showDeck || showVolumeBar) && controlsHidden >= 0.99f }
     }
-    val controlsInert by remember { derivedStateOf { controlsHidden > 0.99f } }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -469,21 +553,28 @@ fun BottomSheetPlayer(
             studioParts.statusTop = with(density) { studioStatusTop.toPx() }
             studioParts.density = density
             studioParts.fullCover = shownCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE
+            studioParts.barStyle = barStyle
         }
         val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
         val horizontalOffsetProvider = remember(state) { { state.horizontalOffset } }
 
         // Vertical swipes on the expanded player, offered here before the sheet acts on them:
-        //  - On the plain player, a swipe up anywhere (the card keeps its own swipe, the flip) pulls
-        //    the card's page up out of it, the page following the finger. One finger-length to the
-        //    top of the card is the whole way, so the card's edge stays under the finger.
-        //  - From the seek bar down to the card - the timestamps, the transport row, the card - no
-        //    swipe closes the player: that strip has swipes of its own. With a page open (lyrics or
-        //    queue), a swipe up there opens the page the card offers and a swipe down goes back
-        //    to the page before it (or to the player).
+        //  - Around the controls (the title down to the card, never the cover), a swipe up pulls the
+        //    card's page up out of it, the page following the finger. One finger-length to the top
+        //    of the card is the whole way, so the card's edge stays under the finger.
+        //  - With a page open (lyrics or queue), on the strip from the seek bar down, a swipe down
+        //    pushes the page back into the card the same way, and a swipe up opens the page the
+        //    card offers.
+        //  - Only the top of the player closes it with a swipe down: the strip under the status bar
+        //    (down to the cover's top), or the whole cover when it's the edge-to-edge one. A swipe
+        //    anywhere used to close it, and a slightly crooked swipe over the controls threw the
+        //    whole player away.
         val screenHeightPx = with(density) { screenHeight.toPx() }
         val currentPlayerStyle by androidx.compose.runtime.rememberUpdatedState(playerStyle)
-        val currentCardShown by androidx.compose.runtime.rememberUpdatedState(showPlayerBottomCard)
+        val currentCardShown by androidx.compose.runtime.rememberUpdatedState(showDeck)
+        val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(shownCoverStyle)
+        val closeStripBottom = with(density) { (statusBarTopInset + PlayerCloseStrip).toPx() }
+        val currentCloseStripBottom by androidx.compose.runtime.rememberUpdatedState(closeStripBottom)
         val swipe = remember(transition, deck, morph, screenHeightPx, density) {
             val commitPx = with(density) { PageSwipeCommit.toPx() }
             val flingPx = with(density) { PageSwipeFling.toPx() }
@@ -506,6 +597,17 @@ fun BottomSheetPlayer(
                     return !top.isNaN() && controlsHidden < 0.5f && start.y >= top
                 }
 
+                /**
+                 * [start] (root) is around the controls: from the title row down to the card, or
+                 * anywhere under a cover that doesn't reach the title. Never on the cover itself.
+                 */
+                private fun aroundControls(start: Offset): Boolean {
+                    if (controlsHidden >= 0.5f) return false
+                    val controlsTop = controlsRect?.top ?: return false
+                    val coverBottom = if (currentCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE) null else coverArtRect?.bottom
+                    return start.y >= minOf(controlsTop, coverBottom ?: controlsTop)
+                }
+
                 override fun onStart(start: Offset, drag: Offset): Boolean {
                     if (!owned()) return false
                     if (start != sumStart) {
@@ -518,13 +620,19 @@ fun BottomSheetPlayer(
                     val up = sum.y < 0f
                     mode = when {
                         transition.page == PlayerPage.NONE ->
-                            if (up && transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)) {
+                            if (
+                                up && aroundControls(start) &&
+                                transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)
+                            ) {
                                 PlayerSwipe.PULL
                             } else {
                                 PlayerSwipe.NONE
                             }
-                        // down closes the player, wherever it starts (canCollapseFrom)
-                        inControlStrip(start) -> if (up) PlayerSwipe.OPEN_OTHER else PlayerSwipe.NONE
+                        inControlStrip(start) -> when {
+                            up -> PlayerSwipe.OPEN_OTHER
+                            transition.beginCloseDrag() -> PlayerSwipe.PUSH
+                            else -> PlayerSwipe.BACK
+                        }
                         else -> PlayerSwipe.NONE
                     }
                     if (mode == PlayerSwipe.NONE) return false
@@ -534,7 +642,10 @@ fun BottomSheetPlayer(
                 }
 
                 override fun onDrag(dy: Float) {
-                    if (mode == PlayerSwipe.PULL) transition.dragBy(-dy / distance()) else travelled += dy
+                    when (mode) {
+                        PlayerSwipe.PULL, PlayerSwipe.PUSH -> transition.dragBy(-dy / distance())
+                        else -> travelled += dy
+                    }
                 }
 
                 override fun onEnd(velocityY: Float) {
@@ -543,7 +654,7 @@ fun BottomSheetPlayer(
                     sumStart = Offset.Unspecified
                     sum = Offset.Zero
                     when (finished) {
-                        PlayerSwipe.PULL -> transition.release(-velocityY / distance())
+                        PlayerSwipe.PULL, PlayerSwipe.PUSH -> transition.release(-velocityY / distance())
                         // 0 is a cancelled gesture: nothing to commit.
                         PlayerSwipe.OPEN_OTHER ->
                             if (velocityY != 0f && (travelled < -commitPx || velocityY < -flingPx)) {
@@ -557,21 +668,62 @@ fun BottomSheetPlayer(
                     }
                 }
 
-                // a swipe down closes the player from anywhere on it - the cover, the controls, the
-                // card - unless a page's own swipe took it first (onStart, above)
-                override fun canCollapseFrom(start: Offset): Boolean = true
+                override fun canCollapseFrom(start: Offset): Boolean {
+                    if (!owned()) return true
+                    val pageOpen = transition.page != PlayerPage.NONE
+                    // down to the cover's top when there's room above it (with a page open the
+                    // cover is the header's thumbnail, inside the strip anyway)
+                    val coverTop = if (pageOpen) null else coverArtRect?.top
+                    val stripBottom = maxOf(currentCloseStripBottom, coverTop ?: 0f)
+                    if (start.y < stripBottom) return true
+                    if (pageOpen || currentCoverStyle != PlayerCoverStyle.EDGE_TO_EDGE) return false
+                    // the edge-to-edge cover is the player's top: all of it, down to the title
+                    val controlsTop = controlsRect?.top ?: return false
+                    return start.y < controlsTop
+                }
+            }
+        }
+
+        // A sideways swipe on the mini player slides the row of songs, its cover and title with it,
+        // the same as a swipe on the open player's cover.
+        val songCarousel = LocalSongCarousel.current
+        val miniSwipe = remember(songCarousel, density) {
+            val flingPx = with(density) { MiniSwipeFling.toPx() }
+            songCarousel?.let { row ->
+                object : com.example.musicfy.ui.component.CollapsedSwipe {
+                    private var hasPrevious = false
+                    private var hasNext = false
+
+                    override fun onStart() {
+                        hasPrevious = playerConnection.player.hasPreviousMediaItem()
+                        hasNext = playerConnection.player.hasNextMediaItem()
+                        row.startDrag()
+                    }
+
+                    override fun onDrag(travelledPx: Float, widthPx: Float) =
+                        row.dragTo(travelledPx, widthPx, hasPrevious, hasNext)
+
+                    override fun onEnd(travelledPx: Float, velocityPx: Float, widthPx: Float, cancelled: Boolean) {
+                        if (cancelled) row.cancelDrag()
+                        else row.release(travelledPx, velocityPx, widthPx, flingPx, playerConnection.player)
+                    }
+                }
             }
         }
 
         // what the round buttons do: the side button by the chevron and the chevron's menu, each
         // set to one of these in the editor
+        val menuExtras = com.example.musicfy.ui.player.studio.rememberPlayerMenuExtras(
+            playerConnection = playerConnection,
+            openLyrics = { if (transition.page != PlayerPage.LYRICS) transition.open(PlayerPage.LYRICS) },
+        )
         fun menuActionActive(action: com.example.musicfy.ui.player.studio.PlayerMenuAction): Boolean = when (action) {
             com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE -> trackInfo.liked
             com.example.musicfy.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> playerConnection.service.sleepTimer.isActive
             com.example.musicfy.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo
             com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT -> transportState.repeatMode != Player.REPEAT_MODE_OFF
             com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE -> transportState.shuffleModeEnabled
-            else -> false
+            else -> menuExtras.isActive(action)
         }
         val onMenuAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit = { action ->
             when (action) {
@@ -591,6 +743,7 @@ fun BottomSheetPlayer(
                 com.example.musicfy.ui.player.studio.PlayerMenuAction.QUEUE -> transition.open(PlayerPage.QUEUE)
                 com.example.musicfy.ui.player.studio.PlayerMenuAction.SPEED -> showPlaybackSpeed = true
                 com.example.musicfy.ui.player.studio.PlayerMenuAction.OUTPUT -> showDeviceOutput = true
+                else -> menuExtras.run(action)
             }
         }
 
@@ -635,6 +788,8 @@ fun BottomSheetPlayer(
             isExpandable = !studioEngaged,
             isPillTransition = true,
             expandedSwipe = swipe,
+            collapsedSwipe = miniSwipe,
+            onTouchActivity = handleState::onTouchActivity,
             pureBlack = pureBlack,
             background = {},
             sharedContent = {
@@ -659,6 +814,7 @@ fun BottomSheetPlayer(
                     glassActiveInEdit = { studio.stage >= StudioStage.EDIT && studio.selector.value < 0.01f },
                     // another style draws the open player itself: none of the flagship runs behind it
                     alternateStyle = !playerStyle.flagshipFamily,
+                    coverOffsetProvider = layoutTweaks::controlsOffset,
                     onLongPressCover = holdToStudio,
                     studioArtModifier = if (playerStyle.flagshipFamily) {
                         Modifier
@@ -679,6 +835,9 @@ fun BottomSheetPlayer(
                     sheetProgressProvider = progressProvider,
 
                     targetY = statusBarTopInset + 38.dp,
+                    screenWidth = screenWidth,
+                    // the Turntable's title is set differently, so its header title fades in over it
+                    handOff = !isTurntable,
                 )
                 // Above the title after a like, moving with it into the lyrics/queue header.
                 if (playerStyle.flagshipFamily) LikedLabel(
@@ -712,6 +871,8 @@ fun BottomSheetPlayer(
                 val styleOpen by remember(state) {
                     derivedStateOf { state.isExpanded || (state.isExpandedOrExpanding && state.progress > 0.9f) }
                 }
+                // what the style's own gestures ask when a touch lands, so a close beginning recomposes none of it
+                val styleInteractive = remember(state) { { styleOpen } }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -746,15 +907,34 @@ fun BottomSheetPlayer(
                         },
                 ) {
                     androidx.compose.runtime.CompositionLocalProvider(
-                        com.example.musicfy.ui.player.styles.LocalStyleInteractive provides styleOpen,
+                        com.example.musicfy.ui.player.styles.LocalStyleInteractive provides styleInteractive,
                     ) {
                         com.example.musicfy.ui.player.styles.AlternatePlayerStyle(
                             style = playerStyle,
                             actions = styleActions,
-                            modifier = Modifier.fillMaxSize(),
+                            // under a lyrics page that fills the screen it needn't be drawn
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = if (styleCovered) 0f else 1f },
                         )
                     }
                 }
+                // closed with the player, so it isn't still up the next time it opens
+                LaunchedEffect(styleOpen) { if (!styleOpen) styleLyricsOpen = false }
+                com.example.musicfy.ui.player.styles.StyleLyricsPage(
+                    open = styleLyricsOpen && styleOpen,
+                    onClose = { styleLyricsOpen = false },
+                    screenHeight = screenHeight,
+                    onCoveredChange = { styleCovered = it },
+                    onSwitchSource = { showLyricsSource = true },
+                )
+                PlayerHandle(
+                    state = handleState,
+                    sheet = state,
+                    statusBarTop = statusBarTopInset,
+                    enabled = { !studio.engaged },
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
                 return@BottomSheet
             }
 
@@ -774,6 +954,7 @@ fun BottomSheetPlayer(
                 maxHeight = screenHeight,
 
                 fadeProvider = { 1f - lyricsProgress },
+                offsetProvider = layoutTweaks::controlsOffset,
             )
 
             // The card growing into the page, under it: its glass widens to the full screen while
@@ -796,6 +977,7 @@ fun BottomSheetPlayer(
                     isMorphing = lyricsMorphing,
                     enterProgressProvider = { transition.cardMorphProgress(PlayerPage.LYRICS) },
                     morph = morph,
+                    onSwitchSource = { showLyricsSource = true },
                     modifier = Modifier
                         .fillMaxSize()
                         .pageTransitionLayer(PlayerPage.LYRICS, transition, morph) { lyricsPageProgress },
@@ -819,7 +1001,7 @@ fun BottomSheetPlayer(
                 )
             }
 
-            if (showPlayerBottomCard && deckMounted) {
+            if ((showDeck || (barLifted && showPlayerBottomCard)) && deckMounted) {
                 PlayerBottomCardStack(
                     glassState = morphingGlassState,
                     progressProvider = progressProvider,
@@ -828,6 +1010,9 @@ fun BottomSheetPlayer(
                     morph = morph,
                     onOpen = { transition.open(it) },
                     onLongPress = holdToStudio,
+                    // in the bar's editor the card comes up whole, its body closed off at the bottom
+                    closedProvider = { if (studioPieces.liftedPart == LiftedPart.BAR) studio.bar.value else 0f },
+                    growthProvider = layoutTweaks::cardGrowth,
 
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -835,12 +1020,34 @@ fun BottomSheetPlayer(
                         .onGloballyPositioned { bottomCardRect = it.boundsInRoot() }
                         .padding(horizontal = 26.dp)
                         .then(Modifier.studioAnchor(studioAnchors) { it.card })
-                        .then(Modifier.studioCardLayer(studioParts))
+                        .then(Modifier.studioBarLayer(studioParts) { it.card })
+                        .then(Modifier.studioPiece(studioPieces, StudioPieces.CARD_STACK))
 
                         .graphicsLayer {
                             alpha = 1f - controlsHidden
                             translationY = controlsHidden * size.height * 0.75f
+                            letTouchesThroughWhenHidden()
                         }
+                )
+            }
+
+            if ((showVolumeBar || barLifted) && deckMounted) {
+                PlayerVolumeBar(
+                    progressProvider = progressProvider,
+                    isActive = ::menuActionActive,
+                    onAction = onMenuAction,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = playerVolumeBarFootprint() - PlayerVolumeBarHeight)
+                        .padding(horizontal = 26.dp)
+                        .studioAnchor(studioAnchors) { it.volumeBar }
+                        .studioBarLayer(studioParts) { it.volumeBar }
+                        .studioPiece(studioPieces, StudioPieces.VOLUME_BAR)
+                        .graphicsLayer {
+                            alpha = 1f - controlsHidden
+                            translationY = controlsHidden * size.height * 0.75f
+                            letTouchesThroughWhenHidden()
+                        },
                 )
             }
 
@@ -857,40 +1064,44 @@ fun BottomSheetPlayer(
             // out centred the buttons on the bar's layout spot - 64dp too low under the full cover.
             // The navigation bar is only read when there's no card to sit above: read always, it
             // recomposed the whole player through the bar's hide/show animation at the end of every
-            // open and the start of every close, for a value the card layout never uses.
-            val belowControls = if (showPlayerBottomCard) {
-                PlayerDeckHeight
-            } else {
-                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp
+            // open and the start of every close, for a value the card layout never uses. (The
+            // volume bar reads its size as if it were showing, which stays put through all that.)
+            val belowControls = when {
+                showVolumeBar -> playerVolumeBarFootprint()
+                showPlayerBottomCard -> PlayerDeckHeight
+                else -> WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 8.dp
             }
             val transportGap = (screenHeight * 0.19f - 37.dp - belowControls + TransportGapAboveRow + controlsDrawShift) / 2f
             // What's left of the gap above once the bar's own lift and the draw shift are counted.
             val transportSpacer = (transportGap - SeekBarLift - controlsDrawShift).coerceAtLeast(0.dp)
+            // how far the editor's hold may move the controls, and pull the card taller
+            androidx.compose.runtime.SideEffect {
+                layoutTweaks.setLimits(
+                    roomAboveBar = transportGap.coerceAtLeast(0.dp),
+                    screenHeightPx = with(density) { screenHeight.toPx() },
+                    density = density,
+                    controlsMovable = !isTurntable,
+                    cardGrowable = showDeck && !isTurntable,
+                )
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(bottom = belowControls + transportGap.coerceAtLeast(0.dp))
+                    // where the editor's hold put them; only placed, so a drag never recomposes
+                    .offset { androidx.compose.ui.unit.IntOffset(0, layoutTweaks.controlsOffset().roundToInt()) }
                     .graphicsLayer {
                         // the Turntable shows its own controls; these (with the seek bar) come up
                         // only as the lyrics or the queue open, which run off the seek bar
                         alpha = (1f - controlsHidden) * (if (isTurntable) turntablePageProgress else 1f)
 
                         translationY = controlsHidden * size.height * 0.55f
+                        // Hidden over the lyrics, or behind the Turntable's own controls, they let
+                        // touches through. A layer that ate every touch used to sit here, and it
+                        // blocked the lyrics, the record and swipes along with the hidden buttons.
+                        letTouchesThroughWhenHidden()
                     }
-
-                    .then(
-                        if (controlsInert || (isTurntable && !turntablePageUp)) {
-                            Modifier.pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        awaitPointerEvent(PointerEventPass.Initial).changes
-                                            .forEach { it.consume() }
-                                    }
-                                }
-                            }
-                        } else Modifier
-                    )
 
                     .onGloballyPositioned { coords ->
                         val parentHeight = coords.parentLayoutCoordinates?.size?.height ?: return@onGloballyPositioned
@@ -918,9 +1129,13 @@ fun BottomSheetPlayer(
                             .studioAnchor(studioAnchors) { it.songInfo }
                             .studioMiddleLayer(studioParts) { it.songInfo }
                             .graphicsLayer {
-                                alpha = 1f - lyricsProgress
-                                // Drifts up as it hands its title to the header.
-                                translationY = -lyricsProgress * TitleRowDrift.toPx()
+                                // Its parts leave on their own as a page opens: the title moves up
+                                // into the header, the buttons into the page's column. Once the page
+                                // is up the row is hidden outright, since it sits unseen over the
+                                // bottom of the lyrics and its title and buttons there were opening
+                                // song details and liking.
+                                alpha = if (lyricsProgress >= 0.999f) 0f else 1f
+                                letTouchesThroughWhenHidden()
                             }
                     ) {
                         SongInfoRow(
@@ -942,6 +1157,38 @@ fun BottomSheetPlayer(
                             sideModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.SIDE),
                             chevronModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.CHEVRON),
                             onSongInfoClick = { if (!studioEngaged) showSongDetails = true },
+                            // the header's title is this one moving, so it hides as that takes over
+                            // (or fades, with no measured spot for the header's to start from)
+                            infoAlpha = {
+                                when {
+                                    lyricsProgress <= 0f -> 1f
+                                    songInfoSourceRect != null -> 0f
+                                    else -> 1f - lyricsProgress
+                                }
+                            },
+                            badgeAlpha = { (1f - lyricsProgress / 0.3f).coerceIn(0f, 1f) },
+                            onSidePositioned = { if (state.isExpanded && lyricsProgress <= 0f) sideButtonRect = it },
+                            sideLayer = {
+                                val lp = lyricsProgress
+                                if (lp <= 0f) return@SongInfoRow
+                                // the lyrics column's like is this very button, moved
+                                if (likeMovesToLyrics()) {
+                                    alpha = 0f
+                                    return@SongInfoRow
+                                }
+                                // anything else tucks in behind the chevron as it flies to the page
+                                val t = smoothstepF(lp / 0.5f)
+                                val side = sideButtonRect
+                                val chevron = flyingChevronCenter()
+                                if (side != null && chevron != null) {
+                                    translationX = (chevron.x - side.center.x) * t
+                                    translationY = (chevron.y - side.center.y) * t
+                                }
+                                val scale = 1f - 0.3f * t
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = 1f - t
+                            },
                         )
                     }
 
@@ -976,6 +1223,8 @@ fun BottomSheetPlayer(
                                 onClick = { showExpandMenu = !showExpandMenu },
                                 hasShadow = false,
                                 modifier = Modifier
+                                    // over the buttons that open out from behind it
+                                    .zIndex(1f)
                                     .onGloballyPositioned { coords ->
                                         lyricsChevronRect = coords.boundsInRoot()
                                     }
@@ -994,9 +1243,10 @@ fun BottomSheetPlayer(
                                     }
                             )
                             Spacer(modifier = Modifier.height(7.dp))
-                            // Like (lyrics) and shuffle (queue) share a slot, crossfading when the
-                            // page switches. Each is only composed while its page is, so an
-                            // invisible one never takes the other's taps.
+                            // Like (lyrics) and shuffle (queue) share a slot. Each is only composed
+                            // while its page is, so an invisible one never takes the other's taps.
+                            // Switching pages, one tucks back behind the chevron as the other opens
+                            // out from it.
                             Box {
                                 if (lyricsPageMounted) {
                                     PressScaleActionButton(
@@ -1009,7 +1259,22 @@ fun BottomSheetPlayer(
                                         hasShadow = false,
                                         modifier = Modifier
                                             .likeButtonTarget(likeBurst, LikeSlot.LYRICS)
-                                            .graphicsLayer { alpha = lyricsPageProgress },
+                                            .graphicsLayer {
+                                                if (likeMovesToLyrics()) {
+                                                    // the player's own like, moved here
+                                                    val side = sideButtonRect
+                                                    val chevron = lyricsChevronRect
+                                                    if (side != null && chevron != null) {
+                                                        val k = 1f - lyricsProgress
+                                                        translationX = (side.center.x - chevron.center.x) * k
+                                                        translationY = (side.center.y - (chevron.center.y + PageButtonStep.toPx())) * k
+                                                    } else {
+                                                        alpha = lyricsPageProgress
+                                                    }
+                                                } else {
+                                                    openOutFromChevron(lyricsPageProgress, PageButtonStep.toPx())
+                                                }
+                                            },
                                     )
                                 }
                                 if (queuePageMounted) {
@@ -1020,7 +1285,9 @@ fun BottomSheetPlayer(
                                         containerColor = if (shuffleOn) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.15f),
                                         onClick = { playerConnection.player.shuffleModeEnabled = !shuffleOn },
                                         hasShadow = false,
-                                        modifier = Modifier.graphicsLayer { alpha = queuePageProgress },
+                                        modifier = Modifier.graphicsLayer {
+                                            openOutFromChevron(queuePageProgress, PageButtonStep.toPx())
+                                        },
                                     )
                                 }
                             }
@@ -1039,7 +1306,13 @@ fun BottomSheetPlayer(
                                         containerColor = if (infiniteQueue) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.15f),
                                         onClick = { playerConnection.setInfiniteQueueEnabled(!infiniteQueue) },
                                         hasShadow = false,
-                                        modifier = Modifier.graphicsLayer { alpha = queuePageProgress },
+                                        // its slot grows as it opens, so it starts further down
+                                        modifier = Modifier.graphicsLayer {
+                                            openOutFromChevron(
+                                                queuePageProgress,
+                                                (PageButtonStep + QueueButtonExtraHeight * queuePageProgress).toPx(),
+                                            )
+                                        },
                                     )
                                 }
                             }
@@ -1090,6 +1363,7 @@ fun BottomSheetPlayer(
                     modifier = Modifier
                         .studioAnchor(studioAnchors) { it.transport }
                         .studioTransportLayer(studioParts)
+                        .studioPiece(studioPieces, StudioPieces.TRANSPORT)
                 )
             }
 
@@ -1110,19 +1384,23 @@ fun BottomSheetPlayer(
                         .graphicsLayer {
                             alpha = (1f - controlsHidden) * (1f - turntablePageProgress)
                             translationY = controlsHidden * size.height * 0.55f
-                        }
-                        .then(
-                            if (controlsInert || turntablePageUp) Modifier.pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                                }
-                            } else Modifier
-                        ),
+                            // gone with a page up, so the flagship's controls under them answer
+                            letTouchesThroughWhenHidden()
+                        },
                 )
             }
 
             // the editor's tiles: inside the sheet, so they shrink and grow with it
             EditTiles(studioParts)
+
+            // over everything on the player, pages included
+            PlayerHandle(
+                state = handleState,
+                sheet = state,
+                statusBarTop = statusBarTopInset,
+                enabled = { !studio.engaged },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
 
         // Above the player and its controls, so a heart can fly over everything on its way home.
@@ -1203,6 +1481,10 @@ fun BottomSheetPlayer(
         if (showDeviceOutput) {
             com.example.musicfy.ui.player.menu.DeviceOutputSheet(onDismiss = { showDeviceOutput = false })
         }
+        // opened by "Switch" at the end of the lyrics page
+        if (showLyricsSource) {
+            com.example.musicfy.ui.player.menu.LyricsProviderSheet(onDismiss = { showLyricsSource = false })
+        }
 
         // the player studio, over the player: the selector, the editor's header and editors, its sheets
         PlayerSelectorOverlay(
@@ -1210,17 +1492,25 @@ fun BottomSheetPlayer(
             styles = playerStyles,
             onSet = { index ->
                 val style = playerStyles[index]
-                if (style != playerStyle) onPlayerStyleChange(style)
-                studio.livePage = index
-                studio.go(StudioStage.PLAYER)
+                val restyled = style != playerStyle
+                if (restyled) onPlayerStyleChange(style)
+                studio.settleOn(index, restyled)
             },
             onEdit = { focused ->
-                if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
+                if (playerStyles.getOrNull(focused) == PlayerStyle.POSTER) {
+                    // its one edit is its visualizer: back to the player, with the poster's sheet
+                    val restyled = playerStyle != PlayerStyle.POSTER
+                    if (restyled) onPlayerStyleChange(PlayerStyle.POSTER)
+                    studio.settleOn(focused, restyled) {
+                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.POSTER)
+                    }
+                } else if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
                     // its one edit is the disc label: back to the player, with the label's sheet
-                    if (playerStyle != PlayerStyle.TURNTABLE) onPlayerStyleChange(PlayerStyle.TURNTABLE)
-                    studio.livePage = focused
-                    studio.go(StudioStage.PLAYER)
-                    studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                    val restyled = playerStyle != PlayerStyle.TURNTABLE
+                    if (restyled) onPlayerStyleChange(PlayerStyle.TURNTABLE)
+                    studio.settleOn(focused, restyled) {
+                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                    }
                 } else {
                     val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
                     if (playerStyle != PlayerStyle.DEFAULT) onPlayerStyleChange(PlayerStyle.DEFAULT)
@@ -1229,6 +1519,10 @@ fun BottomSheetPlayer(
                 }
             },
         )
+        // the Poster's sheet, over the poster itself
+        if (playerStyle == PlayerStyle.POSTER) {
+            com.example.musicfy.ui.player.studio.StyleSheets(studio)
+        }
         if (playerStyle.flagshipFamily) {
             val (showBigDiscStyles) = rememberPreference(com.example.musicfy.constants.ShowBigDiscStylesKey, defaultValue = false)
             val coverStyles = remember(showBigDiscStyles, coverStyle) {
@@ -1265,6 +1559,9 @@ fun BottomSheetPlayer(
                 menuLayout = menuLayout,
                 seekBarStyle = seekBarStyle,
                 endTimestamp = endTimestamp,
+                barStyles = PlayerBottomBarStyle.entries,
+                barStyle = barStyle,
+                onBarStyle = onBarStyle,
                 isMenuActionActive = ::menuActionActive,
             )
             StudioSheets(

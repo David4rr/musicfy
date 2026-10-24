@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
@@ -36,6 +37,9 @@ object BetterLyrics {
             defaultRequest {
                 url("https://lyrics-api.boidu.dev")
             }
+
+            // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+            install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
 
             expectSuccess = false
         }

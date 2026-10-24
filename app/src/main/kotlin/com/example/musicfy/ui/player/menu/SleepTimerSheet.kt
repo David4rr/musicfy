@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.ui.component.AppSwitch
 
 private val CardSurface = MenuRowSurface
@@ -164,12 +164,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
                     .background(CardSurface)
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.85f))
-                )
+                SheetIcon(R.drawable.music_note)
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = "end after this music ends",

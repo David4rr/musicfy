@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -33,6 +34,9 @@ object LrcLib {
             defaultRequest {
                 url("https://lrclib.net")
             }
+
+            // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+            install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
 
             expectSuccess = true
         }

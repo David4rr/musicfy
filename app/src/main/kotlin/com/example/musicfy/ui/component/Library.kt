@@ -175,7 +175,8 @@ fun LibraryPlaylistListItem(
                         PlaylistMenu(
                             playlist = playlist,
                             coroutineScope = coroutineScope,
-                            onDismiss = menuState::dismiss
+                            onDismiss = menuState::dismiss,
+                            navController = navController,
                         )
                     } else {
                         playlist.playlist.browseId?.let { browseId ->
@@ -259,7 +260,8 @@ fun LibraryPlaylistGridItem(
                         PlaylistMenu(
                             playlist = playlist,
                             coroutineScope = coroutineScope,
-                            onDismiss = menuState::dismiss
+                            onDismiss = menuState::dismiss,
+                            navController = navController,
                         )
                     } else {
                         playlist.playlist.browseId?.let { browseId ->

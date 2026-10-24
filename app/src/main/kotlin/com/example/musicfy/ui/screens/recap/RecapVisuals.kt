@@ -25,7 +25,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
@@ -78,6 +80,7 @@ import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -108,13 +111,20 @@ internal class RecapTime {
     val sway: Float get() = (seconds % 3600.0).toFloat()
 }
 
-/** Ticks every frame while [running]. Read it only inside draw/graphicsLayer lambdas. */
+/**
+ * Ticks every frame while [running] and not [held]. Read it only inside draw/graphicsLayer lambdas.
+ * [held] is read as a lambda so flipping it never recomposes the caller.
+ */
 @Composable
-internal fun rememberRecapTime(running: Boolean = true): RecapTime {
+internal fun rememberRecapTime(running: Boolean = true, held: () -> Boolean = { false }): RecapTime {
     val time = remember { RecapTime() }
+    val isHeld by rememberUpdatedState(held)
     LaunchedEffect(running) {
         if (!running) return@LaunchedEffect
-        while (true) withInfiniteAnimationFrameNanos { time.frameNanos = it }
+        while (true) {
+            if (isHeld()) snapshotFlow { isHeld() }.first { !it }
+            withInfiniteAnimationFrameNanos { time.frameNanos = it }
+        }
     }
     return time
 }

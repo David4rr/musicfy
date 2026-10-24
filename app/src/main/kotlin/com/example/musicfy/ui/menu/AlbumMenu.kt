@@ -2,7 +2,7 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -272,7 +271,6 @@ fun AlbumMenu(
         trailing = {
             SheetHeaderButton(
                 icon = if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                active = album.album.bookmarkedAt != null,
                 tint = if (album.album.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     database.query {
@@ -283,7 +281,7 @@ fun AlbumMenu(
         },
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -316,6 +314,31 @@ fun AlbumMenu(
                                         ListQueue(
                                             title = album.album.title,
                                             items = songs.map(Song::toMediaItem)
+                                        )
+                                    )
+                                }
+                            }
+                        ),
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.shuffle),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = stringResource(R.string.shuffle),
+                            onClick = {
+                                onDismiss()
+                                if (songs.isNotEmpty()) {
+                                    album.album.playlistId?.let { playlistId ->
+                                        playerConnection.service.getAutomix(playlistId)
+                                    }
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = album.album.title,
+                                            items = songs.shuffled().map(Song::toMediaItem)
                                         )
                                     )
                                 }
@@ -373,31 +396,6 @@ fun AlbumMenu(
                             }
                         )
                     } else null,
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.shuffle),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            text = stringResource(R.string.shuffle),
-                            onClick = {
-                                onDismiss()
-                                if (songs.isNotEmpty()) {
-                                    album.album.playlistId?.let { playlistId ->
-                                        playerConnection.service.getAutomix(playlistId)
-                                    }
-                                    playerConnection.playQueue(
-                                        ListQueue(
-                                            title = album.album.title,
-                                            items = songs.shuffled().map(Song::toMediaItem)
-                                        )
-                                    )
-                                }
-                            }
-                        ),
                 ),
                 modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3

@@ -6,10 +6,10 @@ import android.content.Context
 import androidx.core.content.edit
 import com.example.musicfy.eq.audio.Biquad
 import com.example.musicfy.eq.audio.LoudnessParams
+import com.example.musicfy.eq.audio.PeakLimiter
 import com.example.musicfy.eq.audio.ReplayGainMode
 import com.example.musicfy.eq.audio.ReplayGainParams
 import com.example.musicfy.eq.audio.ResponseCurve
-import com.example.musicfy.eq.audio.ReverbParams
 import com.example.musicfy.eq.audio.SpatialMode
 import com.example.musicfy.eq.audio.SpatialParams
 import com.example.musicfy.eq.audio.VolumeCurve
@@ -25,9 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -69,41 +72,13 @@ data class EqSettings(
     /** the user's own curve: the graph's nodes and the bands' sliders are the same list */
     val nodes: List<ParametricEQBand> = EqPresets.flatNodes(),
     val preamp: Double = 0.0,
-    /** pulls the level down by however much the curve boosts, so nothing clips */
+    /** pulls the level down by the part of the boost the limiter can't catch, so nothing clips */
     val autoPreamp: Boolean = true,
     /** the preset the curve still matches; null once it's been edited */
     val presetId: String? = EqPresets.FlatId,
     val correction: AutoEqCorrection? = null,
     val correctionEnabled: Boolean = true,
 )
-
-@Serializable
-data class ReverbSettings(
-    val enabled: Boolean = false,
-    val mix: Float = 0.5f,
-    val roomSize: Float = 0.55f,
-    val damping: Float = 0.45f,
-    val wet: Float = 0.6f,
-    val dry: Float = 1f,
-    val width: Float = 1f,
-    val preDelayMs: Float = 12f,
-    val lowCutHz: Float = 180f,
-    val presetId: String? = ReverbPresets.Default.id,
-) {
-    fun toParams() = ReverbParams(enabled, mix, roomSize, damping, wet, dry, width, preDelayMs, lowCutHz)
-
-    fun withPreset(preset: ReverbPresets.Preset) = copy(
-        mix = preset.mix,
-        roomSize = preset.roomSize,
-        damping = preset.damping,
-        wet = preset.wet,
-        dry = 1f,
-        width = preset.width,
-        preDelayMs = preset.preDelayMs,
-        lowCutHz = preset.lowCutHz,
-        presetId = preset.id,
-    )
-}
 
 @Serializable
 data class LoudnessSettings(
@@ -182,6 +157,7 @@ class AudioLabStore @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var saveJob: Job? = null
     private val headroomCurve = ResponseCurve(ResponseCurve.logSpaced(160))
+    private val boostRoom = headroomCurve.frequencies.map(PeakLimiter::boostRoomDb).toDoubleArray()
 
     private val _eq = MutableStateFlow(load("eq") ?: EqSettings())
     val eq: StateFlow<EqSettings> = _eq.asStateFlow()
@@ -208,10 +184,24 @@ class AudioLabStore @Inject constructor(
     private val _normalize = MutableStateFlow(load("normalize") ?: NormalizeSettings())
     val normalize: StateFlow<NormalizeSettings> = _normalize.asStateFlow()
 
+    /**
+     * Whether anything here is changing the sound. Offloaded playback hands decoding to the phone's
+     * audio chip and skips every effect, so it has to stay off while this is true.
+     */
+    val shapesSound: Flow<Boolean> = combine(eq, reverb, loudness, spatial) { eq, reverb, loudness, spatial ->
+        eq.enabled || reverb.enabled || loudness.enabled || spatial.enabled || spatial.mono
+    }.distinctUntilChanged()
+
     init {
         migrateLegacyEqualizer()
         pushEq()
         pushFx()
+    }
+
+    fun updateReverb(transform: (ReverbSettings) -> ReverbSettings) {
+        _reverb.update(transform)
+        pushFx()
+        scheduleSave()
     }
 
     fun updateLoudness(transform: (LoudnessSettings) -> LoudnessSettings) {
@@ -249,12 +239,6 @@ class AudioLabStore @Inject constructor(
         scheduleSave()
     }
 
-    fun updateReverb(transform: (ReverbSettings) -> ReverbSettings) {
-        _reverb.update(transform)
-        pushFx()
-        scheduleSave()
-    }
-
     fun savePreset(name: String) {
         val current = _eq.value
         val preset = EqPreset("user_${System.currentTimeMillis()}", name.trim(), current.nodes, current.preamp)
@@ -267,10 +251,16 @@ class AudioLabStore @Inject constructor(
         if (_eq.value.presetId == id) updateEq { it.copy(presetId = null) } else scheduleSave()
     }
 
-    /** the dB the auto preamp takes off for [settings], 0 or less */
+    /**
+     * The dB the auto preamp takes off for [settings], 0 or less. Only the part of each boost the
+     * limiter can't catch: taking off the whole boost left a bass boost no louder than no EQ at all,
+     * with everything else quieter.
+     */
     fun autoHeadroom(settings: EqSettings = _eq.value): Double = synchronized(headroomCurve) {
         val response = headroomCurve.response(audibleBands(settings))
-        -max(0.0, response.maxOrNull() ?: 0.0)
+        var over = 0.0
+        for (i in response.indices) over = max(over, response[i] - boostRoom[i])
+        -over
     }
 
     /** what the processors play for [settings]; null is a straight wire */
@@ -393,33 +383,5 @@ object EqPresets {
         Preset("treble_boost", "Treble Booster", doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.5, 3.5, 4.5, 5.5)),
         Preset("treble_cut", "Treble Reducer", doubleArrayOf(0.0, 0.0, 0.0, 0.0, 0.0, -1.0, -2.5, -3.5, -4.5, -5.5)),
         Preset("vocal", "Vocal Booster", doubleArrayOf(-1.5, -3.0, -3.0, 1.5, 3.5, 3.5, 3.0, 1.5, 0.0, -1.5)),
-    )
-}
-
-/** Rooms to start from; any slider moved afterwards makes it Custom. */
-object ReverbPresets {
-    class Preset(
-        val id: String,
-        val name: String,
-        val mix: Float,
-        val roomSize: Float,
-        val damping: Float,
-        val wet: Float,
-        val width: Float,
-        val preDelayMs: Float,
-        val lowCutHz: Float,
-    )
-
-    val Default = Preset("room", "Room", 0.5f, 0.55f, 0.45f, 0.6f, 1f, 12f, 180f)
-
-    val All = listOf(
-        Default,
-        Preset("studio", "Studio", 0.4f, 0.3f, 0.65f, 0.45f, 0.8f, 5f, 250f),
-        Preset("bathroom", "Bathroom", 0.5f, 0.42f, 0.05f, 0.7f, 0.6f, 2f, 120f),
-        Preset("plate", "Plate", 0.45f, 0.65f, 0.1f, 0.55f, 1f, 0f, 300f),
-        Preset("hall", "Hall", 0.5f, 0.78f, 0.35f, 0.6f, 1f, 25f, 150f),
-        Preset("cathedral", "Cathedral", 0.55f, 0.95f, 0.2f, 0.7f, 1f, 40f, 120f),
-        Preset("stadium", "Stadium", 0.6f, 0.9f, 0.5f, 0.65f, 1f, 60f, 200f),
-        Preset("dream", "Dreamy", 0.7f, 0.93f, 0.6f, 0.85f, 1f, 30f, 300f),
     )
 }

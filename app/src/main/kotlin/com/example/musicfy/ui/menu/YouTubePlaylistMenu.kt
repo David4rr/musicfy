@@ -2,7 +2,7 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -201,7 +200,6 @@ fun YouTubePlaylistMenu(
             {
                 SheetHeaderButton(
                     icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                    active = dbPlaylist?.playlist?.bookmarkedAt != null,
                     tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                     onClick = {
                         database.toggleSavedPlaylist(playlist, dbPlaylist, songs, coroutineScope)
@@ -210,7 +208,7 @@ fun YouTubePlaylistMenu(
             }
         } else null,
     )
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     var downloadState by remember {
         mutableIntStateOf(Download.STATE_STOPPED)
@@ -288,7 +286,8 @@ fun YouTubePlaylistMenu(
         },
         playlistTitle = playlist.title,
         onDismiss = { showImportPlaylistDialog = false },
-        onImportedPlaylist = onImportedPlaylist
+        onImportedPlaylist = onImportedPlaylist,
+        sourcePlaylistId = playlist.id,
     )
 
     if (showErrorPlaylistAddDialog) {

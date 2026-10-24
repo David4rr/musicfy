@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -43,6 +45,8 @@ fun SeamBlur(
     maxHeight: Dp,
 
     fadeProvider: () -> Float = { 1f },
+    /** how far the controls (and with them the bottom of the cover) were moved, px down; read while placing only */
+    offsetProvider: () -> Float = { 0f },
 ) {
     if (trackInfo.thumbnailUrl == null) return
 
@@ -97,7 +101,7 @@ fun SeamBlur(
         modifier = Modifier
             .fillMaxWidth()
             .height(bandBottom - bandTop)
-            .offset(y = bandTop)
+            .offset { IntOffset(0, (bandTop.toPx() + offsetProvider()).roundToInt()) }
             .graphicsLayer {
 
                 val p = progressProvider()

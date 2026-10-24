@@ -40,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -98,6 +99,18 @@ private val HomeRankStyle = TextStyle(
 private val SectionLabelColor = Color.White.copy(alpha = 0.69f)
 private val HomeRowShape = RoundedCornerShape(14.dp)
 val HomeRowHeight = 54.dp
+
+/**
+ * A song row's height: [HomeRowHeight], or taller when a big system font size makes the title and
+ * artist lines need more room. A fixed 54dp cut both lines off at the top and bottom.
+ */
+@Composable
+fun homeRowHeight(): Dp {
+    val linesHeight = with(LocalDensity.current) { (HomeRowTitleLineHeight.value + HomeCardSubtitleStyle.lineHeight.value).sp.toDp() }
+    return maxOf(HomeRowHeight, linesHeight + 14.dp)
+}
+
+private val HomeRowTitleLineHeight = 17.sp
 
 // pressing anything on Home shows a soft rounded box behind it instead of a square ripple
 private val SectionTapMargin = 12.dp
@@ -370,7 +383,7 @@ fun HomeTrackRow(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .height(HomeRowHeight)
+            .height(homeRowHeight())
             .combinedClickable(
                 interactionSource = null,
                 indication = TrackRowHighlight,

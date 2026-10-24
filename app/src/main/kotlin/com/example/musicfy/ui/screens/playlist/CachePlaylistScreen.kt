@@ -49,7 +49,7 @@ import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
 import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
 import com.example.musicfy.ui.component.detail.PlaylistSortControl
@@ -226,11 +226,11 @@ fun CachePlaylistScreen(
             val onCheckedChange: (Boolean) -> Unit = {
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
-            SwipeActionsBox(
+            SongSwipeBox(
                 modifier = Modifier.animateItem(),
                 enabled = !inSelectMode,
-                start = { librarySwipeAction(song.song) },
-                end = { queueSwipeAction { song.toMediaItem() } },
+                library = { librarySwipeAction(song.song) },
+                queue = { queueSwipeAction { song.toMediaItem() } },
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,

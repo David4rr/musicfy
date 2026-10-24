@@ -70,14 +70,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -136,12 +134,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.hypot
-import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.platform.LocalDensity
 import kotlin.random.Random
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -167,19 +160,6 @@ const val HeroHeightFraction = 0.6f
 // its title 61dp below the Play pill like the Figma (it was 68)
 private val HeroSectionTuck = 7.dp
 
-// how far a page actually travels while it crossfades: a little drift reads as sliding,
-// a full-width slide is what made two covers look stacked on each other mid-swipe
-private const val HeroMediaTravel = 0.18f
-private const val HeroTextTravel = 0.42f
-// the switch wipe: feather width as a share of the hero, how far the outgoing fade trails the
-// incoming edge (in feathers), and the blur a page has at a full page away
-private const val HeroWipeFeather = 0.55f
-private const val HeroWipeTrail = 0.25f
-private val HeroSwitchBlur = 18.dp
-// how far right of the hero the wipe's circle is centred, in widths, when fully curved (a swipe),
-// and the floor the curve eases down to for a straight edge
-private const val HeroWipeCurveReach = 0.6f
-private const val HeroWipeFlat = 0.04f
 private val HeroSlideEasing = CubicBezierEasing(0.32f, 0f, 0.15f, 1f)
 private const val HeroSlideMillis = 1150
 private const val HeroAdvanceMillis = 5500L
@@ -825,10 +805,10 @@ private fun HeroPage(
     heroScrollProgressProvider: () -> Float,
     onPrimaryClick: () -> Unit,
 ) {
-    HeroWipePage(pageOffset = pageOffset, curve = wipeCurve, blur = edgeBlur) {
+    PageWipe(pageOffset = pageOffset, curve = wipeCurve, blur = edgeBlur) {
         HeroMedia(
             item = item,
-            modifier = Modifier.heroMediaDrift(pageOffset),
+            modifier = Modifier.pageMediaDrift(pageOffset),
             edgeBlur = edgeBlur,
             isPagerMoving = isPagerMoving,
             canvasAttached = canvasAttached,
@@ -842,7 +822,7 @@ private fun HeroPage(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .heroTextDrift(pageOffset)
+                .pageTextDrift(pageOffset)
         ) {
             HeroText(
                 label = item.label(isThisPlaying),
@@ -857,210 +837,6 @@ private fun HeroPage(
             )
         }
     }
-}
-
-// a feathered wipe sweeps across the hero from the side the next page comes in on: the incoming
-// page goes 0 -> 100% behind the edge, the outgoing one 100 -> 0% just trailing it, so the seam
-// only dims a touch and never shows black. both are blurred by how far they are from settling, so
-// the new cover sharpens into place while the old one smears out.
-// the edge is the rim of a circle growing in from the right: so far off it's a straight line when
-// the hero advances by itself, close enough to bow round under your finger when you swipe.
-// pages are pinned to the viewport while this runs ([heroMediaDrift] does the sliding inside them):
-// a page's own border on screen showed as a hard line wherever it crossed the feather.
-//
-// a settled page draws itself straight. while the wipe has something to do to it, the page is only
-// recorded, and [HeroWipeCopy] beside it draws that recording masked and blurred: from a half-size
-// copy once the blur is wide enough to hide the difference, and only across the part of the hero
-// the mask leaves. both pages used to render the whole hero offscreen at full size every frame of
-// the switch, blur all of it and erase most of it again.
-@Composable
-private fun HeroWipePage(
-    pageOffset: () -> Float,
-    curve: () -> Float,
-    blur: Boolean,
-    content: @Composable BoxScope.() -> Unit,
-) {
-    val blurPx = if (blur) with(LocalDensity.current) { HeroSwitchBlur.toPx() } else 0f
-    val pageLayer = rememberGraphicsLayer()
-    val sourceEdge = remember { HeroWipeEdge() }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val d = pageOffset()
-                translationX = -d * size.width
-                // this close to a whole page away, an incoming page is entirely past the edge and
-                // an outgoing one sits under the settled page in front. drawn plainly there (the
-                // wipe had already let go of it), the next cover flashed over the hero for the
-                // first frames of every advance, and the old one at the end of a swipe back
-                alpha = if (abs(d) >= HeroWipeHidden) 0f else 1f
-            }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clipToBounds()
-                .drawWithContent {
-                    if (sourceEdge.update(pageOffset(), size, curve(), blurPx)) {
-                        pageLayer.record { this@drawWithContent.drawContent() }
-                    } else {
-                        drawContent()
-                    }
-                },
-            content = content,
-        )
-        // a sibling of the recorded page, never inside it, so the recording can't contain itself
-        HeroWipeCopy(pageLayer = pageLayer, pageOffset = pageOffset, curve = curve, blurPx = blurPx)
-    }
-}
-
-/** how far from settled a page has to be before the wipe touches it, and where it's hidden outright */
-private const val HeroWipeSettled = 0.001f
-private const val HeroWipeHidden = 0.999f
-
-/** where the wipe's edge is on one page, worked out again each frame it moves */
-private class HeroWipeEdge {
-    var incoming = false
-    var centerX = 0f
-    var centerY = 0f
-    /** incoming: opaque inside this radius. outgoing: gone inside it */
-    var inner = 0f
-    /** incoming: gone outside this radius. outgoing: untouched outside it */
-    var outer = 0f
-    var blur = 0f
-
-    /**
-     * the edge for a page [d] pages from settled on a hero of [size]. true while the wipe changes
-     * anything about the page: it erases some of it, or blurs it by more than half a pixel. outside
-     * that the page as it is looks exactly the same, so it's drawn plainly.
-     */
-    fun update(d: Float, size: Size, curve: Float, blurPx: Float): Boolean {
-        val a = abs(d)
-        if (a < HeroWipeSettled || a >= HeroWipeHidden) return false
-        val w = size.width
-        val feather = w * HeroWipeFeather
-        // both pages of the pair agree on where the edge is: progress 0 -> 1 as the right-hand
-        // page takes over, whichever way the swipe runs
-        val progress = if (d > 0f) 1f - d else -d
-        val off = w * HeroWipeCurveReach / curve.coerceIn(HeroWipeFlat, 1f)
-        centerX = w + off
-        centerY = size.height / 2f
-        // from the incoming page's feather just touching the right edge, to it being opaque over
-        // the far corner
-        val from = off - feather
-        val to = hypot(centerX, centerY)
-        val r = from + (to - from) * progress
-        incoming = d > 0f
-        if (incoming) {
-            // opaque inside the circle, gone a feather outside it
-            inner = r
-            outer = r + feather
-        } else {
-            // its fade trails the incoming one's by a quarter feather
-            inner = r - feather * HeroWipeTrail
-            outer = inner + feather
-        }
-        blur = a * blurPx
-        // the farthest point from the centre is the left corners, the nearest the right edge's middle
-        val erases = if (incoming) inner < to else outer > off
-        return erases || blur > 0.5f
-    }
-}
-
-/**
- * the wipe's picture of a page: the recording, masked by the edge (DstOut, so it has a buffer of its
- * own), then blurred. the mask goes on before the blur, as it did when the page's own layer did both.
- * columns the mask clears completely are never drawn, and the mask itself only covers the feather.
- */
-@Composable
-private fun HeroWipeCopy(
-    pageLayer: GraphicsLayer,
-    pageOffset: () -> Float,
-    curve: () -> Float,
-    blurPx: Float,
-) {
-    val edge = remember { HeroWipeEdge() }
-    DownscaledBlur(
-        radius = {
-            val a = abs(pageOffset())
-            if (a < HeroWipeSettled || a >= HeroWipeHidden) 0f else BlurEffectCache.effectiveRadius(a * blurPx)
-        },
-        tileMode = Shader.TileMode.CLAMP,
-        mask = null,
-        offscreen = { abs(pageOffset()) in HeroWipeSettled..HeroWipeHidden },
-        modifier = Modifier.fillMaxSize(),
-    ) { fullSize ->
-        if (!edge.update(pageOffset(), fullSize, curve(), blurPx)) return@DownscaledBlur
-        val w = fullSize.width
-        val h = fullSize.height
-        val halfH = h / 2f
-        // the first column a circle of radius [radius] covers from top to bottom
-        fun fullyInside(radius: Float): Float =
-            if (radius > halfH) min(w, edge.centerX - sqrt(radius * radius - halfH * halfH)) else w
-        val left: Float
-        val right: Float
-        val maskLeft: Float
-        val maskRight: Float
-        if (edge.incoming) {
-            // nothing of it left of the outer circle; solid where the inner one spans the height
-            left = (edge.centerX - edge.outer).coerceAtLeast(0f)
-            right = w
-            maskLeft = left
-            maskRight = fullyInside(edge.inner)
-        } else {
-            // gone where the inner circle spans the height; untouched left of the outer one
-            left = 0f
-            right = fullyInside(edge.inner)
-            maskLeft = (edge.centerX - edge.outer).coerceAtLeast(0f)
-            maskRight = right
-        }
-        if (right <= left) return@DownscaledBlur
-        clipRect(left, 0f, right, h) { drawLayer(pageLayer) }
-        if (maskRight > maskLeft) {
-            val center = Offset(edge.centerX, edge.centerY)
-            val stops = if (edge.incoming) {
-                featherStops(edge.inner / edge.outer, inside = Color.Transparent, outside = Color.Black)
-            } else {
-                featherStops(edge.inner / edge.outer, inside = Color.Black, outside = Color.Transparent)
-            }
-            drawRect(
-                brush = Brush.radialGradient(*stops, center = center, radius = edge.outer),
-                topLeft = Offset(maskLeft, 0f),
-                size = Size(maskRight - maskLeft, h),
-                blendMode = BlendMode.DstOut,
-            )
-        }
-    }
-}
-
-// smoothstep across the feather instead of a straight ramp: a linear one has a visible crease
-// where it meets the flat part on either end
-private fun featherStops(start: Float, inside: Color, outside: Color): Array<Pair<Float, Color>> {
-    val s = start.coerceIn(0f, 0.999f)
-    return Array(FeatherEase.size) { i ->
-        val t = i / (FeatherEase.size - 1f)
-        (s + (1f - s) * t) to lerp(inside, outside, FeatherEase[i])
-    }
-}
-
-private val FeatherEase = floatArrayOf(0f, 0.104f, 0.352f, 0.648f, 0.896f, 1f)
-
-// the slide itself, inside a pinned page: the media drifts the way it used to, zoomed by just
-// enough to keep its edges off screen, so it settles from a slight push-in
-private fun Modifier.heroMediaDrift(pageOffset: () -> Float): Modifier = graphicsLayer {
-    val d = pageOffset().coerceIn(-1f, 1f)
-    val scale = 1f + 2f * HeroMediaTravel * abs(d)
-    scaleX = scale
-    scaleY = scale
-    translationX = d * size.width * HeroMediaTravel
-}
-
-// text drifts further than the cover and is gone by half way, so the outgoing and incoming
-// titles never sit on top of each other
-private fun Modifier.heroTextDrift(pageOffset: () -> Float): Modifier = graphicsLayer {
-    val d = pageOffset()
-    translationX = d * size.width * (HeroTextTravel + HeroMediaTravel)
-    alpha = (1f - abs(d) * 1.9f).coerceIn(0f, 1f)
 }
 
 @Composable
@@ -1933,8 +1709,8 @@ private fun GachaPage(
         }
     }
 
-    HeroWipePage(pageOffset = pageOffset, curve = wipeCurve, blur = transitionBlur) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().heroMediaDrift(pageOffset)) {
+    PageWipe(pageOffset = pageOffset, curve = wipeCurve, blur = transitionBlur) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().pageMediaDrift(pageOffset)) {
             val unit = maxHeight / GachaDesignHeight
             val focus = unit * GachaFocusSize
             val coverShape = RoundedCornerShape(unit * GachaCornerRadius)
@@ -2171,7 +1947,7 @@ private fun GachaPage(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .heroTextDrift(pageOffset)
+                .pageTextDrift(pageOffset)
         ) {
             HeroText(
                 label = HeroLabel(

@@ -64,6 +64,7 @@ import com.example.musicfy.core.updater.installApk
 import com.example.musicfy.core.updater.isDownloaded
 import com.example.musicfy.core.updater.isNewerThanInstalled
 import com.example.musicfy.ui.component.PopupSheetState
+import com.example.musicfy.ui.component.SheetIcon
 import com.example.musicfy.ui.player.menu.MenuRowSurface
 import com.example.musicfy.ui.player.menu.MenuSurface
 import com.example.musicfy.ui.screens.donate.showDonateSheet
@@ -307,21 +308,8 @@ private fun LinkRow(
             )
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.9f * alpha))
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier.size(13.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
+        SheetIcon(icon, tint = Color.White.copy(alpha = alpha))
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = label,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),

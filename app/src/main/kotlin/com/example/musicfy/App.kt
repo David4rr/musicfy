@@ -23,7 +23,6 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.IpVersion
 import com.music.innertube.models.YouTubeLocale
 import com.music.kugou.KuGou
-import com.music.lastfm.LastFM
 import com.example.musicfy.constants.*
 import com.example.musicfy.di.ApplicationScope
 import com.example.musicfy.extensions.toEnum
@@ -126,6 +125,14 @@ class App : Application(), SingletonImageLoader.Factory {
                 com.example.musicfy.utils.YTPlayerUtils.preWarmPoToken()
             }
         }
+
+        applicationScope.launch(Dispatchers.IO) {
+            // Local songs whose cover file was cleared away get it back from the song's own file.
+            // After the intro, so it doesn't share the disk with the first frames.
+            com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
+            runCatching { com.example.musicfy.importer.LocalArtwork.repair(this@App, musicDatabase) }
+                .onFailure { Timber.w(it, "Repairing local covers failed") }
+        }
     }
 
     private suspend fun initializeSettings() {
@@ -147,11 +154,6 @@ class App : Application(), SingletonImageLoader.Factory {
         if (languageTag == "zh-TW") {
             KuGou.useTraditionalChinese = true
         }
-
-        LastFM.initialize(
-            apiKey = BuildConfig.LASTFM_API_KEY.takeIf { it.isNotEmpty() } ?: "",
-            secret = BuildConfig.LASTFM_SECRET.takeIf { it.isNotEmpty() } ?: ""
-        )
 
         if (settings[ProxyEnabledKey] == true) {
             val username = settings[ProxyUsernameKey].orEmpty()
@@ -241,19 +243,6 @@ class App : Application(), SingletonImageLoader.Factory {
                     } catch (e: Exception) {
                         Timber.e(e, "Could not parse cookie. Clearing existing cookie.")
                         forgetAccount(this@App)
-                    }
-                }
-        }
-
-        applicationScope.launch(Dispatchers.IO) {
-            dataStore.data
-                .map { it[LastFMSessionKey] }
-                .distinctUntilChanged()
-                .collect { session ->
-                    try {
-                        LastFM.sessionKey = session
-                    } catch (e: Exception) {
-                        Timber.e("Error while loading last.fm session key. %s", e.message)
                     }
                 }
         }

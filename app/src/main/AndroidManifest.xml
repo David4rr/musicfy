@@ -20,6 +20,11 @@
     <!-- Optional: If you also need to scan for Bluetooth devices -->
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
+    <!-- Library > Local: lets Musicfy find the songs already on the phone. Android 13 has its own
+         audio permission; older phones need the general storage one. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
     <!-- Microphone feature for music recognition (not required) -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
@@ -208,6 +213,25 @@
             android:authorities="${applicationId}.com.dpi.DensityScaler"
             android:enabled="true"
             android:exported="false" />
+
+        <!-- Discord's login page sends the browser back here once the user says yes -->
+        <activity
+            android:name=".discord.DiscordLoginActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${discordRedirectScheme}" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"

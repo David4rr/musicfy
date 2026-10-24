@@ -1007,6 +1007,20 @@ private fun CreatorAvatar(creator: CreatorUi, size: Dp, modifier: Modifier = Mod
     }
 }
 
+/** "search" beside the sort control, in its style: opens the list's own song search */
+@Composable
+fun PlaylistSearchControl(onClick: () -> Unit) {
+    Text(
+        text = "search",
+        style = PlaylistStatsStyle.copy(fontSize = 12.sp),
+        color = Color.White.copy(alpha = 0.72f),
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp, horizontal = 2.dp),
+    )
+}
+
 /** the "last added ⌄" label under the buttons; opens a small menu of sort orders */
 @Composable
 fun <T : Enum<T>> PlaylistSortControl(

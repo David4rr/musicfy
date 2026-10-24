@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.sp
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerBackgroundStyle
+import com.example.musicfy.constants.PlayerBottomBarStyle
 import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.constants.PlayerEndTimestamp
 import com.example.musicfy.ui.component.BlurDirection
@@ -126,6 +127,9 @@ fun StudioEditOverlay(
     menuLayout: PlayerMenuLayout,
     seekBarStyle: SeekBarStyle,
     endTimestamp: PlayerEndTimestamp,
+    barStyles: List<PlayerBottomBarStyle>,
+    barStyle: PlayerBottomBarStyle,
+    onBarStyle: (PlayerBottomBarStyle) -> Unit,
     modifier: Modifier = Modifier,
     /** which menu actions are on right now, for the menu's buttons */
     isMenuActionActive: (PlayerMenuAction) -> Boolean = { false },
@@ -133,10 +137,12 @@ fun StudioEditOverlay(
     val studio = parts.studio
     val coverIndex = coverStyles.indexOf(coverStyle).coerceAtLeast(0)
     val backgroundIndex = backgroundStyles.indexOf(backgroundStyle).coerceAtLeast(0)
-    // the applied styles, for the live cover and the live box to sit against
+    val barIndex = barStyles.indexOf(barStyle).coerceAtLeast(0)
+    // the applied styles, for the live cover, the live box and the live bar to sit against
     SideEffect {
         studio.coverCommitted = coverIndex
         studio.backdropCommitted = backgroundIndex
+        studio.barCommitted = barIndex
     }
     val shown by remember(studio) { derivedStateOf { studio.edit.value > 0.0005f || studio.editing } }
     if (!shown) return
@@ -145,7 +151,10 @@ fun StudioEditOverlay(
     val coverOpen by remember(studio) { derivedStateOf { studio.cover.value > 0.0005f } }
     // open from the moment its pieces are lifted, so they never leave the screen for a frame
     val middleOpen by remember(studio) {
-        derivedStateOf { studio.middle.value > 0.0005f || parts.pieces?.lifted == true }
+        derivedStateOf { studio.middle.value > 0.0005f || parts.pieces?.liftedPart == LiftedPart.MIDDLE }
+    }
+    val barOpen by remember(studio) {
+        derivedStateOf { studio.bar.value > 0.0005f || parts.pieces?.liftedPart == LiftedPart.BAR }
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -165,6 +174,9 @@ fun StudioEditOverlay(
         }
         if (middleOpen) {
             MiddleEditor(parts, capture, menuLayout, isMenuActionActive, w, h)
+        }
+        if (barOpen) {
+            BarEditor(parts, capture, barStyles, onBarStyle, w, h)
         }
         StudioTopBar(studio, glassState)
     }
@@ -196,8 +208,11 @@ private fun StudioTopBar(studio: PlayerStudioState, glassState: GlassState) {
     ) {
         ProgressiveGlassBackground(
             state = glassState,
-            // over the middle part's still (already soft) the bar only darkens
-            maxBlurRadius = { 30f * (1f - studio.backdrop.value * studio.cover.value) * (1f - studio.middle.value.coerceIn(0f, 1f)) },
+            // over a camera's still (already soft) the bar only darkens
+            maxBlurRadius = {
+                30f * (1f - studio.backdrop.value * studio.cover.value) *
+                    (1f - studio.middle.value.coerceIn(0f, 1f)) * (1f - studio.bar.value.coerceIn(0f, 1f))
+            },
             tint = Color.Black.copy(alpha = 0.16f),
             direction = BlurDirection.BottomToTop,
             steps = 3,
@@ -240,15 +255,26 @@ private fun StudioTopBar(studio: PlayerStudioState, glassState: GlassState) {
                 )
             }
             Spacer(Modifier.width(14.dp))
-            AnimatedContent(
-                targetState = title,
-                transitionSpec = {
-                    (slideInVertically(tween(420)) { it } + fadeIn(tween(300))) togetherWith
-                        (slideOutVertically(tween(360)) { -it } + fadeOut(tween(220)))
-                },
-                label = "studioTitle",
-            ) { text ->
-                Text(text, color = Color.White, style = inter(StudioType.Title))
+            Column {
+                AnimatedContent(
+                    targetState = title,
+                    transitionSpec = {
+                        (slideInVertically(tween(420)) { it } + fadeIn(tween(300))) togetherWith
+                            (slideOutVertically(tween(360)) { -it } + fadeOut(tween(220)))
+                    },
+                    label = "studioTitle",
+                ) { text ->
+                    Text(text, color = Color.White, style = inter(StudioType.Title))
+                }
+                // what the first page's tiles are for; it goes as a tile opens
+                val onTiles = studio.stage == StudioStage.EDIT
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = onTiles,
+                    enter = fadeIn(tween(240)) + androidx.compose.animation.expandVertically(tween(300)),
+                    exit = fadeOut(tween(160)) + androidx.compose.animation.shrinkVertically(tween(260)),
+                ) {
+                    Text("Hold to adjust position, tap to edit", color = Color.White.copy(alpha = 0.7f), style = inter(StudioType.Subtitle, FontWeight.Medium))
+                }
             }
         }
     }
@@ -284,6 +310,9 @@ private fun CoverEditor(
     val gapPx = with(density) { CardGap.toPx() }
     val maxW = with(density) { w.toDp() }
     val maxH = with(density) { h.toDp() }
+    // the other covers sit where the live one does, moved with the controls under it (nothing is
+    // held while this editor is open, so it's read once)
+    val coverOffset = with(density) { (parts.tweaks?.controlsOffset() ?: 0f).toDp() }
     val inBackdrop by remember(studio) { derivedStateOf { studio.backdrop.value > 0.5f } }
 
     Box(
@@ -362,7 +391,7 @@ private fun CoverEditor(
         // every other cover style, waiting beside the live cover; only the ones in view are drawn
         coverStyles.forEachIndexed { index, style ->
             key(style) {
-                val box = remember(style, maxW, maxH, statusTop) { coverArtBox(style, maxW, maxH, statusTop) }
+                val box = remember(style, maxW, maxH, statusTop, coverOffset) { coverArtBox(style, maxW, maxH, statusTop, coverOffset) }
                 Box(
                     modifier = Modifier
                         .offset(box.x, box.y)
@@ -405,7 +434,7 @@ private fun CoverEditor(
                 ) {
                     if (index != studio.backdropCommitted) {
                         PlayerBackgroundPreview(style = style, thumbnailUrl = track.thumbnailUrl, width = maxW, height = maxH, animate = false, warp = false, modifier = Modifier.fillMaxSize())
-                        val box = remember(coverStyle, maxW, maxH, statusTop) { coverArtBox(coverStyle, maxW, maxH, statusTop) }
+                        val box = remember(coverStyle, maxW, maxH, statusTop, coverOffset) { coverArtBox(coverStyle, maxW, maxH, statusTop, coverOffset) }
                         Box(Modifier.offset(box.x, box.y).size(box.width, box.height)) {
                             CoverArt(coverStyle, track, false, queue.currentIndex)
                         }

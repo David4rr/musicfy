@@ -5,10 +5,14 @@ import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
@@ -19,64 +23,150 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import com.example.musicfy.constants.PlayerBottomBarStyle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 /**
- * The player, frozen: as the middle part opens, the player is captured once (its middle pieces
- * lifted out first) and blurred once (small, on a background thread); the editor's camera moves
- * over that still. Nothing of the live player is drawn behind it after that.
+ * The player, frozen: as the middle part or the bottom bar opens, the player is captured once (that
+ * part's pieces lifted out first) and blurred once (small, on a background thread); the editor's
+ * camera moves over that still. Nothing of the live player is drawn behind it after that.
  */
 @Stable
 class StudioCapture internal constructor(internal val layer: GraphicsLayer) {
     /** the sheet records itself into [layer] while this is set */
     internal var recording by mutableStateOf(false)
-    /** the player as it was when the middle part opened, its middle pieces lifted out */
+    /** the player as it was when the part opened, its pieces lifted out */
     var image by mutableStateOf<ImageBitmap?>(null)
         internal set
     /** [image], softened: what the camera settles on behind the pieces */
     var soft by mutableStateOf<ImageBitmap?>(null)
         internal set
+
+    /** has the sheet record itself for a frame or two, then keeps that as [image] */
+    internal suspend fun take(): ImageBitmap? {
+        recording = true
+        withFrameNanos { }
+        withFrameNanos { }
+        val frame = runCatching { layer.toImageBitmap() }.getOrNull()
+        recording = false
+        image = frame
+        return frame
+    }
 }
 
+/** the parts of the player the editor opens with a camera move, lifting their pieces off it */
+enum class LiftedPart { MIDDLE, BAR }
+
 /**
- * The middle part's pieces - the side button, the chevron, the seek bar and the end time - lifted
- * off the player for the editor. While [lifted], each one stops drawing in its place and records
- * itself into its own layer instead, and the editor draws those layers where the pieces are going:
- * the player's own drawing of each piece, so nothing is swapped for a lookalike.
+ * The pieces the editor lifts off the player: the middle part's side button, chevron, seek bar and
+ * end time, or the transport and the bottom bar (in both its styles). While a part is lifted, each
+ * of its pieces stops drawing in its place and records itself into its own layer instead, and the
+ * editor draws those layers where the pieces are going: the player's own drawing of each piece,
+ * so nothing is swapped for a lookalike.
  */
 @Stable
 class StudioPieces internal constructor(internal val layers: List<GraphicsLayer>) {
-    var lifted by mutableStateOf(false)
+    var liftedPart by mutableStateOf<LiftedPart?>(null)
         internal set
+
+    val lifted: Boolean get() = liftedPart != null
+
+    internal fun isLifted(which: Int): Boolean = when (liftedPart) {
+        LiftedPart.MIDDLE -> which <= END_TIME
+        LiftedPart.BAR -> which >= TRANSPORT
+        null -> false
+    }
 
     companion object {
         const val SIDE = 0
         const val CHEVRON = 1
         const val SEEK_BAR = 2
         const val END_TIME = 3
+        const val TRANSPORT = 4
+        const val CARD_STACK = 5
+        const val VOLUME_BAR = 6
+
+        /** the piece that draws the bottom bar in [style] */
+        fun bar(style: PlayerBottomBarStyle): Int = when (style) {
+            PlayerBottomBarStyle.STACK -> CARD_STACK
+            PlayerBottomBarStyle.VOLUME -> VOLUME_BAR
+        }
     }
 }
 
-@androidx.compose.runtime.Composable
+@Composable
 fun rememberStudioPieces(): StudioPieces {
-    val side = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    val chevron = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    val seek = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    val end = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    return androidx.compose.runtime.remember(side, chevron, seek, end) { StudioPieces(listOf(side, chevron, seek, end)) }
+    val layers = List(7) { rememberGraphicsLayer() }
+    return remember(layers) { StudioPieces(layers) }
 }
 
-/** on one of the middle part's pieces: drawn in place normally, recorded for the editor while lifted */
+/** on one of the pieces: drawn in place normally, recorded for the editor while its part is lifted */
 fun Modifier.studioPiece(pieces: StudioPieces?, which: Int): Modifier {
     if (pieces == null) return this
     return drawWithContent {
-        if (pieces.lifted) {
+        if (pieces.isLifted(which)) {
             pieces.layers[which].record { this@drawWithContent.drawContent() }
         } else {
             drawContent()
         }
     }
 }
+
+/**
+ * Runs the camera moves' stills. Opening the middle part or the bottom bar lifts its pieces and
+ * takes the rest of the player as one picture (the camera waits for it, a frame or two); the live
+ * player stops drawing under it until the camera is back out.
+ */
+@Composable
+fun StudioCameraEffect(
+    studio: PlayerStudioState,
+    capture: StudioCapture,
+    pieces: StudioPieces,
+    /** the bottom bar style the player shows */
+    barStyle: PlayerBottomBarStyle,
+) {
+    LaunchedEffect(studio, capture, pieces) {
+        snapshotFlow { studio.cameraPart }.collectLatest { part ->
+            val up = pieces.liftedPart
+            if (up != null && up != part) {
+                // another part's camera is still on its way out (a quick tap from one to the
+                // other): this one waits until the player is itself again
+                if (part != null) studio.camera(part).value = 0f
+                snapshotFlow { studio.camera(up).value }.first { it < 0.002f }
+                studio.sheetCovered = false
+                // the live player is back under the still for a frame before the pieces go home
+                withFrameNanos { }
+                pieces.liftedPart = null
+                capture.image = null
+                capture.soft = null
+            }
+            // nothing to open, or opened again before it had closed: the still is already there
+            if (part == null || pieces.liftedPart == part) return@collectLatest
+            val camera = studio.camera(part)
+            camera.value = 0f
+            pieces.liftedPart = part
+            val frame = capture.take()
+            if (frame != null) studio.sheetCovered = true
+            camera.animateTo(1f)
+            if (frame != null) capture.soft = soften(frame)
+        }
+    }
+    // a bar style picked in the editor moves the controls above it: the still is taken again, so
+    // the camera pulls back out onto the player as it is now
+    LaunchedEffect(barStyle) {
+        if (pieces.liftedPart != LiftedPart.BAR || capture.image == null) return@LaunchedEffect
+        val frame = capture.take() ?: return@LaunchedEffect
+        val soft = soften(frame)
+        if (pieces.liftedPart == LiftedPart.BAR) capture.soft = soft
+    }
+}
+
+private suspend fun soften(frame: ImageBitmap): ImageBitmap? =
+    withContext(Dispatchers.Default) { runCatching { softBackdrop(frame) }.getOrNull() }
 
 /** on the player sheet: records it into the capture's layer, while a capture is being taken */
 fun Modifier.studioCaptureSource(capture: StudioCapture?): Modifier {

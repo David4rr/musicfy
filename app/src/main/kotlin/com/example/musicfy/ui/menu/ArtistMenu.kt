@@ -2,7 +2,7 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,7 +67,7 @@ fun ArtistMenu(
         subtitle = if (artist.songCount == 1) "1 song in your library" else "${artist.songCount} songs in your library",
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT

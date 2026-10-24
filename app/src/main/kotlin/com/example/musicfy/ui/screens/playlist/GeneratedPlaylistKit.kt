@@ -154,13 +154,6 @@ fun GeneratedSearchCapsule(
             .background(Color.White.copy(alpha = if (focused) 0.16f else 0.1f))
             .padding(horizontal = 16.dp),
     ) {
-        Icon(
-            painter = painterResource(R.drawable.search),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(10.dp))
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.text.isEmpty()) {
                 Text(

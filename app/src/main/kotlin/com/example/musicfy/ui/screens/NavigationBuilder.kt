@@ -285,30 +285,29 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
-    // Local: downloads and imported files, and the same pages again counting only those
-    coverSourceComposable("library/local") {
-        com.example.musicfy.ui.screens.library.LibraryLocalScreen(navController = navController)
-    }
+    // The Library's Local and Cached tabs open these: the same pages again, counting only that
+    // tab's songs. "library/local/albums", "library/cached/albums" and so on.
+    com.example.musicfy.viewmodels.LibraryShelfKind.entries.forEach { shelf ->
+        coverSourceComposable("library/${shelf.key}/added") {
+            com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, shelf = shelf)
+        }
 
-    coverSourceComposable("library/local/added") {
-        com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, localOnly = true)
-    }
+        coverSourceComposable("library/${shelf.key}/albums") {
+            com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, shelf = shelf)
+        }
 
-    coverSourceComposable("library/local/albums") {
-        com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, localOnly = true)
-    }
+        coverSourceComposable("library/${shelf.key}/artists") {
+            com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, shelf = shelf)
+        }
 
-    coverSourceComposable("library/local/artists") {
-        com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, localOnly = true)
-    }
-
-    composable(
-        route = "library/local/playlists",
-        exitTransition = { libraryExitTo(targetState.destination.route) },
-        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
-    ) {
-        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, localOnly = true)
+        composable(
+            route = "library/${shelf.key}/playlists",
+            exitTransition = { libraryExitTo(targetState.destination.route) },
+            popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+        ) {
+            CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+                com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, shelf = shelf)
+            }
         }
     }
 
@@ -318,6 +317,21 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("source") { type = NavType.StringType }),
     ) {
         com.example.musicfy.ui.screens.library.LibraryImportedScreen(navController = navController)
+    }
+
+    // The Imported tab's Playlists cards: the playlists one service brought in.
+    composable(
+        route = "library/imported/{source}/playlists",
+        arguments = listOf(navArgument("source") { type = NavType.StringType }),
+        exitTransition = { libraryExitTo(targetState.destination.route) },
+        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+    ) { entry ->
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(
+                navController = navController,
+                source = com.example.musicfy.importer.ImportSource.fromKey(entry.arguments?.getString("source")),
+            )
+        }
     }
 
     composable(Screens.Settings.route) {
@@ -344,13 +358,26 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.GeneralSettingsScreen(navController = navController)
     }
 
-    composable("audio_settings") {
-        com.example.musicfy.ui.screens.settings.AudioSettingsScreen(navController = navController)
-    }
-
-
     composable("appearance_settings") {
         com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute) {
+        com.example.musicfy.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute) {
+        com.example.musicfy.ui.screens.settings.integrations.discord.DiscordScreen(navController = navController)
+    }
+
+    composable(
+        route = com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceRoute,
+        arguments = listOf(navArgument("site") { type = NavType.StringType }),
+    ) { entry ->
+        val site = com.example.musicfy.scrobble.ScrobbleSite.entries
+            .find { it.name == entry.arguments?.getString("site") }
+            ?: com.example.musicfy.scrobble.ScrobbleSite.LASTFM
+        com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
     }
 
     composable("playback_settings") {
@@ -391,7 +418,20 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(
         route = com.example.musicfy.ui.screens.settings.importsync.AccountImportRoutePattern,
-        arguments = listOf(navArgument("service") { type = NavType.StringType }),
+        arguments = listOf(
+            navArgument("service") { type = NavType.StringType },
+            // what a Re-sync opened the page for, and the services Re-sync all goes on to
+            navArgument("resync") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            },
+            navArgument("then") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            },
+        ),
     ) {
         com.example.musicfy.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
     }
@@ -402,6 +442,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("equalizer") {
         com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
+    }
+
+    composable("gesture_settings") {
+        com.example.musicfy.ui.screens.gesture.GestureScreen(navController = navController)
     }
 
     composable("audio_lab") {

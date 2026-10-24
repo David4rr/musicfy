@@ -210,6 +210,12 @@ fun DiscCover(
     cacheSurface: Boolean = true,
     /** shared by a row of records, so the letters of their names are laid out once between them */
     textMeasurer: androidx.compose.ui.text.TextMeasurer? = null,
+    /**
+     * how much colour the pictures keep (1 all, lower greyer while paused). Only the pictures take
+     * it: greyed as a whole, the record's layer went offscreen, and a layer drawn offscreen keeps
+     * nothing outside its box - the big records and their shadows were cut flat at the bottom.
+     */
+    saturationProvider: () -> Float = { 1f },
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -297,7 +303,9 @@ fun DiscCover(
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { colorFilter = pausedFilter(saturationProvider()) },
                     )
                 }
             }
@@ -375,13 +383,22 @@ fun DiscCover(
                 modifier = Modifier
                     .requiredSize(side.dp)
                     .offset { IntOffset(cardLeftPx.toInt(), cardTopPx.toInt()) }
-                    .clip(RoundedCornerShape(side.dp * 0.06f)),
+                    .clip(RoundedCornerShape(side.dp * 0.06f))
+                    .graphicsLayer { colorFilter = pausedFilter(saturationProvider()) },
             )
         }
     }
 }
 
 private val StrokeHairline = 1.dp
+
+/** a picture's grey while paused; none at full colour, so a playing record's layers stay plain */
+private fun pausedFilter(saturation: Float): androidx.compose.ui.graphics.ColorFilter? =
+    if (saturation < 0.999f) {
+        androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(saturation) }
+        )
+    } else null
 
 /**
  * The disc's label, printed the way a CD's is: in capitals, spaced out, all the way round the

@@ -7,12 +7,7 @@
 package com.example.musicfy.ui.screens.setup.onboarding
 
 import com.example.musicfy.ui.theme.InterFontFamily
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,33 +29,65 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.musicfy.R
+import kotlinx.coroutines.flow.first
 
 /** Width : height of the card, from the mock (332 x 176). */
 internal const val IdCardAspect = 1.89f
+
+/** The name the card shows, and the profile page with it, so the two always say the same thing. */
+internal fun idCardName(username: String): String = username.trim().ifEmpty { "{username}" }
+
+/**
+ * Where the card's photo, name and number are, so the profile page can fly copies of them out of
+ * the card and back. Written as the card lays out; read only while drawing, so nothing recomposes.
+ */
+internal class IdCardAnchors {
+    var root: LayoutCoordinates? = null
+    var photo: LayoutCoordinates? = null
+    var name: LayoutCoordinates? = null
+    var number: LayoutCoordinates? = null
+    var nameLayout: TextLayoutResult? = null
+    var numberLayout: TextLayoutResult? = null
+
+    val isReady: Boolean
+        get() = listOf(root, photo, name, number).all { it?.isAttached == true } && nameLayout != null && numberLayout != null
+}
 
 @Composable
 internal fun ProfileIdCard(
@@ -74,8 +101,18 @@ internal fun ProfileIdCard(
     /** 0..1 across the card; where the silver highlight sits (the Hello page moves it with the tilt). */
     sheen: () -> Float = { 0.5f },
     onPhotoClick: (() -> Unit)? = null,
+    /** Filled in with where the photo, name and number sit, for the profile page's morph. */
+    anchors: IdCardAnchors? = null,
+    /** Alpha for just the photo, name and number: the morph hides them while their copies fly. */
+    partsAlpha: () -> Float = { 1f },
+    /** False holds the side strip's text still, for while something covers the card. */
+    marqueeRunning: () -> Boolean = { true },
+    /** Shows a tiny pencil after the number and the name, so people see the card can be edited. */
+    showEditHint: Boolean = false,
+    /** True while a finger is down on the card; the whole card lights up a little. */
+    pressed: () -> Boolean = { false },
 ) {
-    val name = username.trim().ifEmpty { "{username}" }
+    val name = idCardName(username)
     val shape = RoundedCornerShape(22.dp)
     val bodyText = if (silver) Color(0xFF111114) else Color.White
     val mutedText = if (silver) Color(0xFF3A3A40) else Color(0xFFB5B5B5)
@@ -84,8 +121,13 @@ internal fun ProfileIdCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(IdCardAspect)
+            .then(if (anchors != null) Modifier.onPlaced { anchors.root = it } else Modifier)
             .clip(shape)
-            .then(if (silver) Modifier.silverSurface(sheen) else Modifier.background(Color(0xFF2F2F2F))),
+            .then(if (silver) Modifier.silverSurface(sheen) else Modifier.background(Color(0xFF2F2F2F)))
+            .drawWithContent {
+                drawContent()
+                if (pressed()) drawRect(Color.White.copy(alpha = if (silver) 0.28f else 0.14f))
+            },
     ) {
         // everything scales with the card, so it reads the same on a narrow phone and a tablet
         val unit = maxWidth / 332f
@@ -96,18 +138,24 @@ internal fun ProfileIdCard(
                     .fillMaxHeight()
                     .padding(start = unit * 22f, top = unit * 20f, end = unit * 12f, bottom = unit * 18f),
             ) {
-                Text(
-                    text = "PROFILE USR#$cardNumber",
-                    color = mutedText,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = (unit.value * 11f).sp,
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "PROFILE USR#$cardNumber",
+                        color = mutedText,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = (unit.value * 11f).sp,
+                        maxLines = 1,
+                        onTextLayout = { anchors?.numberLayout = it },
+                        modifier = Modifier.flyingPart(anchors, partsAlpha) { number = it },
+                    )
+                    if (showEditHint) EditHint(mutedText, unit * 10f, partsAlpha)
+                }
                 Spacer(Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(unit * 96f)
+                            .flyingPart(anchors, partsAlpha) { this.photo = it }
                             .clip(CircleShape)
                             .background(if (silver) Color(0xFF5A5A60) else Color(0xFF4F4F4F))
                             .then(if (onPhotoClick != null) Modifier.clickable(onClick = onPhotoClick) else Modifier),
@@ -139,14 +187,26 @@ internal fun ProfileIdCard(
                                 fontSize = (unit.value * 10f).sp,
                             )
                         }
-                        Text(
-                            text = name,
-                            color = bodyText,
-                            fontSize = (unit.value * 21f).sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // the pencil is dropped when the name is cut off, so it never squeezes a long name
+                            var nameCut by remember { mutableStateOf(false) }
+                            Text(
+                                text = name,
+                                color = bodyText,
+                                fontSize = (unit.value * 21f).sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                onTextLayout = {
+                                    anchors?.nameLayout = it
+                                    nameCut = it.hasVisualOverflow
+                                },
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .flyingPart(anchors, partsAlpha) { this.name = it },
+                            )
+                            if (showEditHint && !nameCut) EditHint(bodyText.copy(alpha = 0.7f), unit * 12f, partsAlpha)
+                        }
                         Text(
                             text = joinedText,
                             color = bodyText.copy(alpha = 0.85f),
@@ -166,12 +226,43 @@ internal fun ProfileIdCard(
                     .width(unit * 40f)
                     .fillMaxHeight(),
                 fontSizeSp = unit.value * 17f,
+                running = marqueeRunning,
             )
         }
     }
 }
 
-/** Vertical text, rotated a quarter turn, sliding downward without end. Drawn, never recomposed. */
+/** A tiny bare pencil, hidden with the other parts while the profile page's copies are flying. */
+@Composable
+private fun EditHint(tint: Color, size: Dp, alpha: () -> Float) {
+    Icon(
+        painter = painterResource(R.drawable.edit),
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier
+            .padding(start = size / 3f)
+            .size(size)
+            .graphicsLayer { this.alpha = alpha() },
+    )
+}
+
+/** Tracks where a flying part of the card is, and lets the morph hide it while its copy is out. */
+private fun Modifier.flyingPart(
+    anchors: IdCardAnchors?,
+    alpha: () -> Float,
+    track: IdCardAnchors.(LayoutCoordinates) -> Unit,
+): Modifier {
+    if (anchors == null) return this
+    return onPlaced { anchors.track(it) }.graphicsLayer { this.alpha = alpha() }
+}
+
+/** One full pass of the side strip's text. */
+private const val MarqueePeriodNanos = 5_200_000_000f
+
+/**
+ * Vertical text, rotated a quarter turn, sliding downward without end. Drawn, never recomposed.
+ * While [running] says no it holds still, and carries on from the same spot afterwards.
+ */
 @Composable
 internal fun MarqueeStrip(
     text: String,
@@ -179,19 +270,28 @@ internal fun MarqueeStrip(
     background: Color,
     fontSizeSp: Float,
     modifier: Modifier = Modifier,
+    running: () -> Boolean = { true },
 ) {
     val measurer = rememberTextMeasurer()
     val style = remember(color, fontSizeSp) {
         TextStyle(color = color, fontFamily = InterFontFamily, fontSize = fontSizeSp.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
     }
     val layout = remember(text, style) { measurer.measure("$text   ·   ", style) }
-    val transition = rememberInfiniteTransition(label = "idCardMarquee")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 5200, easing = LinearEasing), RepeatMode.Restart),
-        label = "idCardMarqueeProgress",
-    )
+    var progress by remember { mutableFloatStateOf(0f) }
+    val isRunning by rememberUpdatedState(running)
+    LaunchedEffect(Unit) {
+        var last = 0L
+        while (true) {
+            if (!isRunning()) {
+                snapshotFlow { isRunning() }.first { it }
+                last = 0L
+            }
+            withInfiniteAnimationFrameNanos { now ->
+                if (last != 0L) progress = (progress + (now - last) / MarqueePeriodNanos) % 1f
+                last = now
+            }
+        }
+    }
     Canvas(modifier = modifier.background(background)) {
         val step = layout.size.width.toFloat().coerceAtLeast(1f)
         // rotated 90°: the text's x-axis runs down the strip, so moving it +x scrolls it downward

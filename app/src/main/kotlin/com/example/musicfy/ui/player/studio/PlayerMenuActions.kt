@@ -23,7 +23,13 @@ enum class PlayerMenuAction(val label: String, @param:DrawableRes val icon: Int)
     LYRICS("Lyrics", R.drawable.lyrics),
     QUEUE("Queue", R.drawable.queue_music),
     SPEED("Playback speed", R.drawable.speed),
-    OUTPUT("Device output", R.drawable.cast);
+    OUTPUT("Device output", R.drawable.cast),
+
+    // the ones below are worked by PlayerMenuExtras
+    KEEP_AWAKE("Keep screen on", R.drawable.lock_open),
+    TRANSLATE_LYRICS("Translate lyrics", R.drawable.translate),
+    DOWNLOAD("Download", R.drawable.download),
+    ADD_TO_PLAYLIST("Add to playlist", R.drawable.playlist_add);
 
     companion object {
         val DefaultSlots = listOf(OTHER_MENU, SLEEP_TIMER, SEE_VIDEO, REPEAT)

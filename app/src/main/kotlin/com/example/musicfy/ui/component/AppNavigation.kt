@@ -2,17 +2,16 @@
 
 package com.example.musicfy.ui.component
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -21,48 +20,39 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.musicfy.ui.screens.Screens
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
 import com.example.musicfy.LocalGlassState
 
@@ -135,7 +125,6 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "playback_diagnostics" to "settings",
     "musicfy_settings" to "settings",
     "general_settings" to "settings",
-    "audio_settings" to "settings",
     "appearance_settings" to "settings",
     "playback_settings" to "settings",
     "experimental_settings" to "settings",
@@ -226,10 +215,10 @@ fun AppNavigationRail(
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
-    onSearchLongClick: (() -> Unit)? = null
+    /** a second quick tap on Search: straight into typing */
+    onSearchDoubleTap: (() -> Unit)? = null
 ) {
     val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-    val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
     NavigationRail(
@@ -244,44 +233,16 @@ fun AppNavigationRail(
                 if (isSelected) screen.iconIdActive else screen.iconIdInactive
             }
 
-            val isSearchItem = screen == Screens.Search && onSearchLongClick != null
-            val interactionSource = remember { MutableInteractionSource() }
-            val currentSelected by androidx.compose.runtime.rememberUpdatedState(isSelected)
-
-            if (isSearchItem) {
-                LaunchedEffect(interactionSource) {
-                    var isLongClick = false
-                    interactionSource.interactions.collectLatest { interaction ->
-                        when (interaction) {
-                            is PressInteraction.Press -> {
-                                isLongClick = false
-                                delay(viewConfiguration.longPressTimeoutMillis)
-                                isLongClick = true
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onSearchLongClick.invoke()
-                            }
-                            is PressInteraction.Release -> {
-                                if (!isLongClick) {
-                                    onItemClick(screen, currentSelected)
-                                }
-                            }
-                            is PressInteraction.Cancel -> {
-                                isLongClick = false
-                            }
-                        }
-                    }
-                }
-            }
+            val lastTap = remember { longArrayOf(0L) }
 
             NavigationRailItem(
                 selected = isSelected,
                 onClick = {
-                    if (!isSearchItem) {
+                    val doubleTap = onSearchDoubleTap.takeIf { screen == Screens.Search }
+                    tabTapped(lastTap, viewConfiguration.doubleTapTimeoutMillis, doubleTap) {
                         onItemClick(screen, isSelected)
                     }
-
                 },
-                interactionSource = interactionSource,
                 icon = {
                     Icon(
                         painter = coil3.compose.rememberAsyncImagePainter(model = iconRes),
@@ -296,6 +257,26 @@ fun AppNavigationRail(
     }
 }
 
+/** The bar itself, a stadium the mini player's 64dp matches. */
+private val NavBarHeight = 64.dp
+private val NavBarShape = RoundedCornerShape(50)
+
+/** The lit tab's highlight sits this far in from the bar's top, bottom and both ends. */
+private val NavHighlightInset = 8.dp
+
+/** Room between a highlight and where its neighbour's would be. */
+private val NavHighlightGap = 4.dp
+
+/** How bright an unlit tab's icon is. */
+private const val UnlitIconAlpha = 0.7f
+
+/**
+ * The highlight's front edge springs to the new tab faster than its back edge, so it stretches
+ * toward the tab and settles into it instead of sliding over as a rigid block.
+ */
+private val NavHighlightLead = spring<Float>(dampingRatio = 0.82f, stiffness = 700f)
+private val NavHighlightTrail = spring<Float>(dampingRatio = 0.82f, stiffness = 320f)
+
 @Composable
 fun AppNavigationBar(
     navigationItems: List<Screens>,
@@ -306,151 +287,202 @@ fun AppNavigationBar(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
     slimNav: Boolean = false,
-    onSearchLongClick: (() -> Unit)? = null
+    /** a second quick tap on Search: straight into typing */
+    onSearchDoubleTap: (() -> Unit)? = null
 ) {
-    val haptics = LocalHapticFeedback.current
-    val viewConfiguration = LocalViewConfiguration.current
-    val playerConnection = com.example.musicfy.LocalPlayerConnection.current
-    val currentSong by playerConnection?.service?.currentMediaMetadata?.collectAsState(initial = null) ?: androidx.compose.runtime.mutableStateOf(null)
+    val glassState = LocalGlassState.current ?: remember { GlassState() }
+    val accentWash = rememberChromeAccentWash()
+    val selectedIndex = navigationItems.indexOfFirst { it.route == selectedTabRoute }
 
-
-    androidx.compose.foundation.layout.Box(modifier = modifier) {
-        val containerColor = if (pureBlack) Color.Black else GlassChromeColor
-        val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-
-        val glassState = LocalGlassState.current ?: remember { GlassState() }
-        val accentWash = rememberChromeAccentWash()
-
-        androidx.compose.foundation.layout.Box(
+    Box(modifier = modifier) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                 .padding(horizontal = 24.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
-                .height(64.dp)
-
+                .height(NavBarHeight)
                 .press3D(maxTilt = 4f, pressedScale = 0.985f)
-                .clip(RoundedCornerShape(32.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
+                .dropShadow(NavBarShape, ChromeShadow)
+                .clip(NavBarShape)
+                .drawWithContent {
+                    drawContent()
+                    drawChromeOutline(Offset.Zero, size, cornerRadius = size.height / 2f)
+                }
         ) {
-            GlassPillBackground(
+            FrostedChromeGlass(
                 state = glassState,
-                blurRadius = { GlassChromeBlurRadius },
-                tint = containerColor.copy(alpha = 0.65f),
-                foundationColor = containerColor,
+                pureBlack = pureBlack,
                 accentWash = accentWash,
-
-                tileMode = android.graphics.Shader.TileMode.CLAMP,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
 
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceAround,
+            // Half the gap is the row's padding and half is inside each slot, so the highlight sits
+            // the same distance from the ends as from the top and bottom.
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = NavHighlightInset - NavHighlightGap / 2)
+                    .navHighlight(selectedIndex, navigationItems.size),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navigationItems.forEach { screen ->
                     // lit = the tab this page belongs to. what a tap on it does (scroll to the top
                     // on the tab's own page, back to that page from deeper in) is the caller's call
-                    val isSelected = screen.route == selectedTabRoute
-                    val iconRes = remember(isSelected, screen) {
-                        if (isSelected) screen.iconIdActive else screen.iconIdInactive
-                    }
-
-                    val isSearchItem = screen == Screens.Search && onSearchLongClick != null
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
-                    // the long-press listener below is started once; it reads this so a tap
-                    // never acts on whichever tab was lit when it started
-                    val currentSelected by androidx.compose.runtime.rememberUpdatedState(isSelected)
-
-                    val scale by animateFloatAsState(
-                        targetValue = if (isPressed) 0.85f else 1f,
-                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
-                        label = "nav_item_scale"
+                    NavTab(
+                        screen = screen,
+                        isSelected = screen.route == selectedTabRoute,
+                        onItemClick = onItemClick,
+                        onDoubleTap = onSearchDoubleTap.takeIf { screen == Screens.Search },
                     )
-
-                    val targetBackgroundColor = if (isSelected) {
-                        Color.White.copy(alpha = 0.2f)
-                    } else Color.Transparent
-
-                    val animatedBackgroundColor by animateColorAsState(
-                        targetValue = targetBackgroundColor,
-                        animationSpec = tween(200),
-                        label = "nav_item_bg_color"
-                    )
-
-                    val targetIconTint = if (isSelected) {
-                        Color.White
-                    } else {
-                        Color.White.copy(alpha = 0.7f)
-                    }
-
-                    val animatedIconTint by animateColorAsState(
-                        targetValue = targetIconTint,
-                        animationSpec = tween(200),
-                        label = "nav_item_icon_tint"
-                    )
-
-                    if (isSearchItem) {
-                        LaunchedEffect(interactionSource) {
-                            var isLongClick = false
-                            interactionSource.interactions.collectLatest { interaction ->
-                                when (interaction) {
-                                    is androidx.compose.foundation.interaction.PressInteraction.Press -> {
-                                        isLongClick = false
-                                        kotlinx.coroutines.delay(viewConfiguration.longPressTimeoutMillis)
-                                        isLongClick = true
-                                        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                        onSearchLongClick.invoke()
-                                    }
-                                    is androidx.compose.foundation.interaction.PressInteraction.Release -> {
-                                        if (!isLongClick) {
-                                            onItemClick(screen, currentSelected)
-                                        }
-                                    }
-                                    is androidx.compose.foundation.interaction.PressInteraction.Cancel -> {
-                                        isLongClick = false
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(vertical = 8.dp, horizontal = 4.dp)
-                            .scale(scale)
-                            .clip(RoundedCornerShape(32.dp))
-                            .background(animatedBackgroundColor)
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = {
-                                    if (!isSearchItem) {
-                                        onItemClick(screen, isSelected)
-                                    }
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Crossfade(
-                            targetState = iconRes,
-                            animationSpec = tween(200),
-                            label = "nav_icon_crossfade"
-                        ) { targetIconRes ->
-                            Icon(
-                                painter = coil3.compose.rememberAsyncImagePainter(model = targetIconRes),
-                                contentDescription = stringResource(screen.titleId),
-                                modifier = Modifier.size(if (screen == Screens.Home || screen == Screens.Search) 22.dp else 24.dp),
-                                tint = animatedIconTint
-                            )
-                        }
-                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * One highlight behind the lit tab that slides to the next one, instead of each tab fading its own
+ * in and out. Only read while drawing, so the slide never recomposes the bar.
+ */
+@Composable
+private fun Modifier.navHighlight(selectedIndex: Int, tabCount: Int): Modifier {
+    val start = remember { Animatable(selectedIndex.coerceAtLeast(0).toFloat()) }
+    val end = remember { Animatable(selectedIndex.coerceAtLeast(0).toFloat()) }
+    val shown = remember { Animatable(if (selectedIndex >= 0) 1f else 0f) }
+
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex < 0) {
+            shown.animateTo(0f, tween(200))
+            return@LaunchedEffect
+        }
+        val target = selectedIndex.toFloat()
+        // back from no lit tab, it fades in where it belongs rather than sliding over from the old one
+        if (shown.value == 0f) {
+            start.snapTo(target)
+            end.snapTo(target)
+        }
+        launch { shown.animateTo(1f, tween(200)) }
+        val movingRight = target > (start.value + end.value) / 2f
+        launch { start.animateTo(target, if (movingRight) NavHighlightTrail else NavHighlightLead) }
+        end.animateTo(target, if (movingRight) NavHighlightLead else NavHighlightTrail)
+    }
+
+    return drawBehind {
+        val alpha = shown.value
+        if (alpha <= 0f || tabCount == 0) return@drawBehind
+        val slot = size.width / tabCount
+        val halfGap = NavHighlightGap.toPx() / 2f
+        val inset = NavHighlightInset.toPx()
+        val left = start.value * slot + halfGap
+        val right = (end.value + 1f) * slot - halfGap
+        val height = size.height - inset * 2f
+        drawRoundRect(
+            color = ChromeHighlightColor,
+            topLeft = Offset(left, inset),
+            size = Size(right - left, height),
+            cornerRadius = CornerRadius(height / 2f),
+            alpha = alpha,
+        )
+    }
+}
+
+/**
+ * A tab's tap, or with [onDoubleTap] a second tap close behind the first: the first still goes to
+ * the tab at once, the second does [onDoubleTap] instead. [lastTap] holds the time of the one before.
+ */
+private fun tabTapped(lastTap: LongArray, doubleTapTimeoutMillis: Long, onDoubleTap: (() -> Unit)?, onTap: () -> Unit) {
+    val now = android.os.SystemClock.uptimeMillis()
+    if (onDoubleTap != null && now - lastTap[0] < doubleTapTimeoutMillis) {
+        lastTap[0] = 0L
+        onDoubleTap()
+    } else {
+        lastTap[0] = now
+        onTap()
+    }
+}
+
+/**
+ * One tab of the bar. Its icon swaps to the filled one and brightens as it lights up, and it
+ * squishes under a press. [onDoubleTap] is for Search, where two taps open the search field.
+ * The Library's icon turns into a download badge while songs download.
+ */
+@Composable
+private fun RowScope.NavTab(
+    screen: Screens,
+    isSelected: Boolean,
+    onItemClick: (Screens, Boolean) -> Unit,
+    onDoubleTap: (() -> Unit)?,
+) {
+    val viewConfiguration = LocalViewConfiguration.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val lastTap = remember { longArrayOf(0L) }
+    val lit = animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = tween(200),
+        label = "nav_tab_lit"
+    )
+
+    // Both icons stay loaded, so lighting a tab never shows an empty frame while its filled icon loads.
+    val unlitIcon = coil3.compose.rememberAsyncImagePainter(model = screen.iconIdInactive)
+    val litIcon = coil3.compose.rememberAsyncImagePainter(model = screen.iconIdActive)
+    val iconSize = if (screen == Screens.Home || screen == Screens.Search) 22.dp else 24.dp
+
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .pressBounce(interactionSource, pressedScale = 0.85f)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    tabTapped(lastTap, viewConfiguration.doubleTapTimeoutMillis, onDoubleTap) {
+                        onItemClick(screen, isSelected)
+                    }
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (screen == Screens.Library) {
+            LibraryDownloadIcon { TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value } }
+        } else {
+            TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value }
+        }
+    }
+}
+
+/** a tab's two icons, the filled one fading in over the outline as the tab lights up */
+@Composable
+private fun TabIcons(
+    screen: Screens,
+    unlitIcon: androidx.compose.ui.graphics.painter.Painter,
+    litIcon: androidx.compose.ui.graphics.painter.Painter,
+    iconSize: androidx.compose.ui.unit.Dp,
+    lit: () -> Float,
+) {
+    Box(contentAlignment = Alignment.Center) {
+        Icon(
+            painter = unlitIcon,
+            contentDescription = stringResource(screen.titleId),
+            tint = Color.White,
+            modifier = Modifier
+                .size(iconSize)
+                .graphicsLayer {
+                    alpha = UnlitIconAlpha * (1f - lit())
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
+        )
+        Icon(
+            painter = litIcon,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier
+                .size(iconSize)
+                .graphicsLayer {
+                    alpha = lit()
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
+        )
     }
 }

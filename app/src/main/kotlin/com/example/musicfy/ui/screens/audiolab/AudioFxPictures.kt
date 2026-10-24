@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import com.example.musicfy.eq.AudioFxService
 import com.example.musicfy.eq.LoudnessSettings
 import com.example.musicfy.eq.PlaybackSettings
-import com.example.musicfy.eq.ReverbSettings
 import com.example.musicfy.eq.SpatialSettings
 import com.example.musicfy.eq.VolumeSettings
 import com.example.musicfy.eq.audio.AudioTap
@@ -46,7 +45,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /** a frame clock and a music follower, shared by every picture */
-private class PictureClock {
+internal class PictureClock {
     val level = LevelFollower()
     private var lastTime = -1f
 
@@ -67,7 +66,7 @@ private class PictureClock {
 }
 
 @Composable
-private fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Unit) {
+internal fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Unit) {
     val onScreen = rememberOnScreen()
     val held = rememberPicturesHeld(onScreen)
     val time = rememberLabTime(held)
@@ -77,112 +76,6 @@ private fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Uni
         clock.tick(t)
         draw(t, clock)
     }
-}
-
-// ---- Reverb: a room. Waves leave the speaker, bounce between the walls and die away ---------
-
-private class RoomWaves {
-    val born = FloatArray(14) { -100f }
-    val strength = FloatArray(14)
-    var next = 0
-    var nextEmit = 0f
-    var lastEmit = -10f
-
-    fun emit(t: Float, s: Float) {
-        born[next] = t
-        strength[next] = s
-        next = (next + 1) % born.size
-        lastEmit = t
-    }
-}
-
-@Composable
-fun ReverbPicture(settings: ReverbSettings) {
-    val room by animateFloatAsState(settings.roomSize, spring(dampingRatio = 0.8f, stiffness = 120f), label = "room")
-    val on by animateFloatAsState(if (settings.enabled) 1f else 0f, tween(400), label = "on")
-    val waves = remember { RoomWaves() }
-    PictureCanvas { t, clock ->
-        val w = size.width
-        val h = size.height
-        val cy = h / 2f
-        val speakerX = w * 0.15f
-        val backX = w * 0.05f
-        val wallX = w * (0.52f + 0.4f * room)
-        val speed = w * 0.42f
-
-        // a wave on every beat when music plays, a calm pulse when it doesn't
-        val live = AudioTap.isLive
-        val punch = clock.level.punch
-        if (t >= waves.nextEmit || (live && punch > 0.55f && t - waves.lastEmit > 0.28f)) {
-            waves.emit(t, if (live) 0.55f + 0.45f * min(1f, clock.level.level * 3f + punch) else 0.75f)
-            waves.nextEmit = t + if (live) 0.9f else 1.3f
-        }
-
-        val reflectivity = (0.35f + 0.55f * settings.roomSize) * (1f - 0.55f * settings.damping)
-        val echoAlpha = on * (0.35f + 0.65f * settings.wet) * (0.4f + 0.6f * settings.mix)
-        var flash = 0f
-        val span = wallX - backX
-        for (i in waves.born.indices) {
-            val age = t - waves.born[i]
-            if (age < 0f || age > 8f) continue
-            val d = age * speed
-            val first = wallX - speakerX
-            if (d <= first || on < 0.01f) {
-                // the direct sound; with the reverb off it passes straight through the wall
-                val x = speakerX + d
-                if (x > w + 20f) continue
-                val a = waves.strength[i] * exp(-d / (w * 1.6f))
-                drawWave(x, cy, h, d, a * (if (d > first) 1f - on else 1f), rightward = true, softness = 0f)
-                continue
-            }
-            // after the first hit it folds back and forth between the walls, losing energy each time
-            val past = d - first
-            val bounces = 1 + (past / span).toInt()
-            val inLeg = past % span
-            val rightward = bounces % 2 == 0
-            val x = if (rightward) backX + inLeg else wallX - inLeg
-            val a = waves.strength[i] * reflectivity.pow(bounces) * exp(-d / (w * 2.2f)) * echoAlpha
-            if (a < 0.02f) continue
-            if (inLeg < span * 0.08f && !rightward) flash = max(flash, a * (1f - inLeg / (span * 0.08f)))
-            drawWave(x, cy, h, d, a, rightward, softness = settings.damping)
-        }
-
-        // the wall, lit for a moment by each wave that reaches it
-        val wallH = h * 0.62f
-        drawRoundRect(
-            Color.White.copy(alpha = (0.18f + 0.55f * on + 0.6f * flash).coerceAtMost(1f)),
-            Offset(wallX, cy - wallH / 2), Size(5.dp.toPx(), wallH), CornerRadius(3.dp.toPx()),
-        )
-        drawSpeaker(Offset(speakerX, cy), 1f + clock.level.punch * 0.12f)
-    }
-}
-
-private fun DrawScope.drawWave(x: Float, cy: Float, h: Float, travelled: Float, alpha: Float, rightward: Boolean, softness: Float) {
-    if (alpha <= 0.005f) return
-    val reach = min(h * 0.42f, 14.dp.toPx() + travelled * 0.18f)
-    val bulge = reach * 0.42f * if (rightward) 1f else -1f
-    val path = Path().apply {
-        moveTo(x - bulge * 0.2f, cy - reach)
-        quadraticTo(x + bulge, cy, x - bulge * 0.2f, cy + reach)
-    }
-    if (softness > 0.15f) {
-        drawPath(path, Color.White.copy(alpha = alpha * 0.25f * softness), style = Stroke(7.dp.toPx() * softness, cap = StrokeCap.Round))
-    }
-    drawPath(path, Color.White.copy(alpha = alpha.coerceAtMost(1f)), style = Stroke((2.2f - softness).dp.toPx(), cap = StrokeCap.Round))
-}
-
-private fun DrawScope.drawSpeaker(center: Offset, scale: Float) {
-    val s = 9.dp.toPx() * scale
-    val body = Path().apply {
-        moveTo(center.x - s * 1.1f, center.y - s * 0.45f)
-        lineTo(center.x - s * 0.4f, center.y - s * 0.45f)
-        lineTo(center.x + s * 0.5f, center.y - s * 1.1f)
-        lineTo(center.x + s * 0.5f, center.y + s * 1.1f)
-        lineTo(center.x - s * 0.4f, center.y + s * 0.45f)
-        lineTo(center.x - s * 1.1f, center.y + s * 0.45f)
-        close()
-    }
-    drawPath(body, Color.White.copy(alpha = 0.92f), style = Stroke(1.6.dp.toPx()))
 }
 
 // ---- Loudness: the music's level, lifted by the boost and flattened under the ceiling ---------

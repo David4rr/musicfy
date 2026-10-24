@@ -47,6 +47,8 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.utils.makeTimeString
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.acos
@@ -93,6 +95,8 @@ private val EndDegrees = tubeDegreesFor(Record.art + 0.075f)
 
 /** the time arc that shows while the arm is held, just outside the headshell's path */
 private const val ArcRadius = 1.03f
+/** how long the arc stays up when the music starts */
+private const val PeekMs = 3_000L
 private const val LabelGapDegrees = 3.5f
 
 /**
@@ -123,6 +127,34 @@ fun TurntableArm(
     val held = remember { Animatable(0f) }
     val dragging = remember { booleanArrayOf(false) }
     val scrubMs = remember { mutableLongStateOf(-1L) }
+    // the arc on its own, for a few seconds when the music starts: [peek] shows it, [peekGrow]
+    // draws it along the stylus's path from the song's start (the arm stays down meanwhile)
+    val peek = remember { Animatable(0f) }
+    val peekGrow = remember { Animatable(0f) }
+
+    LaunchedEffect(connection, active) {
+        if (connection == null || !active) return@LaunchedEffect
+        var wasPlaying = connection.isPlaying.value
+        var lastId = connection.mediaMetadata.value?.id
+        var showing: kotlinx.coroutines.Job? = null
+        kotlinx.coroutines.flow.combine(
+            connection.isPlaying,
+            connection.mediaMetadata.map { it?.id }.distinctUntilChanged(),
+        ) { playing, id -> playing to id }.collect { (playing, id) ->
+            val started = playing && (!wasPlaying || id != lastId)
+            wasPlaying = playing
+            lastId = id
+            if (!started) return@collect
+            showing?.cancel()
+            showing = launch {
+                if (peek.value < 0.05f) peekGrow.snapTo(0f)
+                launch { peek.animateTo(1f, tween(240)) }
+                peekGrow.animateTo(1f, tween(760, easing = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)))
+                delay(PeekMs - 760L)
+                peek.animateTo(0f, tween(420))
+            }
+        }
+    }
 
     // follows the song: small steps snap (it moves a fraction of a degree a second), a new song or
     // a seek swings it there
@@ -241,13 +273,15 @@ fun TurntableArm(
                 .fillMaxSize()
                 .drawBehind {
                     val failing = failureProgress.value >= 0f
-                    val lift = if (failing) 1f else held.value
+                    val lift = if (failing) 1f else maxOf(held.value, peek.value)
                     if (lift > 0.001f) {
                         drawTimeArc(
                             pivot = pivotIn(size),
                             degrees = angle.value,
                             w = size.width,
                             alpha = lift,
+                            // held (or failing), it's all there at once; peeking, it draws itself in
+                            grow = if (failing || held.value >= peek.value) 1f else peekGrow.value,
                             positionMs = scrubMs.longValue,
                             durationMs = currentConnection?.player?.duration ?: 0L,
                             measurer = measurer,
@@ -316,6 +350,8 @@ private fun DrawScope.drawTimeArc(
     degrees: Float,
     w: Float,
     alpha: Float,
+    /** how much of the arc is drawn, from the song's start: 1 all of it */
+    grow: Float = 1f,
     positionMs: Long,
     durationMs: Long,
     measurer: androidx.compose.ui.text.TextMeasurer,
@@ -328,10 +364,11 @@ private fun DrawScope.drawTimeArc(
     val topLeft = pivot - Offset(radius, radius)
     val arcSize = Size(radius * 2f, radius * 2f)
     val start = StartDegrees + StylusDegrees
+    val reach = (EndDegrees - StartDegrees) * grow.coerceIn(0f, 1f)
     drawArc(
         color = Color.White.copy(alpha = 0.32f * alpha),
         startAngle = start,
-        sweepAngle = EndDegrees - StartDegrees,
+        sweepAngle = reach.coerceAtLeast(0.01f),
         useCenter = false,
         topLeft = topLeft,
         size = arcSize,
@@ -340,7 +377,7 @@ private fun DrawScope.drawTimeArc(
     drawArc(
         color = Color.White.copy(alpha = alpha),
         startAngle = start,
-        sweepAngle = (degrees - StartDegrees).coerceAtLeast(0.01f),
+        sweepAngle = (degrees - StartDegrees).coerceIn(0.01f, reach.coerceAtLeast(0.01f)),
         useCenter = false,
         topLeft = topLeft,
         size = arcSize,
@@ -371,7 +408,11 @@ private fun DrawScope.drawTimeArc(
     } else {
         timeLabel(makeTimeString(shown), pivot, start - LabelGapDegrees, radius, alpha, measurer, labelStyle)
     }
-    timeLabel(makeTimeString(durationMs), pivot, EndDegrees + StylusDegrees + LabelGapDegrees, radius, alpha, measurer, labelStyle)
+    // the length lands at the far end as the arc reaches it
+    val endAlpha = alpha * ((grow - 0.7f) / 0.3f).coerceIn(0f, 1f)
+    if (endAlpha > 0.001f) {
+        timeLabel(makeTimeString(durationMs), pivot, EndDegrees + StylusDegrees + LabelGapDegrees, radius, endAlpha, measurer, labelStyle)
+    }
 }
 
 private fun DrawScope.timeLabel(

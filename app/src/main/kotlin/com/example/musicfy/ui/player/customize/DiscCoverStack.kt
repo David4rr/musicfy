@@ -8,13 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -23,6 +22,7 @@ import com.example.musicfy.constants.DiscNameKey
 import com.example.musicfy.constants.DiscRealisticModeKey
 import com.example.musicfy.constants.DiscRotatingAnimationKey
 import com.example.musicfy.constants.PlayerCoverStyle
+import com.example.musicfy.ui.player.CarouselSong
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
@@ -39,10 +39,12 @@ fun DiscCoverStack(
     editMode: Boolean,
     modifier: Modifier = Modifier,
     /**
-     * the row of records the player's swipe and skips run along (see DiscCarousel). Without one -
+     * the player's row of songs the swipe and skips run along (see SongCarousel). Without one -
      * the editor, the previews - there's just the playing song's record, still.
      */
-    carousel: DiscCarousel? = null,
+    carousel: com.example.musicfy.ui.player.SongCarousel? = null,
+    /** how much colour the records' pictures keep: greyer while paused */
+    saturationProvider: () -> Float = { 1f },
 ) {
     val (rotatingEnabled) = rememberPreference(DiscRotatingAnimationKey, defaultValue = true)
     val (realistic) = rememberPreference(DiscRealisticModeKey, defaultValue = true)
@@ -55,7 +57,7 @@ fun DiscCoverStack(
     val track = connection?.uiState?.trackInfo?.collectAsState()?.value
 
     // what a record's label says, as chosen in the cover editor
-    fun nameFor(slot: DiscSlot): String = when (labelContent) {
+    fun nameFor(slot: CarouselSong): String = when (labelContent) {
         DiscLabelContent.CUSTOM -> customName
         DiscLabelContent.MUSIC_NAME -> slot.title
         DiscLabelContent.ARTIST_NAME -> slot.artist
@@ -64,67 +66,35 @@ fun DiscCoverStack(
         DiscLabelContent.NONE -> ""
     }
 
-    val playing = DiscSlot(
-        uid = 0,
-        mediaId = mediaId,
-        artworkUrl = artworkUrl,
-        title = track?.title.orEmpty(),
-        artist = track?.artist.orEmpty(),
-        album = track?.album.orEmpty(),
-        step = 0,
-        current = true,
-    )
-
-    // The row: the songs either side of the playing one, from the queue in play order. One
-    // source for all three, so the record coming in is exactly the one that then plays.
-    val queue = if (carousel != null && !editMode) connection?.queueSnapshot?.collectAsState()?.value else null
-    val candidates: List<DiscSlot> = run {
-        val items = queue?.items
-        val index = queue?.currentIndex ?: -1
-        if (carousel == null || items == null || index !in items.indices) return@run listOf(playing)
-        carousel.style = style
-        fun slotOf(i: Int, step: Int, current: Boolean): DiscSlot? = items.getOrNull(i)?.let { item ->
-            DiscSlot(
-                uid = item.uid,
-                mediaId = item.mediaId,
-                // the playing song's own picture when the queue has none for it
-                artworkUrl = item.artworkUri?.toString() ?: artworkUrl.takeIf { current && item.mediaId == mediaId },
-                title = item.title,
-                artist = item.artist,
-                album = if (item.mediaId == track?.mediaId) track?.album.orEmpty() else "",
-                step = step,
-                current = current,
+    // The row: the songs either side of the playing one, from the player's queue. One source for
+    // the records, the cover, the title and the background, so the record coming in is exactly the
+    // one that then plays.
+    val row = carousel?.takeIf { !editMode }?.slots.orEmpty()
+    val candidates = row.ifEmpty {
+        listOf(
+            CarouselSong(
+                uid = 0,
+                mediaId = mediaId,
+                artworkUrl = artworkUrl,
+                title = track?.title.orEmpty(),
+                artist = track?.artist.orEmpty(),
+                album = track?.album.orEmpty(),
+                step = carousel?.step ?: 0,
             )
-        }
-        val now = slotOf(index, 0, true)!!
-        carousel.onQueue(now, index, items.getOrNull(index - 1)?.uid, items.getOrNull(index + 1)?.uid)
-        val step = carousel.step
-        buildList {
-            slotOf(index - 1, step - 1, false)?.let(::add)
-            add(now.copy(step = step))
-            slotOf(index + 1, step + 1, false)?.let(::add)
-            carousel.outgoing?.let { gone -> if (none { it.uid == gone.uid }) add(gone) }
-        }
+        )
     }
+    fun isCurrent(slot: CarouselSong) = carousel == null || slot.step == carousel.step
 
     // A record new to the row (the next one along, after a skip) joins it once the row has come to
     // rest, not while it slides: building it and drawing its surface into its layer is real work,
     // and done at rest - off screen - nothing on screen waits for it.
+    val resting by remember(carousel) {
+        derivedStateOf { carousel == null || carousel.position == carousel.step.toFloat() }
+    }
     val shownBefore = remember { HashSet<Int>() }
-    var restingStep by remember { mutableIntStateOf(carousel?.step ?: 0) }
-    val slots = candidates.filter { it.current || it.uid in shownBefore || restingStep == (carousel?.step ?: 0) }
+    val slots = candidates.filter { isCurrent(it) || it.uid in shownBefore || resting }
     shownBefore.clear()
     slots.forEach { shownBefore += it.uid }
-
-    if (carousel != null) {
-        // the row settles on the playing song: a skip from anywhere slides it there, and a swipe's
-        // own slide toward it carries on with the speed it has
-        LaunchedEffect(carousel, carousel.step) {
-            carousel.position.animateTo(carousel.step.toFloat(), DiscSettleSpring)
-            carousel.outgoing = null
-            restingStep = carousel.step
-        }
-    }
 
     val angle = remember { mutableFloatStateOf(0f) }
     val lastFrameNanos = remember { mutableLongStateOf(0L) }
@@ -166,14 +136,15 @@ fun DiscCoverStack(
                     discName = nameFor(slot),
                     albumArtworkUrl = albumArtwork,
                     realistic = realistic,
-                    editMode = editMode && slot.current,
+                    editMode = editMode && isCurrent(slot),
                     rotationProvider = { angle.floatValue },
                     textMeasurer = measurer,
+                    saturationProvider = saturationProvider,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
                             if (carousel == null) Modifier else Modifier.graphicsLayer {
-                                translationX = (slot.step - carousel.position.value) * discSpacingPx(style, size)
+                                translationX = carousel.offsetOf(slot) * discSpacingPx(style, size)
                             }
                         ),
                 )
@@ -194,6 +165,16 @@ fun DiscCoverStack(
             )
         }
     }
+}
+
+/**
+ * How far apart the records in [style]'s row sit, for a box [size]: enough that, at rest, the ones
+ * either side are just past the screen's edges (the box can be inset from them a little).
+ */
+internal fun discSpacingPx(style: PlayerCoverStyle, size: androidx.compose.ui.geometry.Size): Float {
+    val (center, radius) = discCircleIn(style, size)
+    val margin = size.width * 0.08f
+    return kotlin.math.max(size.width - center.x + radius, center.x + radius) + margin
 }
 
 private val PlayerCoverStyle.hasAlbumCard: Boolean get() = discGeometryFor(this).albumCard != null

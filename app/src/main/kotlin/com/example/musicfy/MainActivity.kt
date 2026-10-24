@@ -187,6 +187,7 @@ import com.example.musicfy.ui.component.shimmer.ShimmerTheme
 import com.example.musicfy.ui.menu.YouTubeSongMenu
 import com.example.musicfy.ui.player.BottomSheetPlayer
 import com.example.musicfy.ui.screens.Screens
+import com.example.musicfy.ui.screens.search.requestSearchFocus
 import com.example.musicfy.ui.screens.navigationBuilder
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.ui.screens.NavigationTab
@@ -435,6 +436,15 @@ class MainActivity : ComponentActivity() {
                     com.example.musicfy.ui.screens.update.maybeNotifyUpdate(context, release)
                 }
             }
+        }
+
+        // "Keep screen on" (the player's menu, or a chevron button): the phone doesn't sleep while
+        // Musicfy is on screen. A window flag only holds while the app is in front, which is the point.
+        val keepScreenOn by rememberPreference(com.example.musicfy.constants.KeepScreenOn, defaultValue = false)
+        val rootView = androidx.compose.ui.platform.LocalView.current
+        DisposableEffect(keepScreenOn) {
+            rootView.keepScreenOn = keepScreenOn
+            onDispose { rootView.keepScreenOn = false }
         }
 
         LaunchedEffect(enableHighRefreshRate) {
@@ -854,6 +864,10 @@ class MainActivity : ComponentActivity() {
 
                 val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
                 val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+                val blurQuality by rememberEnumPreference(
+                    com.example.musicfy.constants.BlurQualityKey,
+                    com.example.musicfy.constants.BlurQuality.HIGH,
+                )
                 val swipeToSong by rememberPreference(SwipeToSongKey, false)
 
                 val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
@@ -882,6 +896,7 @@ class MainActivity : ComponentActivity() {
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
                     LocalLaunchIntro provides launchIntro,
+                    com.example.musicfy.ui.component.LocalBlurQuality provides blurQuality,
                 ) {
                     com.example.musicfy.ui.component.PopupSheetHost(
                         states = listOf(
@@ -902,25 +917,7 @@ class MainActivity : ComponentActivity() {
                                 markOnboardedOnThisInstall(context)
                                 onboardedHere = true
                                 coroutineScope.launch(Dispatchers.IO) {
-
-                                    var savedUriStr = ""
-                                    if (uri != null) {
-                                        try {
-                                            val file = java.io.File(context.filesDir, "profile_pic_${System.currentTimeMillis()}.jpg")
-                                            if (uri.scheme == "file") {
-                                                java.io.File(uri.path!!).copyTo(file, overwrite = true)
-                                            } else {
-                                                val inputStream = context.contentResolver.openInputStream(uri)
-                                                val outputStream = java.io.FileOutputStream(file)
-                                                inputStream?.copyTo(outputStream)
-                                                inputStream?.close()
-                                                outputStream.close()
-                                            }
-                                            savedUriStr = file.absolutePath
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
+                                    val savedUriStr = uri?.let { com.example.musicfy.ui.screens.profile.ProfileStore.copyPhoto(context, it) }.orEmpty()
 
                                     dataStore.updateData { prefs ->
                                         prefs.toMutablePreferences().apply {
@@ -1011,12 +1008,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                val onSearchLongClick: () -> Unit = remember(navController) {
-                                    {
-                                        navController.navigate("recognition") {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                // Two quick taps on Search open its field, ready to type. (A hold used
+                                // to open song recognition, whose page is gone: it crashed the app.)
+                                val onSearchDoubleTap: () -> Unit = remember(navController) {
+                                    { navController.requestSearchFocus() }
                                 }
 
                                 val navBarTotalHeight = bottomInset + NavigationBarHeight
@@ -1081,7 +1076,7 @@ class MainActivity : ComponentActivity() {
                                             onItemClick = onNavItemClick,
                                             pureBlack = pureBlack,
                                             slimNav = slimNav,
-                                            onSearchLongClick = onSearchLongClick,
+                                            onSearchDoubleTap = onSearchDoubleTap,
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
                                                 .launchRise(order = 3)
@@ -1135,12 +1130,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                val onRailSearchLongClick: () -> Unit = remember(navController) {
-                                    {
-                                        navController.navigate("recognition") {
-                                            launchSingleTop = true
-                                        }
-                                    }
+                                val onRailSearchDoubleTap: () -> Unit = remember(navController) {
+                                    { navController.requestSearchFocus() }
                                 }
 
                                 if (showRail && currentRoute != "wrapped" && currentRoute != "update") {
@@ -1150,7 +1141,7 @@ class MainActivity : ComponentActivity() {
                                         selectedTabRoute = selectedTabRoute,
                                         onItemClick = onRailItemClick,
                                         pureBlack = pureBlack,
-                                        onSearchLongClick = onRailSearchLongClick
+                                        onSearchDoubleTap = onRailSearchDoubleTap
                                     )
                                 }
                                 Box(
@@ -1325,7 +1316,7 @@ class MainActivity : ComponentActivity() {
             var done = 0
             for (uri in uris) {
                 try {
-                    com.example.musicfy.ui.screens.library.importSharedAudio(applicationContext, database, uri)
+                    com.example.musicfy.importer.importSharedAudio(applicationContext, database, uri)
                     done++
                 } catch (e: Exception) {
                     reportException(e)
@@ -1450,6 +1441,7 @@ val SubSettingsRoutes = setOf(
     "youtube_sync",
     "stats",
     "developer_space",
+    "gesture_settings",
     // Audio Lab keeps the bar, as in its designs
     "audio_lab",
     "equalizer",

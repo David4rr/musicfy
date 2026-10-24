@@ -124,8 +124,8 @@ fun Modifier.studioSheetLayer(studio: PlayerStudioState): Modifier = graphicsLay
  * The player selector: every style as a card, the live player one of them. Holding the player (or
  * "edit player") shrinks the player straight into its card - the same pixels, nothing swapped or
  * faded - while the other styles slide in beside it, each previewed as itself. Swiping looks
- * through them; nothing changes until Set. Only the flagship has Edit; the others' Set fills the
- * width.
+ * through them; a tap on a card, Set, or a swipe down puts the style in view on (the back button
+ * leaves it as it was). The editable styles have Edit beside Set; the others' Set fills the width.
  *
  * Laid out like the rest of the app: a small "Styles" header with the style in view under it and
  * the back button beside it, the cards, page dots, and one tight row of buttons. Every card stays
@@ -211,14 +211,12 @@ fun PlayerSelectorOverlay(
                             val velocity = tracker.calculateVelocity()
                             when (mode) {
                                 0 -> if (released) {
-                                    // a tap on a card at the side brings it to the middle
+                                    // a tap on a card puts that style on: the player grows out of it
                                     val g = CardGeometry(1f, w, h, gapPx)
                                     val y = down.position.y
                                     if (y > g.centerY - g.cardH / 2f && y < g.centerY + g.cardH / 2f) {
                                         val tapped = (studio.page.value + (down.position.x - w / 2f) / g.stride).roundToInt()
-                                        if (tapped in 0..last && tapped != studio.page.value.roundToInt()) {
-                                            studio.page.animateTo(tapped.toFloat())
-                                        }
+                                        if (tapped in 0..last) currentOnSet(tapped)
                                     }
                                 }
                                 1 -> {
@@ -226,7 +224,12 @@ fun PlayerSelectorOverlay(
                                     val target = (studio.page.value + flick * 0.3f).roundToInt().coerceIn(0, last)
                                     studio.page.animateTo(target.toFloat(), velocity = flick)
                                 }
-                                2 -> if (dy > 120.dp.toPx() || velocity.y > 1_400f) studio.back() else studio.selector.animateTo(1f)
+                                // pulled down far (or fast) enough: the style in view goes on, as with Set
+                                2 -> if (dy > 120.dp.toPx() || velocity.y > 1_400f) {
+                                    currentOnSet(studio.page.value.roundToInt().coerceIn(0, last))
+                                } else {
+                                    studio.selector.animateTo(1f)
+                                }
                             }
                         }
                     }
@@ -241,8 +244,12 @@ fun PlayerSelectorOverlay(
                             .graphicsLayer {
                                 val g = geometry()
                                 val position = studio.page.value
-                                val visible = index != studio.livePage && g.visible(index, position)
-                                alpha = if (visible) 1f else 0f
+                                // the live card is the player itself, except while a newly picked
+                                // style is being built behind it: then its card covers it, and
+                                // fades into it as it grows
+                                val live = index == studio.livePage
+                                val visible = g.visible(index, position) && (!live || studio.handoff.value > 0.001f)
+                                alpha = if (!visible) 0f else if (live) studio.handoff.value.coerceIn(0f, 1f) else 1f
                                 scaleX = g.scale
                                 scaleY = g.scale
                                 translationX = g.centerX(index, position) - w / 2f
@@ -253,14 +260,14 @@ fun PlayerSelectorOverlay(
                             }
                             .background(Color.Black),
                     ) {
-                        if (index != studio.livePage) {
-                            if (style == PlayerStyle.DEFAULT) {
-                                FlagshipPreview()
-                            } else if (style == PlayerStyle.TURNTABLE) {
-                                FlagshipPreview(turntable = true)
-                            } else {
-                                AlternatePlayerStyle(style = style, actions = previewActions, preview = true, modifier = Modifier.fillMaxSize())
-                            }
+                        // every card built, the live one too: picking a style hands over to its
+                        // card, which mustn't be built in the frame it has to cover the player
+                        if (style == PlayerStyle.DEFAULT) {
+                            FlagshipPreview()
+                        } else if (style == PlayerStyle.TURNTABLE) {
+                            FlagshipPreview(turntable = true)
+                        } else {
+                            AlternatePlayerStyle(style = style, actions = previewActions, preview = true, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }

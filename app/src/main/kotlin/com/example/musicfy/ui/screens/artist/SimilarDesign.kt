@@ -90,7 +90,7 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.HomeCardSpacing
 import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.HomeRowHeight
+import com.example.musicfy.ui.component.homeRowHeight
 import com.example.musicfy.ui.component.HomeTrackRow
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.detail.FeaturedArtistUi
@@ -618,7 +618,7 @@ internal fun PagedSongGrid(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(HomeRowHeight * rows + 6.dp * (rows - 1)),
+            .height(homeRowHeight() * rows + 6.dp * (rows - 1)),
     ) {
         items(items = songs, key = { it.id }) { song ->
             Box(modifier = Modifier.width(columnWidth)) {

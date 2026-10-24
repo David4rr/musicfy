@@ -12,7 +12,6 @@ import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.datasource.ResolvingDataSource
-import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.Download
@@ -40,12 +39,14 @@ import com.example.musicfy.db.entities.FormatEntity
 import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.lyrics.LyricsHelper
+import com.example.musicfy.models.TransferBatch
+import com.example.musicfy.models.TransferItem
+import com.example.musicfy.models.TransferState
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.utils.OfflineMode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.example.musicfy.di.DownloadCache
-import com.example.musicfy.di.PlayerCache
 import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.YTPlayerUtils
 import com.example.musicfy.utils.enumPreference
@@ -57,7 +58,10 @@ import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -78,75 +82,83 @@ constructor(
     val database: MusicDatabase,
     val databaseProvider: DatabaseProvider,
     @DownloadCache val downloadCache: SimpleCache,
-    @PlayerCache val playerCache: SimpleCache,
     private val sourceModules: SourceModules,
     private val lyricsHelper: LyricsHelper,
 ) {
     private val connectivityManager = context.getSystemService<ConnectivityManager>()!!
     private val downloadQuality by enumPreference(context, DownloadQualityKey, DownloadQuality.HIGH)
     private val ipVersion by enumPreference(context, IpVersionKey, IpVersion.AUTO)
-    private val songUrlCache = HashMap<String, Pair<String, Long>>()
+    /** Each song's stream url and when it stops working (ms since 1970); read on the download threads. */
+    private val songUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
+
+    /** Songs whose Monochrome download failed: their next try comes from YouTube instead. */
+    private val losslessFailed = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** Per-track stream request headers, so a cached url is replayed with its client's Origin. */
-    private val songStreamHeaders = HashMap<String, Map<String, String>>()
+    private val songStreamHeaders = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
 
     /** Monochrome's FLAC for each song being downloaded lossless: its url and request headers. */
     private val losslessStreams = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<String, String>>>()
+
+    /** The YouTube format each download started in, so a resumed one can't carry on in another. */
+    private val downloadItags = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
 
+    private val _batch = MutableStateFlow(TransferBatch())
+
+    /**
+     * The songs downloaded since the last time nothing was downloading, with how far each has got,
+     * for the Library's progress card and sheet. A finished batch stays until the next download
+     * starts, so the sheet can still save it as a playlist.
+     */
+    val batch: StateFlow<TransferBatch> = _batch.asStateFlow()
+
+    // Straight from the network, never through the player's cache. The player caches the stream it
+    // played, which is often another format than the download asks for (a lower quality, another
+    // client's stream). A download that took the cached start from there and the rest from its own
+    // stream was two files glued together: the song played for a few seconds, then went silent.
     private val dataSourceFactory =
         ResolvingDataSource.Factory(
-            CacheDataSource
-                .Factory()
-                .setCache(playerCache)
-                .setUpstreamDataSourceFactory(
-                    OkHttpDataSource.Factory(
-                        OkHttpClient.Builder()
-                            .dns(object : Dns {
-                                override fun lookup(hostname: String): List<InetAddress> {
-                                    val addresses = Dns.SYSTEM.lookup(hostname)
-                                    return when (this@DownloadUtil.ipVersion) {
-                                        IpVersion.IPV4 -> addresses.filter { it is Inet4Address }.ifEmpty { addresses }
-                                        IpVersion.IPV6 -> addresses.filter { it is Inet6Address }.ifEmpty { addresses }
-                                        IpVersion.AUTO -> addresses
-                                    }
-                                }
-                            })
-                            .proxy(YouTube.proxy)
-                            .proxyAuthenticator { _, response ->
-                                YouTube.proxyAuth?.let { auth ->
-                                    response.request.newBuilder()
-                                        .header("Proxy-Authorization", auth)
-                                        .build()
-                                } ?: response.request
+            OkHttpDataSource.Factory(
+                OkHttpClient.Builder()
+                    .dns(object : Dns {
+                        override fun lookup(hostname: String): List<InetAddress> {
+                            val addresses = Dns.SYSTEM.lookup(hostname)
+                            return when (this@DownloadUtil.ipVersion) {
+                                IpVersion.IPV4 -> addresses.filter { it is Inet4Address }.ifEmpty { addresses }
+                                IpVersion.IPV6 -> addresses.filter { it is Inet6Address }.ifEmpty { addresses }
+                                IpVersion.AUTO -> addresses
                             }
-                            .build(),
-                    ),
-                ),
+                        }
+                    })
+                    .proxy(YouTube.proxy)
+                    .proxyAuthenticator { _, response ->
+                        YouTube.proxyAuth?.let { auth ->
+                            response.request.newBuilder()
+                                .header("Proxy-Authorization", auth)
+                                .build()
+                        } ?: response.request
+                    }
+                    .build(),
+            ),
         ) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
-            val length = if (dataSpec.length >= 0) dataSpec.length else 1
 
-            if (downloadQuality == DownloadQuality.LOSSLESS) {
+            if (downloadQuality == DownloadQuality.LOSSLESS && mediaId !in losslessFailed) {
                 losslessStream(mediaId)?.let { (url, headers) ->
                     return@Factory dataSpec.buildUpon()
                         .setUri(url.toUri())
-                        // its own key under the download: the player cache may hold this song's
-                        // YouTube stream under the bare id, and the two mustn't end up in one file
-                        .setKey("$LosslessKeyPrefix$mediaId")
                         .setHttpRequestHeaders(dataSpec.httpRequestHeaders + headers)
                         .build()
                 }
             }
 
-            if (playerCache.isCached(mediaId, dataSpec.position, length)) {
-                return@Factory dataSpec
-            }
-
-            songUrlCache[mediaId]?.takeIf { it.second < System.currentTimeMillis() }?.let {
+            // only while it still works. This used to keep the url's lifetime instead of when it ends,
+            // and compare the wrong way round, so a dead url was reused for every retry of a download
+            songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let {
                 return@Factory dataSpec
                     .withUri(it.first.toUri())
                     .withRequestHeaders(dataSpec.httpRequestHeaders + songStreamHeaders[mediaId].orEmpty())
@@ -161,6 +173,14 @@ constructor(
             }.getOrThrow()
             val format = playbackData.format
 
+            // Picking up part way with a fresh url that gives another format would glue two files
+            // together. Fail instead: the failed download is wiped (see forgetStream), so trying
+            // again starts the whole song over in one format.
+            val startedItag = downloadItags.put(mediaId, format.itag)
+            if (dataSpec.position > 0 && startedItag != null && startedItag != format.itag) {
+                throw java.io.IOException("Stream format changed part way through the download of $mediaId")
+            }
+
             database.query {
                 upsert(
                     FormatEntity(
@@ -170,7 +190,9 @@ constructor(
                         codecs = format.mimeType.substringAfter("codecs=", "").removeSurrounding("\""),
                         bitrate = format.bitrate,
                         sampleRate = format.audioSampleRate,
-                        contentLength = format.contentLength!!,
+                        // some formats don't say; the real size is saved when the download finishes.
+                        // Asserting it here failed those songs' downloads every time they were tried
+                        contentLength = format.contentLength ?: 0L,
                         loudnessDb = playbackData.audioConfig?.loudnessDb,
                         perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb,
                         playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl
@@ -213,7 +235,7 @@ constructor(
                 "${it}&range=0-${format.contentLength ?: 10000000}"
             }
 
-            songUrlCache[mediaId] = streamUrl to playbackData.streamExpiresInSeconds * 1000L
+            songUrlCache[mediaId] = streamUrl to System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L
             songStreamHeaders[mediaId] = playbackData.streamHeaders
             dataSpec
                 .withUri(streamUrl.toUri())
@@ -252,9 +274,15 @@ constructor(
                                     database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
                                     recordDownloadedLength(download)
                                     losslessStreams.remove(download.request.id)
+                                    downloadItags.remove(download.request.id)
                                     saveLyrics(download.request.id)
                                 }
-                                Download.STATE_FAILED,
+                                Download.STATE_FAILED -> {
+                                    database.updateDownloadedInfo(download.request.id, false, null)
+                                    forgetStream(download.request.id)
+                                    // kept by R8 in release builds, unlike Timber: the reason is the only clue
+                                    android.util.Log.w(LOG_TAG, "Download of ${download.request.id} failed", finalException)
+                                }
                                 Download.STATE_STOPPED,
                                 Download.STATE_REMOVING -> {
                                     database.updateDownloadedInfo(download.request.id, false, null)
@@ -275,6 +303,8 @@ constructor(
             result[cursor.download.request.id] = cursor.download
         }
         downloads.value = result
+
+        scope.launch { followBatches() }
 
         // Offline mode holds downloads where they are rather than failing them: they carry on
         // when it's turned off. Only then - resuming whenever offline mode reads off, at every
@@ -298,6 +328,19 @@ constructor(
     }
 
     /**
+     * A failed download tries again with a fresh stream: the url it had may be the reason. One that
+     * failed from Monochrome comes from YouTube next time. What it got so far is thrown away too:
+     * the next try may get another format, and carrying on from these bytes would mix the two.
+     */
+    private fun forgetStream(mediaId: String) {
+        songUrlCache.remove(mediaId)
+        songStreamHeaders.remove(mediaId)
+        downloadItags.remove(mediaId)
+        if (losslessStreams.remove(mediaId) != null) losslessFailed += mediaId
+        runCatching { downloadCache.removeResource(mediaId) }
+    }
+
+    /**
      * Monochrome's FLAC of [mediaId], for a lossless download: null when Monochrome doesn't have the
      * song (or can't be reached), and the song downloads from YouTube at High instead. Looked up
      * once per song: the download opens the stream more than once.
@@ -317,6 +360,8 @@ constructor(
         } as? ResolveResult.Found ?: return null
         // a file to download, not a playlist of segments or something only a CDM can open
         if (found.stream.format != StreamFormat.Progressive || found.stream.drm != null) return null
+        // a FLAC this phone can't decode would download fine and then play in silence
+        if (!com.example.musicfy.modules.DeviceDecoders.canPlay(found.stream)) return null
 
         database.query {
             // the length is filled in when the download finishes: see recordDownloadedLength
@@ -377,6 +422,59 @@ constructor(
             DownloadQuality.LOW -> AudioQuality.LOW
         }
 
+    /**
+     * Keeps [batch] up to date. The manager only reports a download starting, finishing or
+     * failing, never how far along it is, so while anything downloads this asks twice a second.
+     * Nothing is polled while idle: it waits for [downloads] to show a download under way.
+     */
+    private suspend fun followBatches() {
+        while (true) {
+            downloads.first { map -> map.values.any { it.isUnderWay } }
+            val ids = LinkedHashSet<String>()
+            val songs = HashMap<String, com.example.musicfy.db.entities.Song?>()
+            while (true) {
+                // the manager may only be read on the thread it was made on
+                val running = kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    downloadManager.currentDownloads.filter { it.isUnderWay }
+                }
+                running.forEach { ids += it.request.id }
+                val known = downloads.value
+                // cancelled or deleted part way: it leaves the batch rather than showing as failed
+                ids.retainAll { id -> known[id]?.state.let { it != null && it != Download.STATE_REMOVING } }
+                ids.forEach { id -> if (id !in songs) songs[id] = database.song(id).first() }
+                _batch.value = TransferBatch(
+                    ids.map { id -> transferItem(id, running.firstOrNull { it.request.id == id } ?: known[id], songs[id]) },
+                )
+                if (running.isEmpty()) break
+                delay(500)
+            }
+            // a batch that ended on an out-of-date entry in downloads can't spin this loop
+            delay(1_000)
+        }
+    }
+
+    private val Download.isUnderWay: Boolean
+        get() = state == Download.STATE_QUEUED || state == Download.STATE_DOWNLOADING || state == Download.STATE_RESTARTING
+
+    private fun transferItem(id: String, download: Download?, song: com.example.musicfy.db.entities.Song?): TransferItem =
+        TransferItem(
+            key = id,
+            title = song?.song?.title
+                ?: download?.request?.data?.takeIf { it.isNotEmpty() }?.decodeToString()
+                ?: "Song",
+            subtitle = song?.artists?.joinToString { it.name }?.ifBlank { null },
+            artworkUrl = song?.song?.thumbnailUrl,
+            state = when (download?.state) {
+                Download.STATE_COMPLETED -> TransferState.Done
+                Download.STATE_DOWNLOADING -> TransferState.Running
+                Download.STATE_QUEUED, Download.STATE_RESTARTING -> TransferState.Waiting
+                else -> TransferState.Failed
+            },
+            // unknown until the server says how big the file is
+            progress = ((download?.percentDownloaded ?: 0f) / 100f).coerceIn(0f, 1f),
+            songId = id,
+        )
+
     fun getDownload(songId: String): Flow<Download?> =
         downloads.map { it[songId] }.distinctUntilChanged()
 
@@ -385,7 +483,6 @@ constructor(
     }
 
     private companion object {
-        /** the key a lossless download is fetched under, below the download cache */
-        const val LosslessKeyPrefix = "lossless|"
+        const val LOG_TAG = "MusicfyDownload"
     }
 }

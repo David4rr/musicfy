@@ -22,7 +22,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -202,101 +201,102 @@ fun LibraryPinnedTile(
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Two real covers, overlapped and tucked into the bottom-right corner of a category card.
+ * Two real covers, fanned and tucked into the bottom-right corner of a card.
  *
  * This is what makes the cards specific rather than decorative: each shows two of that category's
- * actual contents. The back tile is dimmed and offset so the pair reads as a stack rather than two
- * unrelated thumbnails side by side.
+ * actual contents. The back tile is dimmed and turned the other way so the pair reads as a stack
+ * rather than two unrelated thumbnails side by side.
  *
  * Fills from the right, because the stack sits in the bottom-right corner — the rightmost tile is
  * the one fully on screen, so the first cover belongs there and the second tucks in behind it.
  * Draws nothing at all when there are no covers: an empty category should leave the corner bare,
- * not show placeholder squares implying content that isn't there.
+ * not show placeholder squares implying content that isn't there. [front] replaces the first
+ * cover with art of the list's own (Liked songs).
  */
 @Composable
 private fun LibraryCoverStack(
     covers: List<String?>,
     modifier: Modifier = Modifier,
-    tile: Dp = 34.dp,
+    tile: Dp = 46.dp,
     round: Boolean = false,
+    front: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val shown = remember(covers) { covers.filterNotNull().take(2) }
-    if (shown.isEmpty()) return
+    if (shown.isEmpty() && front == null) return
+    val back = if (front != null) shown.firstOrNull() else shown.getOrNull(1)
+    val corner = if (round) tile / 2 else tile * 0.22f
 
-    Box(modifier = modifier.size(width = tile + 14.dp, height = tile)) {
-        // Second cover first, so the first one overlaps it.
-        shown.getOrNull(1)?.let { back ->
+    Box(modifier = modifier.size(width = tile * 1.55f, height = tile)) {
+        // Back cover first, so the front one overlaps it.
+        if (back != null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .size(tile)
-                    .graphicsLayer { alpha = 0.55f },
+                    .graphicsLayer {
+                        alpha = 0.55f
+                        rotationZ = if (round) 0f else -9f
+                    },
             ) {
-                LibraryGridArtwork(url = back, corner = 8.dp, round = round, modifier = Modifier.fillMaxSize())
+                LibraryGridArtwork(url = back, corner = corner, round = round, modifier = Modifier.fillMaxSize())
             }
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(tile),
-        ) {
-            LibraryGridArtwork(url = shown[0], corner = 8.dp, round = round, modifier = Modifier.fillMaxSize())
+        val frontModifier = Modifier
+            .align(Alignment.CenterEnd)
+            .size(tile)
+            .graphicsLayer { rotationZ = if (round) 0f else 7f }
+        if (front != null) {
+            front(frontModifier.clip(if (round) CircleShape else RoundedCornerShape(corner)))
+        } else {
+            Box(modifier = frontModifier) {
+                LibraryGridArtwork(url = shown[0], corner = corner, round = round, modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }
 
-/**
- * A 2x2 cluster for the wide cards, filled from the bottom-right backwards.
- *
- * Bottom-right is the brightest, least-occluded cell, so the newest cover goes there and older
- * ones recede up and to the left. Cells with no cover render nothing rather than a placeholder —
- * a library with two songs shows two tiles, not two tiles and two empty boxes.
- */
-@Composable
-internal fun LibraryQuadCollage(
-    covers: List<String?>,
-    modifier: Modifier = Modifier,
-) {
-    val shown = remember(covers) { covers.filterNotNull() }
-    if (shown.isEmpty()) return
+/** The big grey count on every Library card. */
+private val LibraryCountStyle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.Bold,
+    fontSize = 34.sp,
+    lineHeight = 36.sp,
+    letterSpacing = (-0.03).em,
+)
 
-    val alphas = listOf(0.5f, 0.65f, 0.8f, 1f)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        repeat(2) { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(2) { col ->
-                    val cell = row * 2 + col
-                    // Cell 3 (bottom-right) takes cover 0, cell 2 takes cover 1, and so on.
-                    val cover = shown.getOrNull(3 - cell)
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .graphicsLayer { alpha = alphas[cell] },
-                    ) {
-                        if (cover != null) {
-                            LibraryGridArtwork(
-                                url = cover,
-                                corner = 6.dp,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+/** A card's label, a step above its count. */
+@Composable
+private fun LibraryCardLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        color = SearchColors.Primary,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun LibraryCount(count: Int) {
+    Text(
+        text = count.toString(),
+        color = SearchColors.Secondary,
+        style = LibraryCountStyle,
+        maxLines = 1,
+    )
 }
 
 /** Centred placeholder for a screen or section with nothing in it. */
 @Composable
-fun LibraryEmptyState(modifier: Modifier = Modifier) {
+fun LibraryEmptyState(modifier: Modifier = Modifier, text: String = "Nothing to show here") {
     Box(
-        modifier = modifier.fillMaxWidth().padding(vertical = 56.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 56.dp, horizontal = SearchHorizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "Nothing to show here",
+            text = text,
             color = SearchColors.Secondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
@@ -305,8 +305,9 @@ fun LibraryEmptyState(modifier: Modifier = Modifier) {
 }
 
 /**
- * One of the small category cards: Songs / Albums / Artist / Playlist, and one per service music
- * was imported from, which carries that service's [icon] before its name.
+ * One of the half-width cards: Songs / Playlist / Albums / Artist, and one per service music was
+ * imported from, which carries that service's [icon] before its name. The name sits on top and
+ * the count reads big under it, so the numbers line up down the grid.
  */
 @Composable
 fun LibraryCategoryCard(
@@ -321,7 +322,7 @@ fun LibraryCategoryCard(
 ) {
     Box(
         modifier = modifier
-            .height(74.dp)
+            .height(78.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
@@ -334,58 +335,43 @@ fun LibraryCategoryCard(
             round = roundCovers,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .offset(x = 8.dp, y = 8.dp),
+                .offset(x = 10.dp, y = 12.dp),
         )
 
         Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 10.dp, end = 8.dp),
+                .align(Alignment.TopStart)
+                .padding(start = 14.dp, top = 11.dp, end = 12.dp),
         ) {
-            // The count is the one piece of live information on the card, so it reads at nearly
-            // the same weight as the label rather than as a caption above it.
-            Text(
-                text = count.toString(),
-                color = SearchColors.Primary.copy(alpha = 0.85f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (icon != null) {
                     icon()
                     Spacer(modifier = Modifier.width(6.dp))
                 }
-                Text(
-                    text = title,
-                    color = SearchColors.Primary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                LibraryCardLabel(title)
             }
+            LibraryCount(count)
         }
     }
 }
 
-/** The full-width cards: "Recently added", "Downloaded", "All local music". */
+/** The full-width cards: "Recently added" and "Liked". */
 @Composable
 fun LibraryWideCard(
     title: String,
-    label: String,
+    count: Int,
     covers: List<String?>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     /** a card that opens a playlist page (Liked, Downloaded...) grows into it, as from Home */
     sharedElementKey: String? = null,
-    /** a cover of the list's own in place of the collage (Liked songs); it fills the modifier given */
+    /** a cover of the list's own in front of the stack (Liked songs); it fills the modifier given */
     art: (@Composable (Modifier) -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(112.dp)
+            .height(104.dp)
             .containerTransformSource(
                 key = sharedElementKey,
                 cornerRadius = 18.dp,
@@ -395,44 +381,22 @@ fun LibraryWideCard(
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
-        if (art != null) {
-            art(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 14.dp)
-                    .size(84.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
-        } else {
-            LibraryQuadCollage(
-                covers = covers,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 14.dp)
-                    .size(84.dp),
-            )
-        }
+        LibraryCoverStack(
+            covers = covers,
+            tile = 60.dp,
+            front = art,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 10.dp, y = 14.dp),
+        )
 
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 16.dp, bottom = 14.dp, end = 110.dp),
+                .padding(start = 14.dp, bottom = 14.dp, end = 110.dp),
         ) {
-            Text(
-                text = label,
-                color = SearchColors.Primary.copy(alpha = 0.85f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-            Text(
-                text = title,
-                color = SearchColors.Primary,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            LibraryCardLabel(title)
+            LibraryCount(count)
         }
     }
 }

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.focus.onFocusChanged
@@ -149,10 +148,8 @@ fun StudioSheets(
                             compact = true,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(Modifier.size(34.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                                    Icon(painterResource(action.icon), null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                }
-                                Spacer(Modifier.width(16.dp))
+                                Icon(painterResource(action.icon), null, tint = Color.White, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(14.dp))
                                 Text(action.label, color = Color.White, style = studioText(StudioType.Body))
                             }
                         }
@@ -208,8 +205,41 @@ fun StudioSheets(
                 }
             }
 
+            StudioSheet.POSTER -> PosterOptions()
+
         }
         }
+    }
+}
+
+/**
+ * The sheets of the styles that aren't the flagship (the Poster's), which open over the style
+ * itself with none of the flagship's editor around them.
+ */
+@Composable
+fun StyleSheets(studio: PlayerStudioState) {
+    if (studio.sheet != StudioSheet.POSTER) return
+    MenuSheetSurface(onDismiss = { studio.sheet = null }, wrapHeight = true) { _ ->
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalTextStyle provides studioText(StudioType.Body),
+        ) {
+            PosterOptions()
+        }
+    }
+}
+
+private val PosterVisualizerOption = CoverOption.Switch(
+    title = "Visualizer",
+    description = "bars round the cover, moving with the music",
+    icon = R.drawable.graphic_eq,
+    key = com.example.musicfy.constants.PosterVisualizerKey,
+    default = false,
+)
+
+@Composable
+private fun ColumnScope.PosterOptions() {
+    OptionSheet(title = "The poster") {
+        SwitchRow(PosterVisualizerOption)
     }
 }
 

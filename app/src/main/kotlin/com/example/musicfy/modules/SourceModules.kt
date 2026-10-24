@@ -91,8 +91,9 @@ class SourceModules @Inject constructor(
 
     // ---- provider order -----------------------------------------------------------------------
     //
-    // The order songs are looked for in: the modules and YouTube Music, which is always there and
-    // always last to give up. Each song plays from the first switched-on provider that has it.
+    // The order songs are looked for in: the modules and YouTube Music. Each song plays from the
+    // first switched-on provider that has it. YouTube is on unless the user turns it off, and then
+    // a song none of the modules have is skipped rather than quietly played from YouTube.
 
     private val _order = MutableStateFlow(readOrder())
 
@@ -118,9 +119,9 @@ class SourceModules @Inject constructor(
         _order.value = full
     }
 
-    /** whether [id] can play anything now: YouTube always, a module when on and signed in */
-    fun isUsable(id: String): Boolean = id == YouTubeId ||
-        (isEnabled(id) && module(id)?.accountState() is AccountState.SignedIn)
+    /** whether [id] can play anything now: YouTube while it's on, a module when on and signed in */
+    fun isUsable(id: String): Boolean = isEnabled(id) &&
+        (id == YouTubeId || module(id)?.accountState() is AccountState.SignedIn)
 
     fun nameOf(id: String): String = if (id == YouTubeId) "YouTube Music" else module(id)?.info?.name ?: id
 
@@ -136,8 +137,13 @@ class SourceModules @Inject constructor(
     /**
      * Walks the provider order for [track], passing over the providers in [skip] (the ones that
      * already failed on this song). YouTube in the order means "play it from YouTube now".
+     * [onUndecodable] hears of each stream passed over because this phone has no decoder for it.
      */
-    suspend fun route(track: TrackQuery?, skip: Set<String>): Route = withContext(Dispatchers.IO) {
+    suspend fun route(
+        track: TrackQuery?,
+        skip: Set<String>,
+        onUndecodable: (id: String, stream: SourceStream) -> Unit = { _, _ -> },
+    ): Route = withContext(Dispatchers.IO) {
         for (id in _order.value) {
             if (id in skip || !isUsable(id)) continue
             if (id == YouTubeId) return@withContext Route.YouTube
@@ -148,6 +154,12 @@ class SourceModules @Inject constructor(
                 .getOrNull()
             when (result) {
                 is ResolveResult.Found -> {
+                    // a stream this phone has no decoder for would play in silence: the next provider has it
+                    if (!DeviceDecoders.canPlay(result.stream)) {
+                        android.util.Log.i(Tag, "$id: ${track.title}: this phone can't decode ${result.stream.codec} at ${result.stream.sampleRateHz} Hz, passing over")
+                        onUndecodable(id, result.stream)
+                        continue
+                    }
                     android.util.Log.i(Tag, "$id: ${track.title} -> ${result.stream.matched.title} (${result.stream.qualityLabel})")
                     return@withContext Route.Module(module, result.stream)
                 }
@@ -166,10 +178,17 @@ class SourceModules @Inject constructor(
 
     fun module(id: String): SourceModule? = modules.firstOrNull { it.first.info.id == id }?.first
 
-    fun isEnabled(id: String): Boolean = prefs.getBoolean("enabled_$id", false)
+    // YouTube starts on, modules start off until they're signed in to
+    fun isEnabled(id: String): Boolean = prefs.getBoolean("enabled_$id", id == YouTubeId)
+
+    private val _youTubeEnabled = MutableStateFlow(isEnabled(YouTubeId))
+
+    /** YouTube Music isn't a module, so it has no entry: the settings watch its switch here */
+    val youTubeEnabled: StateFlow<Boolean> = _youTubeEnabled.asStateFlow()
 
     fun setEnabled(id: String, enabled: Boolean) {
         prefs.edit { putBoolean("enabled_$id", enabled) }
+        if (id == YouTubeId) _youTubeEnabled.value = enabled
         refresh()
     }
 
@@ -248,7 +267,7 @@ class SourceModules @Inject constructor(
     companion object {
         private const val Tag = "SourceModules"
         const val ModuleAction = "com.example.musicfy.SOURCE_MODULE"
-        /** YouTube Music in the provider order: not a module, always usable */
+        /** YouTube Music in the provider order: not a module, and needs no account */
         const val YouTubeId = "youtube"
         private val KnownOrder = listOf(MonochromeModule.Id, AppleMusicModule.Id, YouTubeId)
         const val EntryMetaKey = "com.example.musicfy.module.entry"

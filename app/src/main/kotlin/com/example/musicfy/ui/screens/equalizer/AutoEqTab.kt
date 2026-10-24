@@ -408,8 +408,6 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(R.drawable.search), null, tint = LabColors.Secondary, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f)) {
             if (query.isEmpty()) {
                 Text("Search model (e.g. HD 600)", fontFamily = InterFontFamily, fontSize = 15.sp, color = LabColors.Faint)

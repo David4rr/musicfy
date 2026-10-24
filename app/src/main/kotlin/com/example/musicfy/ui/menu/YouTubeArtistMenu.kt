@@ -2,7 +2,7 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -67,7 +66,7 @@ fun YouTubeArtistMenu(
         subtitle = "Artist",
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -84,6 +83,24 @@ fun YouTubeArtistMenu(
             NewActionGrid(
                 actions = buildList {
                     if (true) {
+                        // Shuffle and radio first: they're the two cards, and what an artist's menu is for.
+                        artist.shuffleEndpoint?.let { shuffleEndpoint ->
+                            add(
+                                NewAction(
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.shuffle),
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    text = stringResource(R.string.shuffle),
+                                    onClick = {
+                                        playerConnection.playQueue(YouTubeQueue(shuffleEndpoint))
+                                        onDismiss()
+                                    }
+                                )
+                            )
+                        }
                         artist.radioEndpoint?.let { watchEndpoint ->
                             add(
                                 NewAction(

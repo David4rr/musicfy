@@ -288,7 +288,7 @@ fun LocalSearchScreen(
         if (result.query.isNotEmpty() && result.map.isEmpty()) {
             item(key = "no_result") {
                 EmptyPlaceholder(
-                    icon = R.drawable.search,
+                    icon = R.drawable.music_note,
                     text = stringResource(R.string.no_results_found),
                 )
             }

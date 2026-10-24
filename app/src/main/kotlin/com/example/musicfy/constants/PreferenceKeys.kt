@@ -49,6 +49,9 @@ val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SquigglySliderKey = booleanPreferencesKey("squigglySlider")
 val SwipeToSongKey = booleanPreferencesKey("SwipeToSong")
 val SwipeToRemoveSongKey = booleanPreferencesKey("SwipeToRemoveSong")
+// what sliding a song does, per side (Settings > Gesture); the names are SongSwipeAction values
+val SwipeRightActionKey = stringPreferencesKey("swipeRightAction")
+val SwipeLeftActionKey = stringPreferencesKey("swipeLeftAction")
 val UseNewPlayerDesignKey= booleanPreferencesKey("useNewPlayerDesign")
 val UseNewMiniPlayerDesignKey = booleanPreferencesKey("useNewMiniPlayerDesign")
 val AppleMusicDarkChromeKey = booleanPreferencesKey("appleMusicDarkChrome")
@@ -80,6 +83,9 @@ val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableSimpMusicKey = booleanPreferencesKey("enableSimpMusic")
 val EnableYouLyPlusKey = booleanPreferencesKey("enableYouLyPlus")
 val EnablePaxsenixKey = booleanPreferencesKey("enablePaxsenix")
+val EnableNetEaseKey = booleanPreferencesKey("enableNetEase")
+val EnableQQMusicKey = booleanPreferencesKey("enableQQMusic")
+val EnableDeezerKey = booleanPreferencesKey("enableDeezer")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoSongsKey = booleanPreferencesKey("hideVideoSongs")
 val HideYoutubeShortsKey = booleanPreferencesKey("hideYoutubeShorts")
@@ -107,6 +113,11 @@ val YtPullHistoryKey = booleanPreferencesKey("ytPullHistory")
 val YtHistoryLastSeenKey = stringPreferencesKey("ytHistoryLastSeen")
 /** Whether YouTube sync keeps Liked music in step (onboarding's "What to sync" can leave it out). */
 val YtSyncLikedSongsKey = booleanPreferencesKey("ytSyncLikedSongs")
+/**
+ * Set after the first full sync that marked what YouTube brought in. Syncs before that never
+ * marked anything, so that one sync marks everything YouTube has, not just what is new.
+ */
+val YtSyncSourcesTaggedKey = booleanPreferencesKey("ytSyncSourcesTagged")
 
 /** The profile ID card's "USR#" number and join date (epoch day), fixed when onboarding finishes. */
 val ProfileCardNumberKey = stringPreferencesKey("profileCardNumber")
@@ -192,29 +203,46 @@ val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
-val DiscordTokenKey = stringPreferencesKey("discordToken")
-val DiscordInfoDismissedKey = booleanPreferencesKey("discordInfoDismissed")
-val DiscordUsernameKey = stringPreferencesKey("discordUsername")
-val DiscordNameKey = stringPreferencesKey("discordName")
+// Discord: signed in on Discord's own page in the browser (OAuth), so Musicfy only ever holds a
+// token Discord gave it for this, never the account's password or login token
+val DiscordAccessTokenKey = stringPreferencesKey("discordAccessToken")
+val DiscordRefreshTokenKey = stringPreferencesKey("discordRefreshToken")
+val DiscordTokenExpiresAtKey = longPreferencesKey("discordTokenExpiresAt")
+/** the signed-in account's name, picture, banner and bio, as JSON, for the profile preview */
+val DiscordProfileKey = stringPreferencesKey("discordProfile")
+/** a login started in the browser, kept on disk in case Android closes Musicfy meanwhile */
+val DiscordLoginStateKey = stringPreferencesKey("discordLoginState")
+val DiscordLoginVerifierKey = stringPreferencesKey("discordLoginVerifier")
+
 val EnableDiscordRPCKey = booleanPreferencesKey("discordRPCEnable")
-val DiscordUseDetailsKey = booleanPreferencesKey("discordUseDetails")
-val DiscordAvatarKey = stringPreferencesKey("discordAvatar")
-val DiscordStatusKey = stringPreferencesKey("discordStatus")
-val DiscordButton1TextKey = stringPreferencesKey("discordButton1Text")
-val DiscordButton1VisibleKey = booleanPreferencesKey("discordButton1Visible")
-val DiscordButton2TextKey = stringPreferencesKey("discordButton2Text")
-val DiscordButton2VisibleKey = booleanPreferencesKey("discordButton2Visible")
 val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
-val DiscordActivityNameKey = stringPreferencesKey("discordActivityName")
-val DiscordAdvancedModeKey = booleanPreferencesKey("discordAdvancedMode")
+val DiscordRefreshSecondsKey = intPreferencesKey("discordPresenceRefreshSeconds")
+val DiscordActivityNameKey = stringPreferencesKey("discordPresenceName")
+val DiscordDetailsKey = stringPreferencesKey("discordPresenceDetails")
+val DiscordStateKey = stringPreferencesKey("discordPresenceState")
+val DiscordLargeTextKey = stringPreferencesKey("discordPresenceLargeText")
+val DiscordSmallTextKey = stringPreferencesKey("discordPresenceSmallText")
+val DiscordLargeImageKey = stringPreferencesKey("discordPresenceLargeImage")
+val DiscordSmallImageKey = stringPreferencesKey("discordPresenceSmallImage")
+val DiscordSpinSecondsKey = intPreferencesKey("discordPresenceSpinSeconds")
+val DiscordSpinFpsKey = intPreferencesKey("discordPresenceSpinFps")
+val DiscordButton1TextKey = stringPreferencesKey("discordPresenceButton1Text")
+val DiscordButton1TargetKey = stringPreferencesKey("discordPresenceButton1Target")
+val DiscordButton2TextKey = stringPreferencesKey("discordPresenceButton2Text")
+val DiscordButton2TargetKey = stringPreferencesKey("discordPresenceButton2Target")
 
 val EnableGoogleCastKey = booleanPreferencesKey("enableGoogleCast")
 
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
 val EnableLastFMScrobblingKey = booleanPreferencesKey("lastfmScrobblingEnable")
-val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 
+val LibreFmSessionKey = stringPreferencesKey("librefmSession")
+val LibreFmUsernameKey = stringPreferencesKey("librefmUsername")
+val EnableLibreFmScrobblingKey = booleanPreferencesKey("librefmScrobblingEnable")
+
+/** Now Playing and loves go to every signed-in scrobbling service, not only Last.fm. */
+val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 val LastFMUseSendLikes = booleanPreferencesKey("lastfmUseSendLikes")
 
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
@@ -480,9 +508,9 @@ enum class PlayerCoverStyle {
 /**
  * Whole-player presets, picked in the player selector (hold the player, or "edit player").
  *
- * The flagship [DEFAULT] can be edited, and [TURNTABLE] (the flagship around a record player) has
- * its disc label; the other three are complete designs of their own, each of which can be turned
- * sideways from its menu.
+ * The flagship [DEFAULT] can be edited, [TURNTABLE] (the flagship around a record player) has
+ * its disc label and [POSTER] its visualizer; the other three are complete designs of their own,
+ * each of which can be turned sideways from its menu.
  */
 enum class PlayerStyle(val displayName: String, val selectorName: String) {
     DEFAULT("Flagship", "Default"),
@@ -492,7 +520,7 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
     TIMELINE("Timeline", "Timeline"),
     LYRICS("Lyrics", "Lyrics stage");
 
-    val editable: Boolean get() = this == DEFAULT || this == TURNTABLE
+    val editable: Boolean get() = this == DEFAULT || this == TURNTABLE || this == POSTER
 
     /** drawn by the flagship's own player (cover, controls, card), not a design of its own */
     val flagshipFamily: Boolean get() = this == DEFAULT || this == TURNTABLE
@@ -509,6 +537,9 @@ enum class PlayerStyle(val displayName: String, val selectorName: String) {
 
 val PlayerStyleKey = stringPreferencesKey("playerStyle")
 
+/** the Poster's bars round its cover, moving with the music; off until turned on in its editor */
+val PosterVisualizerKey = booleanPreferencesKey("posterVisualizer")
+
 /** whether [style] is shown turned sideways (its content rotated a quarter turn) */
 fun playerStyleRotatedKey(style: PlayerStyle) = booleanPreferencesKey("playerStyleRotated_${style.name}")
 
@@ -522,6 +553,22 @@ val PlayerMenuSlotsKey = stringPreferencesKey("playerMenuSlots")
 
 /** the action of the round button beside the chevron (a like, out of the box) */
 val PlayerSideButtonKey = stringPreferencesKey("playerSideButton")
+
+/** what sits at the bottom of the player, under the play buttons */
+enum class PlayerBottomBarStyle(val displayName: String) {
+    /** the lyrics and queue cards, one behind the other */
+    STACK("Stack"),
+    /** the phone's volume, with the lyrics and queue buttons under it */
+    VOLUME("Volume"),
+}
+
+val PlayerBottomBarStyleKey = stringPreferencesKey("playerBottomBarStyle")
+
+/** how far the player's controls were held and dragged from their usual place in the editor, in dp (down is positive) */
+val PlayerControlsShiftKey = floatPreferencesKey("playerControlsShift")
+
+/** how much taller the player's card was pulled in the editor, in dp: room for readings and the next line */
+val PlayerCardGrowthKey = floatPreferencesKey("playerCardGrowth")
 
 /** what the disc's label shows */
 enum class DiscLabelContent { CUSTOM, MUSIC_NAME, ARTIST_NAME, ALBUM_NAME, MUSIC_AND_ARTIST, NONE }
@@ -957,6 +1004,15 @@ val HapticFocusKey = stringPreferencesKey("hapticFocus")
 val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")
 
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
+
+/**
+ * How much work the glass blur does. Low is the lighter glass from before 8.1: the bottom bar
+ * blurs only what's right under it with no grain on top, and glass draws its backdrop at a lower
+ * resolution. High is the newer frosted glass.
+ */
+val BlurQualityKey = stringPreferencesKey("blurQuality")
+
+enum class BlurQuality { LOW, HIGH }
 val EnableProgressiveBlurKey = booleanPreferencesKey("enableProgressiveBlur")
 val EnableElementBlurAnimatorKey = booleanPreferencesKey("enableElementBlurAnimator")
 val BlurStrengthPxKey = floatPreferencesKey("blurStrengthPx")

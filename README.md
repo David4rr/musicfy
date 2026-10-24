@@ -1,4 +1,4 @@
-<img width="1799" height="927" alt="Frame 116" src="https://github.com/user-attachments/assets/a18020a7-ba05-4bb4-83bb-ada35ac57338" />
+<img width="1799" height="927" alt="i" src="https://github.com/user-attachments/assets/1ecb7a39-2114-40ba-9306-51ebf385780a" />
 
 ---
 <div align="center">
@@ -30,16 +30,19 @@
   <a href="https://github.com/realidkroo/musicfy/blob/main/LICENSE">
     <img src="https://shieldcn.dev/github/license/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="License">
   </a>
+  <a href="https://github.com/realidkroo/musicfy/blob/main/Roadmap.md">
+    <img src="https://shieldcn.dev/badge/Roadmap-View-313244.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="Roadmap">
+  </a>
 </p>
 </div>
 
 ---
 
 > [!WARNING]
-> Support for android 8+ is available but won’t get many features as on android 13+.
+> Support for android 8+ until 11 is available but expect any bugs. this app is intended only for android 13+
 
 > [!WARNING]
-> This app still on beta! or developer preview, expect some bugs! reporting it will be useful too.
+> This app still on beta!, expect some bugs! reporting it will be useful too.
 
 
 > [!WARNING]
@@ -71,6 +74,8 @@ Or read contribute.md there
 
 Musicfy is an independent, unofficial project made for personal and educational use. It is provided as is, without warranty of any kind.
 
+- Musicfy is a fully open source project that is created purely for educationa and personal use. thats why, we dont sell this software, or monetize it. we do not have any intent to add commercial values in the future. thanks!
+- And were deeply respect the hardwork of artist musicians ajd contwnt creators. without them there is also no musicfy: i strongly suggest that you, as user, subscribe to Apple music or youtube premium, to support the creators you listen. I do not intend to hurt creator with this app.
 - It is **not affiliated with, endorsed by, or sponsored by** YouTube, YouTube Music, Google, Spotify, Apple, Last.fm, Shazam, Discord or any other service it can connect to. All names, logos and brands belong to their respective owners.
 - Musicfy does not host, store or distribute any music. Everything is fetched from third-party services when you ask for it, and those services can change or stop working at any time.
 - You are responsible for how you use the app, including the terms of service of the accounts and services you connect and the copyright laws where you live.
@@ -96,6 +101,8 @@ Musicfy is an independent, unofficial project made for personal and educational 
   </table>
 </details>
 
+---
+
 
 ---
 
@@ -106,9 +113,21 @@ Musicfy is an independent, unofficial project made for personal and educational 
 - **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev) ([Repository](https://github.com/maxrave-dev/SimpMusic)) -- For the lyrics API provider.
 - **Archivetune** by [Rukamori](https://github.com/rukamori) ([Repository](https://github.com/rukamori/ArchiveTune)) -- For design and architectural inspiration.
 - **RiMusic / InnerTube** by [fast4x](https://github.com/fast4x) ([Repository](https://github.com/fast4x/RiMusic)) -- For YouTube Music InnerTube API service wrapper.
-- **LRCLib** by [tranducbox](https://github.com/tranducbox) ([Repository](https://github.com/tranducbox/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
-- **Monochrome Music** by [monochrome](https://github.com/monochrome) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
+- **LRCLib** by [tranxuanthang](https://github.com/tranxuanthang) ([Repository](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) -- For synchronized LRC lyrics provider integration.
+- **Monochrome Music** by [monochrome-music](https://github.com/monochrome-music) ([Repository](https://github.com/monochrome-music/monochrome) / ([Website](https://monochrome.st)) -- Flac streams, visit their web, very cool one.
 - **Auto Eq** ([Web](https://autoeq.app)) -- The equalizer database
+
+---
+
+## Open source APIs musicfy talks to
+
+These are the open source apis and server we get gets its lyrics, streams and data from. They r free for everyone because of these good people, so go give them a star!
+
+- **LyricsPlus** by [Ibra Al Tabian](https://github.com/ibratabian17) ([repos](https://github.com/ibratabian17/LyricsPlus)) s
+- **Better Lyrics API** by [Boidushya](https://github.com/boidushya) ([repos](https://github.com/better-lyrics/api)) 
+- **LRCLIB** by [tranxuanthang](https://github.com/tranxuanthang) ([repos](https://github.com/tranxuanthang/lrclib) / [Website](https://lrclib.net/)) 
+- **SimpMusic Lyrics** by [maxrave-dev](https://github.com/maxrave-dev) ([repos](https://github.com/maxrave-dev/SimpMusic)) 
+
 
 ---
 ## Star History

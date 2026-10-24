@@ -19,6 +19,16 @@ data class StreamFacts(
     /** from a source module, so the song's YouTube format record doesn't describe it */
     val fromModule: Boolean = false,
 ) {
+    /**
+     * "OPUS · 160 kbps" for Discord's {quality}. The bitrate comes from YouTube's record of the
+     * stream; without one (lossless files, modules) the sample rate stands in: "FLAC · 44.1 kHz".
+     */
+    fun describe(youtubeFormat: FormatEntity?): String? {
+        val kbps = youtubeFormat?.bitrate?.takeIf { it > 0 }?.let { "${(it + 500) / 1000} kbps" }
+        val rate = sampleRate?.let { String.format(java.util.Locale.US, "%.1f kHz", it / 1000f) }
+        return listOfNotNull(codec, kbps ?: rate).joinToString(" · ").ifEmpty { null }
+    }
+
     companion object {
         /** the badge's names for a decoder format */
         fun codecOf(mimeType: String?, codecs: String? = null): String? {

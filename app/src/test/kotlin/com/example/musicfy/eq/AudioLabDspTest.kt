@@ -84,11 +84,34 @@ class AudioLabDspTest {
     }
 
     @Test
-    fun `equalizer is a plain copy until it's given a curve`() {
+    fun `equalizer is a plain copy until it's given a curve, end included`() {
         val eq = CustomEqualizerAudioProcessor()
         configure(eq)
         val input = sine(440.0, 0.3, rate / 2)
-        assertArrayEquals(input, run(eq, input))
+        val out = run(eq, input)
+        // the limiter holds the last few milliseconds until the song ends
+        eq.queueEndOfStream()
+        assertTrue(!eq.isEnded)
+        eq.queueInput(ByteBuffer.allocateDirect(0))
+        val tail = eq.output
+        val all = out + ShortArray(tail.remaining() / 2) { tail.short }
+        assertTrue(eq.isEnded)
+        val late = all.size - input.size
+        assertTrue("$late samples late", late in 2..(rate / 100 * 2))
+        assertArrayEquals(input, all.copyOfRange(late, all.size))
+    }
+
+    @Test
+    fun `a boost that would clip is caught by the limiter, louder and still round`() {
+        val eq = CustomEqualizerAudioProcessor()
+        configure(eq)
+        eq.applyProfile(ParametricEQ(0.0, listOf(ParametricEQBand(60.0, 9.0, 1.0, FilterType.PK))))
+        val input = sine(60.0, 0.9, rate * 2)
+        val out = run(eq, input)
+        assertTrue(rmsDb(out) > rmsDb(input))
+        // clipped flat, most of each cycle would sit at full scale; limited, only the crests touch it
+        val atFullScale = (out.size / 2 until out.size).count { abs(out[it].toInt()) >= 32767 }
+        assertTrue("$atFullScale samples at full scale", atFullScale < out.size / 2 / 50)
     }
 
     @Test

@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -57,13 +55,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.music.innertube.YouTube
 import com.example.musicfy.LocalDatabase
+import com.example.musicfy.importer.ImportedVersions
+import com.example.musicfy.importer.TrackMatch
+import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.TopToaster
 import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.LocalSyncUtils
@@ -86,7 +87,10 @@ import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
 import com.example.musicfy.ui.component.NewAction
 import com.example.musicfy.ui.component.NewActionGrid
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetActionCard
+import com.example.musicfy.ui.component.SheetActionCardRow
+import com.example.musicfy.ui.component.SheetDownloadCard
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeader
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SongListItem
@@ -133,6 +137,13 @@ fun SongMenu(
     )
 
     val isPinned by database.speedDialDao.isPinned(song.id).collectAsState(initial = false)
+
+    // the track an import brought this song in as: offers "Choose different version", and makes
+    // Refetch search for that track again rather than only refresh this song's details
+    val importMatch by produceState<TrackMatch?>(initialValue = null, song.id) {
+        value = ImportedVersions.trackFor(context, database, song.id)
+    }
+    val menuState = LocalMenuState.current
 
     val orderedArtists by produceState(initialValue = emptyList<ArtistEntity>(), song) {
         withContext(Dispatchers.IO) {
@@ -311,7 +322,6 @@ fun SongMenu(
         trailing = {
             SheetHeaderButton(
                 icon = if (song.song.liked) R.drawable.favorite else R.drawable.favorite_border,
-                active = song.song.liked,
                 tint = if (song.song.liked) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     val s = song.song.toggleLike()
@@ -324,7 +334,7 @@ fun SongMenu(
         },
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val configuration = LocalConfiguration.current
@@ -339,7 +349,50 @@ fun SongMenu(
         ),
     ) {
         item {
-            // The song-menu mock's four first - add to playlist, share, album, artist - then the rest.
+            // Download and Play next are what people open a song's menu for, so they get the two
+            // big cards. Then the song-menu mock's four rows - add to playlist, share, album,
+            // artist - and the rest.
+            SheetActionCardRow {
+                SheetDownloadCard(
+                    downloadState = download?.state,
+                    onDownload = {
+                        val downloadRequest = DownloadRequest
+                            .Builder(song.id, song.id.toUri())
+                            .setCustomCacheKey(song.id)
+                            .setData(song.song.title.toByteArray())
+                            .build()
+                        DownloadService.sendAddDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            downloadRequest,
+                            false,
+                        )
+                    },
+                    onRemove = {
+                        DownloadService.sendRemoveDownload(
+                            context,
+                            ExoDownloadService::class.java,
+                            song.id,
+                            false,
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                SheetActionCard(
+                    icon = R.drawable.playlist_play,
+                    title = stringResource(R.string.play_next),
+                    onClick = {
+                        onDismiss()
+                        playerConnection.playNext(song.toMediaItem())
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(10.dp)) }
+
+        item {
             Material3MenuGroup(
                 items = listOfNotNull(
                     Material3MenuItemData(
@@ -462,22 +515,6 @@ fun SongMenu(
                             onClick = {
                                 onDismiss()
                                 playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
-                            }
-                        )
-                    } else null,
-                    if (true) {
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.play_next)) },
-                            description = { Text(text = stringResource(R.string.play_next_desc)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_play),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                onDismiss()
-                                playerConnection.playNext(song.toMediaItem())
                             }
                         )
                     } else null,
@@ -657,90 +694,33 @@ fun SongMenu(
 
         item {
             Material3MenuGroup(
-                items = listOf(
-                    when (download?.state) {
-                        Download.STATE_COMPLETED -> {
+                items = buildList {
+                    importMatch?.let { match ->
+                        add(
                             Material3MenuItemData(
-                                title = {
-                                    Text(
-                                        text = stringResource(R.string.remove_download)
-                                    )
-                                },
+                                title = { Text(text = "Choose different version") },
+                                description = { Text(text = "Wrong recording? Pick the right one from a list") },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
-                                icon = {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                        else -> {
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.action_download)) },
-                                description = { Text(text = stringResource(R.string.download_desc)) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
+                                        painter = painterResource(R.drawable.tune),
                                         contentDescription = null,
                                     )
                                 },
                                 onClick = {
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(song.id, song.id.toUri())
-                                            .setCustomCacheKey(song.id)
-                                            .setData(song.song.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    menuState.showChooseVersionSheet(match, onChosen = onDismiss)
                                 }
                             )
-                        }
+                        )
                     }
-                )
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-        item {
-            Material3MenuGroup(
-                items = buildList {
                     add(
                         Material3MenuItemData(
                             title = { Text(text = stringResource(R.string.refetch)) },
-                            description = { Text(text = stringResource(R.string.refetch_desc)) },
+                            description = {
+                                Text(
+                                    text = if (importMatch != null) "Search again for the right version of this song"
+                                    else stringResource(R.string.refetch_desc)
+                                )
+                            },
                             icon = {
                                 Icon(
                                     painter = painterResource(R.drawable.sync),
@@ -750,12 +730,17 @@ fun SongMenu(
                             },
                             onClick = {
                                 refetchIconDegree -= 360
-                                scope.launch(Dispatchers.IO) {
-                                    YouTube.queue(listOf(song.id)).onSuccess {
-                                        val newSong = it.firstOrNull()
-                                        if (newSong != null) {
-                                            database.transaction {
-                                                update(song, newSong.toMediaMetadata())
+                                val match = importMatch
+                                if (match != null) {
+                                    refetchImported(context, database, match)
+                                } else {
+                                    scope.launch(Dispatchers.IO) {
+                                        YouTube.queue(listOf(song.id)).onSuccess {
+                                            val newSong = it.firstOrNull()
+                                            if (newSong != null) {
+                                                database.transaction {
+                                                    update(song, newSong.toMediaMetadata())
+                                                }
                                             }
                                         }
                                     }
@@ -782,6 +767,26 @@ fun SongMenu(
                         )
                     )
                 }
+            )
+        }
+    }
+}
+
+/**
+ * Refetch on an imported song: searches for the track it was imported as again, and says what came
+ * of it. It used to only refresh this song's own details, so a wrong version stayed wrong and the
+ * button looked like it did nothing.
+ */
+private fun refetchImported(context: android.content.Context, database: com.example.musicfy.db.MusicDatabase, match: TrackMatch) {
+    ImportedVersions.scope.launch {
+        val switched = ImportedVersions.refetch(context.applicationContext, database, match)
+        if (switched != null) {
+            TopToaster.show(text = "Found a closer match: ${switched.title}", thumbnail = switched.thumbnail, iconRes = R.drawable.sync)
+        } else {
+            TopToaster.show(
+                text = "This is already the closest match we can find. Try Choose different version.",
+                iconRes = R.drawable.sync,
+                durationMs = 4000L,
             )
         }
     }

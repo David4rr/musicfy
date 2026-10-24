@@ -2,10 +2,11 @@
 
 package com.example.musicfy.ui.menu
 
-import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderGap
 import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
+import androidx.navigation.NavController
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -82,6 +82,8 @@ fun PlaylistMenu(
     autoPlaylist: Boolean? = false,
     downloadPlaylist: Boolean? = false,
     songList: List<Song>? = emptyList(),
+    /** Lets Re-sync open a service's sign-in page for a playlist imported from an account. */
+    navController: NavController? = null,
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -111,6 +113,7 @@ fun PlaylistMenu(
     val editable: Boolean = playlist.playlist.isEditable == true
 
     val isPinned by database.speedDialDao.isPinned(playlist.id).collectAsState(initial = false)
+    val resync = rememberPlaylistResync(playlist.id, playlist.playlist.browseId, navController, onDismiss)
 
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect
@@ -237,7 +240,6 @@ fun PlaylistMenu(
             {
                 SheetHeaderButton(
                     icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
-                    active = dbPlaylist?.playlist?.bookmarkedAt != null,
                     tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                     onClick = {
                         database.query {
@@ -249,7 +251,7 @@ fun PlaylistMenu(
         } else null,
     )
 
-    SheetDivider()
+    Spacer(Modifier.height(SheetHeaderGap))
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -309,26 +311,6 @@ fun PlaylistMenu(
                                 }
                             }
                         ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.share),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.share),
-                        onClick = {
-                            onDismiss()
-                            val intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${dbPlaylist?.playlist?.browseId}")
-                            }
-                            context.startActivity(Intent.createChooser(intent, null))
-                        }
-                    )
                 ),
                 modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3
@@ -470,6 +452,7 @@ fun PlaylistMenu(
                             }
                         )
                     )
+                    resync.menuItem()?.let(::add)
                     if (downloadPlaylist != true) {
                         add(
                             when (downloadState) {

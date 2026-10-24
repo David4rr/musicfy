@@ -58,6 +58,7 @@ import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.lyrics.LyricsUtils
 import com.example.musicfy.utils.makeTimeString
+import com.example.musicfy.ui.player.carouselText
 
 /** the player's alternate styles, drawn as they look on the player or, [preview], on a selector card */
 @Composable
@@ -83,6 +84,52 @@ private fun rememberStyleTrack(): StyleTrack {
     val connection = LocalPlayerConnection.current ?: return StyleTrack("", "", "", null)
     val track by connection.uiState.trackInfo.collectAsState()
     return remember(track) { StyleTrack(track.title, track.artist, track.album, track.thumbnailUrl) }
+}
+
+/**
+ * The player's row of songs on the live player; a selector card shows the playing song, still.
+ */
+@Composable
+private fun rememberStyleCarousel(preview: Boolean): com.example.musicfy.ui.player.SongCarousel? =
+    if (preview) null else com.example.musicfy.ui.player.LocalSongCarousel.current
+
+/** a song's synced lines, and which song they're for */
+private class StyleLyrics(val mediaId: String?, val lines: List<LyricsEntry>)
+
+/** what a style shows for one song in the row: its details, and its lyrics once it has played */
+private class StyleSong(val track: StyleTrack, val lines: List<LyricsEntry>)
+
+/**
+ * [content] once per song on screen, riding the row: the playing song, and the one coming in or
+ * going out while a swipe or a skip slides them. Each song keeps the lyrics it had while it played,
+ * so the one leaving goes with its own words, and a song only takes lyrics that are its own.
+ * Without a row (a selector card) it's the playing song alone.
+ */
+@Composable
+private fun StyleSongs(
+    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    track: StyleTrack,
+    lyrics: StyleLyrics,
+    content: @Composable (song: StyleSong, slotModifier: Modifier) -> Unit,
+) {
+    if (carousel == null) {
+        content(StyleSong(track, lyrics.lines), Modifier)
+        return
+    }
+    for (slot in com.example.musicfy.ui.player.rememberTextSlots(carousel)) {
+        androidx.compose.runtime.key(slot.uid) {
+            val playing = slot.step == carousel.step
+            val held = remember { arrayOf(emptyList<LyricsEntry>()) }
+            if (playing && lyrics.mediaId == slot.mediaId) held[0] = lyrics.lines
+            val details = StyleTrack(
+                title = slot.title.ifEmpty { if (playing) track.title else "" },
+                artist = slot.artist.ifEmpty { if (playing) track.artist else "" },
+                album = slot.album,
+                artwork = slot.artworkUrl,
+            )
+            content(StyleSong(details, held[0]), Modifier.carouselText(carousel, slot))
+        }
+    }
 }
 
 /** the frame every style is drawn in: tones, gestures, rotation, the ••• menu's state */
@@ -119,10 +166,11 @@ private fun StyleFrame(
             modifier = Modifier
                 .fillMaxSize()
                 .styleGestures(
-                    enabled = !preview && connection != null && LocalStyleInteractive.current,
+                    enabled = !preview && connection != null,
+                    interactive = LocalStyleInteractive.current,
                     onToggle = { connection?.togglePlayPause() },
-                    onNext = { connection?.seekToNext() },
-                    onPrevious = { connection?.seekToPrevious() },
+                    carousel = rememberStyleCarousel(preview),
+                    player = { connection?.player },
                 ),
         ) {
             // Inter and nothing else, in every style
@@ -133,6 +181,21 @@ private fun StyleFrame(
             }
         }
     }
+}
+
+/** The backdrop's warp clock, shared by the copies crossfading along the row. */
+@Composable
+private fun rememberBackdropClock(running: Boolean): () -> Float {
+    val time = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    androidx.compose.runtime.LaunchedEffect(running) {
+        if (!running) return@LaunchedEffect
+        while (true) {
+            androidx.compose.animation.core.withInfiniteAnimationFrameNanos { frameTimeNanos ->
+                time.floatValue = ((frameTimeNanos / 1_000_000f) * (100f / 100_000f)).mod(100f)
+            }
+        }
+    }
+    return remember { { time.floatValue } }
 }
 
 /**
@@ -151,6 +214,16 @@ private fun styleInsets(landscape: Boolean): StyleInsets {
 
 // ---- Poster ------------------------------------------------------------------------------
 
+/** what the words give the visualizer's bars under the cover (beside it, sideways) */
+private val VisualizerRoom = 60.dp
+private val VisualizerRoomSideways = 40.dp
+/** how far the words move down while the cover's seek bar is out */
+private val RingPush = 34.dp
+/** the Turntable's pills, side by side: as tall as one */
+private val PillsHeight = 42.dp
+/** the menu's chevron, the Turntable's size */
+private val PosterChevron = 43.dp
+
 /**
  * The cover cut into a great circle swung in from the top-left corner, over the flagship's own
  * background, and beneath it the song's words performed big ([ExpressiveLyrics]) with the artist
@@ -162,26 +235,56 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val r = rememberResponsive()
-    val circle = r.dp(0.078f, 28.dp, 40.dp)
     val position = rememberLivePosition(animated = !preview)
-    val lines = rememberStyleLyrics(readings = !preview)
+    val lyrics = rememberStyleLyrics(readings = !preview)
+    val carousel = rememberStyleCarousel(preview)
+    val backgroundClock = rememberBackdropClock(running = !preview)
     val backgroundStyle by com.example.musicfy.utils.rememberEnumPreference(
         com.example.musicfy.constants.PlayerBackgroundStyleKey,
         com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT,
     )
+    val (visualizer) = com.example.musicfy.utils.rememberPreference(com.example.musicfy.constants.PosterVisualizerKey, defaultValue = false)
+    val ring = rememberCoverRingState()
+    // The live player, not a selector card, whether open or not. Tied to the player being open, the
+    // ring jumped to a fixed spot and lost its bars the moment a close began.
+    val live = !preview
+    val density = LocalDensity.current
+    // the pills' column, and the room the words keep from it
+    val pillsWidth = com.example.musicfy.ui.player.TurntablePillWidth
     StyleFrame(
         PlayerStyle.POSTER, preview, modifier, tones,
         background = {
-            // the flagship's background, moving as it does there; it stays put when the poster turns
+            // the flagship's background, moving as it does there; it stays put when the poster turns.
+            // The cover's colours crossfade along the row of songs as a swipe or a skip slides it.
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
-                    style = backgroundStyle,
-                    thumbnailUrl = track.artwork,
-                    width = maxWidth,
-                    height = maxHeight,
-                    animate = !preview,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                val w = maxWidth
+                val h = maxHeight
+                if (backgroundStyle == com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT) {
+                    com.example.musicfy.ui.player.CarouselCrossfade(
+                        carousel = carousel,
+                        fallbackUrl = track.artwork,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { url ->
+                        com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+                            style = backgroundStyle,
+                            thumbnailUrl = url,
+                            width = w,
+                            height = h,
+                            animate = false,
+                            timeProvider = backgroundClock,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                } else {
+                    com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+                        style = backgroundStyle,
+                        thumbnailUrl = track.artwork,
+                        width = w,
+                        height = h,
+                        animate = !preview,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         },
     ) { landscape, menuOpen, setMenuOpen, rotated, setRotated ->
@@ -192,6 +295,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
             if (!landscape) {
                 // circle from the top-left: through the right edge at 0.8 W, the left edge at 1.19 W
                 CircleCover(
+                    carousel = carousel,
                     url = track.artwork,
                     center = Offset(0.13f, 0.06f),
                     radius = 1.14f,
@@ -199,63 +303,101 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                     modifier = Modifier.fillMaxWidth().height(w * 1.22f),
                 )
                 val bottom = insets.bottom + 36.dp
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            top = (w * 1.24f).coerceAtMost(h * 0.6f),
+                            // the visualizer's bars stand where the words would start
+                            top = (w * 1.24f).coerceAtMost(h * 0.6f) + (if (visualizer) VisualizerRoom else 0.dp),
                             start = 28.dp,
-                            end = 22.dp + circle + 18.dp,
+                            end = 22.dp + pillsWidth + 16.dp,
                             bottom = bottom,
                         ),
                 ) {
-                    PosterText(lines, position, track, tones, r, baseSize = r.sp(0.12f, 34f, 56f), gap = 12.dp)
+                    StyleSongs(carousel, track, lyrics) { song, slotModifier ->
+                        Column(Modifier.fillMaxSize().then(slotModifier)) {
+                            PosterText(
+                                song.lines, position, song.track, tones, r, baseSize = r.sp(0.12f, 34f, 56f), gap = 12.dp,
+                                // the seek bar coming out past the rim moves the words down with it
+                                push = { Offset(0f, ring.expand.value * with(density) { RingPush.toPx() }) },
+                            )
+                        }
+                    }
                 }
+                // the seek bar on the cover's rim and the visualizer round it
+                val wPx = with(density) { w.toPx() }
+                CoverRing(
+                    state = ring,
+                    circle = RingCircle(Offset(0.13f * wPx, 0.06f * wPx), 1.14f * wPx),
+                    visualizer = visualizer,
+                    live = live,
+                    position = position,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 22.dp, bottom = bottom),
                 ) {
-                    TransportCircles(tones = tones, vertical = true, size = circle)
+                    com.example.musicfy.ui.player.TurntablePills()
                 }
                 // the menu at the top, opening down, clear of the transport
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
                     rotated = rotated, onRotate = setRotated, atBottom = false, end = 22.dp, edge = insets.top + 16.dp,
-                    buttonSize = circle,
+                    buttonSize = PosterChevron, pill = true,
                 )
             } else {
                 // circle from the left edge, the words to its right
                 CircleCover(
+                    carousel = carousel,
                     url = track.artwork,
                     center = Offset(0.04f, 0.30f),
                     radius = 0.953f,
                     unit = h,
                     modifier = Modifier.fillMaxHeight().width(h * 1.0f),
                 )
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(
-                            start = maxOf(h * 1.08f, w * 0.5f),
+                            start = maxOf(h * 1.08f, w * 0.5f) + (if (visualizer) VisualizerRoomSideways else 0.dp),
                             end = 24.dp + insets.end,
-                            top = 18.dp + circle + 18.dp,
+                            top = 18.dp + maxOf(PosterChevron, PillsHeight) + 18.dp,
                             bottom = 20.dp,
                         ),
                 ) {
-                    PosterText(lines, position, track, tones, r, baseSize = r.sp(0.095f, 28f, 46f), gap = 8.dp)
+                    StyleSongs(carousel, track, lyrics) { song, slotModifier ->
+                        Column(Modifier.fillMaxHeight().then(slotModifier)) {
+                            PosterText(
+                                song.lines, position, song.track, tones, r, baseSize = r.sp(0.095f, 28f, 46f), gap = 8.dp,
+                                // sideways the bar comes out to the right, and moves the words that way
+                                push = { Offset(ring.expand.value * with(density) { RingPush.toPx() }, 0f) },
+                            )
+                        }
+                    }
                 }
+                val hPx = with(density) { h.toPx() }
+                CoverRing(
+                    state = ring,
+                    circle = RingCircle(Offset(0.04f * hPx, 0.30f * hPx), 0.953f * hPx),
+                    visualizer = visualizer,
+                    live = live,
+                    position = position,
+                    side = RingSide.Right,
+                    modifier = Modifier.fillMaxSize(),
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = 18.dp, end = 20.dp + insets.end + circle + 8.dp),
+                        .padding(top = 18.dp, end = 20.dp + insets.end + PosterChevron + 8.dp),
                 ) {
-                    TransportCircles(tones = tones, size = circle)
+                    com.example.musicfy.ui.player.TurntablePills(horizontal = true)
                 }
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
                     rotated = rotated, onRotate = setRotated, atBottom = false, end = 20.dp + insets.end, edge = 18.dp,
-                    buttonSize = circle,
+                    buttonSize = PosterChevron, pill = true,
                 )
             }
         }
@@ -277,6 +419,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
     r: Responsive,
     baseSize: TextUnit,
     gap: Dp,
+    /** how far the words are pushed aside (px), read as they're drawn */
+    push: () -> Offset = { Offset.Zero },
 ) {
     val hasLyrics = lines.isNotEmpty()
     val found = remember { androidx.compose.animation.core.Animatable(if (hasLyrics) 1f else 0f) }
@@ -296,6 +440,11 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
         modifier = Modifier
             .fillMaxWidth()
             .weight(1f)
+            .graphicsLayer {
+                val o = push()
+                translationX = o.x
+                translationY = o.y
+            }
             .onPlaced { places[0] = it },
     ) {
         if (hasLyrics) {
@@ -309,7 +458,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
             ) {
                 ExpressiveLyrics(
                     lines = lines,
-                    position = position,
+                    position = position.withLyricsOffset(),
                     color = tones.ink,
                     baseSize = baseSize,
                     modifier = Modifier.fillMaxSize(),
@@ -368,7 +517,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
  * a selector card). Lyrics without timings show nothing here: a style performs lines in time.
  */
 @Composable
-private fun rememberStyleLyrics(readings: Boolean): List<LyricsEntry> {
+private fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
     val connection = LocalPlayerConnection.current
     val lyricsEntity = connection?.currentLyrics?.collectAsState(initial = null)?.value
     val all = remember(lyricsEntity?.lyrics) {
@@ -377,12 +526,21 @@ private fun rememberStyleLyrics(readings: Boolean): List<LyricsEntry> {
         else runCatching { LyricsUtils.parseLyrics(raw) }.getOrDefault(emptyList())
             .takeIf { it.isNotEmpty() && !LyricsUtils.isUnsynced(it) }.orEmpty()
     }
-    if (readings && connection != null && all.isNotEmpty()) {
+    if (readings && connection != null) {
         val metadata by connection.mediaMetadata.collectAsState()
-        // the whole song, background lines too, so a stored translation lines up with the lyrics page's
-        com.example.musicfy.ui.player.LyricsReadings(all, metadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
+        // The flagship's bottom card is what asks for a song's lyrics; a style has no card, so it
+        // asks itself. Without this the words only came once the flagship had been shown.
+        val loader: com.example.musicfy.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+        androidx.compose.runtime.LaunchedEffect(metadata?.id) {
+            metadata?.let(loader::ensureLyricsLoaded)
+        }
+        if (all.isNotEmpty()) {
+            // the whole song, background lines too, so a stored translation lines up with the lyrics page's
+            com.example.musicfy.ui.player.LyricsReadings(all, metadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
+        }
     }
-    return remember(all) { all.filter { !it.isBackground && it.text.isNotBlank() } }
+    val lines = remember(all) { all.filter { !it.isBackground && it.text.isNotBlank() } }
+    return remember(lyricsEntity?.id, lines) { StyleLyrics(lyricsEntity?.id, lines) }
 }
 
 /**
@@ -390,7 +548,14 @@ private fun rememberStyleLyrics(readings: Boolean): List<LyricsEntry> {
  * soft shadow on the tone beneath and the rim shaded so the disc reads as lifted off the page.
  */
 @Composable
-private fun CircleCover(url: String?, center: Offset, radius: Float, unit: Dp, modifier: Modifier) {
+private fun CircleCover(
+    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    url: String?,
+    center: Offset,
+    radius: Float,
+    unit: Dp,
+    modifier: Modifier,
+) {
     val density = LocalDensity.current
     val unitPx = with(density) { unit.toPx() }
     val c = Offset(center.x * unitPx, center.y * unitPx)
@@ -431,13 +596,20 @@ private fun CircleCover(url: String?, center: Offset, radius: Float, unit: Dp, m
                     )
                 },
         ) {
-            if (url != null) {
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+            // the songs' covers slide past under the circle, the next one coming in as this one goes
+            com.example.musicfy.ui.player.CarouselPictures(
+                carousel = carousel,
+                fallbackUrl = url,
+                modifier = Modifier.fillMaxSize(),
+            ) { pictureUrl, pictureModifier ->
+                if (pictureUrl != null) {
+                    AsyncImage(
+                        model = pictureUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = pictureModifier,
+                    )
+                }
             }
         }
     }
@@ -457,6 +629,7 @@ private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, previ
     val r = rememberResponsive()
     val icon = r.dp(0.15f, 50.dp, 72.dp)
     val duration = rememberDurationMs()
+    val carousel = rememberStyleCarousel(preview)
     StyleFrame(PlayerStyle.TIMELINE, preview, modifier, tones) { landscape, menuOpen, setMenuOpen, rotated, setRotated ->
         val insets = styleInsets(landscape)
         RidingTimes(
@@ -474,19 +647,30 @@ private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, previ
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AsyncImage(
-                    model = track.artwork,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                // the icon's covers and the words beside them ride the row of songs
+                com.example.musicfy.ui.player.CarouselPictures(
+                    carousel = carousel,
+                    fallbackUrl = track.artwork,
                     modifier = Modifier
                         .size(if (landscape) icon * 0.86f else icon)
                         .clip(RoundedCornerShape(icon * 0.26f))
                         .background(Color.White.copy(alpha = 0.08f)),
-                )
+                ) { url, pictureModifier ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = pictureModifier,
+                    )
+                }
                 Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(track.title, color = tones.ink, fontSize = r.sp(0.04f, 14f, 18f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = tones.inkSoft, fontSize = r.sp(0.034f, 12f, 16f), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Box {
+                    StyleSongs(carousel, track, StyleLyrics(null, emptyList())) { song, slotModifier ->
+                        Column(slotModifier) {
+                            Text(song.track.title, color = tones.ink, fontSize = r.sp(0.04f, 14f, 18f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(song.track.artist, color = tones.inkSoft, fontSize = r.sp(0.034f, 12f, 16f), fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
                 }
             }
             StyleControls(tones, landscape, insets, menuOpen, setMenuOpen, actions, rotated, setRotated, menuTop = insets.top + 20.dp + (icon - r.dp(0.078f, 28.dp, 40.dp)) / 2)
@@ -507,7 +691,8 @@ private fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview
     val position = rememberLivePosition(animated = !preview)
     val r = rememberResponsive()
     val duration = rememberDurationMs()
-    val lines = rememberStyleLyrics(readings = !preview)
+    val lyrics = rememberStyleLyrics(readings = !preview)
+    val carousel = rememberStyleCarousel(preview)
     StyleFrame(PlayerStyle.LYRICS, preview, modifier, tones) { landscape, menuOpen, setMenuOpen, rotated, setRotated ->
         val insets = styleInsets(landscape)
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -526,20 +711,25 @@ private fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         .fillMaxWidth()
                         .height(lyricHeight),
                 ) {
-                    if (lines.isEmpty()) {
-                        Column {
-                            ExpressiveTitle(text = track.title, baseSize = r.sp(0.112f, 32f, 56f), color = tones.ink.copy(alpha = 0.55f))
-                            Spacer(Modifier.height(10.dp))
-                            Text("No synced lyrics for this song", color = tones.inkSoft, fontSize = r.sp(0.034f, 12f, 15f), fontWeight = FontWeight.Medium)
+                    // each song's words ride the row: the leaving song's go with it, the next one's come in
+                    StyleSongs(carousel, track, lyrics) { song, slotModifier ->
+                        Box(Modifier.fillMaxSize().then(slotModifier)) {
+                            if (song.lines.isEmpty()) {
+                                Column {
+                                    ExpressiveTitle(text = song.track.title, baseSize = r.sp(0.112f, 32f, 56f), color = tones.ink.copy(alpha = 0.55f))
+                                    Spacer(Modifier.height(10.dp))
+                                    Text("No synced lyrics for this song", color = tones.inkSoft, fontSize = r.sp(0.034f, 12f, 15f), fontWeight = FontWeight.Medium)
+                                }
+                            } else {
+                                ExpressiveLyrics(
+                                    lines = song.lines,
+                                    position = position.withLyricsOffset(),
+                                    color = tones.ink,
+                                    baseSize = if (landscape) r.sp(0.092f, 28f, 46f) else r.sp(0.118f, 34f, 58f),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                         }
-                    } else {
-                        ExpressiveLyrics(
-                            lines = lines,
-                            position = position,
-                            color = tones.ink,
-                            baseSize = if (landscape) r.sp(0.092f, 28f, 46f) else r.sp(0.118f, 34f, 58f),
-                            modifier = Modifier.fillMaxSize(),
-                        )
                     }
                 }
                 StyleControls(tones, landscape, insets, menuOpen, setMenuOpen, actions, rotated, setRotated, menuTop = insets.top + 20.dp)

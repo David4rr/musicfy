@@ -45,7 +45,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -109,7 +108,6 @@ import com.example.musicfy.constants.PlaylistSongSortType
 import com.example.musicfy.constants.PlaylistSongSortTypeKey
 import com.example.musicfy.constants.PlaylistSortType
 import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.extensions.move
@@ -117,6 +115,7 @@ import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.ExoDownloadService
 import com.example.musicfy.playback.queues.ListQueue
+import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.BoneColor
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
@@ -124,7 +123,7 @@ import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.playlistcover.PlaylistCoverStore
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.showEditPlaylistSheet
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.TextFieldDialog
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.queueSwipeAction
@@ -336,18 +335,6 @@ fun LocalPlaylistScreen(
         )
     }
 
-    var showAddSongsDialog by remember { mutableStateOf(false) }
-    if (showAddSongsDialog) {
-        playlist?.let { currentPlaylist ->
-            AddSongsToPlaylistDialog(
-                playlistId = currentPlaylist.id,
-                existingSongIds = songs.map { it.song.id }.toSet(),
-                nextPosition = songs.size,
-                onDismiss = { showAddSongsDialog = false },
-            )
-        }
-    }
-
     // the header is the only item above the songs, and only while not searching
     val headerItems by rememberUpdatedState(if (isSearching) 0 else 1)
     val lazyListState = rememberLazyListState()
@@ -501,6 +488,7 @@ fun LocalPlaylistScreen(
                         onPlayNext = {
                             playerConnection.playNext(songs.map { it.song.toMediaItem() })
                         },
+                        navController = navController,
                     )
                 }
             }
@@ -751,19 +739,19 @@ fun LocalPlaylistScreen(
                     )
                 }
 
-                SwipeActionsBox(
+                SongSwipeBox(
                     modifier = Modifier.animateItem(),
                     enabled = !inSelectMode,
-                    // in your own playlist sliding right takes the song out; a saved one you can't
-                    // edit adds it to your library instead. sliding left always queues it.
-                    start = {
+                    // in your own playlist the library action takes the song out; a saved one you
+                    // can't edit adds it to your library instead. Settings > Gesture sets the side.
+                    library = {
                         if (editable) {
                             removeFromPlaylistSwipeAction { removeWithUndo() }
                         } else {
                             librarySwipeAction(song.song.song)
                         }
                     },
-                    end = { queueSwipeAction { song.song.toMediaItem() } },
+                    queue = { queueSwipeAction { song.song.toMediaItem() } },
                 ) {
                     content()
                 }
@@ -776,7 +764,12 @@ fun LocalPlaylistScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .combinedClickable(onClick = { showAddSongsDialog = true })
+                        .combinedClickable(onClick = {
+                            menuState.showAddMusicSheet(
+                                playlistId = viewModel.playlistId,
+                                startInLibrary = songs.isEmpty(),
+                            )
+                        })
                         .padding(start = 36.dp, end = 24.dp, top = 9.dp, bottom = 9.dp)
                         .animateItem(),
                 ) {
@@ -841,11 +834,14 @@ fun LocalPlaylistScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             items(relatedPlaylists, key = { it.id }) { related ->
+                                // no clip on the whole card: its rounded corner cut into the song count
+                                // under the cover. The press shows Home's highlight around it instead.
                                 Column(
                                     modifier = Modifier
                                         .width(137.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable { navController.navigate("local_playlist/${related.id}") }
+                                        .clickable(interactionSource = null, indication = HomeCardHighlight) {
+                                            navController.navigate("local_playlist/${related.id}")
+                                        }
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -1024,98 +1020,4 @@ private fun LocalPlaylistSearchBar(
             }
         }
     )
-}
-
-@Composable
-private fun AddSongsToPlaylistDialog(
-    playlistId: String,
-    existingSongIds: Set<String>,
-    nextPosition: Int,
-    onDismiss: () -> Unit,
-) {
-    val database = LocalDatabase.current
-    val allSongs by database.songs(SongSortType.CREATE_DATE, descending = true)
-        .collectAsState(initial = emptyList())
-    val pickable = remember(allSongs, existingSongIds) {
-        allSongs.filter { it.id !in existingSongIds }
-    }
-    val selected = remember { mutableStateListOf<String>() }
-
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxSize(0.85f),
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.add_music),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        enabled = selected.isNotEmpty(),
-                        onClick = {
-                            database.transaction {
-                                selected.forEachIndexed { i, songId ->
-                                    insert(
-                                        PlaylistSongMap(
-                                            songId = songId,
-                                            playlistId = playlistId,
-                                            position = nextPosition + i,
-                                            setVideoId = null,
-                                        )
-                                    )
-                                }
-                            }
-                            onDismiss()
-                        },
-                    ) {
-                        Text(stringResource(R.string.add_music) + " (${selected.size})")
-                    }
-                }
-                androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(items = pickable, key = { it.id }) { song ->
-                        val isSelected = song.id in selected
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (isSelected) selected.remove(song.id) else selected.add(song.id)
-                                    },
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Checkbox(checked = isSelected, onCheckedChange = null)
-                            Column(modifier = Modifier.padding(start = 8.dp)) {
-                                Text(
-                                    text = song.song.title,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = song.artists.joinToString { it.name },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

@@ -70,6 +70,17 @@ data class RemotePlaylist(
     val coverUrl: String? = null,
 )
 
+/**
+ * The playlist called [name] here, for a Re-sync that has no id to go by. Importing a second
+ * playlist with a name already taken calls it "Chill (2)", so that ending is tried without too.
+ */
+internal fun List<RemotePlaylist>.named(name: String): RemotePlaylist? {
+    val plain = name.replace(Regex("""\s\(\d+\)$"""), "")
+    return firstOrNull { it.name == name }
+        ?: firstOrNull { it.name == plain }
+        ?: firstOrNull { it.name.equals(plain, ignoreCase = true) }
+}
+
 /** A signed-in account's library, read on demand. */
 interface AccountLibrary {
     val accountName: String?

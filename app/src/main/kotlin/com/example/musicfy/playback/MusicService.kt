@@ -10,11 +10,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
-import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.database.SQLException
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -75,7 +73,6 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
-import com.music.lastfm.LastFM
 import com.example.musicfy.MainActivity
 import com.example.musicfy.R
 import com.example.musicfy.constants.AudioNormalizationKey
@@ -96,22 +93,9 @@ import com.example.musicfy.constants.DisableLoadMoreWhenRepeatAllKey
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
-import com.example.musicfy.constants.DiscordActivityNameKey
-import com.example.musicfy.constants.DiscordActivityTypeKey
-import com.example.musicfy.constants.DiscordAdvancedModeKey
-import com.example.musicfy.constants.DiscordButton1TextKey
-import com.example.musicfy.constants.DiscordButton1VisibleKey
-import com.example.musicfy.constants.DiscordButton2TextKey
-import com.example.musicfy.constants.DiscordButton2VisibleKey
-import com.example.musicfy.constants.DiscordStatusKey
-import com.example.musicfy.constants.DiscordTokenKey
-import com.example.musicfy.constants.DiscordUseDetailsKey
-import com.example.musicfy.constants.EnableDiscordRPCKey
-import com.example.musicfy.constants.EnableLastFMScrobblingKey
 import com.example.musicfy.constants.HideExplicitKey
 import com.example.musicfy.constants.HideVideoSongsKey
 import com.example.musicfy.constants.HistoryDuration
-import com.example.musicfy.constants.LastFMUseNowPlaying
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleLike
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleRepeatMode
 import com.example.musicfy.constants.MediaSessionConstants.CommandToggleShuffle
@@ -191,9 +175,9 @@ import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.playback.queues.filterExplicit
 import com.example.musicfy.playback.queues.filterVideoSongs
 import com.example.musicfy.utils.CoilBitmapLoader
-import com.example.musicfy.utils.DiscordRPC
 import com.example.musicfy.utils.NetworkConnectivityObserver
-import com.example.musicfy.utils.ScrobbleManager
+import com.example.musicfy.scrobble.ScrobbleTimer
+import com.example.musicfy.scrobble.Scrobbler
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.YTPlayerUtils
 import com.example.musicfy.constants.ShowStreamSourceToastKey
@@ -237,6 +221,9 @@ import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 private const val INSTANT_SILENCE_SKIP_STEP_MS = 15_000L
+
+/** A saved volume below this is taken as one saved while muted or mid-fade, not the user's own. */
+private const val MinRestoredVolume = 0.02f
 private const val INSTANT_SILENCE_SKIP_SETTLE_MS = 350L
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -271,6 +258,13 @@ class MusicService :
     @Inject
     lateinit var audioFx: AudioFxService
 
+    @Inject
+    lateinit var scrobbler: Scrobbler
+
+    /** the Discord status; it does nothing until the user signs in on the Discord page */
+    @Inject
+    lateinit var discordPresence: com.example.musicfy.discord.DiscordPresence
+
     /** source modules (Apple Music): asked for a stream before YouTube */
     @Inject
     lateinit var sourceModules: com.example.musicfy.modules.SourceModules
@@ -301,6 +295,14 @@ class MusicService :
             Timber.tag(TAG).e(error, "Secondary player error")
             secondaryPlayer?.stop()
             secondaryPlayer?.clearMediaItems()
+            // dropped without this, its decoders and audio track stayed alive with nothing to free them
+            secondaryPlayer?.let { failed ->
+                failed.removeListener(this)
+                playerCrossmixProcessors.remove(failed)
+                playerSilenceProcessors.remove(failed)
+                unregisterEqualizer(failed)
+                failed.release()
+            }
             secondaryPlayer = null
         }
     }
@@ -409,6 +411,13 @@ class MusicService :
     private val resolvedSourceIds = java.util.concurrent.ConcurrentHashMap<String, String>()
     /** what each song is playing as, by media id, for the player's format badge */
     val streamFacts = MutableStateFlow<Map<String, StreamFacts>>(emptyMap())
+    /**
+     * What this phone had no decoder for, by song ("No FLAC decoder available on this phone"),
+     * and the provider whose stream it was: told with what plays instead once its format is
+     * known, or as the reason when nothing does.
+     */
+    private data class DecoderNotice(val text: String, val from: String?)
+    private val decoderNotices = java.util.concurrent.ConcurrentHashMap<String, DecoderNotice>()
     private var lastAnnouncedSourceMediaId: String? = null
     lateinit var player: ExoPlayer
         private set
@@ -454,6 +463,11 @@ class MusicService :
     // each player's equaliser, so it's unregistered when that player goes (crossfades make many)
     private val playerEqProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
     private val playerCrossmixProcessors = HashMap<Player, CrossmixTransitionAudioProcessor>()
+    // each player's ear for the visualizer; weak, so a player let go takes its own with it
+    private val playerSpectra = java.util.WeakHashMap<Player, com.example.musicfy.playback.audio.AudioSpectrum>()
+
+    /** what [player] is playing, as bands for the visualizer (the main thread's) */
+    fun spectrumOf(player: Player): com.example.musicfy.playback.audio.AudioSpectrum? = playerSpectra[player]
 
 
     private val instantSilenceSkipEnabled = MutableStateFlow(false)
@@ -462,11 +476,8 @@ class MusicService :
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private lateinit var hapticAudioProcessor: HapticAudioProcessor
 
-    private var discordRpc: DiscordRPC? = null
-    private var lastPlaybackSpeed = 1.0f
-    private var discordUpdateJob: kotlinx.coroutines.Job? = null
-
-    private var scrobbleManager: ScrobbleManager? = null
+    /** When a play counts for Last.fm and Libre.fm; the scrobbler skips services that aren't signed in. */
+    private val scrobbleTimer by lazy { ScrobbleTimer(scope, scrobbler) }
 
     val automixItems = MutableStateFlow<List<MediaItem>>(emptyList())
 
@@ -498,29 +509,6 @@ class MusicService :
 
     var castConnectionHandler: CastConnectionHandler? = null
         private set
-
-    private val screenStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    if (!player.isPlaying) {
-                        scope.launch(Dispatchers.IO) {
-                            discordRpc?.closeRPC()
-                        }
-                    }
-                }
-                Intent.ACTION_SCREEN_ON -> {
-                    if (player.isPlaying) {
-                        scope.launch {
-                            currentSong.value?.let { song ->
-                                updateDiscordRPC(song)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     private val audioDeviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
@@ -652,17 +640,16 @@ class MusicService :
         connectivityManager = getSystemService()!!
         connectivityObserver = NetworkConnectivityObserver(this)
 
-        val screenStateFilter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_SCREEN_OFF)
-        }
-        registerReceiver(screenStateReceiver, screenStateFilter)
-
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
 
         audioQuality = dataStore.get(AudioQualityKey).toEnum(com.example.musicfy.constants.AudioQuality.AUTO)
         ipVersion = dataStore.get(IpVersionKey).toEnum(IpVersion.AUTO)
-        playerVolume = MutableStateFlow(dataStore.get(PlayerVolumeKey, 1f).coerceIn(0f, 1f))
+        // a saved volume of (next to) nothing is almost always left over from the old saving bug
+        // (the live volume saved while muted or mid-fade, and copied back into this setting): it
+        // started the app silent, so it starts at the default instead
+        playerVolume = MutableStateFlow(
+            dataStore.get(PlayerVolumeKey, 1f).coerceIn(0f, 1f).let { if (it < MinRestoredVolume) 1f else it },
+        )
 
         initializeCast()
 
@@ -682,14 +669,8 @@ class MusicService :
                     triggerRetry()
                 }
 
-                if (isConnected && discordRpc != null && player.isPlaying) {
-                    val mediaId = player.currentMetadata?.id
-                    if (mediaId != null) {
-                        database.song(mediaId).first()?.let { song ->
-                            updateDiscordRPC(song)
-                        }
-                    }
-                }
+                // a status that didn't go through while offline goes now, not at the next song
+                if (isConnected) discordPresence.nudge()
             }
         }
 
@@ -843,105 +824,39 @@ class MusicService :
             setupLoudnessEnhancer()
         }
 
+        // offload skips the app's own audio processing, so the equalizer and effects would go silent
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
-            dataStore.data.map { it[CrossfadeEnabledKey] ?: false }
-        ) { offloadPref, crossfadeEnabled ->
-
-             if (crossfadeEnabled) false else offloadPref
+            dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
+            audioLab.shapesSound,
+        ) { offloadPref, crossfadeEnabled, shapesSound ->
+             offloadPref && !crossfadeEnabled && !shapesSound
         }.distinctUntilChanged()
         .collectLatest(scope) { useOffload ->
              player.setOffloadEnabled(useOffload)
              secondaryPlayer?.setOffloadEnabled(useOffload)
         }
 
-        dataStore.data
-            .map { it[DiscordTokenKey] to (it[EnableDiscordRPCKey] ?: true) }
-            .debounce(300)
+        // Discord needs the artist's picture (from the library) and the codec (from the decoder),
+        // which both turn up a moment after the song starts
+        currentSong.collect(scope) { publishPresence() }
+        streamFacts.map { facts -> player.currentMediaItem?.mediaId?.let { facts[it] } }
             .distinctUntilChanged()
-            .collect(scope) { (key, enabled) ->
-                if (discordRpc?.isRpcRunning() == true) {
-                    discordRpc?.closeRPC()
-                }
-                discordRpc = null
-                if (key != null && enabled) {
-                    discordRpc = DiscordRPC(this, key)
-                    if (player.playbackState == Player.STATE_READY && player.playWhenReady) {
-                        currentSong.value?.let {
-                            updateDiscordRPC(it, true)
-                        }
-                    }
-                }
-            }
-
-        dataStore.data
-            .map {
-                listOf(
-                    it[DiscordUseDetailsKey],
-                    it[DiscordAdvancedModeKey],
-                    it[DiscordStatusKey],
-                    it[DiscordButton1TextKey],
-                    it[DiscordButton1VisibleKey],
-                    it[DiscordButton2TextKey],
-                    it[DiscordButton2VisibleKey],
-                    it[DiscordActivityTypeKey],
-                    it[DiscordActivityNameKey]
-                )
-            }
-            .debounce(300)
-            .distinctUntilChanged()
-            .collect(scope) {
-                if (player.playbackState == Player.STATE_READY) {
-                    currentSong.value?.let { song ->
-                        updateDiscordRPC(song, true)
-                    }
-                }
-            }
-
-        dataStore.data
-            .map { it[EnableLastFMScrobblingKey] ?: false }
-            .debounce(300)
-            .distinctUntilChanged()
-            .collect(scope) { enabled ->
-                if (enabled && scrobbleManager == null) {
-                    val delayPercent = dataStore.get(ScrobbleDelayPercentKey, LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT)
-                    val minSongDuration = dataStore.get(ScrobbleMinSongDurationKey, LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION)
-                    val delaySeconds = dataStore.get(ScrobbleDelaySecondsKey, LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS)
-                    scrobbleManager = ScrobbleManager(
-                        scope,
-                        minSongDuration = minSongDuration,
-                        scrobbleDelayPercent = delayPercent,
-                        scrobbleDelaySeconds = delaySeconds
-                    )
-                    scrobbleManager?.useNowPlaying = dataStore.get(LastFMUseNowPlaying, false)
-                } else if (!enabled && scrobbleManager != null) {
-                    scrobbleManager?.destroy()
-                    scrobbleManager = null
-                }
-            }
-
-        dataStore.data
-            .map { it[LastFMUseNowPlaying] ?: false }
-            .distinctUntilChanged()
-            .collectLatest(scope) {
-                scrobbleManager?.useNowPlaying = it
-            }
+            .collect(scope) { publishPresence() }
 
         dataStore.data
             .map { prefs ->
                 Triple(
-                    prefs[ScrobbleDelayPercentKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_PERCENT,
-                    prefs[ScrobbleMinSongDurationKey] ?: LastFM.DEFAULT_SCROBBLE_MIN_SONG_DURATION,
-                    prefs[ScrobbleDelaySecondsKey] ?: LastFM.DEFAULT_SCROBBLE_DELAY_SECONDS
+                    prefs[ScrobbleDelayPercentKey] ?: ScrobbleTimer.DEFAULT_PLAYED_FRACTION,
+                    prefs[ScrobbleMinSongDurationKey] ?: ScrobbleTimer.DEFAULT_MIN_SONG_SECONDS,
+                    prefs[ScrobbleDelaySecondsKey] ?: ScrobbleTimer.DEFAULT_MAX_WAIT_SECONDS,
                 )
             }
             .distinctUntilChanged()
-            .collect(scope) { (delayPercent, minSongDuration, delaySeconds) ->
-                scrobbleManager?.let {
-                    it.scrobbleDelayPercent = delayPercent
-                    it.minSongDuration = minSongDuration
-                    it.scrobbleDelaySeconds = delaySeconds
-                }
+            .collect(scope) { (playedFraction, minSongSeconds, maxWaitSeconds) ->
+                scrobbleTimer.playedFraction = playedFraction
+                scrobbleTimer.minSongSeconds = minSongSeconds
+                scrobbleTimer.maxWaitSeconds = maxWaitSeconds
             }
 
         dataStore.data.map { prefs ->
@@ -1033,7 +948,10 @@ class MusicService :
                     scope.launch {
                         delay(1000)
 
-                        playerVolume.value = playerState.volume
+                        // older saves held the player's live volume (0 if it was muted or fading
+                        // when saved): only a real one is taken, and the slider's own saved value
+                        // (PlayerVolumeKey, read at start) stands otherwise
+                        if (playerState.volume >= MinRestoredVolume) playerVolume.value = playerState.volume
 
                         if (playerState.currentMediaItemIndex < player.mediaItemCount) {
                             player.seekTo(playerState.currentMediaItemIndex, playerState.currentPosition)
@@ -1078,6 +996,7 @@ class MusicService :
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
         val crossmixProcessor = CrossmixTransitionAudioProcessor()
+        val spectrum = com.example.musicfy.playback.audio.AudioSpectrum()
 
         val hapticVibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -1117,7 +1036,9 @@ class MusicService :
                             }
                         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hapticVibrator.hasAmplitudeControl()) {
                             hapticVibrator.vibrate(VibrationEffect.createOneShot(20, amplitude))
-                        } else if (isBassKick) {
+                        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O && isBassKick) {
+                            // Android 7 has no VibrationEffect, so it gets a plain buzz on the kick only.
+                            // Newer phones without amplitude control stay silent, as they always have.
                             @Suppress("DEPRECATION")
                             hapticVibrator.vibrate(20)
                         }
@@ -1136,7 +1057,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, fxProcessors, silenceProcessor, hapticAudioProcessor, crossmixProcessor, replayGain, spectrum))
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
@@ -1157,11 +1078,22 @@ class MusicService :
                 val mediaId = player.currentMediaItem?.mediaId
                 val format = StreamFacts.selectedAudio(tracks)
                 if (mediaId != null && format != null) recordDecodedFormat(mediaId, format)
+                // audio that no decoder on this phone takes isn't an error to the player: the song
+                // "plays" on in silence. Only the main player's song: a Crossmix's next one waits
+                if (mediaId != null && player === this@MusicService.player &&
+                    tracks.containsType(C.TRACK_TYPE_AUDIO) &&
+                    !tracks.isTypeSupported(C.TRACK_TYPE_AUDIO, true)
+                ) {
+                    onUndecodableAudio(mediaId, tracks)
+                } else if (mediaId != null && format != null && tracks.isTypeSupported(C.TRACK_TYPE_AUDIO, true)) {
+                    announceDecoderNotice(mediaId)
+                }
             }
         })
         playerReplayGain[player] = replayGain
         playerSilenceProcessors[player] = silenceProcessor
         playerCrossmixProcessors[player] = crossmixProcessor
+        playerSpectra[player] = spectrum
         playerEqProcessors[player] = eqProcessor
 
         player.apply {
@@ -1262,26 +1194,35 @@ class MusicService :
         }
     }
 
+    /** the volume the playing song should be at now: the user's, nothing while muted, a fifth while ducked */
+    private fun targetVolume(): Float = when {
+        isMuted.value -> 0f
+        !hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> playerVolume.value * 0.2f
+        else -> playerVolume.value
+    }
+
     private fun requestAudioFocus(): Boolean {
         if (hasAudioFocus) return true
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioFocusRequest?.let { request ->
-                val result = audioManager.requestAudioFocus(request)
-                hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-                return hasAudioFocus
-            }
-            return false
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = audioFocusRequest ?: return false
+            audioManager.requestAudioFocus(request)
         } else {
             @Suppress("DEPRECATION")
-            val result = audioManager.requestAudioFocus(
+            audioManager.requestAudioFocus(
                 legacyFocusListener,
                 AudioManager.STREAM_MUSIC,
                 AudioManager.AUDIOFOCUS_GAIN
             )
-            hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-            return hasAudioFocus
         }
+        hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        // granted straight back after a duck: no GAIN callback follows, and the player stayed
+        // at a fifth of its volume for good
+        if (hasAudioFocus && lastAudioFocusState == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+            player.volume = if (isMuted.value) 0f else playerVolume.value
+            lastAudioFocusState = AudioManager.AUDIOFOCUS_GAIN
+        }
+        return hasAudioFocus
     }
 
     private fun abandonAudioFocus() {
@@ -1371,6 +1312,69 @@ class MusicService :
         consecutivePlaybackErr = 0
     }
 
+    /**
+     * The song's audio is in a format no decoder on this phone takes (a FLAC on a phone without a
+     * FLAC decoder, a rate or channel count beyond the phone's decoders). The player doesn't count
+     * that as an error - the song plays on, in silence - so it's made one: a module's stream gives
+     * way to the next provider (YouTube at the latest), and anything else fails like a song that
+     * can't be played, saying why, and moves on.
+     */
+    private fun onUndecodableAudio(mediaId: String, tracks: androidx.media3.common.Tracks) {
+        val audio = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO }?.takeIf { it.length > 0 }?.getTrackFormat(0)
+        val what = listOfNotNull(
+            audio?.sampleMimeType?.substringAfter('/'),
+            audio?.sampleRate?.takeIf { it > 0 }?.let { "$it Hz" },
+            audio?.channelCount?.takeIf { it > 0 }?.let { "$it ch" },
+        ).joinToString(" ").ifBlank { "unknown format" }
+        Timber.tag(TAG).w("No decoder on this phone for $mediaId's audio ($what)")
+        // not from inside the player's listener: the fallback stops and re-prepares the player
+        scope.launch {
+            if (player.currentMediaItem?.mediaId != mediaId) return@launch
+            noteMissingDecoder(mediaId, StreamFacts.codecOf(audio?.sampleMimeType, audio?.codecs), audio?.sampleRate)
+            if (forceFallBack(mediaId, announce = !decoderNotices.containsKey(mediaId))) return@launch
+            lastPlaybackError = PlaybackException(
+                "This phone can't decode this song's audio ($what)",
+                null,
+                PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            )
+            failStream()
+        }
+    }
+
+    /** a player error that's this phone's decoders turning the song's format down */
+    private fun isDecoderError(e: PlaybackException) = e.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+        e.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED
+
+    /**
+     * Remembers that [mediaId]'s stream from the provider it was handed to is [codec] this phone
+     * can't decode, so the next stream's toast says why it's playing instead.
+     */
+    private fun noteMissingDecoder(mediaId: String, codec: String?, sampleRate: Int?, from: String? = resolvedSourceIds[mediaId]) {
+        codec ?: return
+        val rate = sampleRate?.takeIf { it > 0 }
+        val text = when {
+            !com.example.musicfy.modules.DeviceDecoders.canPlay(codec) -> "No $codec decoder available on this phone"
+            rate != null && !com.example.musicfy.modules.DeviceDecoders.canPlay(codec, rate) ->
+                "No $codec decoder for ${if (rate % 1000 == 0) "${rate / 1000}" else "%.1f".format(rate / 1000f)} kHz on this phone"
+            else -> "This phone can't decode this $codec"
+        }
+        decoderNotices[mediaId] = DecoderNotice(text, from)
+    }
+
+    /**
+     * "No FLAC decoder available on this phone · playing in OPUS on YouTube Music", once
+     * [mediaId] plays from somewhere other than the stream this phone couldn't decode.
+     */
+    private fun announceDecoderNotice(mediaId: String) {
+        val notice = decoderNotices.remove(mediaId) ?: return
+        val source = resolvedSourceIds[mediaId] ?: return
+        if (source == notice.from) return
+        val codec = streamFacts.value[mediaId]?.codec?.let { " in $it" }.orEmpty()
+        showBanner("${notice.text} · playing$codec on ${sourceModules.nameOf(source)}")
+    }
+
     /** A failed stream the player has given up on: says so, and skips after the timeout unless that's turned off. */
     private fun failStream() {
         player.pause()
@@ -1412,6 +1416,12 @@ class MusicService :
     /** The top toast for a stream that couldn't be played, with a plain reason. */
     private fun announceStreamFailure() {
         val e = lastPlaybackError
+        // no decoder for it here, and nowhere else had it: that's the whole reason
+        val notice = player.currentMediaItem?.mediaId?.let { decoderNotices.remove(it) }
+        if (notice != null && e != null && isDecoderError(e)) {
+            com.example.musicfy.ui.component.TopToaster.error(notice.text)
+            return
+        }
         val reason = when {
             !isNetworkConnected.value || (e != null && isNetworkRelatedError(e)) -> "no internet connection"
             e != null && getHttpResponseCode(e) != null -> "server error ${getHttpResponseCode(e)}"
@@ -1424,7 +1434,9 @@ class MusicService :
     /** A readable reason from the root cause, since IO_UNSPECIFIED alone says nothing. */
     private fun plainReason(e: PlaybackException): String {
         val causes = generateSequence<Throwable>(e) { it.cause }.toList()
+        val noProvider = causes.firstOrNull { it is com.example.musicfy.playback.custom.NoProviderException }
         return when {
+            noProvider != null -> noProvider.message.orEmpty()
             causes.any { it is java.net.SocketTimeoutException } -> "connection timed out"
             causes.any { it is java.net.SocketException || it is java.io.EOFException } -> "connection interrupted"
             causes.any { it is javax.net.ssl.SSLException } -> "secure connection failed"
@@ -2466,15 +2478,11 @@ class MusicService :
 
         mediaItem?.mediaId?.let { announceStreamSource(it) }
 
-        lastPlaybackSpeed = -1.0f
-
         setupLoudnessEnhancer()
 
-        discordUpdateJob?.cancel()
-
-        scrobbleManager?.onSongStop()
+        scrobbleTimer.onSongStop()
         if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-            scrobbleManager?.onSongStart(player.currentMetadata, duration = player.duration)
+            scrobbleTimer.onSongStart(player.currentMetadata, player.duration)
         }
 
         if (castConnectionHandler?.isCasting?.value == true &&
@@ -2536,7 +2544,7 @@ class MusicService :
         }
 
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
-            scrobbleManager?.onSongStop()
+            scrobbleTimer.onSongStop()
         }
     }
 
@@ -2594,27 +2602,25 @@ class MusicService :
             } else {
                 stopWidgetUpdates()
             }
-            if (!player.isPlaying && !events.containsAny(Player.EVENT_POSITION_DISCONTINUITY, Player.EVENT_MEDIA_ITEM_TRANSITION)) {
-                scope.launch {
-                    discordRpc?.close()
-                }
-            }
         }
 
-        if (events.containsAny(Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_IS_PLAYING_CHANGED) && player.isPlaying) {
-            val mediaId = player.currentMetadata?.id
-            if (mediaId != null) {
-                scope.launch {
-
-                    database.song(mediaId).first()?.let { song ->
-                        updateDiscordRPC(song)
-                    }
-                }
-            }
+        if (events.containsAny(
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_POSITION_DISCONTINUITY,
+            )
+        ) {
+            publishPresence()
         }
 
         if (events.containsAny(Player.EVENT_IS_PLAYING_CHANGED)) {
-            scrobbleManager?.onPlayerStateChanged(player.isPlaying, player.currentMetadata, duration = player.duration)
+            scrobbleTimer.onPlayingChanged(player.isPlaying, player.currentMetadata, player.duration)
+            // a pause is often the last thing before the app is closed, and the timed saves only
+            // run every 30 seconds while paused: save the exact place now so it comes back there
+            if (!player.isPlaying && player.playbackState == Player.STATE_READY && dataStore.get(PersistentQueueKey, true)) {
+                saveQueueToDisk()
+            }
         }
 
     }
@@ -2735,19 +2741,8 @@ class MusicService :
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
         super.onPlaybackParametersChanged(playbackParameters)
-        if (playbackParameters.speed != lastPlaybackSpeed) {
-            lastPlaybackSpeed = playbackParameters.speed
-            discordUpdateJob?.cancel()
-
-            discordUpdateJob = scope.launch {
-                delay(1000)
-                if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-                    currentSong.value?.let { song ->
-                        updateDiscordRPC(song)
-                    }
-                }
-            }
-        }
+        // a faster song ends sooner: Discord's bar has to know
+        publishPresence()
     }
 
     private fun getHttpResponseCode(error: PlaybackException): Int? {
@@ -2839,11 +2834,28 @@ class MusicService :
         }
 
         lastPlaybackError = error
+        // every provider that's on was already asked: retrying would only ask them all again, so
+        // straight on with the reason. Without a connection it waits for one like any other song.
+        if (isNetworkConnected.value &&
+            generateSequence<Throwable>(error) { it.cause }.any { it is com.example.musicfy.playback.custom.NoProviderException }
+        ) {
+            failStream()
+            return
+        }
         val mediaId = player.currentMediaItem?.mediaId
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}, causes=${generateSequence<Throwable>(error) { it.cause }.joinToString(" <- ") { it.javaClass.simpleName + ":" + it.message }}")
         reportException(error)
 
-        if (mediaId != null && forceFallBack(mediaId)) return
+        // a decoder turning the format down: the next provider's toast says so
+        if (mediaId != null && isDecoderError(error)) {
+            val format = (error as? androidx.media3.exoplayer.ExoPlaybackException)?.rendererFormat
+            noteMissingDecoder(
+                mediaId,
+                StreamFacts.codecOf(format?.sampleMimeType, format?.codecs) ?: streamFacts.value[mediaId]?.codec,
+                format?.sampleRate,
+            )
+        }
+        if (mediaId != null && forceFallBack(mediaId, announce = !decoderNotices.containsKey(mediaId))) return
 
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
             Timber.tag(TAG).w("Song $mediaId has exceeded retry limit, skipping")
@@ -2954,6 +2966,9 @@ class MusicService :
 
         incrementRetryCount(mediaId)
 
+        // whether it was playing, read before the pause below wipes it: the recovery used to go
+        // by the audio-focus flag instead, so it re-prepared the song and left it paused
+        val resume = player.playWhenReady || wasPlayingBeforeAudioFocusLoss
         retryJob?.cancel()
         retryJob = scope.launch {
             try {
@@ -2977,9 +2992,9 @@ class MusicService :
 
                     Timber.tag(TAG).d("Retrying playback for $mediaId after AudioTrack error")
 
-                    if (wasPlayingBeforeAudioFocusLoss) {
+                    if (resume) {
                         delay(500)
-                        if (hasAudioFocus && playerInitialized.value) {
+                        if ((hasAudioFocus || requestAudioFocus()) && playerInitialized.value) {
                             if (castConnectionHandler?.isCasting?.value != true) {
                                 player.play()
                             }
@@ -3003,6 +3018,11 @@ class MusicService :
         }
 
         incrementRetryCount(mediaId)
+        // A song brought back after the app was closed asks its old, expired stream for the place
+        // it stopped, which is what answers 416. A fresh stream at the same place plays, so the
+        // first retry keeps it; going back to the start used to throw the restored progress away.
+        // Only a song that keeps failing starts over.
+        val fromStart = (currentMediaIdRetryCount[mediaId] ?: 0) > 1
 
         retryJob?.cancel()
         retryJob = scope.launch {
@@ -3012,10 +3032,10 @@ class MusicService :
             delay(RETRY_DELAY_MS)
 
             val currentIndex = player.currentMediaItemIndex
-            player.seekTo(currentIndex, 0)
+            player.seekTo(currentIndex, if (fromStart) 0 else player.currentPosition)
             player.prepare()
 
-            Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (from position 0)")
+            Timber.tag(TAG).d("Retrying playback for $mediaId after 416 error (${if (fromStart) "from the start" else "where it was"})")
         }
     }
 
@@ -3203,43 +3223,35 @@ class MusicService :
         }
     }
 
-    private fun updateDiscordRPC(song: Song, showFeedback: Boolean = false) {
-        // offline mode: no status goes to Discord
-        if (com.example.musicfy.utils.OfflineMode.isOn) return
-        val useDetails = dataStore.get(DiscordUseDetailsKey, false)
-        val advancedMode = dataStore.get(DiscordAdvancedModeKey, false)
-
-        val status = if (advancedMode) dataStore.get(DiscordStatusKey, "online") else "online"
-        val b1Text = if (advancedMode) dataStore.get(DiscordButton1TextKey, "") else ""
-        val b1Visible = if (advancedMode) dataStore.get(DiscordButton1VisibleKey, true) else true
-        val b2Text = if (advancedMode) dataStore.get(DiscordButton2TextKey, "") else ""
-        val b2Visible = if (advancedMode) dataStore.get(DiscordButton2VisibleKey, true) else true
-        val activityType = if (advancedMode) dataStore.get(DiscordActivityTypeKey, "listening") else "listening"
-        val activityName = if (advancedMode) dataStore.get(DiscordActivityNameKey, "") else ""
-
-        discordUpdateJob?.cancel()
-        discordUpdateJob = scope.launch {
-            discordRpc?.updateSong(
-                song,
-                player.currentPosition,
-                player.playbackParameters.speed,
-                useDetails,
-                status,
-                b1Text,
-                b1Visible,
-                b2Text,
-                b2Visible,
-                activityType,
-                activityName
-            )?.onFailure {
-
-                if (showFeedback) {
-                    Handler(Looper.getMainLooper()).post {
-                        Toast.makeText(this@MusicService, "Discord RPC update failed: ${it.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+    /** Tells the Discord status what's playing; it ignores this when Discord isn't signed in or is off. */
+    private fun publishPresence() {
+        val metadata = player.currentMetadata
+        val state = player.playbackState
+        if (metadata == null || state == Player.STATE_IDLE || state == Player.STATE_ENDED) {
+            discordPresence.update(null)
+            return
         }
+        // the library's record lags a moment behind a song change; use it only once it's this song
+        val song = currentSong.value?.takeIf { it.id == metadata.id }
+        val facts = streamFacts.value[metadata.id]
+        discordPresence.update(
+            com.example.musicfy.discord.NowPlaying(
+                mediaId = metadata.id,
+                title = metadata.title,
+                artist = metadata.artists.joinToString { it.name },
+                album = metadata.album?.title ?: song?.song?.albumName,
+                artworkUrl = metadata.thumbnailUrl,
+                artistArtworkUrl = song?.artists?.firstNotNullOfOrNull { it.thumbnailUrl },
+                durationMs = player.duration.takeIf { it > 0 } ?: (metadata.duration * 1000L),
+                positionMs = player.currentPosition,
+                readAtMs = System.currentTimeMillis(),
+                speed = player.playbackParameters.speed,
+                // buffering with play pressed still counts as playing, so the status doesn't flicker
+                isPlaying = player.playWhenReady,
+                quality = facts?.describe(song?.format?.takeIf { !facts.fromModule }),
+                isYouTube = song?.song?.isLocal != true && metadata.localUri == null,
+            ),
+        )
     }
 
     /**
@@ -3249,6 +3261,23 @@ class MusicService :
      * stored content length. Guessing a chunk when neither is known makes a partially cached
      * track look complete, which is how replay used to break.
      */
+    /**
+     * Whether [cache] has every byte [dataSpec] asks for. The cache's own record of the file's size
+     * comes first. The format row is rewritten each time the song streams, so a finished download
+     * checked against another stream's size looked incomplete, and the song went online for the
+     * rest: "connection failed" offline, or the wrong stream glued on.
+     */
+    private fun holdsWhole(cache: SimpleCache, mediaId: String, dataSpec: DataSpec): Boolean {
+        val length = when {
+            dataSpec.length >= 0 -> dataSpec.length
+            else -> runCatching {
+                androidx.media3.datasource.cache.ContentMetadata.getContentLength(cache.getContentMetadata(mediaId))
+            }.getOrNull()?.takeIf { it > 0L }?.let { (it - dataSpec.position).coerceAtLeast(1L) }
+                ?: requiredCachedLength(mediaId, dataSpec)
+        }
+        return cache.isCached(mediaId, dataSpec.position, length)
+    }
+
     private fun requiredCachedLength(mediaId: String, dataSpec: DataSpec): Long {
         if (dataSpec.length >= 0) return dataSpec.length
         val contentLength = runCatching {
@@ -3316,11 +3345,7 @@ class MusicService :
             }
 
             if (!shouldBypassCache) {
-                val requiredLength = requiredCachedLength(mediaId, dataSpec)
-
-                if (downloadCache.isCached(mediaId, dataSpec.position, requiredLength) ||
-                    playerCache.isCached(mediaId, dataSpec.position, requiredLength)
-                ) {
+                if (holdsWhole(downloadCache, mediaId, dataSpec) || holdsWhole(playerCache, mediaId, dataSpec)) {
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec
                 }
@@ -3437,6 +3462,8 @@ class MusicService :
 
         if (!dataStore.get(ShowStreamSourceToastKey, false)) return
         if (lastAnnouncedSourceMediaId == mediaId) return
+        // its decoder toast names the source too, once the stream's format is known
+        if (decoderNotices.containsKey(mediaId)) return
         val source = resolvedStreamSources[mediaId] ?: return
         lastAnnouncedSourceMediaId = mediaId
         showBanner("Playing from $source")
@@ -3458,14 +3485,20 @@ class MusicService :
     }
 
     /**
-     * Force playback: a song that failed from one provider starts again from the next one in the
-     * order, where it left off. YouTube's own errors get YouTube's recoveries first (a stale URL is
-     * refreshed, a cipher retried) and only come here once those are spent, via [handleFinalFailure].
+     * A song that failed from one provider starts again from the next one in the order, where it
+     * left off. A module's stream always gives way like this - a module this phone can't play (its
+     * codec, its DRM, its server) used to leave the song retrying, then skipped, with YouTube never
+     * asked. Force playback adds YouTube's own failures, which get YouTube's recoveries first (a
+     * stale URL is refreshed, a cipher retried) and only come here once those are spent, via
+     * [handleFinalFailure]. Without [announce] it says nothing: a decoder notice follows instead.
      */
-    private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false): Boolean {
-        if (!dataStore.get(ForcePlaybackKey, false)) return false
+    private fun forceFallBack(mediaId: String, includeYouTube: Boolean = false, announce: Boolean = true): Boolean {
         val failed = resolvedSourceIds[mediaId] ?: return false
-        if (failed == com.example.musicfy.modules.SourceModules.YouTubeId && !includeYouTube) return false
+        if (failed == com.example.musicfy.modules.SourceModules.YouTubeId &&
+            (!includeYouTube || !dataStore.get(ForcePlaybackKey, false))
+        ) {
+            return false
+        }
         recentFailures(mediaId)
         val skip = failedSources.getOrPut(mediaId) { java.util.concurrent.ConcurrentHashMap.newKeySet() }
         if (!skip.add(failed)) return false
@@ -3478,7 +3511,7 @@ class MusicService :
         val index = player.currentMediaItemIndex
         val position = player.currentPosition
         val wasPlaying = player.playWhenReady
-        showBanner("${sourceModules.nameOf(failed)} couldn't play this · trying ${sourceModules.nameOf(next)}")
+        if (announce) showBanner("${sourceModules.nameOf(failed)} couldn't play this · trying ${sourceModules.nameOf(next)}")
         player.stop()
         player.seekTo(index, position)
         player.prepare()
@@ -3527,6 +3560,7 @@ class MusicService :
         hapticProcessor: HapticAudioProcessor,
         crossmixProcessor: CrossmixTransitionAudioProcessor,
         replayGain: com.example.musicfy.eq.audio.ReplayGainTags,
+        spectrum: com.example.musicfy.playback.audio.AudioSpectrum,
     ) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -3552,7 +3586,11 @@ class MusicService :
                         SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                         SonicAudioProcessor(),
                     ),
-                ).build(), crossmixProcessor, audioFx, replayGain)
+                ).build(), crossmixProcessor, audioFx, replayGain, spectrum)
+        }.apply {
+            // a phone's first-choice decoder failing to start (a vendor FLAC decoder on a 24-bit
+            // file, say) moves on to its next one instead of failing the song
+            setEnableDecoderFallback(true)
         }
 
     override fun onPlaybackStatsReady(
@@ -3625,7 +3663,10 @@ class MusicService :
                 playWhenReady = player.playWhenReady,
                 repeatMode = player.repeatMode,
                 shuffleModeEnabled = player.shuffleModeEnabled,
-                volume = player.volume,
+                // the user's volume, not the player's live one: that's 0 while muted, a fifth while
+                // ducked and anywhere at all mid-crossfade, and coming back to it next launch left
+                // the app silent until the slider was touched
+                volume = playerVolume.value,
                 currentPosition = player.currentPosition,
                 currentMediaItemIndex = player.currentMediaItemIndex,
                 playbackState = player.playbackState
@@ -3677,20 +3718,12 @@ class MusicService :
     override fun onDestroy() {
         isRunning = false
 
-        try {
-            unregisterReceiver(screenStateReceiver)
-        } catch (e: Exception) {
-
-        }
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         castConnectionHandler?.release()
         if (dataStore.get(PersistentQueueKey, true)) {
             saveQueueToDisk()
         }
-        if (discordRpc?.isRpcRunning() == true) {
-            discordRpc?.closeRPC()
-        }
-        discordRpc = null
+        discordPresence.update(null)
         connectivityObserver.unregister()
         abandonAudioFocus()
         releaseLoudnessEnhancer()
@@ -3704,7 +3737,6 @@ class MusicService :
         playerReplayGain.remove(player)
 
         player.release()
-        discordUpdateJob?.cancel()
         super.onDestroy()
     }
 
@@ -3778,7 +3810,9 @@ class MusicService :
                 if (player.isPlaying) {
                     updateWidgetUI(true)
                 }
-                delay(200)
+                // the widget's progress bar moves in whole seconds anyway; more often only cost
+                // frames in the app
+                delay(WidgetProgressIntervalMs)
             }
         }
     }
@@ -3894,6 +3928,7 @@ class MusicService :
 
         val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
         secPlayer.setMediaItems(items)
+        copyPlayOrder(from = player, to = secPlayer)
         secPlayer.playbackParameters = player.playbackParameters
         secPlayer.seekTo(targetIndex, 0L)
         secPlayer.volume = 0f
@@ -3903,11 +3938,25 @@ class MusicService :
         secPlayer.playWhenReady = true
 
         performCrossfadeSwap()
+    }
 
-        if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+    /**
+     * Gives a player taking over the same shuffle order as the one handing over, so the queue the
+     * user sees carries on as it was. Each crossfade used to reshuffle everything from the new
+     * song, which brought songs that had already played back into the queue and changed what
+     * "next song" showed after every song.
+     */
+    private fun copyPlayOrder(from: Player, to: ExoPlayer) {
+        val timeline = from.currentTimeline
+        if (timeline.isEmpty || timeline.windowCount != to.mediaItemCount) return
+        val order = ArrayList<Int>(timeline.windowCount)
+        var index = timeline.getFirstWindowIndex(true)
+        while (index != C.INDEX_UNSET && order.size < timeline.windowCount) {
+            order += index
+            index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
         }
+        if (order.size != timeline.windowCount) return
+        to.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), System.currentTimeMillis()))
     }
 
     private fun performCrossfadeSwap() {
@@ -3922,17 +3971,25 @@ class MusicService :
 
         fadingPlayer?.removeListener(this)
         fadingPlayer?.removeListener(sleepTimer)
+        // The old player has the whole queue too. If the new song took a moment to load, the fade
+        // waited while the old one finished its song and rolled on into the next one - the same
+        // song the new player was starting - so it played twice over itself.
+        fadingPlayer?.pauseAtEndOfMediaItems = true
 
-        player.addListener(object : Player.Listener {
+        nextPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isCrossfading && fadingPlayer != null) {
-                    if (isPlaying) {
-                        fadingPlayer?.play()
-                    } else {
-                        fadingPlayer?.pause()
-                    }
+                val out = fadingPlayer
+                if (!isCrossfading || out == null) {
+                    nextPlayer.removeListener(this)
+                    return
+                }
+                // pause and resume both sides together; an old song that has played out stays put
+                if (isPlaying) {
+                    val finished = out.playbackState == Player.STATE_ENDED ||
+                        (out.duration > 0 && out.currentPosition >= out.duration - 250)
+                    if (!finished) out.play()
                 } else {
-                    player.removeListener(this)
+                    out.pause()
                 }
             }
         })
@@ -3967,7 +4024,9 @@ class MusicService :
                 val fadeOut = kotlin.math.cos(progress * Math.PI / 2.0).toFloat()
 
                 try {
-                    player.volume = startVolume * fadeIn
+                    // the new song fades up to the volume it should be at now: started from the old
+                    // one's, a fade begun while muted or ducked ended at 0 or a fifth, and stayed
+                    player.volume = targetVolume() * fadeIn
                     fadingPlayer?.volume = startVolume * fadeOut
                 } catch (e: Exception) { break }
 
@@ -3976,7 +4035,7 @@ class MusicService :
 
             try {
                 fadingPlayer?.volume = 0f
-                player.volume = startVolume
+                player.volume = targetVolume()
                 cleanupCrossfade()
             } catch (e: Exception) { }
         }
@@ -4083,6 +4142,8 @@ class MusicService :
         // An imported file is never looked for online, even one whose file has gone missing.
         if (com.example.musicfy.utils.OfflineMode.isOn || mediaId.startsWith("LOCAL_")) return null
         val skip = recentFailures(mediaId)
+        // a fresh lookup: a notice from one that never got to play no longer holds
+        if (skip.isEmpty()) decoderNotices.remove(mediaId)
         // songs that only YouTube has (and the common case of YouTube first) need no lookup
         val first = sourceModules.order.value.firstOrNull { it !in skip && sourceModules.isUsable(it) }
         if (first == com.example.musicfy.modules.SourceModules.YouTubeId) {
@@ -4099,7 +4160,10 @@ class MusicService :
                 durationMs = it.song.duration.takeIf { d -> d > 0 }?.times(1000L),
             )
         }
-        return when (val route = sourceModules.route(track, skip)) {
+        val route = sourceModules.route(track, skip) { id, passed ->
+            if (!decoderNotices.containsKey(mediaId)) noteMissingDecoder(mediaId, passed.codec?.uppercase(), passed.sampleRateHz, from = id)
+        }
+        return when (route) {
             is com.example.musicfy.modules.SourceModules.Route.Module -> {
                 val stream = route.stream
                 resolvedSourceIds[mediaId] = route.module.info.id
@@ -4122,16 +4186,19 @@ class MusicService :
                 null
             }
             com.example.musicfy.modules.SourceModules.Route.Exhausted -> {
-                if (com.example.musicfy.modules.SourceModules.YouTubeId !in skip) {
-                    // YouTube is in the order after providers that don't have it: it plays there
-                    resolvedSourceIds[mediaId] = com.example.musicfy.modules.SourceModules.YouTubeId
-                    forgetModuleFacts(mediaId)
-                    null
-                } else throw androidx.media3.common.PlaybackException(
-                    "No provider could play this song",
-                    null,
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
-                )
+                val youTube = com.example.musicfy.modules.SourceModules.YouTubeId
+                when {
+                    youTube !in skip && sourceModules.isUsable(youTube) -> {
+                        // YouTube is in the order after providers that don't have it: it plays there
+                        resolvedSourceIds[mediaId] = youTube
+                        forgetModuleFacts(mediaId)
+                        null
+                    }
+                    // the user turned YouTube off to hear only their other providers
+                    !sourceModules.isEnabled(youTube) ->
+                        throw com.example.musicfy.playback.custom.NoProviderException("none of your providers have it, and YouTube Music is off")
+                    else -> throw com.example.musicfy.playback.custom.NoProviderException("every provider failed on it")
+                }
             }
         }
     }
@@ -4187,6 +4254,7 @@ class MusicService :
             val incoming = createExoPlayer(publish = false)
             val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
             incoming.setMediaItems(items)
+            copyPlayOrder(from = player, to = incoming)
             incoming.repeatMode = player.repeatMode
             incoming.shuffleModeEnabled = player.shuffleModeEnabled
             val base = player.playbackParameters
@@ -4205,6 +4273,9 @@ class MusicService :
             fadingPlayer = outgoing
             player = incoming
             _playerFlow.value = incoming
+            // set when it was made, seconds ago: a mute, an unmute or a slider move since then
+            // never reached it, and the song carried on at the old volume (0, if it was muted)
+            incoming.volume = targetVolume()
 
             outgoing.removeListener(this@MusicService)
             outgoing.removeListener(sleepTimer)
@@ -4246,11 +4317,6 @@ class MusicService :
                 onMediaItemTransition(incoming.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
             } finally {
                 promotingCrossmix = false
-            }
-
-            if (incoming.shuffleModeEnabled) {
-                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                applyShuffleOrder(incoming.currentMediaItemIndex, incoming.mediaItemCount, shufflePlaylistFirst)
             }
         }
 
@@ -4375,3 +4441,6 @@ class MusicService :
             private set
     }
 }
+
+/** How often a placed home screen widget's progress is redrawn while playing. */
+private const val WidgetProgressIntervalMs = 1_000L

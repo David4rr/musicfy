@@ -5,7 +5,7 @@
 //
 // Despite the `Material3` names (kept so the ~10 menus that call this don't all need editing),
 // nothing here is Material 3 any more: these rows now render in the same language as the player's
-// own action sheet — flat dark pills, an icon in a white disc, one line of text. The player sheet
+// own action sheet — flat dark pills, a plain white icon, one line of text. The player sheet
 // and the item menus used to be two visibly different designs reachable from the same screen, and
 // the fastest way to make every menu match is to change the one component they all go through
 // rather than to restyle each menu by hand.
@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.LocalContentColor
@@ -60,16 +59,29 @@ fun Material3MenuGroup(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items.forEach { item ->
-            Material3MenuItemRow(item = item)
+            MenuItemRow(
+                icon = item.icon,
+                enabled = item.onClick != null,
+                onClick = { item.onClick?.invoke() },
+                trailing = item.trailingContent,
+                title = item.title,
+            )
         }
     }
 }
 
+/**
+ * One row of a menu: a flat dark pill with the icon, the title, and anything [trailing]. Also used
+ * by NewActionGrid for the actions that don't make it onto its two cards.
+ */
 @Composable
-private fun Material3MenuItemRow(
-    item: Material3MenuItemData
+internal fun MenuItemRow(
+    icon: (@Composable () -> Unit)?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+    title: @Composable () -> Unit,
 ) {
-    val enabled = item.onClick != null
     val contentAlpha = if (enabled) 1f else 0.35f
 
     Row(
@@ -83,31 +95,25 @@ private fun Material3MenuItemRow(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = { item.onClick?.invoke() },
+                onClick = onClick,
             )
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {
-        item.icon?.let { icon ->
+        if (icon != null) {
+            // Menus pass a bare Icon with no tint, which picks up LocalContentColor, so white here
+            // makes every menu's icons white without each one asking. A menu that sets its own tint
+            // (the red heart) still wins, which is intended.
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.9f * contentAlpha)),
+                modifier = Modifier.size(SheetIconSize),
             ) {
-                // The disc is white, so anything drawn on it has to be dark. Menus pass a bare
-                // Icon with no tint, which picks up LocalContentColor — overriding it here means
-                // none of them need to know they are being drawn on a light background. A menu
-                // that sets its own tint (the red heart) still wins, which is intended.
-                Box(modifier = Modifier.size(13.dp)) {
-                    CompositionLocalProvider(
-                        LocalContentColor provides Color.Black.copy(alpha = 0.75f),
-                    ) {
-                        icon()
-                    }
+                CompositionLocalProvider(
+                    LocalContentColor provides Color.White.copy(alpha = contentAlpha),
+                ) {
+                    icon()
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
         }
 
         Box(modifier = Modifier.weight(1f)) {
@@ -118,13 +124,13 @@ private fun Material3MenuItemRow(
                     color = Color.White.copy(alpha = contentAlpha),
                 )
             ) {
-                item.title()
+                title()
             }
         }
 
-        item.trailingContent?.let { trailing ->
+        trailing?.let {
             Spacer(modifier = Modifier.width(8.dp))
-            trailing()
+            it()
         }
     }
 }

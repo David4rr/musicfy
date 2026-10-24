@@ -70,6 +70,7 @@ import androidx.compose.ui.util.fastSumBy
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
@@ -97,7 +98,7 @@ import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.LikedCoverColors
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.rememberLikedCoverColors
 import com.example.musicfy.ui.component.queueSwipeAction
@@ -108,6 +109,7 @@ import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
 import com.example.musicfy.ui.component.detail.PlaylistHeader
 import com.example.musicfy.ui.component.detail.PlaylistInset
 import com.example.musicfy.ui.component.detail.PlaylistSortControl
+import com.example.musicfy.ui.component.detail.PlaylistSearchControl
 import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
 import com.example.musicfy.ui.component.detail.PlaylistTrackBones
 import com.example.musicfy.ui.component.detail.PlaylistTrackRow
@@ -150,12 +152,14 @@ fun AutoPlaylistScreen(
         "downloaded" -> stringResource(R.string.offline)
         "local" -> "Local"
         "local_liked" -> "Local liked songs"
+        "cached" -> "Cached"
+        "cached_liked" -> "Cached liked songs"
         "songs" -> "All Songs"
         "recently_added" -> "Recently Added"
         else -> viewModel.playlist
     }
 
-    val content by viewModel.content.collectAsState()
+    val content by viewModel.content.collectAsStateWithLifecycle()
     val songs = content?.songs
     val revealSeen = rememberRevealSeenState()
 
@@ -326,8 +330,8 @@ fun AutoPlaylistScreen(
     }
 
     val isLiked = viewModel.playlist == "liked"
-    // the Local page's liked songs wear the same cover as Liked songs, the one its card shows
-    val hasLikedCover = isLiked || viewModel.playlist == "local_liked"
+    // the Local and Cached pages' liked songs wear the same cover as Liked songs, the one their cards show
+    val hasLikedCover = isLiked || viewModel.playlist == "local_liked" || viewModel.playlist == "cached_liked"
     val likedCoverColors = if (hasLikedCover) rememberLikedCoverColors() else null
 
     PlaylistDetailScaffold(
@@ -377,7 +381,8 @@ fun AutoPlaylistScreen(
                             }
                         }
                     },
-                    onDismiss = { menuState.dismiss() }
+                    onDismiss = { menuState.dismiss() },
+                    onSearch = { isSearching = true },
                 )
             }
         },
@@ -408,7 +413,6 @@ fun AutoPlaylistScreen(
                             )
                         }
                     },
-                    onStartSearch = { isSearching = true },
                     onBack = {
                         if (isSearching) {
                             isSearching = false
@@ -481,6 +485,8 @@ fun AutoPlaylistScreen(
                     },
                     onShuffleClick = { playAll(current.shuffled()) },
                     sortControl = {
+                        // downloads and liked songs run long: search finds one without scrolling
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isLiked) {
                             PlaylistSortControl(
                                 current = likedSortType,
@@ -517,6 +523,9 @@ fun AutoPlaylistScreen(
                                 onToggleDirection = { onSortDescendingChange(!sortDescending) },
                             )
                         }
+                        Spacer(Modifier.width(16.dp))
+                        PlaylistSearchControl(onClick = { isSearching = true })
+                        }
                     },
                 )
             }
@@ -527,11 +536,11 @@ fun AutoPlaylistScreen(
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
 
-            SwipeActionsBox(
+            SongSwipeBox(
                 modifier = Modifier.animateItem(),
                 enabled = !inSelectMode,
-                start = { librarySwipeAction(song.song) },
-                end = { queueSwipeAction { song.toMediaItem() } },
+                library = { librarySwipeAction(song.song) },
+                queue = { queueSwipeAction { song.toMediaItem() } },
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,
@@ -632,7 +641,6 @@ private fun AutoPlaylistSearchBar(
     allSelected: Boolean,
     onToggleSelectAll: () -> Unit,
     onSelectionMenu: () -> Unit,
-    onStartSearch: () -> Unit,
     onBack: () -> Unit,
     onBackLong: () -> Unit,
 ) {
@@ -686,13 +694,6 @@ private fun AutoPlaylistSearchBar(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null
-                    )
-                }
-            } else if (!isSearching) {
-                IconButton(onClick = onStartSearch) {
-                    Icon(
-                        painter = painterResource(R.drawable.search),
                         contentDescription = null
                     )
                 }
