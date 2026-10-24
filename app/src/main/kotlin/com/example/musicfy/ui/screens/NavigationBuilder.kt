@@ -392,6 +392,14 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.devspace.DeveloperSpaceScreen(navController = navController)
     }
 
+    composable(com.example.musicfy.ui.screens.settings.devspace.DevPlaygroundRoute) {
+        com.example.musicfy.ui.screens.settings.devspace.DevPlaygroundScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.storage.StorageRoute) {
+        com.example.musicfy.ui.screens.settings.storage.StorageScreen(navController = navController)
+    }
+
     composable("experimental_settings") {
         com.example.musicfy.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
     }

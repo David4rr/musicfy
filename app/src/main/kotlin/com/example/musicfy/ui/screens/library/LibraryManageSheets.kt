@@ -168,8 +168,8 @@ fun PopupSheetState.showManageCachedSheet(
     }
 }
 
-/** One more look before music leaves the library, pushed over the sheet that asked. */
-private fun PopupSheetState.showConfirm(title: String, message: String, action: String, onConfirm: () -> Unit) {
+/** One more look before music leaves the phone or the library, pushed over whatever asked. */
+internal fun PopupSheetState.showConfirm(title: String, message: String, action: String, onConfirm: () -> Unit) {
     var sheet: PopupSheetHandle? = null
     sheet = showWithHandle(
         buttonBar = {

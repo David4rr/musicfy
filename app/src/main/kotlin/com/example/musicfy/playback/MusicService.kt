@@ -1488,6 +1488,7 @@ class MusicService :
             causes.any { it is java.io.FileNotFoundException } -> "stream not found"
             causes.any { it is androidx.media3.datasource.cache.Cache.CacheException } -> "cache error"
             e.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> "stream interrupted"
+            isContainerParseError(e) -> "the audio file came back broken"
             else -> e.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')
         }
     }
@@ -2900,6 +2901,8 @@ class MusicService :
                 format?.sampleRate,
             )
         }
+        // a module's copy that won't parse would fail the same way every time that module is asked
+        if (mediaId != null && isContainerParseError(error)) dropModuleCache(mediaId)
         if (mediaId != null && forceFallBack(mediaId, announce = !decoderNotices.containsKey(mediaId))) return
 
         if (mediaId != null && hasExceededRetryLimit(mediaId)) {
@@ -2942,8 +2945,11 @@ class MusicService :
             }
         }
 
+        // A file that won't parse is almost always two streams glued together in the cache, which
+        // the clear above has just dropped: a fresh try plays. It used to give up on the spot.
         if (error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
-            error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
+            error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+            isContainerParseError(error)) {
             Timber.tag(TAG).d("IO error detected (${error.errorCode}), attempting recovery")
             handleGenericIOError(mediaId)
             return
@@ -2973,6 +2979,17 @@ class MusicService :
                 Timber.tag(TAG).e(e, "Failed to clear decryption caches for $mediaId")
             }
         }
+    }
+
+    private fun isContainerParseError(error: PlaybackException) =
+        error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+
+    /** Every source module's cached copy of [mediaId], which lives under its own key. */
+    private fun dropModuleCache(mediaId: String) {
+        playerCache.keys
+            .filter { it.startsWith(ModuleCacheKeyPrefix) && it.endsWith("|$mediaId") }
+            .forEach { key -> runCatching { playerCache.removeResource(key) } }
     }
 
     private fun hasExceededRetryLimit(mediaId: String): Boolean {
@@ -3323,6 +3340,33 @@ class MusicService :
         return cache.isCached(mediaId, dataSpec.position, length)
     }
 
+    /**
+     * YouTube can hand back a different file for the same song from one lookup to the next: Opus
+     * on Wi-Fi, AAC on mobile data, or whatever another client offers. Both are cached under the
+     * song's id, so the start of one got glued onto the rest of the other and the player gave up
+     * with "parsing container malformed". A different itag or length means a different file, so
+     * the old bytes go.
+     */
+    private fun dropStaleCachedBytes(mediaId: String, itag: Int, contentLength: Long?) {
+        if (playerCache.getCachedSpans(mediaId).isEmpty()) return
+        val freshLength = contentLength ?: 0L
+        val cachedLength = runCatching {
+            androidx.media3.datasource.cache.ContentMetadata.getContentLength(playerCache.getContentMetadata(mediaId))
+        }.getOrDefault(C.LENGTH_UNSET.toLong())
+        val previous = runCatching { runBlocking(Dispatchers.IO) { database.format(mediaId).first() } }.getOrNull()
+        val sameFile = when {
+            cachedLength > 0 && freshLength > 0 -> cachedLength == freshLength
+            previous != null -> previous.itag == itag &&
+                (previous.contentLength <= 0 || freshLength <= 0 || previous.contentLength == freshLength)
+            // nothing to compare against: a bad splice is still caught by the parse-error retry
+            else -> true
+        }
+        if (sameFile) return
+        Timber.tag(TAG).i("Cached bytes for $mediaId are from another stream (itag ${previous?.itag} -> $itag), dropping them")
+        runCatching { playerCache.removeResource(mediaId) }
+            .onFailure { Timber.tag(TAG).w(it, "Couldn't drop stale cached bytes for $mediaId") }
+    }
+
     private fun requiredCachedLength(mediaId: String, dataSpec: DataSpec): Long {
         if (dataSpec.length >= 0) return dataSpec.length
         val contentLength = runCatching {
@@ -3467,6 +3511,8 @@ class MusicService :
                     Timber.tag(TAG).w("No loudness data available from YouTube for video: $mediaId")
                 }
 
+                // before the row below forgets which file the cached bytes came from
+                dropStaleCachedBytes(mediaId, format.itag, format.contentLength)
                 database.query {
                     upsert(
                         FormatEntity(

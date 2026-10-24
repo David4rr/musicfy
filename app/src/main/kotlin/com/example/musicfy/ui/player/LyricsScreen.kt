@@ -63,6 +63,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.musicfy.ui.player.share.LyricsShareHost
+import com.example.musicfy.ui.player.share.LyricsShareSession
+import com.example.musicfy.ui.player.share.ShareFlightSource
+import com.example.musicfy.ui.player.share.fullBoundsInWindow
+import com.example.musicfy.ui.player.share.ShareSong
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -535,6 +544,39 @@ fun LyricsScreen(
 
     val accent = accentColor ?: MaterialTheme.colorScheme.primary
 
+    // Holding a line opens the lyrics share with that line picked. Each line's place is kept (a
+    // reference, no work) so the share can lift the line out of exactly where it sits, and fly it
+    // back there when the share closes.
+    var shareSession by remember { mutableStateOf<LyricsShareSession?>(null) }
+    val lineCoords = remember(lines) { HashMap<Int, LayoutCoordinates>() }
+    val haptic = LocalHapticFeedback.current
+    val lineBaseStyle = MaterialTheme.typography.headlineSmall
+    fun startShare(index: Int, state: LyricsLineState, alignment: LyricsAlignment) {
+        val meta = mediaMetadata ?: return
+        val shareable = lines.mapIndexedNotNull { i, e -> e.text.trim().takeIf { it.isNotEmpty() }?.let { i to it } }
+        val held = shareable.indexOfFirst { it.first == index }
+        if (held < 0) return
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        val bounds = { lineCoords[index]?.takeIf { it.isAttached }?.fullBoundsInWindow() }
+        shareSession = LyricsShareSession(
+            song = ShareSong(meta.title, meta.artists.joinToString { it.name }, meta.thumbnailUrl),
+            lines = shareable.map { it.second },
+            held = held,
+            flightSource = bounds()?.let {
+                ShareFlightSource(
+                    lyricIndex = index,
+                    text = shareable[held].second,
+                    style = restingLineStyle(lineBaseStyle, active = state == LyricsLineState.ACTIVE, letterMotion = cascade),
+                    alignment = alignment,
+                    insets = lyricsLineInsets(alignment),
+                    scale = restingScaleOf(state),
+                    alpha = restingAlphaOf(state),
+                    bounds = bounds,
+                )
+            },
+        )
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
 
         Row(
@@ -708,7 +750,10 @@ fun LyricsScreen(
                                                 cardToPage = CardToPageLyricScale,
                                             )
                                             if (!flew) applyPageRowEnter(e, rowIndex - cardLineRow.coerceAtLeast(0))
-                                        },
+                                            // the line held for sharing is out flying; no copy stays behind
+                                            shareSession?.let { alpha *= it.lyricsLineAlpha(index) }
+                                        }
+                                        .onPlaced { lineCoords[index] = it },
                                     entry = entry,
                                     state = state,
                                     blurStage = blurStage,
@@ -742,6 +787,7 @@ fun LyricsScreen(
                                             followPlayback = true
                                         }
                                     },
+                                    onLongClick = { startShare(index, state, lineAlignment) },
                                 )
                             }
                         }
@@ -775,6 +821,8 @@ fun LyricsScreen(
         }
 
     }
+
+    shareSession?.let { LyricsShareHost(it, onDismiss = { shareSession = null }) }
 }
 
 /** Sentinel for "no instrumental gap is playing right now". */

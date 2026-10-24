@@ -129,6 +129,12 @@ private val SettingsIndex = listOf(
     SettingsEntry("Offline mode", "General", "general_settings", "play downloaded cache offline"),
     SettingsEntry("Local song auto metadata", "General", "general_settings", "match tags id3 covers lyrics"),
 
+    // Storage
+    SettingsEntry("Storage", "Storage", "storage_settings", "space disk size cache downloads clear free junk delete"),
+    SettingsEntry("Music cache limit", "Storage", "storage_settings", "cache size limit space song stream"),
+    SettingsEntry("Manage downloads", "Storage", "storage_settings", "downloads delete remove biggest offline space"),
+    SettingsEntry("Remove all downloads", "Storage", "storage_settings", "delete clear downloads offline space"),
+
     // Experimental
     SettingsEntry("Import & sync", "Experimental", "experimental_settings", "import spotify apple music deezer tidal tunemymusic csv youtube sync export backup transfer"),
     SettingsEntry("Big disc cover styles", "Experimental", "experimental_settings", "disc vinyl cover"),
@@ -427,6 +433,12 @@ fun MusicfySettingsScreen(navController: NavController) {
                             title = "Gesture",
                             iconRes = R.drawable.swipe,
                             onClick = { navController.navigate("gesture_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = "Storage",
+                            iconRes = R.drawable.storage,
+                            onClick = { navController.navigate("storage_settings") }
                         )
 
                         CategoryBubble(

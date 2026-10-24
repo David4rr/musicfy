@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -30,6 +32,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameMillis
@@ -58,6 +61,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.media3.common.Player
 import com.example.musicfy.LocalArtworkColor
 import com.example.musicfy.LocalPlayerConnection
+import com.example.musicfy.extensions.toggleRepeatMode
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerStyle
 import com.example.musicfy.constants.playerStyleRotatedKey
@@ -260,10 +264,14 @@ fun StyleCircle(
     enabled: Boolean = true,
     /** dressed as the Turntable's pills (a faint white fill, a white icon), for a style wearing them */
     pill: Boolean = false,
+    /** a toggle that's on (shuffle, repeat): a brighter fill */
+    active: Boolean = false,
 ) {
     val press = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     val interactive = LocalStyleInteractive.current
+    // the tap handler below lives as long as its pointerInput, so it calls the latest onClick
+    val currentOnClick by rememberUpdatedState(onClick)
     Box(
         modifier = modifier
             .graphicsLayer {
@@ -273,7 +281,13 @@ fun StyleCircle(
             }
             .size(size)
             .clip(CircleShape)
-            .background(if (pill) PillFill else tones.chip)
+            .background(
+                when {
+                    active -> ActiveFill
+                    pill -> PillFill
+                    else -> tones.chip
+                }
+            )
             .pointerInput(enabled, interactive) {
                 if (!enabled) return@pointerInput
                 whileStyleInteractive(interactive) {
@@ -283,7 +297,7 @@ fun StyleCircle(
                             tryAwaitRelease()
                             scope.launch { press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f)) }
                         },
-                        onTap = { onClick() },
+                        onTap = { currentOnClick() },
                     )
                 }
             },
@@ -292,7 +306,11 @@ fun StyleCircle(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = if (pill) Color.White.copy(alpha = 0.9f) else tones.ink,
+            tint = when {
+                active -> Color.White
+                pill -> Color.White.copy(alpha = 0.9f)
+                else -> tones.ink
+            },
             modifier = Modifier.size(if (pill) 20.dp else size * 0.5f),
         )
     }
@@ -300,6 +318,16 @@ fun StyleCircle(
 
 /** the Turntable's pill fill */
 private val PillFill = Color.White.copy(alpha = 0.08f)
+/** a toggle that's on, as bright as the flagship's chevron menu shows one */
+private val ActiveFill = Color.White.copy(alpha = 0.32f)
+
+/** one button in a style's chevron menu, with its name beside it */
+private class MenuItem(
+    val label: String,
+    @DrawableRes val icon: Int,
+    val active: Boolean = false,
+    val onClick: () -> Unit,
+)
 
 /** previous, play/pause and next as three [StyleCircle]s, laid out by the caller's [Row] or [Column] */
 @Composable
@@ -424,9 +452,10 @@ fun Modifier.styleGestures(
 private val SwipeFling = 500.dp
 
 /**
- * The chevron and the little menu it opens: lyrics, other menu, rotate and edit player,
- * rising out of the button the way the flagship's chevron menu does. The button sits [edge] from
- * the top (or the bottom, [atBottom]) and [end] from the right; the menu opens away from that edge.
+ * The chevron and the little menu it opens: lyrics, shuffle and repeat, other menu, rotate and
+ * edit player, rising out of the button the way the flagship's chevron menu does. The button sits
+ * [edge] from the top (or the bottom, [atBottom]) and [end] from the right; the menu opens away
+ * from that edge.
  * Call it last in the style's Box so the dimmed backdrop and the menu draw over the style.
  */
 @Composable
@@ -456,11 +485,25 @@ fun BoxScope.StyleMenu(
                 .drawBehind { drawRect(Color.Black.copy(alpha = 0.42f * reveal.value.coerceIn(0f, 1f))) }
                 .pointerInput(Unit) { detectTapGestures { onOpenChange(false) } },
         )
-        val items = listOfNotNull(
-            actions.onLyrics?.let { open -> Triple("Lyrics", R.drawable.lyrics) { onOpenChange(false); open() } },
-            Triple("Other menu", R.drawable.more_horiz) { onOpenChange(false); actions.onOtherMenu() },
-            Triple(if (rotated) "Turn upright" else "Rotate", R.drawable.screen_rotation) { onOpenChange(false); onRotate(!rotated) },
-            Triple("Edit player", R.drawable.tune) { onOpenChange(false); actions.onEditPlayer() },
+        val connection = LocalPlayerConnection.current
+        val transport = connection?.uiState?.transportState?.collectAsState()?.value
+        val rows = listOfNotNull(
+            actions.onLyrics?.let { open -> listOf(MenuItem("Lyrics", R.drawable.lyrics) { onOpenChange(false); open() }) },
+            // the styles have no shuffle or repeat buttons of their own. The two share a row so the
+            // menu still fits a turned style, and stay open when tapped so the change shows.
+            if (connection != null && transport != null) listOf(
+                MenuItem("Shuffle", R.drawable.shuffle, active = transport.shuffleModeEnabled) {
+                    connection.player.shuffleModeEnabled = !connection.player.shuffleModeEnabled
+                },
+                MenuItem(
+                    label = if (transport.repeatMode == Player.REPEAT_MODE_ONE) "Repeat one" else "Repeat",
+                    icon = if (transport.repeatMode == Player.REPEAT_MODE_ONE) R.drawable.repeat_one else R.drawable.repeat,
+                    active = transport.repeatMode != Player.REPEAT_MODE_OFF,
+                ) { connection.player.toggleRepeatMode() },
+            ) else null,
+            listOf(MenuItem("Other menu", R.drawable.more_horiz) { onOpenChange(false); actions.onOtherMenu() }),
+            listOf(MenuItem(if (rotated) "Turn upright" else "Rotate", R.drawable.screen_rotation) { onOpenChange(false); onRotate(!rotated) }),
+            listOf(MenuItem("Edit player", R.drawable.tune) { onOpenChange(false); actions.onEditPlayer() }),
         )
         val itemGap = 10.dp
         Column(
@@ -474,9 +517,9 @@ fun BoxScope.StyleMenu(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(itemGap),
         ) {
-            items.forEachIndexed { index, (label, icon, onClick) ->
+            rows.forEachIndexed { index, row ->
                 // nearest the button first
-                val order = if (atBottom) items.size - 1 - index else index
+                val order = if (atBottom) rows.size - 1 - index else index
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -492,8 +535,11 @@ fun BoxScope.StyleMenu(
                         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
                     },
                 ) {
-                    Text(text = label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
-                    StyleCircle(icon = icon, tones = tones, size = buttonSize + 6.dp, onClick = onClick, pill = pill)
+                    row.forEachIndexed { k, item ->
+                        if (k > 0) Spacer(Modifier.width(4.dp))
+                        Text(text = item.label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
+                        StyleCircle(icon = item.icon, tones = tones, size = buttonSize + 6.dp, onClick = item.onClick, pill = pill, active = item.active)
+                    }
                 }
             }
         }

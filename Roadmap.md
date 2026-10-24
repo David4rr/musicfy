@@ -8,7 +8,6 @@ What to expect in the next version & is it done
 - New ipod like styles +
 - re-vamped profile +
 - Enchantments [#89](https://github.com/realidkroo/musicfy/issues/89) Searcb bar on downloads folder - exist on main page though 
-- Arabic and other characters lyrics problem
 - Storage usage +
 - Lyrics share +
 - Better crossmix 
@@ -27,6 +26,7 @@ What to expect in the next version & is it done
 ## Done
 - bottom bar sould not using haze for blur, theres too much artiffact
 - Gesture custom +
+- Arabic and other characters lyrics problem
 - nightly builds support [x]
 - Merged pull request of android 7 supports wi=hile ficing its problem
 - Lyrics offset with automatic one +
