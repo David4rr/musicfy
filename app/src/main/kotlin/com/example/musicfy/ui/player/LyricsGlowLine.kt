@@ -1346,6 +1346,7 @@ private fun smoothstep(t: Float): Float {
 }
 
 /** Style 1: the bloom pass. Skipped (no render effect at all) whenever nothing is glowing. */
+@Suppress("NewApi")
 @Composable
 private fun rememberBloomModifier(
     layoutHolder: Array<TextLayoutResult?>,
@@ -1422,6 +1423,7 @@ private fun rememberBloomModifier(
 }
 
 /** Style 2: the original wave - a lift-and-zoom bell that follows the head across the letters. */
+@Suppress("NewApi")
 @Composable
 private fun rememberLegacyWaveModifier(
     layoutHolder: Array<TextLayoutResult?>,
@@ -1526,6 +1528,7 @@ private class WaveEffectCache {
     private var lastHeight = Int.MIN_VALUE
     private var effect: androidx.compose.ui.graphics.RenderEffect? = null
 
+    @Suppress("NewApi")
     fun effectFor(
         shader: Any,
         headX: Float,

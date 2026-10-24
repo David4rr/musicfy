@@ -25,7 +25,7 @@ extensions.configure<ApplicationExtension> {
 
     defaultConfig {
         applicationId = "com.example.musicfy"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 36
         versionCode = 71
         versionName = "8.1.0 build#1163"
