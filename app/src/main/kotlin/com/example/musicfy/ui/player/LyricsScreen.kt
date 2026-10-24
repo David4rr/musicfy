@@ -211,9 +211,10 @@ fun LyricsScreen(
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val progress by playerConnection.progressState.collectAsState()
+    val lyricsOffsetMs by playerConnection.lyricsOffsetMs.collectAsState()
 
     val positionProvider = remember(playerConnection) {
-        { playerConnection.progressState.value.position }
+        { playerConnection.progressState.value.position + playerConnection.lyricsOffsetMs.value }
     }
 
     LaunchedEffect(mediaMetadata?.id) {
@@ -276,13 +277,13 @@ fun LyricsScreen(
     LyricsReadings(lines, mediaMetadata?.id, viewModel.database, lyricsEntity)
 
     val currentIndex by remember(lines, unsynced) {
-        derivedStateOf { if (unsynced) -1 else LyricsUtils.findCurrentLineIndex(lines, progress.position) }
+        derivedStateOf { if (unsynced) -1 else LyricsUtils.findCurrentLineIndex(lines, progress.position + lyricsOffsetMs) }
     }
 
     val anchorIndex by remember(lines, unsynced) {
         derivedStateOf {
             if (unsynced) return@derivedStateOf -1
-            var i = LyricsUtils.findCurrentLineIndex(lines, progress.position)
+            var i = LyricsUtils.findCurrentLineIndex(lines, progress.position + lyricsOffsetMs)
             // findCurrentLineIndex returns lines.size once playback is past the final line. Don't
             // walk back from there looking for an anchor — there is no active line to anchor.
             if (i <= 0 || i >= lines.size) return@derivedStateOf i
@@ -292,7 +293,7 @@ fun LyricsScreen(
                     ?.lastOrNull()
                     ?.let { (it.endTime * 1000).toLong() }
                     ?: return@derivedStateOf i
-                if (endMs <= progress.position) return@derivedStateOf i
+                if (endMs <= progress.position + lyricsOffsetMs) return@derivedStateOf i
                 i = previous
             }
             i
@@ -326,7 +327,7 @@ fun LyricsScreen(
     var followPlayback by remember { mutableStateOf(true) }
 
     // The line the card is showing: the page's copy of it is what the card's line grows into.
-    val cardLine by remember(lines) { derivedStateOf { cardLyricLineIndex(lines, progress.position) } }
+    val cardLine by remember(lines) { derivedStateOf { cardLyricLineIndex(lines, progress.position + lyricsOffsetMs) } }
     val cardLineRow = rowOfLine.getOrNull(cardLine) ?: -1
     if (morph != null) {
         LaunchedEffect(cardLine) {
@@ -498,7 +499,7 @@ fun LyricsScreen(
     /** Which gap, if any, is happening right now. [NoInterlude] when a line is being sung. */
     val activeInterlude by remember(lines, rows) {
         derivedStateOf {
-            val position = progress.position
+            val position = progress.position + lyricsOffsetMs
             // Ends with the same lead-in the next line starts with, so the dots collapse on the
             // very frame that line takes over and the recenter scroll can account for it.
             rows.firstOrNull {

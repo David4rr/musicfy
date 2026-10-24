@@ -167,6 +167,16 @@ class LivePosition internal constructor(private val read: () -> Long, private va
         }
         return value
     }
+
+    /** The same clock moved by [shiftMs], so lyrics can run early or late without touching the rest. */
+    fun shifted(shiftMs: () -> Long) = LivePosition(read = { read() + shiftMs() }, tick = tick)
+}
+
+/** The playback clock the lyrics follow: [this] plus the song's own lyrics offset. */
+@Composable
+fun LivePosition.withLyricsOffset(): LivePosition {
+    val connection = LocalPlayerConnection.current ?: return this
+    return remember(this, connection) { shifted { connection.lyricsOffsetMs.value.toLong() } }
 }
 
 /**

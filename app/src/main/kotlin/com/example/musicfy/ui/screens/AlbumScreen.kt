@@ -69,7 +69,7 @@ import com.example.musicfy.ui.component.HomeCardSpacing
 import com.example.musicfy.ui.component.HomeCoverCard
 import com.example.musicfy.ui.component.IconButton
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.detail.CreatorUi
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
 import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
@@ -270,11 +270,11 @@ fun AlbumScreen(
             val onCheckedChange: (Boolean) -> Unit = {
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
-            SwipeActionsBox(
+            SongSwipeBox(
                 modifier = Modifier.animateItem(),
                 enabled = !inSelectMode,
-                start = { librarySwipeAction(song.song) },
-                end = { queueSwipeAction { song.toMediaItem() } },
+                library = { librarySwipeAction(song.song) },
+                queue = { queueSwipeAction { song.toMediaItem() } },
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,

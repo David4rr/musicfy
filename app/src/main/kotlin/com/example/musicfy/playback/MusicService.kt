@@ -3233,6 +3233,23 @@ class MusicService :
      * stored content length. Guessing a chunk when neither is known makes a partially cached
      * track look complete, which is how replay used to break.
      */
+    /**
+     * Whether [cache] has every byte [dataSpec] asks for. The cache's own record of the file's size
+     * comes first. The format row is rewritten each time the song streams, so a finished download
+     * checked against another stream's size looked incomplete, and the song went online for the
+     * rest: "connection failed" offline, or the wrong stream glued on.
+     */
+    private fun holdsWhole(cache: SimpleCache, mediaId: String, dataSpec: DataSpec): Boolean {
+        val length = when {
+            dataSpec.length >= 0 -> dataSpec.length
+            else -> runCatching {
+                androidx.media3.datasource.cache.ContentMetadata.getContentLength(cache.getContentMetadata(mediaId))
+            }.getOrNull()?.takeIf { it > 0L }?.let { (it - dataSpec.position).coerceAtLeast(1L) }
+                ?: requiredCachedLength(mediaId, dataSpec)
+        }
+        return cache.isCached(mediaId, dataSpec.position, length)
+    }
+
     private fun requiredCachedLength(mediaId: String, dataSpec: DataSpec): Long {
         if (dataSpec.length >= 0) return dataSpec.length
         val contentLength = runCatching {
@@ -3298,11 +3315,7 @@ class MusicService :
             }
 
             if (!shouldBypassCache) {
-                val requiredLength = requiredCachedLength(mediaId, dataSpec)
-
-                if (downloadCache.isCached(mediaId, dataSpec.position, requiredLength) ||
-                    playerCache.isCached(mediaId, dataSpec.position, requiredLength)
-                ) {
+                if (holdsWhole(downloadCache, mediaId, dataSpec) || holdsWhole(playerCache, mediaId, dataSpec)) {
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec
                 }
@@ -3885,6 +3898,7 @@ class MusicService :
 
         val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
         secPlayer.setMediaItems(items)
+        copyPlayOrder(from = player, to = secPlayer)
         secPlayer.playbackParameters = player.playbackParameters
         secPlayer.seekTo(targetIndex, 0L)
         secPlayer.volume = 0f
@@ -3894,11 +3908,25 @@ class MusicService :
         secPlayer.playWhenReady = true
 
         performCrossfadeSwap()
+    }
 
-        if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+    /**
+     * Gives a player taking over the same shuffle order as the one handing over, so the queue the
+     * user sees carries on as it was. Each crossfade used to reshuffle everything from the new
+     * song, which brought songs that had already played back into the queue and changed what
+     * "next song" showed after every song.
+     */
+    private fun copyPlayOrder(from: Player, to: ExoPlayer) {
+        val timeline = from.currentTimeline
+        if (timeline.isEmpty || timeline.windowCount != to.mediaItemCount) return
+        val order = ArrayList<Int>(timeline.windowCount)
+        var index = timeline.getFirstWindowIndex(true)
+        while (index != C.INDEX_UNSET && order.size < timeline.windowCount) {
+            order += index
+            index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
         }
+        if (order.size != timeline.windowCount) return
+        to.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), System.currentTimeMillis()))
     }
 
     private fun performCrossfadeSwap() {
@@ -3913,17 +3941,25 @@ class MusicService :
 
         fadingPlayer?.removeListener(this)
         fadingPlayer?.removeListener(sleepTimer)
+        // The old player has the whole queue too. If the new song took a moment to load, the fade
+        // waited while the old one finished its song and rolled on into the next one - the same
+        // song the new player was starting - so it played twice over itself.
+        fadingPlayer?.pauseAtEndOfMediaItems = true
 
-        player.addListener(object : Player.Listener {
+        nextPlayer.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isCrossfading && fadingPlayer != null) {
-                    if (isPlaying) {
-                        fadingPlayer?.play()
-                    } else {
-                        fadingPlayer?.pause()
-                    }
+                val out = fadingPlayer
+                if (!isCrossfading || out == null) {
+                    nextPlayer.removeListener(this)
+                    return
+                }
+                // pause and resume both sides together; an old song that has played out stays put
+                if (isPlaying) {
+                    val finished = out.playbackState == Player.STATE_ENDED ||
+                        (out.duration > 0 && out.currentPosition >= out.duration - 250)
+                    if (!finished) out.play()
                 } else {
-                    player.removeListener(this)
+                    out.pause()
                 }
             }
         })
@@ -4188,6 +4224,7 @@ class MusicService :
             val incoming = createExoPlayer(publish = false)
             val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
             incoming.setMediaItems(items)
+            copyPlayOrder(from = player, to = incoming)
             incoming.repeatMode = player.repeatMode
             incoming.shuffleModeEnabled = player.shuffleModeEnabled
             val base = player.playbackParameters
@@ -4250,11 +4287,6 @@ class MusicService :
                 onMediaItemTransition(incoming.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
             } finally {
                 promotingCrossmix = false
-            }
-
-            if (incoming.shuffleModeEnabled) {
-                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                applyShuffleOrder(incoming.currentMediaItemIndex, incoming.mediaItemCount, shufflePlaylistFirst)
             }
         }
 

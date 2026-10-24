@@ -28,10 +28,9 @@ private val ExtraLinesTuck = 10.dp
 private val ExtraLineFade = 14.dp
 
 /**
- * More lines under a card's own row, for when the card is pulled taller in the player editor: the
- * lyric card's reading, translation and next line, the queue card's songs after the next. Each line
- * fades in as the card grows enough to show all of it, so none is ever cut in half. Put it right
- * under the card's row.
+ * More lines under the lyric card's own row, for when the card is pulled taller in the player
+ * editor: the line's reading and translation, then the lines after it. Each line fades in as the
+ * card grows enough to show all of it, so none is ever cut in half. Put it right under the card's row.
  *
  * [growthProvider] (how much taller than usual the card is, px) is read only while drawing.
  */

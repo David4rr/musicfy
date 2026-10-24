@@ -77,7 +77,7 @@ import com.example.musicfy.playback.queues.YouTubeQueue
 import androidx.compose.material3.IconButton
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.HomeCardSpacing
 import com.example.musicfy.ui.component.HomeCoverCard
@@ -346,11 +346,11 @@ fun OnlinePlaylistScreen(
                 if (it) selection.add(songItem.id) else selection.remove(songItem.id)
             }
 
-            SwipeActionsBox(
+            SongSwipeBox(
                 modifier = Modifier.animateItem(),
                 enabled = !inSelectMode,
-                start = { librarySwipeAction(songItem) },
-                end = { queueSwipeAction { songItem.toMediaItem() } },
+                library = { librarySwipeAction(songItem) },
+                queue = { queueSwipeAction { songItem.toMediaItem() } },
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = songItem.thumbnail,

@@ -458,7 +458,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PosterText(
             ) {
                 ExpressiveLyrics(
                     lines = lines,
-                    position = position,
+                    position = position.withLyricsOffset(),
                     color = tones.ink,
                     baseSize = baseSize,
                     modifier = Modifier.fillMaxSize(),
@@ -723,7 +723,7 @@ private fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                             } else {
                                 ExpressiveLyrics(
                                     lines = song.lines,
-                                    position = position,
+                                    position = position.withLyricsOffset(),
                                     color = tones.ink,
                                     baseSize = if (landscape) r.sp(0.092f, 28f, 46f) else r.sp(0.118f, 34f, 58f),
                                     modifier = Modifier.fillMaxSize(),

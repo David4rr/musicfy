@@ -98,7 +98,7 @@ import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LikedCover
 import com.example.musicfy.ui.component.LikedCoverColors
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.rememberLikedCoverColors
 import com.example.musicfy.ui.component.queueSwipeAction
@@ -536,11 +536,11 @@ fun AutoPlaylistScreen(
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
 
-            SwipeActionsBox(
+            SongSwipeBox(
                 modifier = Modifier.animateItem(),
                 enabled = !inSelectMode,
-                start = { librarySwipeAction(song.song) },
-                end = { queueSwipeAction { song.toMediaItem() } },
+                library = { librarySwipeAction(song.song) },
+                queue = { queueSwipeAction { song.toMediaItem() } },
             ) {
                 PlaylistTrackRow(
                     thumbnailUrl = song.song.thumbnailUrl,

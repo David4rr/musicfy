@@ -87,6 +87,11 @@ private val SettingsIndex = listOf(
     SettingsEntry("Blur", "Appearance", "appearance_settings", "blur glass performance lag strength"),
     SettingsEntry("Animation", "Appearance", "appearance_settings", "element blur animator transition animation"),
 
+    // Gesture
+    SettingsEntry("Gesture", "Gesture", "gesture_settings", "swipe slide song list left right queue library add remove"),
+    SettingsEntry("Swipe right", "Gesture", "gesture_settings", "slide song list queue library add remove action"),
+    SettingsEntry("Swipe left", "Gesture", "gesture_settings", "slide song list queue library add remove action"),
+
     // Audio Lab
     SettingsEntry("Audio Lab", "Audio Lab", "audio_lab", "sound effects equalizer fx quality"),
     SettingsEntry("Crossfade", "Audio Lab", "crossmix_settings", "crossmix automix transition gapless blend"),
@@ -416,6 +421,12 @@ fun MusicfySettingsScreen(navController: NavController) {
                             title = "Playback",
                             iconRes = R.drawable.play,
                             onClick = { navController.navigate("playback_settings") }
+                        )
+
+                        CategoryBubble(
+                            title = "Gesture",
+                            iconRes = R.drawable.swipe,
+                            onClick = { navController.navigate("gesture_settings") }
                         )
 
                         CategoryBubble(

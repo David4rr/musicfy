@@ -125,6 +125,14 @@ class App : Application(), SingletonImageLoader.Factory {
                 com.example.musicfy.utils.YTPlayerUtils.preWarmPoToken()
             }
         }
+
+        applicationScope.launch(Dispatchers.IO) {
+            // Local songs whose cover file was cleared away get it back from the song's own file.
+            // After the intro, so it doesn't share the disk with the first frames.
+            com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
+            runCatching { com.example.musicfy.importer.LocalArtwork.repair(this@App, musicDatabase) }
+                .onFailure { Timber.w(it, "Repairing local covers failed") }
+        }
     }
 
     private suspend fun initializeSettings() {

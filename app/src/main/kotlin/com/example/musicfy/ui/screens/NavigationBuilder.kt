@@ -444,6 +444,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
     }
 
+    composable("gesture_settings") {
+        com.example.musicfy.ui.screens.gesture.GestureScreen(navController = navController)
+    }
+
     composable("audio_lab") {
         com.example.musicfy.ui.screens.audiolab.AudioLabScreen(navController = navController)
     }

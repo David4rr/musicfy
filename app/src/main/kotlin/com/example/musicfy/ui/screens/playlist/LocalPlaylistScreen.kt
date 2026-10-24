@@ -123,7 +123,7 @@ import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.playlistcover.PlaylistCoverStore
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.showEditPlaylistSheet
-import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.SongSwipeBox
 import com.example.musicfy.ui.component.TextFieldDialog
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.queueSwipeAction
@@ -739,19 +739,19 @@ fun LocalPlaylistScreen(
                     )
                 }
 
-                SwipeActionsBox(
+                SongSwipeBox(
                     modifier = Modifier.animateItem(),
                     enabled = !inSelectMode,
-                    // in your own playlist sliding right takes the song out; a saved one you can't
-                    // edit adds it to your library instead. sliding left always queues it.
-                    start = {
+                    // in your own playlist the library action takes the song out; a saved one you
+                    // can't edit adds it to your library instead. Settings > Gesture sets the side.
+                    library = {
                         if (editable) {
                             removeFromPlaylistSwipeAction { removeWithUndo() }
                         } else {
                             librarySwipeAction(song.song.song)
                         }
                     },
-                    end = { queueSwipeAction { song.song.toMediaItem() } },
+                    queue = { queueSwipeAction { song.song.toMediaItem() } },
                 ) {
                     content()
                 }
