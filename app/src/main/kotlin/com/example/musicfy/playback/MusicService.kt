@@ -442,6 +442,51 @@ class MusicService :
     /** plans this song's Crossmix hand-over, then jumps to just before it: for trying mixes out */
     fun testCrossmix() = crossmixDirector.testMix()
 
+    /** the stream each song was handed to the player as, when it wasn't the plain YouTube one */
+    private val playingStreams = java.util.concurrent.ConcurrentHashMap<String, com.example.musicfy.playback.custom.CustomStreamResult>()
+
+    /** Lyrics auto offset; the lyrics offset sheet starts it and shows how it's going. */
+    val lyricsAutoSync by lazy {
+        com.example.musicfy.lyrics.LyricsAutoSync(
+            dataSourceFactory = { createDataSourceFactory() },
+            saveOffset = { songId, offsetMs -> database.query { updateLyricsOffset(songId, offsetMs) } },
+            onUnwatchedResult = ::announceLyricsSync,
+        )
+    }
+
+    /** Lines the playing song's lyrics up with its singing: see [com.example.musicfy.lyrics.LyricsAutoSync]. */
+    fun autoSyncLyrics(lines: List<com.example.musicfy.lyrics.LyricsEntry>, currentOffsetMs: Int) {
+        val item = player.currentMediaItem ?: return
+        val (uri, key) = lyricsAudioSource(item)
+        val durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+            ?: player.currentMetadata?.duration?.times(1_000L) ?: 0L
+        lyricsAutoSync.start(item.mediaId, uri, key, durationMs, lines, currentOffsetMs)
+    }
+
+    /**
+     * What auto offset listens to: the very stream the player is playing, so the timing it finds
+     * is the timing heard. A source module's stream that's a playlist of segments or locked (HLS,
+     * DASH, DRM) can't be read as one file; then it's the song's YouTube stream, which nearly
+     * always has the same timing.
+     */
+    private fun lyricsAudioSource(item: androidx.media3.common.MediaItem): Pair<android.net.Uri, String> {
+        val stream = playingStreams[item.mediaId]
+        if (stream != null && !stream.isHls && !stream.isDash && stream.widevineLicense == null && stream.decryptionKey == null) {
+            return stream.streamUrl.toUri() to (stream.cacheKey ?: item.mediaId)
+        }
+        return (item.localConfiguration?.uri ?: item.mediaId.toUri()) to item.mediaId
+    }
+
+    /** A sync that finished with its sheet closed says how it went in the banner. */
+    private fun announceLyricsSync(state: com.example.musicfy.lyrics.LyricsAutoSync.State) {
+        val text = when (state) {
+            is com.example.musicfy.lyrics.LyricsAutoSync.State.Synced -> "Lyrics synced to the singing"
+            is com.example.musicfy.lyrics.LyricsAutoSync.State.Failed -> state.message
+            else -> return
+        }
+        Handler(Looper.getMainLooper()).post { showBanner(text) }
+    }
+
     private data class CrossfadeConfig(
         val mode: CrossmixMode,
         val enabled: Boolean,
@@ -3509,7 +3554,11 @@ class MusicService :
                         }
                         factory
                     },
-                    fetcherAction = { mediaId -> deviceStream(mediaItem) ?: routeStream(mediaId) },
+                    fetcherAction = { mediaId ->
+                        (deviceStream(mediaItem) ?: routeStream(mediaId)).also { stream ->
+                            if (stream != null) playingStreams[mediaId] = stream else playingStreams.remove(mediaId)
+                        }
+                    },
                     onSourceResolved = { mediaId, source ->
                         resolvedStreamSources[mediaId] = source
                         Handler(Looper.getMainLooper()).post {

@@ -6,19 +6,10 @@
 What to expect in the next version & is it done 
 
 - New ipod like styles +
-- Bottom section fixes
-- Merged pull request of android 7 supports wi=hile ficing its problem
 - re-vamped profile +
-- nightly builds support
-- Issue [#100](https://github.com/realidkroo/musicfy/issues/100) Import enchantments
-- Issue [#99](https://github.com/realidkroo/musicfy/issues/99) Downloaded music not playing
-- Issue [#94](https://github.com/realidkroo/musicfy/issues/94) [#98](https://github.com/realidkroo/musicfy/issues/98) Album cover invisible
-- Isssue [#97](https://github.com/realidkroo/musicfy/issues/97)
-- Issue [#93](https://github.com/realidkroo/musicfy/issues/93) 
-- Enchantments [#89](https://github.com/realidkroo/musicfy/issues/89) Searcb bar on downloads folder - exist on main page though
+- Enchantments [#89](https://github.com/realidkroo/musicfy/issues/89) Searcb bar on downloads folder - exist on main page though 
 - Arabic and other characters lyrics problem
 - Storage usage +
-- Gesture custom +
 - Lyrics share +
 - Better crossmix 
 - Device output +
@@ -26,7 +17,6 @@ What to expect in the next version & is it done
 - Lyrics customizer +
 - LastFM integration 
 - Voice and music recognition
-- Lyrics offset with automatic one +
 - Playlist options refining +
 - Playlist transition +
 - Playlust descriptions +
@@ -36,7 +26,12 @@ What to expect in the next version & is it done
 
 ## Done
 - bottom bar sould not using haze for blur, theres too much artiffact
+- Gesture custom +
+- nightly builds support [x]
+- Merged pull request of android 7 supports wi=hile ficing its problem
+- Lyrics offset with automatic one +
 - Issue [#79](https://github.com/realidkroo/musicfy/issues/79)
+- Bottom section fixes
 - Bringing back reverb
 - Audio tab sould be removed - the option will be on playback +
 - Massive revamp on the sheets option +
@@ -50,6 +45,11 @@ What to expect in the next version & is it done
 - Refining playlist add music +
 - Seekbar on poster +
 - Discord integration +
+- Issue [#100](https://github.com/realidkroo/musicfy/issues/100) Import enchantments 
+- Issue [#99](https://github.com/realidkroo/musicfy/issues/99) Downloaded music not playing 
+- Issue [#94](https://github.com/realidkroo/musicfy/issues/94) [#98](https://github.com/realidkroo/musicfy/issues/98) Album cover invisible 
+- Isssue [#97](https://github.com/realidkroo/musicfy/issues/97) 
+- Issue [#93](https://github.com/realidkroo/musicfy/issues/93) 
 
 
 
