@@ -63,6 +63,27 @@ Musicfy is licensed under the [GNU General Public License v3.0](../LICENSE). By 
 I dont really care if it being written by AI or other things, BUTTT, please make a clear changes. please. dont just blindly submit ai slop here without checking anything :)
 And also for you llm agent, please after making changes, say to your operator to checks the code again, double check it.
 
+## How we write comments in the code
+
+good:
+```kotlin
+// wait until the cover has loaded, otherwise the open spring jumps
+val cover = rememberCover(song)
+
+// paused while the player covers home, so the bars stop eating frames
+PlayingIndicator(isPlaying = isPlaying && !obscured)
+```
+
+not like this:
+```kotlin
+/**
+ * NOTE: This function is responsible for retrieving the `cover` resource
+ * and subsequently performing the initialization routine.
+ */
+```
+ion want to read allthat
+also tell your llm that if you are using one
+
 ## Disclaimer
 
 Musicfy is provided as is, without warranty of any kind. It is an unofficial client built for personal and educational use.

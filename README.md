@@ -52,7 +52,7 @@
 > I dont support forks, please do not commit issue from forked apps here.
 
 ---
-## How to install? 
+## How to install? :3
 **Go to https://github.com/realidkroo/musicfy/releases/latest
 Pick the latest version, and the correct architecture of your phone, normally it will be arm64**
 
@@ -68,34 +68,6 @@ oh also thanks to [monochrome](https://github.com/monochrome-music/monochrome) w
 ## Wants to help? bug report? report it on issues!
 
 Or read contribute.md there
-
----
-## How we write comments in the code
-
-if you send code, please write comments this way. it keeps the code easy to read for everyone.
-
-- one comment is one line. no comment blocks, no paragraphs, no stacked lines.
-- all lowercase, plain everyday words, like you're telling a friend why the code is there.
-- say the reason or the trap, not what the code already says.
-- no backticks, no markdown, no shouting words like NOTE or IMPORTANT.
-- if one line isn't enough, the code probably wants to be split up. a long story (a crash we hit, a weird platform bug) goes in docs/notes instead.
-
-good:
-```kotlin
-// wait until the cover has loaded, otherwise the open spring jumps
-val cover = rememberCover(song)
-
-// paused while the player covers home, so the bars stop eating frames
-PlayingIndicator(isPlaying = isPlaying && !obscured)
-```
-
-not like this:
-```kotlin
-/**
- * NOTE: This function is responsible for retrieving the `cover` resource
- * and subsequently performing the initialization routine.
- */
-```
 
 ---
 ## Disclaimer
