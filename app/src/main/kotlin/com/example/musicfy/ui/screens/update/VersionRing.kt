@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.musicfy.ui.component.damageBoundary
 import kotlin.math.PI
 import kotlin.math.floor
 
@@ -47,6 +48,7 @@ fun VersionRing(
     Box(
         modifier
             .size(radius * 2)
+            .damageBoundary()
             .graphicsLayer { rotationZ = turn }
             .drawWithCache {
                 val bandPx = band.toPx()

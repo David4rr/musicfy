@@ -60,14 +60,14 @@ import kotlin.math.abs
 private const val PickerOpenMs = 2600L
 
 @Composable
-fun DeveloperSpaceScreen(navController: NavController) {
+fun DeveloperSpaceScreen(navController: NavController, initialPage: Int = 0) {
     val stats by DevSpaceRepository.current.collectAsState()
     val loading by DevSpaceRepository.loading.collectAsState()
 
     // every open asks GitHub again; the playground page reuses what this fetched
     LaunchedEffect(Unit) { DevSpaceRepository.refresh(BuildConfig.BUILD_TIME_MILLIS, force = true) }
 
-    val pagerState = rememberPagerState { DevPeople.size }
+    val pagerState = rememberPagerState(initialPage = initialPage.coerceIn(0, DevPeople.lastIndex)) { DevPeople.size }
     val scrollStates = DevPeople.map { rememberScrollState() }
     val scope = rememberCoroutineScope()
 

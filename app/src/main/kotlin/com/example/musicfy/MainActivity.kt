@@ -885,6 +885,9 @@ class MainActivity : ComponentActivity() {
                     ) {
                     com.example.musicfy.ui.screens.update.UpdateNotificationOpener(
                         requests = openUpdateRequests,
+                        onOpenDevSpace = { personIndex ->
+                            navController.navigate("developer_space?person=$personIndex")
+                        },
                     )
                     com.example.musicfy.ui.screens.donate.DonatePromptScheduler(
                         enabled = setupCompleted && onboardedHere && !forceShowSetup,

@@ -169,6 +169,7 @@ import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
 import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
 import com.example.musicfy.ui.screens.update.UpdateHeadline
 import com.example.musicfy.ui.screens.update.rememberUpdateState
+import com.example.musicfy.ui.screens.update.showAboutSheet
 import com.example.musicfy.ui.screens.update.showUpdateSheet
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.ui.utils.stableSystemBars
@@ -706,9 +707,21 @@ fun ProfileScreen(navController: NavController) {
                         Spacer(Modifier.height(24.dp))
                         ListeningTimeCard(totalListeningMs, onViewStats = { navController.navigate("stats") })
                         Spacer(Modifier.height(16.dp))
+                        val openDevSpace: (Int) -> Unit = { personIndex ->
+                            zoomOutState.dismissAll()
+                            navController.navigate("developer_space?person=$personIndex")
+                        }
+                        val hasUpdate = updateState is com.example.musicfy.core.updater.UpdateState.Available
                         VersionCard(
-                            updateHeadline = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) UpdateHeadline else null,
-                            onAbout = { zoomOutState.showUpdateSheet(updateState) },
+                            updateHeadline = if (hasUpdate) UpdateHeadline else null,
+                            onCardClick = { zoomOutState.showUpdateSheet(updateState, onOpenDevSpace = openDevSpace) },
+                            onPillClick = {
+                                if (hasUpdate) {
+                                    zoomOutState.showUpdateSheet(updateState, onOpenDevSpace = openDevSpace)
+                                } else {
+                                    zoomOutState.showAboutSheet(onOpenDevSpace = openDevSpace)
+                                }
+                            },
                         )
                         Spacer(Modifier.height(16.dp))
                         DeveloperCard(onClick = { navController.navigate("developer_space") })
@@ -939,7 +952,11 @@ private fun TimeValue(value: String, unit: String, k: Float) {
 }
 
 @Composable
-private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
+private fun VersionCard(
+    updateHeadline: String?,
+    onCardClick: () -> Unit,
+    onPillClick: () -> Unit,
+) {
     BoxWithConstraints {
         val k = widthScale(maxWidth.value)
         Row(
@@ -948,11 +965,11 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(22.dp))
                 .background(PageCard)
-                .clickable(onClick = onAbout)
+                .clickable(onClick = onCardClick)
                 .padding(CardPadding),
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Version", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF9A9A9A)))
+                Text("Version & about app", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF9A9A9A)))
                 Text(
                     // "7.1.1 build#1093" -> "7.1.1"
                     BuildConfig.VERSION_NAME.substringBefore(' '),
@@ -965,7 +982,7 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
                 }
             }
             Spacer(Modifier.width(10.dp))
-            VersionCapsule(update = updateHeadline != null, onAbout = onAbout)
+            VersionCapsule(update = updateHeadline != null, onAbout = onPillClick)
         }
     }
 }

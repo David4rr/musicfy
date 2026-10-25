@@ -110,10 +110,10 @@ private suspend fun checkUpdate(force: Boolean): UpdateState =
     )
 
 /** shows the app version sheet as a PopupSheet, see docs/popup-sheet.skill.md */
-fun PopupSheetState.showUpdateSheet(updateState: UpdateState) {
+fun PopupSheetState.showUpdateSheet(updateState: UpdateState, onOpenDevSpace: (Int) -> Unit = {}) {
     val popup = this
     show(buttonBar = { SheetPrimaryButton(text = "Done", onClick = popup::dismiss) }) {
-        UpdateSheetContent(initialState = updateState, popup = popup)
+        UpdateSheetContent(initialState = updateState, popup = popup, onOpenDevSpace = onOpenDevSpace)
     }
 }
 
@@ -131,7 +131,7 @@ private fun PopupSheetState.showUpdateDetailSheet(release: GithubRelease) {
 }
 
 @Composable
-private fun SheetPrimaryButton(text: String, onClick: () -> Unit) {
+internal fun SheetPrimaryButton(text: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
@@ -151,11 +151,15 @@ private val StableGreen = Color(0xFF9CF58A)
 private val BetaYellow = Color(0xFFF5E27A)
 
 /** "8.1.0 build#1165" -> "8.1.0", "8.0.2 (1100)" -> "8.0.2" */
-private fun shortVersion(version: String): String = version.substringBefore(' ')
+internal fun shortVersion(version: String): String = version.substringBefore(' ')
 
 /** the app version sheet: the app, the version you're on and its channel, what's newer, and what you can do about it */
 @Composable
-private fun ColumnScope.UpdateSheetContent(initialState: UpdateState, popup: PopupSheetState) {
+private fun ColumnScope.UpdateSheetContent(
+    initialState: UpdateState,
+    popup: PopupSheetState,
+    onOpenDevSpace: (Int) -> Unit,
+) {
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf(initialState) }
     var latest by remember { mutableStateOf((initialState as? UpdateState.Available)?.release) }
@@ -258,6 +262,11 @@ private fun ColumnScope.UpdateSheetContent(initialState: UpdateState, popup: Pop
                     hint = "Not out yet",
                     enabled = false,
                     onClick = {},
+                )
+                ActionRow(
+                    icon = R.drawable.info,
+                    label = "About app",
+                    onClick = { popup.showAboutSheet(onOpenDevSpace = onOpenDevSpace) },
                 )
             }
             Spacer(Modifier.height(6.dp))
@@ -655,7 +664,7 @@ private fun ColumnScope.UpdateDetailContent(
     }
 }
 
-private fun android.content.Context.openUrl(url: String) {
+internal fun android.content.Context.openUrl(url: String) {
     runCatching {
         startActivity(
             android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))

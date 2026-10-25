@@ -388,8 +388,15 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.CrossmixSettingsScreen(navController = navController)
     }
 
-    composable("developer_space") {
-        com.example.musicfy.ui.screens.settings.devspace.DeveloperSpaceScreen(navController = navController)
+    composable(
+        route = "developer_space?person={person}",
+        arguments = listOf(navArgument("person") { type = NavType.IntType; defaultValue = 0 }),
+    ) { entry ->
+        val person = entry.arguments?.getInt("person") ?: 0
+        com.example.musicfy.ui.screens.settings.devspace.DeveloperSpaceScreen(
+            navController = navController,
+            initialPage = person,
+        )
     }
 
     composable(com.example.musicfy.ui.screens.settings.devspace.DevPlaygroundRoute) {

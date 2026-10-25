@@ -223,6 +223,11 @@ class PopupSheetState {
         frames.lastOrNull { !it.closing }?.closing = true
     }
 
+    // closes every sheet in the stack at once when an action navigates to another screen
+    fun dismissAll() {
+        for (i in frames.indices) frames[i].closing = true
+    }
+
     /**
      * Locks or unlocks the front sheet in place - the same effect as `show(locked = ...)`, without
      * re-showing anything (re-showing would push a duplicate frame with fresh content state).
