@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -309,6 +310,8 @@ private fun ColumnScope.AboutSheetContent(
 ) {
     val context = LocalContext.current
     val installed = shortVersion(BuildConfig.VERSION_NAME)
+    val scrollState = rememberScrollState()
+    val ringScrollRangePx = with(LocalDensity.current) { 180.dp.toPx() }
     var contributors by remember { mutableStateOf(cachedContributors ?: FallbackContributors) }
 
     LaunchedEffect(Unit) {
@@ -319,6 +322,7 @@ private fun ColumnScope.AboutSheetContent(
         // zero-size layout places the spinning ring behind the top icon without pushing the column down
         VersionRing(
             text = "MUSICFY $installed",
+            scrollProgress = { scrollState.value / ringScrollRangePx },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .layout { measurable, constraints ->
@@ -339,7 +343,7 @@ private fun ColumnScope.AboutSheetContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
         ) {
             Spacer(Modifier.height(18.dp))
             Column(
