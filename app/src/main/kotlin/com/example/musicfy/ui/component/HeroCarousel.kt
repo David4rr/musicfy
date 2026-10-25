@@ -962,10 +962,14 @@ private fun BoxScope.HeroBlurBand(
     // One layer per band, at the resolution DownscaledBlur picks for the radius: the mask runs in
     // the blur's own effect instead of an offscreen layer around it, and the media is blurred from
     // a half-size copy. Both bands redraw with every frame of the hero's video, so it adds up.
+    // high quality on android 13+ grows the blur toward the edge in one pass; a faded fixed blur bloomed around bright parts
+    val smooth = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+        LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
     DownscaledBlur(
         radius = { BlurEffectCache.effectiveRadius(radius) },
         tileMode = Shader.TileMode.CLAMP,
         mask = mask,
+        growDown = if (smooth) !atTop else null,
         modifier = Modifier
             .align(if (atTop) Alignment.TopCenter else Alignment.BottomCenter)
             .fillMaxWidth()

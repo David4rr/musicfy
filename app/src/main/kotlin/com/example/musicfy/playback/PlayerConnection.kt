@@ -26,7 +26,6 @@ import com.example.musicfy.extensions.getQueueWindows
 import com.example.musicfy.extensions.isAutoplay
 import com.example.musicfy.extensions.withAutoplay
 import com.example.musicfy.extensions.metadata
-import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.playback.MusicService.MusicBinder
 import com.example.musicfy.playback.queues.Queue
 import com.example.musicfy.utils.reportException
@@ -103,8 +102,9 @@ class PlayerConnection(
 
         playbackState = MutableStateFlow(initialState.first)
         playWhenReady = MutableStateFlow(initialState.second)
-        isPlaying = combine(playbackState, playWhenReady) { state, ready ->
-            ready && state != STATE_ENDED
+        // a pause or play fade shows what you pressed straight away, not when the player catches up
+        isPlaying = combine(playbackState, playWhenReady, service.transport.playIntent) { state, ready, intent ->
+            (intent ?: ready) && state != STATE_ENDED
         }.stateIn(
             scope,
             SharingStarted.Lazily,
@@ -537,7 +537,7 @@ class PlayerConnection(
                     castHandler.play()
                 }
             } else {
-                player.togglePlayPause()
+                service.transport.togglePlayPause()
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in togglePlayPause")
@@ -550,10 +550,7 @@ class PlayerConnection(
             if (castHandler?.isCasting?.value == true) {
                 castHandler.play()
             } else {
-                if (player.playbackState == Player.STATE_IDLE) {
-                    player.prepare()
-                }
-                player.playWhenReady = true
+                service.transport.play()
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in play")
@@ -566,7 +563,7 @@ class PlayerConnection(
             if (castHandler?.isCasting?.value == true) {
                 castHandler.pause()
             } else {
-                player.playWhenReady = false
+                service.transport.pause()
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in pause")
@@ -579,6 +576,7 @@ class PlayerConnection(
             if (castHandler?.isCasting?.value == true) {
                 castHandler.seekTo(position)
             } else {
+                service.transport.cancel()
                 player.seekTo(position)
             }
         } catch (e: Exception) {
@@ -594,11 +592,7 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
-            player.seekToNext()
-            if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                player.prepare()
-            }
-            player.playWhenReady = true
+            service.transport.skipNext()
             onSkipNext?.invoke()
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekToNext")
@@ -616,22 +610,9 @@ class PlayerConnection(
                 return
             }
 
-            if (player.currentPosition > 3000 || !player.hasPreviousMediaItem()) {
-                player.seekTo(0)
-                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                    player.prepare()
-                }
-                player.playWhenReady = true
-                onRestartSong?.invoke()
-            } else {
-
-                player.seekToPreviousMediaItem()
-                if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
-                    player.prepare()
-                }
-                player.playWhenReady = true
-                onSkipPrevious?.invoke()
-            }
+            val restarts = player.currentPosition > 3000 || !player.hasPreviousMediaItem()
+            service.transport.skipPrevious()
+            if (restarts) onRestartSong?.invoke() else onSkipPrevious?.invoke()
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in seekToPrevious")
         }

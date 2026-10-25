@@ -196,6 +196,26 @@ enum class CrossmixMode {
     CROSSMIX,
 }
 
+// pause, play and skip fades: on by default, 2 s long, no layered effect until one is picked
+val TransportFadeEnabledKey = booleanPreferencesKey("transportFadeEnabled")
+val TransportFadeSecondsKey = floatPreferencesKey("transportFadeSeconds")
+val TransportEffectKey = stringPreferencesKey("transportEffect")
+
+const val TransportFadeDefaultSeconds = 2f
+const val TransportFadeMinSeconds = 0.5f
+const val TransportFadeMaxSeconds = 10f
+
+// the crossmix effect layered over a pause, play or skip fade
+enum class TransportEffect(val label: String) {
+    OFF("None"),
+    ECHO("Echo"),
+    REWIND("Rewind"),
+    TAPE_STOP("Tape stop"),
+    FAR_AWAY("Fade to far"),
+    REVERB("Reverb wash"),
+    FILTER("Filter sweep"),
+}
+
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
 

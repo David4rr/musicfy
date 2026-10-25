@@ -16,9 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -49,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -66,6 +65,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
@@ -253,6 +254,52 @@ private fun discWeight(
     return expanded * (1f - lyrics)
 }
 
+// where the cover's box is (x, y, width, height) at sheet progress p and lyrics progress lp
+private fun MorphEndpointsPx.artRect(p: Float, hOffset: Float, lp: Float): FloatArray {
+    val (fullX, fullY, fullW, fullH) = fullArt()
+    val artW = lerpF(miniArtWidthPx, fullW, p)
+    val artH = lerpF(miniArtHeightPx, fullH, p)
+    val artX = lerpF(miniArtXPx, fullX, p) + hOffset
+    val artY = lerpF(miniArtYPx, fullY, p)
+    if (lp <= 0f) return floatArrayOf(artX, artY, artW, artH)
+    val lyricsX = lerpF(miniArtXPx, lyricsArtXPx, p) + hOffset
+    val lyricsY = lerpF(miniArtYPx, lyricsArtYPx, p)
+    val lyricsW = lerpF(miniArtWidthPx, lyricsArtSizePx, p)
+    val lyricsH = lerpF(miniArtHeightPx, lyricsArtSizePx, p)
+    return floatArrayOf(
+        lerpF(artX, lyricsX, lp),
+        lerpF(artY, lyricsY, lp),
+        lerpF(artW, lyricsW, lp),
+        lerpF(artH, lyricsH, lp),
+    )
+}
+
+// the mirror's box: from the cover's visible bottom edge (it's zoomed by magnify) down to where the screen ends at full size, moving and shrinking with the cover
+private fun Modifier.reflectionLayout(
+    progressProvider: () -> Float,
+    horizontalOffsetProvider: () -> Float,
+    endpointsPx: MorphEndpointsPx,
+    lyricsProgressProvider: () -> Float,
+    magnify: () -> Float,
+) = this.layout { measurable, constraints ->
+    val (x, y, w, h) = endpointsPx.artRect(progressProvider(), horizontalOffsetProvider(), lyricsProgressProvider())
+    val full = endpointsPx.fullArt()
+    val belowRatio = ((endpointsPx.fullHeightPx - (full[1] + full[3])) / full[3].coerceAtLeast(1f)).coerceAtLeast(0f)
+    val s = magnify()
+    // tucked a couple of px under the cover, so rounding never leaves a hairline of backdrop between them
+    val tuck = 2f
+    val top = y + h * (1f + s) / 2f - tuck
+    val height = (h * (belowRatio + (1f - s) / 2f) + tuck).coerceAtLeast(1f)
+    val placeable = measurable.measure(
+        Constraints.fixed(w.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1))
+    )
+    layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(x.toInt(), top.toInt()) }
+}
+
+// the mirror under the cover fades in over the last part of an open and out at the start of a close, and leaves quickly as the cover shrinks into a page header
+private fun reflectionFade(p: Float, lp: Float): Float =
+    smoothstep((p - 0.45f) / 0.5f) * (1f - smoothstep(lp / 0.45f))
+
 private fun Modifier.morphLayout(
     progressProvider: () -> Float,
     horizontalOffsetProvider: () -> Float,
@@ -264,30 +311,7 @@ private fun Modifier.morphLayout(
     val hOffset = horizontalOffsetProvider()
 
     val (x, y, w, h) = when (element) {
-        MorphElement.ART -> {
-            val (fullX, fullY, fullW, fullH) = endpointsPx.fullArt()
-            val artW = lerpF(endpointsPx.miniArtWidthPx, fullW, p)
-            val artH = lerpF(endpointsPx.miniArtHeightPx, fullH, p)
-            val artX = lerpF(endpointsPx.miniArtXPx, fullX, p) + hOffset
-            val artY = lerpF(endpointsPx.miniArtYPx, fullY, p)
-
-            val lp = lyricsProgressProvider()
-            if (lp <= 0f) {
-                floatArrayOf(artX, artY, artW, artH)
-            } else {
-
-                val lyricsX = lerpF(endpointsPx.miniArtXPx, endpointsPx.lyricsArtXPx, p) + hOffset
-                val lyricsY = lerpF(endpointsPx.miniArtYPx, endpointsPx.lyricsArtYPx, p)
-                val lyricsW = lerpF(endpointsPx.miniArtWidthPx, endpointsPx.lyricsArtSizePx, p)
-                val lyricsH = lerpF(endpointsPx.miniArtHeightPx, endpointsPx.lyricsArtSizePx, p)
-                floatArrayOf(
-                    lerpF(artX, lyricsX, lp),
-                    lerpF(artY, lyricsY, lp),
-                    lerpF(artW, lyricsW, lp),
-                    lerpF(artH, lyricsH, lp),
-                )
-            }
-        }
+        MorphElement.ART -> endpointsPx.artRect(p, hOffset, lyricsProgressProvider())
         MorphElement.PLAY -> {
             val playX = lerpF(endpointsPx.miniPlayXPx, endpointsPx.fullPlayXPx, p)
             val playY = lerpF(endpointsPx.miniPlayYPx, endpointsPx.fullPlayYPx, p)
@@ -658,6 +682,40 @@ fun MorphingCover(
             label = "pauseSaturation"
         )
 
+        // the cover mirrored under itself, blurred and fading into the moving backdrop; it rides the cover's morph and the song row, so it follows a close, a page opening and a swipe
+        if (isEdgeToEdge && !alternateStyle && trackInfo.thumbnailUrl != null) {
+            // a video plays over the cover with a reflection of its own, and the editor lifts the cover away
+            val reflectionKept = animateFloatAsState(
+                targetValue = if (isVideoActive || editMode) 0f else 1f,
+                animationSpec = tween(650, easing = FastOutSlowInEasing),
+                label = "reflectionKept",
+            )
+            val magnify = remember { { animatedPauseScale } }
+            Box(
+                modifier = Modifier.reflectionLayout(
+                    progressProvider = progressProvider,
+                    horizontalOffsetProvider = horizontalOffsetProvider,
+                    endpointsPx = endpointsPx,
+                    lyricsProgressProvider = lyricsProgressProvider,
+                    magnify = magnify,
+                )
+            ) {
+                CarouselPictures(
+                    carousel = carousel,
+                    fallbackUrl = trackInfo.thumbnailUrl,
+                    modifier = Modifier.fillMaxSize(),
+                ) { url, pictureModifier ->
+                    CoverReflection(
+                        url = url,
+                        coverHeight = { endpointsPx.artRect(progressProvider(), 0f, lyricsProgressProvider())[3] },
+                        magnify = magnify,
+                        alpha = { reflectionFade(progressProvider(), lyricsProgressProvider()) * reflectionKept.value },
+                        modifier = pictureModifier,
+                    )
+                }
+            }
+        }
+
         // Behind another style the cover is only the mini player's thumbnail, faded out by 40% open,
         // where the style itself shows. It stays composed above that, at alpha 0: built at 42% it was
         // a heavy frame in the middle of every close, and dropped there in the middle of every open.
@@ -738,50 +796,74 @@ fun MorphingCover(
                         val velocityTracker = VelocityTracker()
                         // A flick faster than this skips however short it was.
                         val flingPx = 500.dp.toPx()
+                        val slop = viewConfiguration.touchSlop
 
+                        // Read on the way down (the initial pass), so a sideways swipe is the cover's
+                        // before the sheet above it can take a slightly slanted one for itself; up and
+                        // down is left to the sheet. The mini player's swipe belongs to the sheet too.
                         awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            // Not consumed unless this is a swipe on the full-size cover - the
-                            // mini player's swipe and the vertical drags belong to the sheet.
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                             if (!coverSwipeEnabled) return@awaitEachGesture
-
-                            var travelled = 0f
-                            val slopped = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
-                                change.consume()
-                                travelled += over
-                            } ?: return@awaitEachGesture
+                            val row = currentCarousel ?: return@awaitEachGesture
+                            // a gliding row stops under the finger, like any scrolling picture
+                            row.hold()
+                            velocityTracker.resetTracking()
+                            velocityTracker.addPointerInputChange(down)
 
                             val player = currentPlayerConnection?.player
-                            val row = currentCarousel ?: return@awaitEachGesture
-                            // how far the finger goes for one song: a record's spacing in the row,
-                            // or the cover's own width
-                            val spacing = if (swipesDisc) {
-                                com.example.musicfy.ui.player.customize.discSpacingPx(
-                                    currentCoverStyle,
-                                    androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()),
-                                )
-                            } else {
-                                size.width.toFloat()
+                            var total = Offset.Zero
+                            var swiping = false
+                            var lifted = false
+                            var travelled = 0f
+                            var spacing = 1f
+                            var hasPrevious = false
+                            var hasNext = false
+                            try {
+                                while (true) {
+                                    val change = awaitPointerEvent(PointerEventPass.Initial).changes
+                                        .firstOrNull { it.id == down.id } ?: break
+                                    if (change.changedToUpIgnoreConsumed()) {
+                                        if (swiping) velocityTracker.addPointerInputChange(change)
+                                        lifted = true
+                                        break
+                                    }
+                                    if (!swiping) {
+                                        if (change.isConsumed) break
+                                        total += change.positionChange()
+                                        val distance = total.getDistance()
+                                        if (distance < slop) continue
+                                        if (kotlin.math.abs(total.x) <= kotlin.math.abs(total.y)) break
+                                        swiping = true
+                                        // how far the finger goes for one song: a record's spacing in the
+                                        // row, or the cover's own width
+                                        spacing = if (swipesDisc) {
+                                            com.example.musicfy.ui.player.customize.discSpacingPx(
+                                                currentCoverStyle,
+                                                androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()),
+                                            )
+                                        } else {
+                                            size.width.toFloat()
+                                        }
+                                        hasPrevious = player?.hasPreviousMediaItem() == true
+                                        hasNext = player?.hasNextMediaItem() == true
+                                        row.startDrag()
+                                        // only the travel past the slop moves the row, so it starts where it was instead of hopping
+                                        travelled = total.x * (1f - slop / distance)
+                                    } else {
+                                        travelled += change.positionChange().x
+                                    }
+                                    velocityTracker.addPointerInputChange(change)
+                                    row.dragTo(travelled, spacing, hasPrevious, hasNext)
+                                    change.consume()
+                                }
+                            } finally {
+                                when {
+                                    swiping && lifted -> row.release(travelled, velocityTracker.calculateVelocity().x, spacing, flingPx, player)
+                                    swiping -> row.cancelDrag()
+                                    // a touch that never became a swipe: anything it caught settles on its song again
+                                    else -> row.letGo()
+                                }
                             }
-                            val hasPrevious = player?.hasPreviousMediaItem() == true
-                            val hasNext = player?.hasNextMediaItem() == true
-                            velocityTracker.resetTracking()
-                            velocityTracker.addPointerInputChange(slopped)
-                            row.startDrag()
-                            row.dragTo(travelled, spacing, hasPrevious, hasNext)
-
-                            val completed = horizontalDrag(slopped.id) { change ->
-                                change.consume()
-                                velocityTracker.addPointerInputChange(change)
-                                travelled += change.positionChange().x
-                                row.dragTo(travelled, spacing, hasPrevious, hasNext)
-                            }
-
-                            if (!completed) {
-                                row.cancelDrag()
-                                return@awaitEachGesture
-                            }
-                            row.release(travelled, velocityTracker.calculateVelocity().x, spacing, flingPx, player)
                         }
                     }
                     .then(
@@ -829,38 +911,58 @@ fun MorphingCover(
                     CoverPicture(thumbnailUrl = url, modifier = pictureModifier)
                 }
 
-                // The playing song's canvas and video ride on its cover's page, so a swipe takes
-                // them along with the picture under them.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            val o = carousel?.playingOffset ?: 0f
-                            translationX = o * size.width
-                            alpha = if (kotlin.math.abs(o) >= 1f) 0f else 1f
+                // Each song's canvas rides on its own cover's page, pinned to that song's place in the
+                // row, so a swipe takes it along. The song before keeps its canvas while it slides
+                // away; positioned by "whatever is playing", the old one jumped back over the new cover.
+                val canvasTracks = remember { mutableStateListOf(trackInfo) }
+                LaunchedEffect(trackInfo.mediaId) {
+                    val current = trackInfo.mediaId
+                    if (canvasTracks.none { it.mediaId == current }) canvasTracks.add(trackInfo)
+                    // older songs leave once their page has slid out of view
+                    snapshotFlow {
+                        canvasTracks.filter { old ->
+                            old.mediaId != current &&
+                                (carousel?.offsetOfSong(old.mediaId)?.let { kotlin.math.abs(it) >= 1f } ?: true)
                         }
-                ) {
-                    CoverCanvasLayer(
-                        trackInfo = trackInfo,
-                        alternateStyle = alternateStyle,
-                        isDiscStyle = isDiscStyle,
-                        editMode = editMode,
-                        progressProvider = progressProvider,
-                    )
-
-                    if (!isDiscStyle && playVideoBackground && videoInfo != null) {
-                        YouTubeVideoBackground(
-                            streamUrl = videoInfo?.streamUrl,
-                            isPlaying = isPlaying,
-                            positionMsProvider = { playerConnection?.player?.currentPosition ?: 0L },
-                            lyricVideoAnchors = lyricVideoAnchors,
-                            glassState = videoGlassState,
+                    }.collect { gone -> if (gone.isNotEmpty()) canvasTracks.removeAll(gone) }
+                }
+                for (entry in canvasTracks) {
+                    key(entry.mediaId) {
+                        val playing = entry.mediaId == trackInfo.mediaId
+                        val info = if (playing) trackInfo else entry
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    alpha = (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
+                                    val o = carousel?.offsetOfSong(info.mediaId) ?: carousel?.playingOffset ?: 0f
+                                    translationX = o * size.width
+                                    alpha = if (kotlin.math.abs(o) >= 1f) 0f else 1f
+                                    clip = true
                                 }
-                        )
+                        ) {
+                            CoverCanvasLayer(
+                                trackInfo = info,
+                                alternateStyle = alternateStyle,
+                                isDiscStyle = isDiscStyle,
+                                editMode = editMode,
+                                progressProvider = progressProvider,
+                            )
+
+                            if (playing && !isDiscStyle && playVideoBackground && videoInfo != null) {
+                                YouTubeVideoBackground(
+                                    streamUrl = videoInfo?.streamUrl,
+                                    isPlaying = isPlaying,
+                                    positionMsProvider = { playerConnection?.player?.currentPosition ?: 0L },
+                                    lyricVideoAnchors = lyricVideoAnchors,
+                                    glassState = videoGlassState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer {
+                                            alpha = (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
+                                        }
+                                )
+                            }
+                        }
                     }
                 }
                 }

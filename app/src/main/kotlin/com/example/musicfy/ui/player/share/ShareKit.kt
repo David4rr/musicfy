@@ -118,7 +118,13 @@ internal fun DrawScope.drawShareRowLook(
 }
 
 @Composable
-internal fun ShareTitle(title: String, subtitle: String? = null, beta: Boolean = false) {
+internal fun ShareTitle(
+    title: String,
+    subtitle: String? = null,
+    beta: Boolean = false,
+    // a live line under the title instead of the fixed subtitle, for editors whose hint changes
+    subtitleSlot: (@Composable () -> Unit)? = null,
+) {
     Column(Modifier.padding(top = 6.dp, bottom = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -143,7 +149,9 @@ internal fun ShareTitle(title: String, subtitle: String? = null, beta: Boolean =
                 )
             }
         }
-        if (subtitle != null) {
+        if (subtitleSlot != null) {
+            subtitleSlot()
+        } else if (subtitle != null) {
             Text(subtitle, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = ShareMuted)
         }
     }

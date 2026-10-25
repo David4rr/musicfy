@@ -2,7 +2,7 @@
 //
 // The songs in a row, the way every player style switches songs: the one playing, the song before
 // it to the left and the song after it to the right. A sideways swipe slides the row under the
-// finger, one to one, and letting go carries the flick's speed on into the next song. A skip from
+// finger one to one, like a picture pager, and letting go carries the flick's speed into the settle. A skip from
 // anywhere else (the buttons, the song ending, the queue) runs the row along the same way.
 //
 // Covers, records, titles and backgrounds all read their place from this one row, so they move as
@@ -13,8 +13,6 @@
 
 package com.example.musicfy.ui.player
 
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
@@ -45,8 +44,10 @@ import com.example.musicfy.ui.player.models.QueueState
 import com.example.musicfy.ui.player.models.TrackInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.floor
 
 /** One song in the row, [step] its place in it. */
@@ -64,11 +65,25 @@ data class CarouselSong(
 /** The player's row, for everything inside it; null outside the player and on the selector's cards. */
 val LocalSongCarousel = staticCompositionLocalOf<SongCarousel?> { null }
 
-/** How the row settles: no bounce, quick to start, a flick's speed carried in. */
-private val SettleSpring = spring<Float>(dampingRatio = 0.92f, stiffness = 190f)
+// how fast the row settles, critically damped like a picture pager: no bounce, a flick's speed carried straight in
+private const val SettleOmega = 18f
 
-/** Past this much of a song's width, a swipe moves on to the next one. */
-private const val SwipeCommit = 0.22f
+// a frame longer than this counts as this long, so a hitch pauses the row for a moment instead of making it jump
+private const val MaxFrameSec = 1f / 40f
+
+// at rest once it's within half a pixel and barely moving, and only then is the last half pixel closed
+private const val RestDistance = 0.0005f
+private const val RestSpeed = 0.01f
+
+// the swipe's skip goes once the row is this close to its song and this slow: still to the eye, so the new song's work can't make it jump
+private const val SkipDistance = 0.004f
+private const val SkipSpeed = 0.06f
+
+// a skip the player never confirms stops holding the row on its song after this long
+private const val SkipConfirmMs = 1_200L
+
+// let go past half a song and it moves on; short of that it eases back, unless it was flicked
+private const val SwipeCommit = 0.5f
 
 /** Past the first or last song, the row only gives this share of the finger's travel. */
 private const val EdgeGive = 0.3f
@@ -99,6 +114,17 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
 
     /** Songs the playing one is from the middle, for what only it has (its canvas, its video). */
     val playingOffset: Float get() = step - position
+
+    // how far the slot holding this song is from the middle, or null when it isn't in the row
+    fun offsetOfSong(mediaId: String): Float? {
+        var best: Float? = null
+        for (slot in slots) {
+            if (slot.mediaId != mediaId) continue
+            val o = offsetOf(slot)
+            if (best == null || abs(o) < abs(best)) best = o
+        }
+        return best
+    }
 
     /**
      * How much of [slot] a crossfading background shows: the song left of where the row is drawn
@@ -148,6 +174,10 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
         }
         val last = playing
         if (last != null && last.uid != now.uid) {
+            // the song changed: a swipe's skip still waiting would be a second one, and a skip that was waiting on this is confirmed
+            pendingSkip = null
+            expectedStep = null
+            confirmJob?.cancel()
             val delta = when (now.uid) {
                 nextUid -> 1
                 previousUid -> -1
@@ -194,15 +224,42 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
     // ---- moving the row ----
 
     private var job: Job? = null
+    // songs per second, + toward the next one
     private var velocity = 0f
     private var headingTo = Float.NaN
+
+    // a swipe's skip, held until the row is still, and the step it lands on
+    private var pendingSkip: (() -> Unit)? = null
+    private var pendingTarget = 0
+
+    // the step a skip that has gone will land on, until the queue says it has (so nothing glides back meanwhile)
+    private var expectedStep: Int? = null
+    private var confirmJob: Job? = null
+
+    // where the row belongs when nothing holds it: the playing song, or the one a skip is on its way to
+    private fun restingStep(): Int = expectedStep ?: step
 
     /** Slides the row to the playing song, carrying on with whatever speed it has. */
     internal fun settle() {
         if (dragging) return
-        glideTo(step)
+        glideTo(restingStep())
     }
 
+    private fun firePendingSkip() {
+        val skip = pendingSkip ?: return
+        pendingSkip = null
+        expectedStep = pendingTarget
+        confirmJob?.cancel()
+        confirmJob = scope.launch {
+            delay(SkipConfirmMs)
+            // the player never moved on: back to the song that's playing
+            expectedStep = null
+            settle()
+        }
+        skip()
+    }
+
+    // one critically damped spring, stepped per frame with long frames capped, so the row never jumps; the skip waits for it to be still
     private fun glideTo(target: Int) {
         val to = target.toFloat()
         // already on its way there: a restart would only be the same motion again
@@ -210,15 +267,30 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
         job?.cancel()
         headingTo = to
         job = scope.launch {
-            animate(position, to, velocity, SettleSpring) { value, speed ->
-                position = value
-                velocity = speed
+            var lastNanos = 0L
+            var resting = false
+            while (!resting) {
+                resting = withFrameNanos { now ->
+                    val dt = if (lastNanos == 0L) 1f / 120f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, MaxFrameSec)
+                    lastNanos = now
+                    val y = position - to
+                    val e = exp(-SettleOmega * dt)
+                    val tmp = (velocity + SettleOmega * y) * dt
+                    val next = (y + tmp) * e
+                    velocity = (velocity - SettleOmega * tmp) * e
+                    position = to + next
+                    abs(next) < RestDistance && abs(velocity) < RestSpeed
+                }
+                // still to the eye: the song can change now without the cover moving under its work
+                if (pendingSkip != null && abs(position - to) < SkipDistance && abs(velocity) < SkipSpeed) firePendingSkip()
             }
+            position = to
             velocity = 0f
             headingTo = Float.NaN
-            if (step != target) {
+            firePendingSkip()
+            if (restingStep() != target) {
                 // the song didn't change after all: back to the one playing
-                glideTo(step)
+                glideTo(restingStep())
                 return@launch
             }
             if (outgoing != null) {
@@ -232,11 +304,24 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
 
     private var dragFrom = 0f
 
-    /** A finger took the row. Whatever it was doing stops where it is, so the finger starts from there. */
-    fun startDrag() {
+    // a finger touched the row: a gliding row stops dead under it, like any scrolling picture, and a skip it still owed goes now while nothing moves
+    fun hold() {
+        if (dragging) return
         job?.cancel()
         headingTo = Float.NaN
         velocity = 0f
+        firePendingSkip()
+    }
+
+    // the finger came up without swiping: whatever was caught settles on its song again
+    fun letGo() {
+        if (dragging) return
+        settle()
+    }
+
+    // a finger took the row; from here it sits exactly under the finger
+    fun startDrag() {
+        hold()
         dragFrom = position
         dragging = true
     }
@@ -247,9 +332,10 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
      */
     fun dragTo(travelledPx: Float, spacingPx: Float, hasPrevious: Boolean, hasNext: Boolean) {
         if (!dragging || spacingPx <= 0f) return
+        val base = restingStep()
         val raw = dragFrom - travelledPx / spacingPx
-        val low = minOf(step - (if (hasPrevious) 1f else 0f), dragFrom)
-        val high = maxOf(step + (if (hasNext) 1f else 0f), dragFrom)
+        val low = minOf(base - (if (hasPrevious) 1f else 0f), dragFrom)
+        val high = maxOf(base + (if (hasNext) 1f else 0f), dragFrom)
         position = when {
             raw < low -> low - (low - raw) * EdgeGive
             raw > high -> high + (raw - high) * EdgeGive
@@ -257,38 +343,42 @@ class SongCarousel internal constructor(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * The finger lifted, [travelledPx] from where it went down and moving at [velocityPx]. Far or
-     * fast enough, the row goes on to the next song (or back to the last) and the player with it;
-     * otherwise it goes back to the playing one. One song per swipe at most.
-     */
+    // the finger lifted: past half a song or flicked, the row moves on one song with the flick's speed (the skip follows once it's still), otherwise it eases back
     fun release(travelledPx: Float, velocityPx: Float, spacingPx: Float, flingPx: Float, player: Player?) {
         if (!dragging) return
         dragging = false
         val spacing = spacingPx.coerceAtLeast(1f)
-        // in songs, + toward the next one
-        val moved = -travelledPx / spacing
+        val base = restingStep()
+        // in songs, + toward the next one, measured from the song the row belongs on
+        val moved = position - base
         val speed = -velocityPx / spacing
         val fling = flingPx / spacing
         val forward = (moved > SwipeCommit || speed > fling) && speed > -fling && player?.hasNextMediaItem() == true
         val back = !forward && (moved < -SwipeCommit || speed < -fling) && speed < fling &&
             player?.hasPreviousMediaItem() == true
-        val target = step + when {
+        val target = base + when {
             forward -> 1
             back -> -1
             else -> 0
         }
+        pendingTarget = target
+        pendingSkip = when {
+            player == null -> null
+            forward -> { { player.seekToNextMediaItem() } }
+            back -> { { player.seekToPreviousMediaItem() } }
+            else -> null
+        }
+        // the finger's own speed carries straight into the settle, so letting go never jolts
         velocity = speed
         glideTo(target)
-        if (forward) player?.seekToNextMediaItem() else if (back) player?.seekToPreviousMediaItem()
     }
 
-    /** The finger was taken away by something else: back to the playing song. */
+    // the finger was taken away by something else: back to the song it belongs on
     fun cancelDrag() {
         if (!dragging) return
         dragging = false
         velocity = 0f
-        glideTo(step)
+        glideTo(restingStep())
     }
 }
 
@@ -370,6 +460,8 @@ fun CarouselPictures(
                             // off the row's visible part: kept, not drawn
                             alpha = if (abs(o) >= 1f) 0f else 1f
                             translationX = o * size.width
+                            // each page shows only its own part of the row: unclipped, the parallax shift put a third of the next picture on screen the instant it came in
+                            clip = true
                         }
                 ) {
                     picture(

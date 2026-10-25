@@ -47,6 +47,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -129,6 +130,7 @@ import com.example.musicfy.viewmodels.LyricsScreenViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -179,15 +181,6 @@ internal val LyricsSmoothRecenterEasing = CubicBezierEasing(0.42f, 0f, 0.16f, 1f
 
 internal fun recenterEasingFor(style: com.example.musicfy.constants.LyricsMotionStyle) =
     if (style == com.example.musicfy.constants.LyricsMotionStyle.MOTION) LyricsSmoothRecenterEasing else LyricsRecenterEasing
-
-/**
- * Style 1 follow-through on an auto-scroll, like Apple Music: each line below the active one trails
- * the scroll a little more than the one above, so the list settles in a visible cascade instead of
- * moving as one rigid sheet. Each row chases its place on a critically damped spring - it eases out
- * and eases in, never jerks - with this much more lag per row of distance below the active line.
- */
-private const val StaggerLagPerRowMs = 55f
-private const val StaggerMaxRows = 9
 
 private const val ScrollDirectionThresholdPx = 6L
 
@@ -240,14 +233,15 @@ fun LyricsScreen(
     val density = LocalDensity.current
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val progress by playerConnection.progressState.collectAsState()
     val lyricsOffsetMs by playerConnection.lyricsOffsetMs.collectAsState()
 
+    // frame-accurate, so the sweep, the gap dots and backing vocals glide at the display's rate instead of stepping with the 66ms poller
     val positionProvider = remember(playerConnection) {
-        { playerConnection.progressState.value.position + playerConnection.lyricsOffsetMs.value }
+        PlaybackClock({ playerConnection.player }, { playerConnection.lyricsOffsetMs.value.toLong() })
     }
+    val sheetDragging by rememberUpdatedState(isSheetDragging)
 
     LaunchedEffect(mediaMetadata?.id) {
         mediaMetadata?.let(viewModel::ensureLyricsLoaded)
@@ -353,60 +347,27 @@ fun LyricsScreen(
 
     // Opens already on the playing line. Starting at the top and scrolling down to it fought the
     // open transition - the line the card grows into would still be moving.
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = rowOfLine.getOrNull(anchorIndex.coerceIn(0, (lines.size - 1).coerceAtLeast(0))) ?: 0,
-    )
+    // read once without subscribing: a read here recomposed the whole page on every line change
+    val initialRow = androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation {
+        rowOfLine.getOrNull(anchorIndex.coerceIn(0, (lines.size - 1).coerceAtLeast(0))) ?: 0
+    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialRow)
     var followPlayback by remember { mutableStateOf(true) }
 
     // The line the card is showing: the page's copy of it is what the card's line grows into.
     val cardLine by remember(lines) { derivedStateOf { cardLyricLineIndex(lines, progress.position + lyricsOffsetMs) } }
-    val cardLineRow = rowOfLine.getOrNull(cardLine) ?: -1
+    // its row, read only inside layers so the card moving on doesn't recompose every row
+    val cardLineRow by remember(rowOfLine) { derivedStateOf { rowOfLine.getOrNull(cardLine) ?: -1 } }
     if (morph != null) {
-        LaunchedEffect(cardLine) {
-            if (cardLine < 0) morph.pageLyricAnchor = androidx.compose.ui.geometry.Offset.Unspecified
-        }
-    }
-
-    /** Per-row trailing offset (px) of the cascade - see [StaggerTauPerRowMs]. Read in layers only. */
-    val staggerLags = remember(lines) { androidx.compose.runtime.mutableStateMapOf<Int, Float>() }
-    var staggerAnchorRow by remember(lines) { androidx.compose.runtime.mutableIntStateOf(-1) }
-
-    val staggerVelocities = remember(lines) { HashMap<Int, Float>() }
-
-    LaunchedEffect(staggerLags) {
-        while (true) {
-            snapshotFlow { staggerLags.isNotEmpty() }.first { it }
-            var lastNanos = 0L
-            while (staggerLags.isNotEmpty()) {
-                androidx.compose.runtime.withFrameNanos { now ->
-                    val dt = if (lastNanos == 0L) 0.016f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, 0.064f)
-                    lastNanos = now
-                    val anchor = staggerAnchorRow
-                    val done = ArrayList<Int>()
-                    for ((row, lag) in staggerLags.toMap()) {
-                        val k = (row - anchor).coerceIn(1, StaggerMaxRows)
-                        // Critically damped toward 0, solved exactly (stable at any frame time).
-                        val omega = 1000f / (StaggerLagPerRowMs * k)
-                        val v = staggerVelocities[row] ?: 0f
-                        val e = kotlin.math.exp(-omega * dt)
-                        val tmp = (v + omega * lag) * dt
-                        val nextLag = (lag + tmp) * e
-                        val nextV = (v - omega * tmp) * e
-                        if (kotlin.math.abs(nextLag) < 0.3f && kotlin.math.abs(nextV) < 4f) {
-                            done += row
-                        } else {
-                            staggerLags[row] = nextLag
-                            staggerVelocities[row] = nextV
-                        }
-                    }
-                    done.forEach {
-                        staggerLags.remove(it)
-                        staggerVelocities.remove(it)
-                    }
-                }
+        LaunchedEffect(morph, lines) {
+            snapshotFlow { cardLine }.collect {
+                if (it < 0) morph.pageLyricAnchor = androidx.compose.ui.geometry.Offset.Unspecified
             }
         }
     }
+
+    val stagger = remember(rows) { LyricsStagger(rows.size + 1) }
+    LaunchedEffect(stagger) { stagger.run() }
 
     var isAutoScrolling by remember { mutableStateOf(false) }
 
@@ -460,9 +421,11 @@ fun LyricsScreen(
         label = "lyricsImmersion",
     )
 
-    LaunchedEffect(anchorIndex, followPlayback, lines, motionStyle) {
-        val target = anchorIndex
-        if (!followPlayback || target !in lines.indices) return@LaunchedEffect
+    // collected rather than keyed on the line: a key is read in composition and recomposed the whole page on every line change
+    LaunchedEffect(followPlayback, lines, motionStyle) {
+        if (!followPlayback) return@LaunchedEffect
+        snapshotFlow { anchorIndex }.collectLatest { target ->
+        if (target !in lines.indices) return@collectLatest
         val targetRow = rowOfLine[target]
 
         val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }
@@ -477,9 +440,9 @@ fun LyricsScreen(
         // The sheet itself on the move - the page reopening with the player, the list just built
         // and still at its top: put the line straight where it rests. Animating it there stacked
         // a long scroll, composing every row it passed, on top of the sheet's own open.
-        if (isSheetDragging) {
+        if (sheetDragging) {
             listState.scrollToItem(targetRow, 0)
-            return@LaunchedEffect
+            return@collectLatest
         }
 
         // Compared by ROW index. This used to compare the line index against the list's item
@@ -498,7 +461,7 @@ fun LyricsScreen(
                 .sumOf { it.size }
             val distance = (current - restingOffset - collapsing).toFloat()
 
-            staggerAnchorRow = targetRow
+            stagger.anchorRow = targetRow
             listState.scroll {
                 var previous = 0f
                 androidx.compose.animation.core.animate(
@@ -509,12 +472,9 @@ fun LyricsScreen(
                     val consumed = scrollBy(value - previous)
                     previous += consumed
                     if (cascade && consumed != 0f) {
-                        // Rows below the active line hold back by what just scrolled, then catch
-                        // up on their own (decay above) - the further down, the later.
+                        // rows below the active line hold back by what just scrolled, then catch up on their own
                         for (item in listState.layoutInfo.visibleItemsInfo) {
-                            if (item.index > targetRow) {
-                                staggerLags[item.index] = (staggerLags[item.index] ?: 0f) + consumed
-                            }
+                            if (item.index > targetRow) stagger.holdBack(item.index, consumed)
                         }
                     }
                 }
@@ -525,6 +485,7 @@ fun LyricsScreen(
         }
         } finally {
             isAutoScrolling = false
+        }
         }
     }
 
@@ -540,7 +501,6 @@ fun LyricsScreen(
             }?.let { (it as LyricRow.Interlude).afterIndex } ?: NoInterlude
         }
     }
-    val interludeActive = activeInterlude != NoInterlude
 
     // Only honour {agent:v1}/{agent:v2} when the song actually has more than one voice. A solo
     // track whose provider tagged every line as v2 would otherwise render entirely right-aligned.
@@ -574,11 +534,12 @@ fun LyricsScreen(
     val lineCoords = remember(lines) { HashMap<Int, LayoutCoordinates>() }
     val haptic = LocalHapticFeedback.current
     val lineBaseStyle = MaterialTheme.typography.headlineSmall
-    fun startShare(index: Int, state: LyricsLineState, alignment: LyricsAlignment) {
-        val meta = mediaMetadata ?: return
+    // held as updated state, so the rows' long-press lambdas stay the same object and the rows can skip recomposing
+    val startShare by rememberUpdatedState { index: Int, state: LyricsLineState, alignment: LyricsAlignment ->
+        val meta = mediaMetadata ?: return@rememberUpdatedState
         val shareable = lines.mapIndexedNotNull { i, e -> e.text.trim().takeIf { it.isNotEmpty() }?.let { i to it } }
         val held = shareable.indexOfFirst { it.first == index }
-        if (held < 0) return
+        if (held < 0) return@rememberUpdatedState
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         val bounds = { lineCoords[index]?.takeIf { it.isAttached }?.fullBoundsInWindow() }
         shareSession = LyricsShareSession(
@@ -690,7 +651,7 @@ fun LyricsScreen(
                         when (row) {
                             is LyricRow.Interlude -> LyricsInterludeDots(
                                 modifier = Modifier.graphicsLayer {
-                                    translationY = staggerLags[listIndex] ?: 0f
+                                    translationY = stagger.lagOf(listIndex)
                                     applyPageRowEnter(enterProgressProvider(), listIndex - cardLineRow.coerceAtLeast(0))
                                 },
                                 startMs = row.startMs,
@@ -712,31 +673,14 @@ fun LyricsScreen(
                                 val index = row.index
                                 val entry = row.entry
 
-                                val distance = when {
-                                    currentIndex < 0 -> index - currentIndex
-                                    index < anchorIndex -> index - anchorIndex
-                                    index > currentIndex -> index - currentIndex
-                                    else -> 0
+                                // worked out per row, so a line change only recomposes the few rows whose look changes
+                                val look by remember(index, lines, unsynced) {
+                                    derivedStateOf {
+                                        lineLook(index, currentIndex, anchorIndex, unsynced, activeInterlude != NoInterlude)
+                                    }
                                 }
-                                val state = when {
-                                    // No timing: every line is equally "current", so all of them
-                                    // read at full strength.
-                                    unsynced -> LyricsLineState.ACTIVE
-
-                                    currentIndex >= 0 && index in anchorIndex..currentIndex ->
-                                        if (interludeActive) LyricsLineState.PAST else LyricsLineState.ACTIVE
-                                    index == currentIndex + 1 -> LyricsLineState.UPCOMING
-                                    index < currentIndex -> LyricsLineState.PAST
-                                    else -> LyricsLineState.DEFAULT
-                                }
-
-                                val blurStage = when {
-                                    unsynced -> 0
-                                    suppressEffects -> 0
-                                    distance == 0 -> 0
-                                    kotlin.math.abs(distance) == 1 -> 1
-                                    else -> 2
-                                }
+                                val state = look.state
+                                val blurStage = if (suppressEffects) 0 else look.blurStage
 
                                 val romanized by entry.romanizedTextFlow.collectAsState()
                                 val ruby by entry.rubyFlow.collectAsState()
@@ -744,8 +688,11 @@ fun LyricsScreen(
                                 val rowIndex = rowOfLine[index]
                                 val lineAlignment = alignmentFor(entry, useAgentAlignment)
                                 // Only a start-aligned line has its text where the card's starts.
-                                val growsFromCard = morph != null && index == cardLine &&
-                                    lineAlignment == LyricsAlignment.START
+                                val growsFromCard by remember(index, lines, lineAlignment, morph) {
+                                    derivedStateOf {
+                                        morph != null && index == cardLine && lineAlignment == LyricsAlignment.START
+                                    }
+                                }
                                 LyricsGlowLine(
                                     modifier = Modifier
                                         .then(
@@ -764,7 +711,7 @@ fun LyricsScreen(
                                             }
                                         )
                                         .graphicsLayer {
-                                            translationY = staggerLags[rowIndex] ?: 0f
+                                            translationY = stagger.lagOf(rowIndex)
                                             val e = enterProgressProvider()
                                             val flew = growsFromCard && applyCardFlight(
                                                 e = e,
@@ -817,7 +764,7 @@ fun LyricsScreen(
                                             followPlayback = true
                                         }
                                     },
-                                    onLongClick = { startShare(index, state, lineAlignment) },
+                                    onLongClick = { startShare(index, look.state, lineAlignment) },
                                 )
                             }
                         }
@@ -835,7 +782,7 @@ fun LyricsScreen(
                                 onSwitchSource = onSwitchSource,
                                 modifier = Modifier
                                     .graphicsLayer {
-                                        translationY = staggerLags[rows.size] ?: 0f
+                                        translationY = stagger.lagOf(rows.size)
                                         applyPageRowEnter(enterProgressProvider(), rows.size - cardLineRow.coerceAtLeast(0))
                                     }
                                     .padding(horizontal = LyricsHeaderArtX)
@@ -857,6 +804,33 @@ fun LyricsScreen(
 
 /** Sentinel for "no instrumental gap is playing right now". */
 private const val NoInterlude = Int.MIN_VALUE
+
+// how a line looks right now: its state, and how blurred it is by its distance from the sung line
+private data class LineLook(val state: LyricsLineState, val blurStage: Int)
+
+private fun lineLook(index: Int, current: Int, anchor: Int, unsynced: Boolean, interlude: Boolean): LineLook {
+    // no timing: every line is equally current, so all of them read at full strength
+    if (unsynced) return LineLook(LyricsLineState.ACTIVE, 0)
+    val distance = when {
+        current < 0 -> index - current
+        index < anchor -> index - anchor
+        index > current -> index - current
+        else -> 0
+    }
+    val state = when {
+        current >= 0 && index in anchor..current ->
+            if (interlude) LyricsLineState.PAST else LyricsLineState.ACTIVE
+        index == current + 1 -> LyricsLineState.UPCOMING
+        index < current -> LyricsLineState.PAST
+        else -> LyricsLineState.DEFAULT
+    }
+    val blurStage = when (kotlin.math.abs(distance)) {
+        0 -> 0
+        1 -> 1
+        else -> 2
+    }
+    return LineLook(state, blurStage)
+}
 
 /**
  * One row of the lyrics list. Instrumental gaps are rows in their own right rather than something

@@ -10,7 +10,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,10 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorProducer
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -49,6 +51,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -255,13 +258,17 @@ fun LyricsGlowLine(
     )
 
     val baseColor = LocalContentColor.current
-    // Eased like the line's alpha and scale, so the line and the small text under it change
-    // colour together instead of snapping while everything else is still fading.
-    val textColor by androidx.compose.animation.animateColorAsState(
+    // eased with the alpha and scale, and read only while drawing so the fade doesn't recompose the line every frame
+    val lineColor = androidx.compose.animation.animateColorAsState(
         targetValue = if (state == LyricsLineState.ACTIVE) Color.White else baseColor,
         animationSpec = tween(durationMillis = 600),
         label = "lyricsLineColor",
     )
+    val textColor = remember(lineColor) { ColorProducer { lineColor.value } }
+    val unsungColor = remember(lineColor) { ColorProducer { lineColor.value.copy(alpha = ActiveUnsungAlpha) } }
+    val readingColor = remember(lineColor) { ColorProducer { lineColor.value.copy(alpha = 0.4f) } }
+    val subLineColor = remember(lineColor) { ColorProducer { lineColor.value.copy(alpha = 0.6f) } }
+    val translationColor = remember(lineColor) { ColorProducer { lineColor.value.copy(alpha = 0.5f) } }
 
     val textAlign = when (alignment) {
         LyricsAlignment.START -> TextAlign.Start
@@ -275,6 +282,23 @@ fun LyricsGlowLine(
     }
 
     val insets = lyricsLineInsets(alignment)
+
+    // the pieces as the source timed them: this style sweeps along the line's own text,
+    // syllable by syllable, so it never shows the gaps other styles put between them
+    val parts = remember(entry.text, entry.words, entry.syllables) {
+        splitBackingVocal(entry.text, entry.syllables ?: entry.words)
+    }
+    val leadText = parts.lead
+    val words = parts.leadWords
+    val hasRuby = !ruby.isNullOrEmpty()
+    val leadStyle = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = LyricsFontSize,
+        lineHeight = if (hasRuby) (LyricsLineHeight.value + RubyHeadroomSp).sp else LyricsLineHeight,
+        lineHeightStyle = if (hasRuby) rubyLineHeightStyle(rubyPlacement) else null,
+        textAlign = textAlign,
+    ).withLetterMotionFeatures(wordMotion)
+    // kept above the sweep/plain switch, so the line already has its bold breaks the moment it goes plain again
+    val steadyWrap = rememberSteadyWrap(leadText, leadStyle.copy(fontWeight = FontWeight.Bold))
 
     Column(
         horizontalAlignment = columnAlign,
@@ -324,16 +348,10 @@ fun LyricsGlowLine(
     )
     Column(
         horizontalAlignment = columnAlign,
-        modifier = Modifier.padding(horizontal = LyricsTapPadH, vertical = LyricsTapPadV),
+        modifier = Modifier
+            .padding(horizontal = LyricsTapPadH, vertical = LyricsTapPadV)
+            .then(steadyWrap.modifier),
     ) {
-
-        // the pieces as the source timed them: this style sweeps along the line's own text,
-        // syllable by syllable, so it never shows the gaps other styles put between them
-        val parts = remember(entry.text, entry.words, entry.syllables) {
-            splitBackingVocal(entry.text, entry.syllables ?: entry.words)
-        }
-        val leadText = parts.lead
-        val words = parts.leadWords
 
         val waveAmplitude by animateFloatAsState(
             targetValue = if (state == LyricsLineState.ACTIVE) 1f else 0f,
@@ -355,7 +373,7 @@ fun LyricsGlowLine(
                 // The rise is drawn, not shaded, so it runs with the shader setting off too.
                 riseAmplitudeProvider = { waveAmplitude },
                 motionStyle = motionStyle,
-                baseColor = textColor.copy(alpha = ActiveUnsungAlpha),
+                baseColor = unsungColor,
 
                 highlightColor = Color.White,
                 // The reading is drawn below, in one place for both paths. It used to move into
@@ -366,28 +384,20 @@ fun LyricsGlowLine(
                 textAlign = textAlign,
                 ruby = ruby,
                 rubyPlacement = rubyPlacement,
-                rubyColor = textColor.copy(alpha = 0.4f),
+                rubyColor = readingColor,
             )
         } else if (leadText.isNotEmpty()) {
             // Inactive lines carry their readings too, so the ruby doesn't pop in and out as the
             // active line moves. Needs its own layout capture — the karaoke path's holder only
             // exists while the sweep is running.
             val plainLayout = remember(leadText) { arrayOfNulls<TextLayoutResult>(1) }
-            val hasRuby = !ruby.isNullOrEmpty()
-            Text(
-                text = leadText,
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontSize = LyricsFontSize,
-                    lineHeight = if (hasRuby) {
-                        (LyricsLineHeight.value + RubyHeadroomSp).sp
-                    } else {
-                        LyricsLineHeight
-                    },
-                    lineHeightStyle = if (hasRuby) rubyLineHeightStyle(rubyPlacement) else null,
-                ).withLetterMotionFeatures(wordMotion),
-                fontWeight = if (state == LyricsLineState.ACTIVE) FontWeight.Bold else FontWeight.SemiBold,
+            BasicText(
+                // same characters as the lead text, with a line break wherever the bold line wraps
+                text = steadyWrap.text,
+                style = leadStyle.copy(
+                    fontWeight = if (state == LyricsLineState.ACTIVE) FontWeight.Bold else FontWeight.SemiBold,
+                ),
                 color = textColor,
-                textAlign = textAlign,
                 // No maxLines cap. A capped line ellipsised into "..." and simply lost the rest of
                 // the words — a long line is meant to wrap, not to be truncated, and there is
                 // nowhere else the reader can go to see what was cut.
@@ -400,8 +410,8 @@ fun LyricsGlowLine(
                     ruby = ruby,
                     textLength = leadText.length,
                     placement = rubyPlacement,
-                    dimColor = textColor.copy(alpha = 0.4f),
-                    litColor = textColor.copy(alpha = 0.4f),
+                    dimColor = readingColor,
+                    litColor = readingColor,
                     headProvider = { 0f },
                 ),
             )
@@ -409,7 +419,7 @@ fun LyricsGlowLine(
 
         FadingSubText(
             text = subLine,
-            color = textColor.copy(alpha = 0.6f),
+            color = subLineColor,
             textAlign = textAlign,
         )
 
@@ -437,13 +447,13 @@ fun LyricsGlowLine(
         // menu toggle wrote into flows nothing was collecting.
         if (translationLoading && translation.isNullOrBlank()) {
             TranslationLoadingDots(
-                color = textColor.copy(alpha = 0.5f),
+                color = translationColor,
                 modifier = Modifier.padding(top = 7.dp),
             )
         } else {
             FadingSubText(
                 text = translation,
-                color = textColor.copy(alpha = 0.5f),
+                color = translationColor,
                 textAlign = textAlign,
             )
         }
@@ -452,12 +462,9 @@ fun LyricsGlowLine(
     }
 }
 
-/**
- * A small line under the lyric (romanisation or translation) that fades and unfolds in when its
- * text arrives and folds away when it is cleared, instead of popping in and shoving the rows below.
- */
+// a small line under the lyric (reading or translation) that fades and unfolds in, instead of popping in and shoving the rows below
 @Composable
-private fun FadingSubText(text: String?, color: Color, textAlign: TextAlign) {
+private fun FadingSubText(text: String?, color: ColorProducer, textAlign: TextAlign) {
     // Keep the last text while folding away, or the exit would animate an empty line.
     val shown = remember { arrayOfNulls<String>(1) }
     if (!text.isNullOrBlank()) shown[0] = text
@@ -468,11 +475,10 @@ private fun FadingSubText(text: String?, color: Color, textAlign: TextAlign) {
         exit = androidx.compose.animation.fadeOut(tween(SubTextFadeMs)) +
             androidx.compose.animation.shrinkVertically(tween(SubTextFadeMs)),
     ) {
-        Text(
+        BasicText(
             text = shown[0].orEmpty(),
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(textAlign = textAlign),
             color = color,
-            textAlign = textAlign,
             overflow = TextOverflow.Clip,
             modifier = Modifier.padding(top = 3.dp),
         )
@@ -483,7 +489,7 @@ private const val SubTextFadeMs = 350
 
 /** Three dots pulsing in sequence, sized to sit in the translation's place. */
 @Composable
-private fun TranslationLoadingDots(color: Color, modifier: Modifier = Modifier) {
+private fun TranslationLoadingDots(color: ColorProducer, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "translating")
     Row(modifier = modifier) {
         repeat(3) { index ->
@@ -505,7 +511,7 @@ private fun TranslationLoadingDots(color: Color, modifier: Modifier = Modifier) 
                     .padding(end = 5.dp)
                     .size(5.dp)
                     .graphicsLayer { alpha = 0.25f + 0.75f * phase }
-                    .background(color, CircleShape)
+                    .drawBehind { drawCircle(color()) }
             )
         }
     }
@@ -556,8 +562,8 @@ private fun rememberRubyOverlay(
     ruby: List<com.example.musicfy.lyrics.RubyToken>?,
     textLength: Int,
     placement: RubyPlacement,
-    dimColor: Color,
-    litColor: Color,
+    dimColor: ColorProducer,
+    litColor: ColorProducer,
     headProvider: () -> Float,
 ): Modifier {
     if (ruby.isNullOrEmpty()) return Modifier
@@ -636,7 +642,7 @@ private fun rememberRubyOverlay(
 
             drawText(
                 textLayoutResult = measured,
-                color = lerpColor(dimColor, litColor, lit),
+                color = lerpColor(dimColor(), litColor(), lit),
                 topLeft = Offset(x, y),
             )
         }
@@ -958,7 +964,8 @@ internal fun KaraokeSweepText(
     words: List<com.example.musicfy.lyrics.WordTimestamp>,
     positionProvider: () -> Long,
     waveAmplitudeProvider: () -> Float,
-    baseColor: Color,
+    // read while drawing, so a fading line doesn't recompose every frame
+    baseColor: ColorProducer,
     highlightColor: Color,
     subLine: String? = null,
     fontSize: androidx.compose.ui.unit.TextUnit = LyricsFontSize,
@@ -967,7 +974,7 @@ internal fun KaraokeSweepText(
     textAlign: TextAlign = TextAlign.Start,
     ruby: List<com.example.musicfy.lyrics.RubyToken>? = null,
     rubyPlacement: RubyPlacement = RubyPlacement.BELOW,
-    rubyColor: Color = Color.White.copy(alpha = 0.4f),
+    rubyColor: ColorProducer = DefaultRubyColor,
     motionStyle: com.example.musicfy.constants.LyricsMotionStyle =
         com.example.musicfy.constants.LyricsMotionStyle.MOTION,
     /**
@@ -1023,7 +1030,7 @@ internal fun KaraokeSweepText(
         textLength = text.length,
         placement = rubyPlacement,
         dimColor = rubyColor,
-        litColor = Color.White,
+        litColor = LitRubyColor,
         headProvider = { head.offset.floatValue },
     )
 
@@ -1043,12 +1050,10 @@ internal fun KaraokeSweepText(
             // first copy's TextLayoutResult and clipped over the second, lands in the wrong place.
             // That includes the line cap: capping at 3 lines also ellipsised long lines into
             // "..." and dropped the rest of the words outright.
-            Text(
+            BasicText(
                 text = text,
-                style = style,
+                style = style.copy(fontWeight = FontWeight.Bold, textAlign = textAlign),
                 color = baseColor,
-                fontWeight = FontWeight.Bold,
-                textAlign = textAlign,
                 overflow = TextOverflow.Clip,
                 softWrap = !singleLine,
                 maxLines = if (singleLine) 1 else Int.MAX_VALUE,
@@ -1148,17 +1153,19 @@ internal fun KaraokeSweepText(
         }
 
         if (!subLine.isNullOrBlank()) {
-            Text(
+            BasicText(
                 text = subLine,
-                style = MaterialTheme.typography.bodyLarge,
-                color = baseColor.copy(alpha = 0.6f),
-                textAlign = textAlign,
+                style = MaterialTheme.typography.bodyLarge.copy(textAlign = textAlign),
+                color = { baseColor().copy(alpha = 0.6f) },
                 overflow = TextOverflow.Clip,
                 modifier = Modifier.padding(top = 3.dp),
             )
         }
     }
 }
+
+private val DefaultRubyColor = ColorProducer { Color.White.copy(alpha = 0.4f) }
+private val LitRubyColor = ColorProducer { Color.White }
 
 internal class LyricLineParts(
     val lead: String,
@@ -1255,7 +1262,7 @@ private val WhitespaceRun = Regex("\\s{2,}")
 @Composable
 private fun BackingVocalLine(
     text: String,
-    color: Color,
+    color: ColorProducer,
     slide: Boolean,
     words: List<com.example.musicfy.lyrics.WordTimestamp>?,
     positionProvider: () -> Long,
@@ -1317,7 +1324,7 @@ private fun BackingVocalLine(
                 words = words!!,
                 positionProvider = positionProvider,
                 waveAmplitudeProvider = waveAmplitudeProvider,
-                baseColor = color.copy(alpha = ActiveUnsungAlpha),
+                baseColor = { color().copy(alpha = ActiveUnsungAlpha) },
                 highlightColor = Color.White,
                 fontSize = BackingVocalFontSize,
                 lineHeight = BackingVocalLineHeight,
@@ -1327,17 +1334,17 @@ private fun BackingVocalLine(
                 riseAmplitudeProvider = riseAmplitudeProvider,
             )
         } else {
-            Text(
+            BasicText(
                 text = text,
                 // Same font features as the karaoke copy, so the line keeps its width (and its
                 // wrapping) when it switches between the two.
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontSize = BackingVocalFontSize,
                     lineHeight = BackingVocalLineHeight,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = textAlign,
                 ).withLetterMotionFeatures(wordMotion),
-                fontWeight = FontWeight.Bold,
                 color = color,
-                textAlign = textAlign,
                 overflow = TextOverflow.Clip,
             )
         }
@@ -1878,19 +1885,11 @@ private fun rememberKaraokeHead(
 
     LaunchedEffect(text, timed, positionProvider, wordMotion) {
 
-        var lastTick = -1L
-        var lastTickAtMs = 0L
-        var lastFrameMs = -1L
+        var lastFrameNanos = -1L
         while (true) {
-            withFrameMillis { frameMs ->
-                val tick = positionProvider()
-                if (tick != lastTick) {
-                    lastTick = tick
-                    lastTickAtMs = frameMs
-                }
-
-                val elapsed = (frameMs - lastTickAtMs).coerceIn(0L, 120L)
-                val positionSec = (tick + elapsed) / 1000.0
+            withFrameNanos { frameNanos ->
+                // the provider is a playback clock that already moves on the frame's own time, so no guessing between polls
+                val positionSec = positionProvider() / 1000.0
 
                 var next = 0f
                 var nextGlow = 0f
@@ -1969,7 +1968,7 @@ private fun rememberKaraokeHead(
                 if (glowNext != glowNow) head.glow.floatValue = glowNext
 
                 if (wordMotion && head.cellCount > 0) {
-                    val dt = if (lastFrameMs < 0L) 0.016f else ((frameMs - lastFrameMs) / 1000f).coerceIn(0f, 0.064f)
+                    val dt = if (lastFrameNanos < 0L) 0.016f else ((frameNanos - lastFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.064f)
                     val cells = head.cells
                     var changed = false
                     for (c in 0 until head.cellCount) {
@@ -2004,7 +2003,7 @@ private fun rememberKaraokeHead(
                     }
                     if (changed) head.motionTick.intValue++
                 }
-                lastFrameMs = frameMs
+                lastFrameNanos = frameNanos
             }
         }
     }
@@ -2062,13 +2061,18 @@ private fun buildMotionLayout(
 ): MotionLayout {
     val text = layout.layoutInput.text.text
     val tiled = head.cells.tiled
-    val cells = ArrayList<Int>()
-    val lines = ArrayList<Int>()
-    val segStarts = ArrayList<Int>()
-    val segEnds = ArrayList<Int>()
-    val lefts = ArrayList<Float>()
-    val rights = ArrayList<Float>()
+    // only a whole word that wraps becomes more than one piece, at most one extra per line break
+    val capacity = head.cellCount + layout.lineCount
+    val cells = IntArray(capacity)
+    val lines = IntArray(capacity)
+    val segStarts = IntArray(capacity)
+    val segEnds = IntArray(capacity)
+    val lefts = FloatArray(capacity)
+    val rights = FloatArray(capacity)
+    var n = 0
     if (text.isNotEmpty() && layout.lineCount > 0) {
+        // every letter's box in one go: asking one letter at a time re-measured the line from its start for each, which hitched long lines
+        val boxes = layout.multiParagraph.fillBoundingBoxes(TextRange(0, text.length), FloatArray(text.length * 4), 0)
         for (c in 0 until head.cellCount) {
             val start = head.cells.starts[c].coerceIn(0, text.length)
             val end = head.cells.ends[c].coerceIn(start, text.length)
@@ -2081,22 +2085,21 @@ private fun buildMotionLayout(
                 var right = Float.NEGATIVE_INFINITY
                 for (i in segStart until segEnd) {
                     if (text[i].isWhitespace()) continue
-                    val bounds = layout.getBoundingBox(i)
-                    left = minOf(left, bounds.left)
-                    right = maxOf(right, bounds.right)
+                    left = minOf(left, boxes[i * 4])
+                    right = maxOf(right, boxes[i * 4 + 2])
                 }
-                if (left > right) continue
-                cells += c
-                lines += line
-                segStarts += segStart
-                segEnds += segEnd
-                lefts += left
-                rights += right
+                if (left > right || n >= capacity) continue
+                cells[n] = c
+                lines[n] = line
+                segStarts[n] = segStart
+                segEnds[n] = segEnd
+                lefts[n] = left
+                rights[n] = right
+                n++
             }
         }
     }
 
-    val n = cells.size
     val lastLine = layout.lineCount - 1
     val clipLeft = FloatArray(n)
     val clipRight = FloatArray(n)
@@ -2145,11 +2148,11 @@ private fun buildMotionLayout(
     return MotionLayout(
         count = n,
         tiled = tiled,
-        cell = cells.toIntArray(),
+        cell = cells.copyOf(n),
         word = IntArray(n) { head.cells.word[cells[it]] },
-        line = lines.toIntArray(),
-        coreLeft = lefts.toFloatArray(),
-        coreRight = rights.toFloatArray(),
+        line = lines.copyOf(n),
+        coreLeft = lefts.copyOf(n),
+        coreRight = rights.copyOf(n),
         clipLeft = clipLeft,
         clipTop = clipTop,
         clipRight = clipRight,

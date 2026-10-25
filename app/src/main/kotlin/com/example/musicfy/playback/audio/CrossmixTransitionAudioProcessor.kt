@@ -6,6 +6,8 @@ import androidx.media3.common.util.UnstableApi
 import com.example.musicfy.crossmix.CrossmixRole
 import com.example.musicfy.crossmix.CrossmixStyle
 import com.example.musicfy.crossmix.FxParams
+import com.example.musicfy.crossmix.evaluate
+import com.example.musicfy.constants.TransportEffect
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -58,6 +60,9 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         val calibrationNanos: Long,
         /** the two songs would sing over each other: the outgoing voice is dampened and drawn away */
         val yieldVocals: Boolean = false,
+        // a pause, play or skip fade instead of a song-to-song style: beat runs 0..lengthBeats across transportLengthMs
+        val transport: TransportEffect? = null,
+        val transportLengthMs: Float = 0f,
     )
 
     @Volatile private var script: Script? = null
@@ -359,8 +364,13 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                     params.reset()
                     if (s.role == CrossmixRole.Outgoing) params.gain = 1f
                 } else {
-                    s.style.evaluate(s.role, beat, s.lengthBeats, s.variation, params)
-                    if (s.yieldVocals) s.style.yieldVocals(s.role, beat, s.lengthBeats, s.variation, params)
+                    val move = s.transport
+                    if (move != null) {
+                        move.evaluate(s.role, beat / s.lengthBeats, s.transportLengthMs, params)
+                    } else {
+                        s.style.evaluate(s.role, beat, s.lengthBeats, s.variation, params)
+                        if (s.yieldVocals) s.style.yieldVocals(s.role, beat, s.lengthBeats, s.variation, params)
+                    }
                     currentBeat = beat
                     if (beat >= -0.5f) scriptHeard = true
                 }

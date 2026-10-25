@@ -38,6 +38,9 @@ private val HeaderEndMargin = LyricsHeaderArtX
 /** A title too long for the header fades out over this much of its right end. */
 private val TitleEndFade = 20.dp
 
+// the player row's own edge fade, so the flying title lands looking exactly like the one it hands over to
+private val RowEndFade = 10.dp
+
 private val CollapsedTitleSize = 18.sp
 private val CollapsedArtistSize = 14.sp
 
@@ -50,10 +53,7 @@ fun MorphingSongInfo(
     /** the screen's width, for how far the header title may run */
     screenWidth: Dp,
     modifier: Modifier = Modifier,
-    /**
-     * The player sheet's progress. With a page left open, the header title stays up while the
-     * player closes and opens, and fades with the rest of the page then.
-     */
+    // the sheet's progress, only to skip composing this while collapsed; the player content around it does the fading
     sheetProgressProvider: () -> Float = { 1f },
     /**
      * The player's own title hides the moment this starts and this takes its place, drawn exactly
@@ -99,8 +99,7 @@ fun MorphingSongInfo(
                 val progress = lyricsProgressProvider()
                 val source = sourceRectProvider()?.takeIf { it.width > 1f && it.height > 1f }
                 // flies from the player's title; with no usable rect for it, it fades in in place
-                val fadeIn = if (handOff && source != null) 1f else (progress / 0.35f).coerceIn(0f, 1f)
-                alpha = fadeIn * sheetFade(sheetProgressProvider())
+                alpha = if (handOff && source != null) 1f else (progress / 0.35f).coerceIn(0f, 1f)
                 transformOrigin = TransformOrigin(0f, 0f)
                 translationX = if (source != null) androidx.compose.ui.util.lerp(source.left, targetXPx, progress) else targetXPx
                 translationY = if (source != null) androidx.compose.ui.util.lerp(source.top, targetYPx, progress) else targetYPx
@@ -117,8 +116,9 @@ fun MorphingSongInfo(
                     val sourceWidth = sourceRectProvider()?.width?.takeIf { it > 1f } ?: headerWidthPx
                     val shownWidth = androidx.compose.ui.util.lerp(sourceWidth, headerWidthPx, progress)
                     clipRect(right = shownWidth) { this@drawWithContent.drawContent() }
+                    val fadePx = androidx.compose.ui.util.lerp(RowEndFade.toPx(), TitleEndFade.toPx(), progress)
                     drawRect(
-                        brush = window.fadeAt(shownWidth, TitleEndFade.toPx()),
+                        brush = window.fadeAt(shownWidth, fadePx),
                         size = size.copy(width = shownWidth),
                         blendMode = BlendMode.DstIn,
                     )
@@ -180,9 +180,12 @@ private class TitleWindow {
     private var width = -1f
     private var brush: Brush = Brush.horizontalGradient(listOf(Color.Black, Color.Black))
 
+    private var fade = -1f
+
     fun fadeAt(shownWidth: Float, fadePx: Float): Brush {
-        if (shownWidth != width) {
+        if (shownWidth != width || fadePx != fade) {
             width = shownWidth
+            fade = fadePx
             brush = Brush.horizontalGradient(
                 0f to Color.Black,
                 1f to Color.Transparent,

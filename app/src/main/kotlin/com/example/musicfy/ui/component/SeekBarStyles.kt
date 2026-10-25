@@ -2,6 +2,7 @@ package com.example.musicfy.ui.component
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -99,8 +100,16 @@ fun SeekBarTrack(
     active: Boolean = false,
     loading: Boolean = false,
     clockRunning: Boolean = true,
+    // how far the bar has opened under the finger, 0 to 1; without it the bar springs open on its own while active
+    expandProvider: (() -> Float)? = null,
 ) {
     val wavy = style == SeekBarStyle.M3_EXPRESSIVE || style == SeekBarStyle.M3_EXPRESSIVE_LINE
+    val ownExpand = animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = SeekBarExpandSpring,
+        label = "seekExpand",
+    )
+    val expand = expandProvider ?: { ownExpand.value }
 
     // The wave flattens out when playback is paused, the user grabs the bar, or the track is still
     // loading, so the shape always reflects whether audio is actually moving.
@@ -131,8 +140,9 @@ fun SeekBarTrack(
         }
     }
 
+    // fixed room for the fully open bar (and its spring's overshoot), so opening it only redraws and never moves anything
     val height: Dp = when (style) {
-        SeekBarStyle.DEFAULT -> if (active) 14.dp else 7.dp
+        SeekBarStyle.DEFAULT -> 16.dp
         SeekBarStyle.M3_EXPRESSIVE, SeekBarStyle.M3_EXPRESSIVE_LINE -> 20.dp
         SeekBarStyle.PLAIN -> 16.dp
     }
@@ -143,17 +153,19 @@ fun SeekBarTrack(
             .height(height)
     ) {
         val f = fractionProvider().coerceIn(0f, 1f)
+        val open = expand()
         val phase = if (wavy && waveScale > 0f) {
             (clockMs.longValue % WaveSpeedMillis) / WaveSpeedMillis.toFloat()
         } else {
             0f
         }
         when (style) {
-            SeekBarStyle.DEFAULT -> drawDefaultTrack(f, activeColor, inactiveColor)
-            SeekBarStyle.PLAIN -> drawPlainTrack(f, activeColor, inactiveColor)
+            SeekBarStyle.DEFAULT -> drawDefaultTrack(f, open, activeColor, inactiveColor)
+            SeekBarStyle.PLAIN -> drawPlainTrack(f, open, activeColor, inactiveColor)
             SeekBarStyle.M3_EXPRESSIVE -> drawWavyTrack(
                 path = wavePath,
                 fraction = f,
+                open = open,
                 phase = phase,
                 waveScale = waveScale,
                 activeColor = activeColor,
@@ -163,6 +175,7 @@ fun SeekBarTrack(
             SeekBarStyle.M3_EXPRESSIVE_LINE -> drawWavyTrack(
                 path = wavePath,
                 fraction = f,
+                open = open,
                 phase = phase,
                 waveScale = waveScale,
                 activeColor = activeColor,
@@ -176,7 +189,7 @@ fun SeekBarTrack(
                 progress = LoadingSweepEasing.transform(t),
                 color = activeColor,
                 alpha = loadingAlpha,
-                thick = style == SeekBarStyle.DEFAULT,
+                thickness = if (style == SeekBarStyle.DEFAULT) defaultBarThickness(open) else null,
             )
         }
     }
@@ -186,10 +199,10 @@ fun SeekBarTrack(
  * A soft light running along the bar while the track loads. It fades in at its leading edge and
  * out at its tail, so it reads as light passing through the bar rather than a block moving on it.
  */
-private fun DrawScope.drawLoadingSweep(progress: Float, color: Color, alpha: Float, thick: Boolean) {
+private fun DrawScope.drawLoadingSweep(progress: Float, color: Color, alpha: Float, thickness: Dp?) {
     val y = size.height / 2f
-    val stroke = if (thick) size.height else 4.dp.toPx()
-    val inset = if (thick) size.height / 2f else 0f
+    val stroke = thickness?.toPx() ?: 4.dp.toPx()
+    val inset = if (thickness != null) stroke / 2f else 0f
     val length = size.width * LoadingSweepLength
     val centre = -length / 2f + (size.width + length) * progress
     val from = centre - length / 2f
@@ -214,8 +227,17 @@ private fun DrawScope.drawLoadingSweep(progress: Float, color: Color, alpha: Flo
 
 private enum class ThumbShape { ROUND, LINE }
 
-private fun DrawScope.drawDefaultTrack(fraction: Float, activeColor: Color, inactiveColor: Color) {
-    val h = size.height
+// one spring for the bar opening under the finger and everything that moves with it
+val SeekBarExpandSpring = spring<Float>(dampingRatio = 0.72f, stiffness = 520f)
+
+// the default bar is 7dp at rest and 14dp held
+private fun defaultBarThickness(open: Float): Dp = (7f + 7f * open).dp
+
+// thin bars get a touch thicker and their thumb a touch bigger while held
+private fun heldStroke(open: Float): Dp = (4f + 2f * open).dp
+
+private fun DrawScope.drawDefaultTrack(fraction: Float, open: Float, activeColor: Color, inactiveColor: Color) {
+    val h = defaultBarThickness(open).toPx()
     val y = size.height / 2f
     drawLine(
         color = inactiveColor,
@@ -234,10 +256,10 @@ private fun DrawScope.drawDefaultTrack(fraction: Float, activeColor: Color, inac
     )
 }
 
-private fun DrawScope.drawPlainTrack(fraction: Float, activeColor: Color, inactiveColor: Color) {
+private fun DrawScope.drawPlainTrack(fraction: Float, open: Float, activeColor: Color, inactiveColor: Color) {
     val y = size.height / 2f
-    val stroke = 4.dp.toPx()
-    val thumbRadius = 7.dp.toPx()
+    val stroke = heldStroke(open).toPx()
+    val thumbRadius = (7f + 1f * open).dp.toPx()
     drawLine(
         color = inactiveColor,
         start = Offset(0f, y),
@@ -263,6 +285,7 @@ private fun DrawScope.drawPlainTrack(fraction: Float, activeColor: Color, inacti
 private fun DrawScope.drawWavyTrack(
     path: Path,
     fraction: Float,
+    open: Float,
     phase: Float,
     waveScale: Float,
     activeColor: Color,
@@ -270,7 +293,7 @@ private fun DrawScope.drawWavyTrack(
     thumb: ThumbShape,
 ) {
     val y = size.height / 2f
-    val stroke = 4.dp.toPx()
+    val stroke = heldStroke(open).toPx()
     val wavelength = WaveLength.toPx()
     val amplitude = WaveAmplitude.toPx() * waveScale
 
@@ -311,12 +334,12 @@ private fun DrawScope.drawWavyTrack(
     }
 
     when (thumb) {
-        ThumbShape.ROUND -> drawCircle(color = activeColor, radius = 7.dp.toPx(), center = Offset(x, y))
+        ThumbShape.ROUND -> drawCircle(color = activeColor, radius = (7f + 2f * open).dp.toPx(), center = Offset(x, y))
         ThumbShape.LINE -> drawLine(
             color = activeColor,
             start = Offset(x, y - size.height / 2.4f),
             end = Offset(x, y + size.height / 2.4f),
-            strokeWidth = 4.dp.toPx(),
+            strokeWidth = (4f + 1f * open).dp.toPx(),
             cap = StrokeCap.Round,
         )
     }

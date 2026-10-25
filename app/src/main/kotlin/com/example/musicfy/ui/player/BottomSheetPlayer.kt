@@ -822,27 +822,6 @@ private fun PlayerSheet(
                     },
                     onArtBoundsChanged = { rects.cover = it },
                 )
-                if (playerStyle.flagshipFamily) MorphingSongInfo(
-                    trackInfo = trackInfo,
-                    lyricsProgressProvider = { lyricsProgress },
-                    sourceRectProvider = { songInfoSourceRect },
-                    sheetProgressProvider = progressProvider,
-
-                    targetY = statusBarTopInset + 38.dp,
-                    screenWidth = screenWidth,
-                    // the Turntable's title is set differently, so its header title fades in over it
-                    handOff = !isTurntable,
-                )
-                // Above the title after a like, moving with it into the lyrics/queue header.
-                if (playerStyle.flagshipFamily) LikedLabel(
-                    likeCount = likeBurst.likeCount,
-                    mixing = playerConnection.isCrossmixing.collectAsState().value,
-                    sourceRectProvider = { songInfoSourceRect },
-                    headerTitleX = LyricsHeaderArtX + LyricsHeaderArtSize + 18.dp,
-                    headerTitleY = statusBarTopInset + 38.dp,
-                    lyricsProgressProvider = { lyricsProgress },
-                    sheetProgressProvider = progressProvider,
-                )
             },
             onDismiss = {
                 playerConnection.service.clearAutomix()
@@ -994,6 +973,29 @@ private fun PlayerSheet(
                         .pageTransitionLayer(PlayerPage.QUEUE, transition, morph) { queuePageProgress },
                 )
             }
+
+            // the title flying between the player and the page header, drawn over the seam blur and the growing card so it never slides under them and pops back in
+            MorphingSongInfo(
+                trackInfo = trackInfo,
+                lyricsProgressProvider = { lyricsProgress },
+                sourceRectProvider = { songInfoSourceRect },
+                sheetProgressProvider = progressProvider,
+
+                targetY = statusBarTopInset + 38.dp,
+                screenWidth = screenWidth,
+                // the Turntable's title is set differently, so its header title fades in over it
+                handOff = !isTurntable,
+            )
+            // Above the title after a like, moving with it into the lyrics/queue header.
+            LikedLabel(
+                likeCount = likeBurst.likeCount,
+                mixing = playerConnection.isCrossmixing.collectAsState().value,
+                sourceRectProvider = { songInfoSourceRect },
+                headerTitleX = LyricsHeaderArtX + LyricsHeaderArtSize + 18.dp,
+                headerTitleY = statusBarTopInset + 38.dp,
+                lyricsProgressProvider = { lyricsProgress },
+                sheetProgressProvider = progressProvider,
+            )
 
             if ((showDeck || (barLifted && showPlayerBottomCard)) && deckMounted) {
                 PlayerBottomCardStack(

@@ -272,10 +272,14 @@ private fun BoxScope.BannerBlurBand(
             Brush.verticalGradient(0f to Color.Transparent, 0.55f to Color.Black.copy(alpha = 0.85f), 1f to Color.Black)
         }
     }
+    // high quality on android 13+ grows the blur toward the edge in one pass; a faded fixed blur bloomed around bright parts
+    val smooth = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+        com.example.musicfy.ui.component.LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
     DownscaledBlur(
         radius = { BlurEffectCache.effectiveRadius(radius) },
         tileMode = Shader.TileMode.CLAMP,
         mask = mask,
+        growDown = if (smooth) !atTop else null,
         modifier = Modifier
             .align(if (atTop) Alignment.TopCenter else Alignment.BottomCenter)
             .fillMaxWidth()

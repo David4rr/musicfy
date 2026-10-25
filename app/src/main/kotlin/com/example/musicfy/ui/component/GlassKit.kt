@@ -274,8 +274,65 @@ private class MaskedEffectCache {
     var width = -1f
     var height = -1f
     var tileOrdinal = -1
+    var grow = -1
     var mask: Brush? = null
     var effect: RenderEffect? = null
+}
+
+// one separable gaussian pass whose radius grows row by row (maxRadius * t^2), edges averaged from real pixels only
+private const val VariableBlurSource = """
+uniform shader content;
+uniform float2 dir;
+uniform float2 size;
+uniform float maxRadius;
+uniform float growDown;
+
+half4 main(float2 p) {
+    float t = clamp(p.y / size.y, 0.0, 1.0);
+    if (growDown < 0.5) { t = 1.0 - t; }
+    float r = maxRadius * t * t;
+    if (r < 0.5) { return content.eval(p); }
+    float stepPx = (0.57735 * r + 0.5) * 0.25;
+    half4 sum = half4(0.0);
+    float total = 0.0;
+    for (int i = -12; i <= 12; i++) {
+        float2 q = p + dir * (float(i) * stepPx);
+        float inside = step(0.0, q.x) * step(q.x, size.x) * step(0.0, q.y) * step(q.y, size.y);
+        float w = exp(-0.03125 * float(i * i)) * inside;
+        sum += content.eval(q) * half(w);
+        total += w;
+    }
+    return sum / half(max(total, 0.0001));
+}
+"""
+
+// compiled once on first use; every effect built from it keeps the uniforms it was built with
+private object VariableBlurShader {
+    var shader: Any? = null
+}
+
+// sharp at one end and maxRadius at the other in one go; stacked faded copies made every bright edge bloom
+@RequiresApi(33)
+private fun variableBlurEffect(maxRadius: Float, width: Float, height: Float, growDown: Boolean, mask: android.graphics.Shader?): RenderEffect {
+    val shader = VariableBlurShader.shader ?: createAgslShader(VariableBlurSource).also { VariableBlurShader.shader = it }
+    shader.setAgslUniform("size", width, height)
+    shader.setAgslUniform("maxRadius", maxRadius)
+    shader.setAgslUniform("growDown", if (growDown) 1f else 0f)
+    shader.setAgslUniform("dir", 1f, 0f)
+    val across = agslRenderEffect(shader, "content")
+    shader.setAgslUniform("dir", 0f, 1f)
+    val down = agslRenderEffect(shader, "content")
+    val blurred = android.graphics.RenderEffect.createChainEffect(down, across)
+    val effect = if (mask != null) {
+        android.graphics.RenderEffect.createBlendModeEffect(
+            blurred,
+            android.graphics.RenderEffect.createShaderEffect(mask),
+            android.graphics.BlendMode.DST_IN,
+        )
+    } else {
+        blurred
+    }
+    return effect.asComposeRenderEffect()
 }
 
 /**
@@ -313,6 +370,8 @@ internal fun DownscaledBlur(
     modifier: Modifier = Modifier,
     /** Draw into a buffer of its own even without a blur, for a [draw] that erases with blend modes. */
     offscreen: (() -> Boolean)? = null,
+    // set to grow the blur from sharp to radius across the height (true: strongest at the bottom), android 13+ only
+    growDown: Boolean? = null,
     draw: DrawScope.(fullSize: Size) -> Unit,
 ) {
     val currentRadius by rememberUpdatedState(radius)
@@ -349,12 +408,31 @@ internal fun DownscaledBlur(
                     val r = currentRadius() / k
                     renderEffect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         val mode = tileMode ?: android.graphics.Shader.TileMode.DECAL
-                        if (mask is ShaderBrush) {
+                        if (growDown != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val quantized = if (r > 0.5f) BlurEffectCache.quantize(r) else 0f
+                            val grow = if (growDown) 1 else 0
+                            val cache = maskCache
+                            if (cache.effect == null || cache.radius != quantized || cache.width != size.width ||
+                                cache.height != size.height || cache.grow != grow || cache.mask != mask
+                            ) {
+                                cache.effect = variableBlurEffect(
+                                    quantized, size.width, size.height, growDown, (mask as? ShaderBrush)?.createShader(size),
+                                )
+                                cache.radius = quantized
+                                cache.width = size.width
+                                cache.height = size.height
+                                cache.grow = grow
+                                cache.tileOrdinal = -1
+                                cache.mask = mask
+                            }
+                            cache.effect
+                        } else if (mask is ShaderBrush) {
                             val quantized = if (r > 0.5f) BlurEffectCache.quantize(r) else 0f
                             val cache = maskCache
                             if (cache.effect == null || cache.radius != quantized || cache.width != size.width ||
                                 cache.height != size.height || cache.tileOrdinal != mode.ordinal || cache.mask != mask
                             ) {
+                                cache.grow = -1
                                 cache.effect = maskedBlurEffect(quantized, mode, mask.createShader(size))
                                 cache.radius = quantized
                                 cache.width = size.width
@@ -415,6 +493,8 @@ fun GlassPillBackground(
      * outside the bounds, so the parent has to clip.
      */
     bleed: Boolean = false,
+    // grows the blur from sharp at the start to blurRadius at the far end, in one pass (android 13+)
+    progressive: BlurDirection? = null,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
@@ -434,6 +514,7 @@ fun GlassPillBackground(
         radius = radius,
         tileMode = tileMode,
         mask = mask,
+        growDown = progressive?.let { it == BlurDirection.TopToBottom },
         modifier = modifier
             .then(if (shape != null) Modifier.clip(shape) else Modifier)
             .then(
@@ -482,6 +563,31 @@ fun ProgressiveGlassBackground(
     modifier: Modifier = Modifier,
     steps: Int = 5
 ) {
+    val smooth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+    if (smooth) {
+        // high quality: one pass whose radius grows row by row, faded in where the first step used to fade in
+        val fade = 1f / steps.coerceAtLeast(1)
+        val mask = remember(direction, fade) {
+            if (direction == BlurDirection.TopToBottom) {
+                Brush.verticalGradient(0f to Color.Transparent, fade to Color.Black, 1f to Color.Black)
+            } else {
+                Brush.verticalGradient(0f to Color.Black, (1f - fade) to Color.Black, 1f to Color.Transparent)
+            }
+        }
+        Box(modifier = modifier) {
+            GlassPillBackground(
+                state = state,
+                blurRadius = maxBlurRadius,
+                tint = tint,
+                foundationColor = foundationColor,
+                mask = mask,
+                progressive = direction,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        return
+    }
     Box(modifier = modifier) {
         for (i in 1..steps) {
             val fraction = i.toFloat() / steps

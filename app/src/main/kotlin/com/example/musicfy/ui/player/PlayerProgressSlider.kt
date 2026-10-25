@@ -5,11 +5,10 @@ package com.example.musicfy.ui.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.StartOffset
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,36 +23,47 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.TextStyle
-import androidx.media3.common.Player
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorProducer
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.PlayerHorizontalPadding
-import com.example.musicfy.ui.component.PlayerSliderTrack
+import com.example.musicfy.ui.component.SeekBarExpandSpring
 import com.example.musicfy.utils.makeTimeString
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlin.math.abs
+import kotlin.math.exp
 
 @Composable
 fun PlayerProgressSlider(
@@ -81,20 +91,29 @@ fun PlayerProgressSlider(
     // only the bar and the time texts read the position, so a tick redraws them and not the whole slider
     val progress = remember { mutableStateOf(progressFlow.value) }
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
+    // a seek still on its way to the player: shown until it lands, so the bar doesn't flick back to where it was
+    var pendingSeek by remember { mutableStateOf<Long?>(null) }
     val durationKnown by remember {
         derivedStateOf { progress.value.duration.let { it != C.TIME_UNSET && it > 0L } }
     }
     val rangeEnd by remember { derivedStateOf { if (durationKnown) progress.value.duration.toFloat() else 0f } }
     val sliderState = remember(rangeEnd) {
-        val start = Snapshot.withoutReadObservation { sliderPosition ?: progress.value.position }
+        val start = Snapshot.withoutReadObservation { sliderPosition ?: pendingSeek ?: progress.value.position }
         SliderState(valueRange = 0f..rangeEnd).also { it.value = start.toFloat() }
     }
     LaunchedEffect(active, sliderState) {
         if (!active) return@LaunchedEffect
         progressFlow.collect { latest ->
             progress.value = latest
-            if (sliderPosition == null) sliderState.value = latest.position.toFloat()
+            pendingSeek?.let { if (abs(latest.position - it) < SeekLandedMs) pendingSeek = null }
+            if (sliderPosition == null) sliderState.value = (pendingSeek ?: latest.position).toFloat()
         }
+    }
+    // a seek the player never confirms (a failed stream, a song change) stops holding the bar after a moment
+    LaunchedEffect(pendingSeek) {
+        if (pendingSeek == null) return@LaunchedEffect
+        delay(SeekGiveUpMs)
+        pendingSeek = null
     }
     sliderState.onValueChange = { raw ->
         val position = raw.toLong()
@@ -102,11 +121,15 @@ fun PlayerProgressSlider(
         sliderState.value = position.toFloat()
     }
     sliderState.onValueChangeFinished = {
-        sliderPosition?.let { playerConnection.player.seekTo(it) }
+        sliderPosition?.let { target ->
+            playerConnection.player.seekTo(target)
+            pendingSeek = target
+        }
         sliderPosition = null
-        sliderState.value = progress.value.position.toFloat()
+        sliderState.value = (pendingSeek ?: progress.value.position).toFloat()
     }
-    val transportState by playerConnection.uiState.transportState.collectAsState()
+    val transport = playerConnection.uiState.transportState.collectAsState()
+    val transportState = transport.value
     val seekBarStyle by com.example.musicfy.utils.rememberEnumPreference(
         com.example.musicfy.constants.SeekBarStyleKey,
         com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
@@ -136,26 +159,45 @@ fun PlayerProgressSlider(
     val showBuffering by rememberSettled(buffering)
     val showLoading by rememberSettled(loadingTrack)
     // the time strings change once a second, so only their texts recompose on a tick
-    val elapsedText = remember { derivedStateOf { makeTimeString(sliderPosition ?: progress.value.position) } }
+    val elapsedText = remember {
+        derivedStateOf { makeTimeString(sliderPosition ?: pendingSeek ?: progress.value.position) }
+    }
     val endText = remember(showLoading, endTimestamp) {
         derivedStateOf {
             when {
                 !durationKnown || showLoading -> ""
                 endTimestamp == com.example.musicfy.constants.PlayerEndTimestamp.TIME_LEFT ->
-                    "-" + makeTimeString((progress.value.duration - (sliderPosition ?: progress.value.position)).coerceAtLeast(0L))
+                    "-" + makeTimeString((progress.value.duration - (sliderPosition ?: pendingSeek ?: progress.value.position)).coerceAtLeast(0L))
                 else -> makeTimeString(progress.value.duration)
             }
         }
     }
 
+    // the fill glides to wherever it's sent (a tap, a seek, a new song) and moves with the music every frame
+    val clock = remember(playerConnection) { PlaybackClock({ playerConnection.player }) }
+    val fill = remember { SeekFill() }
+    LaunchedEffect(active, fill, clock) {
+        if (!active) return@LaunchedEffect
+        fill.follow(
+            target = {
+                val duration = progress.value.duration
+                if (duration <= 0L) 0f else ((sliderPosition ?: pendingSeek ?: clock()).toFloat() / duration).coerceIn(0f, 1f)
+            },
+            moving = { transport.value.isPlaying || sliderPosition != null },
+        )
+    }
+
     val trackInteractionSource = remember { MutableInteractionSource() }
     val isTrackDragged by trackInteractionSource.collectIsDraggedAsState()
     val isTrackPressed by trackInteractionSource.collectIsPressedAsState()
-    val trackHeight by animateDpAsState(
-        targetValue = if (isTrackDragged || isTrackPressed) 14.dp else 7.dp,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 520f),
-        label = "playerProgressTrackHeight"
+    val held = isTrackDragged || isTrackPressed
+    // the bar opening under the finger, read only while drawing: the bar, its thumb and the times all ride it
+    val expand = animateFloatAsState(
+        targetValue = if (held) 1f else 0f,
+        animationSpec = SeekBarExpandSpring,
+        label = "playerSeekExpand",
     )
+    val timeColor = remember(expand) { ColorProducer { Color.White.copy(alpha = TimeRestAlpha + (1f - TimeRestAlpha) * expand.value) } }
 
     Row(
         modifier = modifier
@@ -166,24 +208,24 @@ fun PlayerProgressSlider(
             state = sliderState,
             interactionSource = trackInteractionSource,
             thumb = { Spacer(modifier = Modifier.size(0.dp)) },
-            track = { trackState ->
-                val range = trackState.valueRange
-                val span = (range.endInclusive - range.start).takeIf { it > 0f }
+            track = {
                 com.example.musicfy.ui.component.SeekBarTrack(
                     style = seekBarStyle,
-                    fractionProvider = { span?.let { (trackState.value - range.start) / it } ?: 0f },
+                    fractionProvider = { fill.fraction },
                     activeColor = barActiveColor,
                     inactiveColor = Color.White.copy(alpha = 0.24f),
                     animateWave = transportState.isPlaying,
-                    active = isTrackDragged || isTrackPressed,
+                    active = held,
                     loading = showBuffering,
                     clockRunning = active,
+                    expandProvider = { expand.value },
                 )
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(28.dp)
                 .padding(horizontal = PlayerHorizontalPadding)
+                .onSizeChanged { fill.widthPx = it.width.toFloat() }
                 .then(onSeekBarPlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier)
                 .then(seekBarModifier)
                 .streamFailureOverlay(failureProgress)
@@ -198,14 +240,15 @@ fun PlayerProgressSlider(
             .padding(horizontal = PlayerHorizontalPadding + 4.dp)
     ) {
         val timeStyle = MaterialTheme.typography.labelMedium
-        val timeColor = Color.White.copy(alpha = 0.85f)
+        val restColor = Color.White.copy(alpha = TimeRestAlpha)
         AnimatedContent(
             targetState = if (failureLabel != null) FailureKey else if (showLoading) LoadingKey else null,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
             label = "seekTimeLoading",
+            modifier = Modifier.timeLift(expand, pivotX = 0f),
         ) { state ->
             if (state == LoadingKey) {
-                LoadingLabel(style = timeStyle, color = timeColor)
+                LoadingLabel(style = timeStyle, color = restColor)
             } else if (state == FailureKey) {
                 Text(
                     text = failureLabel ?: "Error",
@@ -222,15 +265,17 @@ fun PlayerProgressSlider(
             text = endText,
             style = timeStyle,
             color = timeColor,
-            modifier = (onEndTimePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier).then(endTimeModifier),
+            modifier = (onEndTimePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier)
+                .then(endTimeModifier)
+                .timeLift(expand, pivotX = 1f),
         )
     }
 }
 
 /** A time label that reads its string itself, so only this text recomposes when the second changes. */
 @Composable
-private fun TimeText(text: State<String>, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
-    Text(
+private fun TimeText(text: State<String>, style: TextStyle, color: ColorProducer, modifier: Modifier = Modifier) {
+    BasicText(
         text = text.value,
         style = style,
         color = color,
@@ -239,6 +284,81 @@ private fun TimeText(text: State<String>, style: TextStyle, color: Color, modifi
         modifier = modifier,
     )
 }
+
+// the times drop and grow a touch as the bar opens, pinned to their outer edge so they never crowd the middle
+private fun Modifier.timeLift(expand: State<Float>, pivotX: Float): Modifier = graphicsLayer {
+    val open = expand.value
+    translationY = TimeDrop.toPx() * open
+    val s = 1f + TimeGrow * open
+    scaleX = s
+    scaleY = s
+    transformOrigin = TransformOrigin(pivotX, 0.5f)
+}
+
+private val TimeDrop = 4.dp
+private const val TimeGrow = 0.1f
+private const val TimeRestAlpha = 0.85f
+
+// the player has caught up once it reports within this of where the seek went
+private const val SeekLandedMs = 1_500L
+
+// how long a seek holds the bar if the player never says it landed
+private const val SeekGiveUpMs = 1_500L
+
+// critically damped follow speed for the fill: quick enough to stay under the finger, soft enough to glide a jump
+private const val FillOmega = 50f
+
+// the fill as drawn: chases where it's headed and only asks for a redraw once it has moved a quarter of a pixel
+@Stable
+private class SeekFill {
+    var fraction by mutableFloatStateOf(0f)
+        private set
+
+    // the bar's width, so tiny moves can be skipped
+    var widthPx = 0f
+
+    private var shown = 0f
+    private var velocity = 0f
+
+    suspend fun follow(target: () -> Float, moving: () -> Boolean) {
+        shown = target()
+        velocity = 0f
+        fraction = shown
+        while (true) {
+            // asleep while paused and in place; a seek, a scrub, a new song or play wakes it
+            snapshotFlow { moving() || abs(target() - shown) > SettledFraction }.first { it }
+            var lastNanos = 0L
+            while (true) {
+                val settled = withFrameNanos { now ->
+                    val dt = if (lastNanos == 0L) 1f / 120f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+                    lastNanos = now
+                    val to = target()
+                    step(to, dt)
+                    !moving() && abs(to - shown) < SettledFraction && abs(velocity) < SettledSpeed
+                }
+                if (settled) {
+                    shown = target()
+                    velocity = 0f
+                    fraction = shown
+                    break
+                }
+            }
+        }
+    }
+
+    private fun step(to: Float, dt: Float) {
+        val y = shown - to
+        val e = exp(-FillOmega * dt)
+        val tmp = (velocity + FillOmega * y) * dt
+        shown = to + (y + tmp) * e
+        velocity = (velocity - FillOmega * tmp) * e
+        val minStep = if (widthPx > 0f) 0.25f / widthPx else 0f
+        if (abs(shown - fraction) >= minStep) fraction = shown
+    }
+}
+
+private const val SettledFraction = 0.0002f
+private const val SettledSpeed = 0.002f
 
 /** Stand for the loading and failure labels in the time's switch, so the failure's ticking text doesn't re-fade each second. */
 private const val LoadingKey = "\u0000loading"
@@ -254,7 +374,7 @@ private const val LoadingShowDelayMs = 200L
 @Composable
 private fun rememberSettled(value: Boolean): State<Boolean> = produceState(initialValue = false, value) {
     if (value) {
-        kotlinx.coroutines.delay(LoadingShowDelayMs)
+        delay(LoadingShowDelayMs)
         this.value = true
     } else {
         this.value = false

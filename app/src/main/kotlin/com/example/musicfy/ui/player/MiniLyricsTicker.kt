@@ -218,8 +218,9 @@ internal fun MiniLyricsTicker(
     val playerConnection = LocalPlayerConnection.current ?: return
     val tall by remember { derivedStateOf { growthProvider() > 0.5f } }
     val rowPx = with(LocalDensity.current) { PlayerCardHeight.roundToPx() }
+    // frame-accurate, so the card's sweep and gap dots glide instead of stepping with the poller
     val positionProvider = remember(playerConnection) {
-        { playerConnection.progressState.value.position + playerConnection.lyricsOffsetMs.value }
+        PlaybackClock({ playerConnection.player }, { playerConnection.lyricsOffsetMs.value.toLong() })
     }
     val slot by remember(lines, playerConnection) {
         combine(playerConnection.progressState, playerConnection.lyricsOffsetMs) { progress, offsetMs ->
@@ -593,7 +594,7 @@ private fun TickerLine(
                     positionProvider = positionProvider,
                     waveAmplitudeProvider = { if (waveEnabled) 1f else 0f },
                     riseAmplitudeProvider = { 1f },
-                    baseColor = Color.White.copy(alpha = UnsungAlpha),
+                    baseColor = { Color.White.copy(alpha = UnsungAlpha) },
                     highlightColor = Color.White,
                     fontSize = TickerFontSize,
                     lineHeight = TickerLineHeight,

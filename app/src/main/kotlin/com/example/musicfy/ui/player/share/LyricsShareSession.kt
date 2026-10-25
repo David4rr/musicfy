@@ -187,17 +187,6 @@ internal class LyricsShareSession(
         if (look.plain) looks.remove(key) else looks[key] = look
     }
 
-    /** True when every word on the picked lines has this on. */
-    fun allHave(of: (WordLook) -> Boolean): Boolean =
-        chosen.isNotEmpty() && chosen.all { (line, text) -> wordsOf(text).indices.all { of(look(WordKey(line, it))) } }
-
-    /** Turns one look on or off for every picked word, keeping their other looks. */
-    fun setForAll(change: (WordLook) -> WordLook) {
-        chosen.forEach { (line, text) ->
-            wordsOf(text).indices.forEach { word -> WordKey(line, word).let { setLook(it, change(look(it))) } }
-        }
-    }
-
     /** The cover's colours first, then near-black, then white, like Spotify's own card choices. */
     fun cardColorOr(fallback: Color): Color = when (val i = cardColor) {
         in palette.indices -> palette[i]

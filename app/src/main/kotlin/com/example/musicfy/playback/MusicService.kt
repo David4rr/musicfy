@@ -85,6 +85,13 @@ import com.example.musicfy.constants.DontSkipOnFailureKey
 import com.example.musicfy.constants.StreamFailureTimeoutKey
 import com.example.musicfy.constants.CrossfadeDurationKey
 import com.example.musicfy.constants.CrossfadeEnabledKey
+import com.example.musicfy.constants.TransportEffect
+import com.example.musicfy.constants.TransportEffectKey
+import com.example.musicfy.constants.TransportFadeDefaultSeconds
+import com.example.musicfy.constants.TransportFadeEnabledKey
+import com.example.musicfy.constants.TransportFadeMaxSeconds
+import com.example.musicfy.constants.TransportFadeMinSeconds
+import com.example.musicfy.constants.TransportFadeSecondsKey
 import com.example.musicfy.constants.CrossfadeGaplessKey
 import com.example.musicfy.constants.CrossmixMode
 import com.example.musicfy.constants.CrossmixModeKey
@@ -435,6 +442,8 @@ class MusicService :
         CrossmixAnalysisRepository(applicationContext) { createDataSourceFactory() }
     }
     private val crossmixDirector by lazy { CrossmixDirector(scope, CrossmixHost(), crossmixAnalysisRepository) }
+    // fades and layered effects for pause, play and skips; the app's buttons and the media session both go through it
+    val transport by lazy { TransportTransitions({ scope }, TransportHost()) }
     /** Crossmix is playing two songs together right now, for the player's "Mixing…" note */
     val crossmixMixing = MutableStateFlow(false)
     /** what Crossmix last decided, in a line, for its test tools in Experimental */
@@ -662,7 +671,7 @@ class MusicService :
         }
         mediaSession =
             MediaLibrarySession
-                .Builder(this, player, mediaLibrarySessionCallback)
+                .Builder(this, TransportFadingPlayer(player, transport), mediaLibrarySessionCallback)
                 .setSessionActivity(
                     PendingIntent.getActivity(
                         this,
@@ -795,7 +804,8 @@ class MusicService :
         combine(playerVolume, isMuted) { volume, muted ->
             if (muted) 0f else volume
         }.collectLatest(scope) {
-            player.volume = it
+            // a running pause or skip fade sets the volume itself each frame, scaled by this
+            if (!transport.isFading) player.volume = it
             if (crossmixDirector.isTransitioning) fadingPlayer?.volume = it
         }
 
@@ -834,6 +844,21 @@ class MusicService :
                 }
             }
         }
+
+        dataStore.data
+            .map { prefs ->
+                Triple(
+                    prefs[TransportFadeEnabledKey] ?: true,
+                    prefs[TransportFadeSecondsKey] ?: TransportFadeDefaultSeconds,
+                    prefs[TransportEffectKey].toEnum(TransportEffect.OFF),
+                )
+            }
+            .distinctUntilChanged()
+            .collect(scope) { (enabled, seconds, effect) ->
+                transport.enabled = enabled
+                transport.lengthMs = seconds.coerceIn(TransportFadeMinSeconds, TransportFadeMaxSeconds) * 1_000f
+                transport.effect = effect
+            }
 
         dataStore.data
             .map { (it[SkipSilenceKey] ?: false) to (it[SkipSilenceInstantKey] ?: false) }
@@ -4096,7 +4121,7 @@ class MusicService :
         sleepTimer.player = player
 
         try {
-            (mediaSession as MediaSession).player = player
+            (mediaSession as MediaSession).player = TransportFadingPlayer(player, transport)
         } catch (e: Exception) {
             timber.log.Timber.e(e, "Failed to swap player in MediaSession")
         }
@@ -4339,6 +4364,22 @@ class MusicService :
         length > 0 && downloadCache.isCached(mediaId, 0, length)
     }.getOrDefault(false)
 
+    // what the pause, play and skip fades need from the service
+    private inner class TransportHost : TransportTransitions.Host {
+        override val player: ExoPlayer get() = this@MusicService.player
+
+        override fun processorFor(player: ExoPlayer): CrossmixTransitionAudioProcessor? = playerCrossmixProcessors[player]
+
+        override fun targetVolume(): Float = this@MusicService.targetVolume()
+
+        // not while casting, mid-crossmix or mid-crossfade, which all drive the volume themselves
+        override fun canFade(): Boolean =
+            castConnectionHandler?.isCasting?.value != true && !crossmixDirector.isTransitioning && fadingPlayer == null
+
+        override fun beatMsFor(mediaId: String?): Double? =
+            mediaId?.let { crossmixAnalysisRepository.cached(it)?.bpm }?.takeIf { it in 40f..240f }?.let { 60_000.0 / it }
+    }
+
     /** what the Crossmix director needs from the service: players, the session, the queue */
     private inner class CrossmixHost : CrossmixDirector.Host {
         override val currentPlayer: ExoPlayer get() = player
@@ -4399,7 +4440,7 @@ class MusicService :
             })
 
             try {
-                (mediaSession as MediaSession).player = incoming
+                (mediaSession as MediaSession).player = TransportFadingPlayer(incoming, transport)
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to swap player in MediaSession")
             }
