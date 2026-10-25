@@ -6,11 +6,7 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 
-/**
- * Every knob the Crossmix renderer has, at one moment. The defaults are "the track, untouched".
- * A style fills one of these for each side of the transition from the beat position alone, so the
- * same style always sounds the same and nothing depends on when the main thread gets around to it.
- */
+/** every crossmix renderer knob at one moment (defaults are the untouched track), a style fills it from the beat position alone so it always sounds the same */
 class FxParams {
     /** level of the track itself; echo and reverb returns have their own */
     var gain = 1f
@@ -39,7 +35,7 @@ class FxParams {
     var crush = 0f
     var pan = 0f
     var width = 1f
-    /** 0..1 how far the sound circles the listener; one turn per [orbitBeats] */
+    /** 0..1 how far the sound circles the listener; one turn per orbitBeats */
     var orbit = 0f
     var orbitBeats = 8f
     var noiseLevel = 0f
@@ -72,12 +68,7 @@ class FxParams {
 /** which side of the transition a renderer is playing */
 enum class CrossmixRole { Outgoing, Incoming }
 
-/**
- * The transitions Crossmix can play, each a small piece of DJ technique. [needsBeatMatch] styles
- * lay the two tracks over each other on the beat; the others hand over on a downbeat and work with
- * any two tempos. [entersAtEnd]: the next song comes in once the outgoing one is gone (a drop),
- * rather than rising under it.
- */
+/** the transitions crossmix can play; needsBeatMatch ones overlap on the beat, entersAtEnd ones bring the next song in after the outgoing one is gone (a drop) */
 enum class CrossmixStyle(
     val label: String,
     val needsBeatMatch: Boolean,
@@ -115,11 +106,7 @@ enum class CrossmixStyle(
     FarAway("Fade to far", false, false, intArrayOf(16, 24, 32), tailBeats = 8),
     Dampen("Dampen", false, false, intArrayOf(8, 16, 24), tailBeats = 6);
 
-    /**
-     * fills [out] for one side at transition beat [beat] of a [length]-beat transition. beat 0 is
-     * where the transition starts; [length] is where the outgoing song has fully handed over.
-     * [variation] (0..3) picks between close variants so a style doesn't sound identical each time.
-     */
+    /** fills out for one side at a transition beat; length is where the outgoing song has handed over, variation (0..3) picks close variants */
     fun evaluate(role: CrossmixRole, beat: Float, length: Float, variation: Int, out: FxParams) {
         out.reset()
         val p = (beat / length).coerceIn(0f, 1f)
@@ -392,8 +379,7 @@ enum class CrossmixStyle(
             }
 
             FarAway -> {
-                // the song drifts off into the distance to one side, getting smaller and further
-                // into the room, while the next one arrives from far off on the other and comes close
+                // drifts off to one side getting smaller and further away, while the next arrives from far off on the other and comes close
                 val side = if (variation % 2 == 0) -1f else 1f
                 if (outgoing) {
                     out.recede(smooth(ramp(p, 0f, 0.8f)), side)
@@ -405,8 +391,7 @@ enum class CrossmixStyle(
             }
 
             Dampen -> if (outgoing) {
-                // the way Apple Music leaves a song: closed off behind a wall, muffled and small,
-                // while the next one comes in clear in front of it
+                // the way apple music leaves a song: closed off behind a wall, muffled and small, while the next one comes in clear in front
                 out.recede(0.85f * smooth(ramp(p, 0f, 0.35f)), 0f, room = 0.6f)
                 out.gain *= fadeOut(ramp(p, 0.4f, 1f))
             } else {
@@ -427,8 +412,7 @@ enum class CrossmixStyle(
             }
         }
         if (outgoing) {
-            // a beat after the hand-over nothing new goes into the echoes and the room: only the
-            // tails already in them carry on, and they die away on their own
+            // a beat after the hand-over nothing new goes into the echoes and room, only the tails already there carry on and die away
             val feed = cutAt(beat, length + 1f)
             out.echoSend *= feed
             out.reverbSend *= feed
@@ -442,11 +426,7 @@ enum class CrossmixStyle(
         }
     }
 
-    /**
-     * laid over a blend whose two songs would otherwise sing over each other: as the next song
-     * comes forward the outgoing voice is dampened and drawn away, and the next arrives from a
-     * little way off, so there's only ever one voice in front. called after [evaluate].
-     */
+    /** for a blend where two songs would sing over each other: the outgoing voice is dampened and drawn away as the next comes in from a little way off, call it after evaluate */
     fun yieldVocals(role: CrossmixRole, beat: Float, length: Float, variation: Int, out: FxParams) {
         val p = (beat / length).coerceIn(0f, 1f)
         val side = if (variation % 2 == 0) -1f else 1f
@@ -484,10 +464,10 @@ internal fun smooth(x: Float): Float = x * x * (3f - 2f * x)
 internal fun fadeOut(x: Float): Float = cos(x.coerceIn(0f, 1f) * PI.toFloat() / 2f)
 internal fun fadeIn(x: Float): Float = sin(x.coerceIn(0f, 1f) * PI.toFloat() / 2f)
 
-/** full until [at], gone 1/16 of a beat later: a cut that lands on the beat but never clicks */
+/** full until at, gone 1/16 of a beat later: a cut that lands on the beat but never clicks */
 internal fun cutAt(beat: Float, at: Float): Float = 1f - ramp(beat, at - 0.0625f, at)
 
-/** silent until [at], then in over [overBeats] (as short as a few ms for a drop) */
+/** silent until at, then in over overBeats (as short as a few ms for a drop) */
 internal fun entry(beat: Float, at: Float, overBeats: Float): Float = fadeIn(ramp(beat, at, at + overBeats))
 
 /** exponential sweeps, the way ears hear filter movement */
@@ -500,6 +480,6 @@ private fun sweep(t: Float, from: Float, to: Float): Float {
     val a = from.coerceAtLeast(20f)
     val b = to.coerceAtLeast(20f)
     val value = a * (b / a).pow(t)
-    // a cut that sweeps to "off" (0 Hz) ends exactly there instead of hovering at 20 Hz
+    // a cut that sweeps to "off" (0 hz) ends exactly there instead of hovering at 20 hz
     return if (to <= 0f && t >= 0.98f) 0f else value
 }

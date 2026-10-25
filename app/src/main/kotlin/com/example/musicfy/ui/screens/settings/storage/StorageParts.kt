@@ -1,7 +1,4 @@
-// StorageParts.kt
-//
-// The pieces the Storage page is built from: the coloured usage bars, their legends, the cache
-// limit slider and the plain action buttons.
+// the pieces the storage page is built from: usage bars, legends, the cache limit slider and the action buttons
 
 package com.example.musicfy.ui.screens.settings.storage
 
@@ -84,7 +81,7 @@ internal fun storageText(
     tracking: Float = -0.5f,
 ) = TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
 
-/** Bytes the way Android's own storage screen writes them: powers of 1000, one decimal past 10. */
+/** bytes the way android's own storage screen writes them: powers of 1000, one decimal past 10 */
 internal fun formatSize(bytes: Long): String {
     val units = listOf("B", "KB", "MB", "GB", "TB")
     var value = bytes.coerceAtLeast(0L).toDouble()
@@ -111,11 +108,7 @@ internal fun StorageCardColumn(modifier: Modifier = Modifier, content: @Composab
 
 internal class BarPart(val color: Color, val bytes: Long)
 
-/**
- * A rounded bar split into [parts] over [total] bytes, on a dark track. It fills from the left
- * the first time it has numbers; later changes slide the edges to their new places. A part too
- * small to see still gets a sliver, so nothing on the legend is missing from the bar.
- */
+/** a rounded bar split into parts over total bytes, a part too small to see still gets a sliver so nothing on the legend is missing */
 @Composable
 internal fun UsageBar(parts: List<BarPart>, total: Long, modifier: Modifier = Modifier) {
     val grow = remember { Animatable(0f) }
@@ -163,7 +156,7 @@ internal fun LegendSwatch(color: Color, modifier: Modifier = Modifier) {
     )
 }
 
-/** A legend line under a bar: the colour, what it is, and how big it is on the right. */
+/** a legend line under a bar: the colour, what it is, and how big it is on the right */
 @Composable
 internal fun LegendRow(color: Color, label: String, size: String?) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -184,10 +177,7 @@ internal fun LegendRow(color: Color, label: String, size: String?) {
     }
 }
 
-/**
- * Snapping slider for the cache limit: a thin line with a white knob, a tick of haptics on every
- * step it passes. [steps] are the values in order; [value] is matched to the nearest one.
- */
+/** snapping slider for the cache limit with a tick of haptics on every step, value is matched to the nearest step */
 @Composable
 internal fun StepSlider(
     steps: List<Int>,
@@ -247,7 +237,7 @@ internal fun StepSlider(
     )
 }
 
-/** A full-width pill with its label in the middle; [danger] ones are written in red. */
+/** a full-width pill with its label in the middle, danger ones are written in red */
 @Composable
 internal fun StorageActionButton(
     label: String,

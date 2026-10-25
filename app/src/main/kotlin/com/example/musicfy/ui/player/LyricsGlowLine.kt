@@ -62,6 +62,7 @@ import kotlin.math.roundToInt
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.ui.component.agslRenderEffect
 import com.example.musicfy.ui.component.createAgslShader
+import com.example.musicfy.ui.component.damageBoundary
 import com.example.musicfy.ui.component.setAgslUniform
 
 enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
@@ -278,6 +279,10 @@ fun LyricsGlowLine(
     Column(
         horizontalAlignment = columnAlign,
         modifier = modifier
+            // a row repaints alone, so one moving line doesn't redraw every other row of the list
+            .layerBleed(DamageBleed)
+            .damageBoundary()
+            .padding(DamageBleed)
             .fillMaxWidth()
             .padding(
                 start = insets.start,
@@ -336,8 +341,10 @@ fun LyricsGlowLine(
             label = "lyricsWaveAmplitude",
         )
 
+        // a derived flag, so the fade doesn't recompose the line on every frame
+        val waveLingers by remember { derivedStateOf { waveAmplitude > 0.01f } }
         val sweepActive = !words.isNullOrEmpty() &&
-            (state == LyricsLineState.ACTIVE || waveAmplitude > 0.01f)
+            (state == LyricsLineState.ACTIVE || waveLingers)
         val karaokeActive = sweepActive && leadText.isNotEmpty()
         if (karaokeActive) {
             KaraokeSweepText(
@@ -563,12 +570,16 @@ private fun rememberRubyOverlay(
         lineHeight = RubyLineHeight,
     )
 
+    // the measurer only keeps 8 layouts, so a line with more readings re-measured them every frame
+    val measuredTokens = remember(ruby, style, measurer) { arrayOfNulls<TextLayoutResult>(ruby.size) }
+
     return Modifier.drawWithContent {
         drawContent()
         val layout = layoutHolder[0] ?: return@drawWithContent
         val head = headProvider()
 
-        for (token in ruby) {
+        for (tokenIndex in ruby.indices) {
+            val token = ruby[tokenIndex]
             val start = token.start.coerceIn(0, textLength)
             val end = token.end.coerceIn(start, textLength)
             if (end <= start) continue
@@ -584,12 +595,12 @@ private fun rememberRubyOverlay(
             }
             if (right <= left) continue
 
-            val measured = measurer.measure(
+            val measured = measuredTokens[tokenIndex] ?: measurer.measure(
                 text = androidx.compose.ui.text.AnnotatedString(token.text),
                 style = style,
                 maxLines = 1,
                 overflow = TextOverflow.Clip,
-            )
+            ).also { measuredTokens[tokenIndex] = it }
 
             // Centre the reading on its word, then keep it inside the line box so a long reading
             // over a short word doesn't run off the edge.
@@ -716,6 +727,9 @@ private const val SwellReleaseFraction = 0.12f
  * in and out with held notes.
  */
 private val MotionBleed = 10.dp
+
+/** Room around a row for its zoom, lift and glow, so the row's damage boundary never cuts them. */
+private val DamageBleed = 24.dp
 
 /** Transforms closer than this (px) are drawn as one piece. */
 private const val MergeEpsilonPx = 0.1f
@@ -1381,6 +1395,10 @@ private fun smoothstep(t: Float): Float {
     return x * x * (3f - 2f * x)
 }
 
+// compiled once for every line: each line sets all its uniforms right before it builds its effect
+private var sharedBloomShader: Any? = null
+private var sharedLegacyShader: Any? = null
+
 /** Style 1: the bloom pass. Skipped (no render effect at all) whenever nothing is glowing. */
 @Suppress("NewApi")
 @Composable
@@ -1393,7 +1411,7 @@ private fun rememberBloomModifier(
 ): Modifier {
     val shader = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            createAgslShader(BloomAgsl)
+            sharedBloomShader ?: createAgslShader(BloomAgsl).also { sharedBloomShader = it }
         } else {
             null
         }
@@ -1473,7 +1491,7 @@ private fun rememberLegacyWaveModifier(
 
     val shader = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            createAgslShader(LegacyWaveAgsl)
+            sharedLegacyShader ?: createAgslShader(LegacyWaveAgsl).also { sharedLegacyShader = it }
         } else {
             null
         }

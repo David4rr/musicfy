@@ -1,5 +1,3 @@
-// ReverbAudioProcessor.kt
-
 package com.example.musicfy.eq.audio
 
 import androidx.media3.common.C
@@ -14,7 +12,7 @@ import kotlin.math.exp
 import kotlin.math.roundToInt
 import kotlin.math.tanh
 
-/** What the reverb plays, every value 0..1 except the two in real units. */
+/** what the reverb plays, every value 0..1 except the two in real units */
 data class ReverbParams(
     val enabled: Boolean = false,
     val mix: Float = 0.5f,
@@ -27,15 +25,7 @@ data class ReverbParams(
     val lowCutHz: Float = 180f,
 )
 
-/**
- * A Freeverb-style room (eight damped combs into four allpasses per side, the right side detuned
- * for width) with a pre-delay and a low cut on what goes into it, so the bass stays dry and tight.
- *
- * Settings are read once per buffer and every gain glides across the buffer, so dragging a slider
- * never zips. Switching it on or off fades over [ToggleSeconds]; switched off and faded out, it is
- * a plain copy and the room is emptied, so the next time it starts silent. Mono and stereo 16-bit
- * only: anything else passes by untouched.
- */
+/** a freeverb-style room (eight damped combs into four allpasses per side, the right detuned for width) with a pre-delay and low cut going in so the bass stays dry; gains glide across each buffer so dragging never zips */
 @UnstableApi
 @Suppress("DEPRECATION")
 class ReverbAudioProcessor(private val service: AudioFxService) : AudioProcessor {
@@ -290,7 +280,7 @@ class ReverbAudioProcessor(private val service: AudioFxService) : AudioProcessor
     companion object {
         private val EMPTY_BUFFER: ByteBuffer = ByteBuffer.allocateDirect(0).order(ByteOrder.nativeOrder())
 
-        // Jezar's Freeverb tunings, in samples at 44.1 kHz
+        // jezar's freeverb tunings, in samples at 44.1 khz
         private val CombTuning = intArrayOf(1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617)
         private val AllpassTuning = intArrayOf(556, 441, 341, 225)
         private const val StereoSpread = 23
@@ -303,7 +293,7 @@ class ReverbAudioProcessor(private val service: AudioFxService) : AudioProcessor
         private const val ToggleSeconds = 0.15f
         private const val AntiDenormal = 1e-18f
 
-        /** a soft knee above -1 dB instead of a hard clip: a full room adds level on loud songs */
+        /** a soft knee above -1 db instead of a hard clip: a full room adds level on loud songs */
         private fun toPcm(sample: Float): Short {
             val a = abs(sample)
             val shaped = if (a <= Knee) sample else {

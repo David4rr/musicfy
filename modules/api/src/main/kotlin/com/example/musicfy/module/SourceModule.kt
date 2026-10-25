@@ -1,4 +1,3 @@
-// SourceModule.kt
 //
 // The contract between Musicfy and a source module (Apple Music first). A module finds the track
 // Musicfy wants on its service and hands back a stream the player opens; Musicfy does all the

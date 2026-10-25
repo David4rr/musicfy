@@ -1,5 +1,3 @@
-// Shazam.kt
-
 package com.music.shazamkit
 
 import com.music.shazamkit.models.RecognitionResult

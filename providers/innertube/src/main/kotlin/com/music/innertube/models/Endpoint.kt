@@ -1,5 +1,3 @@
-// Endpoint.kt
-
 package com.music.innertube.models
 
 import com.music.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_ALBUM

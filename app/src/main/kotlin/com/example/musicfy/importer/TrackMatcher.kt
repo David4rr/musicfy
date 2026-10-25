@@ -12,21 +12,14 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * Finds the YouTube Music song for a track from another service. Search results are scored on
- * title, artist, length and album; a song result wins over a music video unless no song is close.
- * One matcher lives for one import, so repeated tracks (same song in two playlists) search once.
- *
- * With [matches], a version the user picked by hand is used without searching, and each track's
- * match is noted so it can be changed later. [source] is where the tracks come from.
- */
+/** finds the youtube music song for a track from another service, scored on title, artist, length and album, a song beats a music video unless none is close, one matcher per import so repeats search once */
 class TrackMatcher(
     private val matches: ImportMatches? = null,
     private val source: ImportSource = ImportSource.OTHER,
 ) {
     private val cache = HashMap<String, SongItem?>()
 
-    /** A search result offered by "Choose different version", with how well it fits the track. */
+    /** a search result offered by "choose different version", with how well it fits the track */
     data class Candidate(val song: SongItem, val score: Double)
 
     suspend fun match(track: ImportedTrack): SongItem? {
@@ -50,15 +43,12 @@ class TrackMatcher(
         return result
     }
 
-    /** Writes the matches noted so far. Called once per batch of tracks rather than per song. */
+    /** writes the matches noted so far. called once per batch of tracks rather than per song */
     fun flush() {
         matches?.flush()
     }
 
-    /**
-     * Everything a search turns up for [track], songs and videos, best fit first. What
-     * "Choose different version" lists for the user to pick from.
-     */
+    /** everything a search turns up for track, songs and videos, best fit first, what choose different version lists */
     suspend fun candidates(track: ImportedTrack): List<Candidate> {
         val query = searchQuery(track)
         val found = search(query, YouTube.SearchFilter.FILTER_SONG) + search(query, YouTube.SearchFilter.FILTER_VIDEO)
@@ -73,18 +63,14 @@ class TrackMatcher(
         val songs = search(query, YouTube.SearchFilter.FILTER_SONG).map { it to score(track, it) }
         pick(track, songs, SONG_ACCEPT)?.let { return it }
 
-        // some tracks only exist as uploads/videos on YouTube
+        // some tracks only exist as uploads/videos on youtube
         val videos = search(query, YouTube.SearchFilter.FILTER_VIDEO).map { it to score(track, it) }
         pick(track, videos, VIDEO_ACCEPT)?.let { return it }
 
         return pick(track, songs, SONG_FALLBACK_ACCEPT)
     }
 
-    /**
-     * The best result at or above [accept], looking first at the ones within a few seconds of the
-     * track's length. A live, sped-up or extended take runs a different length, so it only wins
-     * when nothing close to the track's own length was found.
-     */
+    /** best result at or above accept, looking first at ones within a few seconds of the track's length since live, sped-up or extended takes run a different length */
     private fun pick(track: ImportedTrack, scored: List<Pair<SongItem, Double>>, accept: Double): SongItem? {
         val sourceSeconds = track.durationMs?.takeIf { it > 0 }?.div(1000.0)
         if (sourceSeconds != null) {
@@ -126,7 +112,7 @@ class TrackMatcher(
             candidateArtists.maxOfOrNull { similarity(target, it) } ?: 0.0
         }
 
-        // videos are often titled "Artist - Title (Official Video)"
+        // videos are often titled "artist - title (official video)"
         if (artistScore < 0.6 && targetArtists.any { it.isNotEmpty() && candidateTitle.contains(it) }) {
             artistScore = 0.8
             titleScore = max(titleScore, similarity(targetTitle, targetArtists.fold(candidateTitle) { acc, a -> acc.replace(a, " ") }.trim()))
@@ -134,8 +120,7 @@ class TrackMatcher(
 
         val durationScore = durationScore(track.durationMs, candidate.duration)
 
-        // a remix/live/stage take that the source didn't ask for is a different song; whole words
-        // on the raw titles, since cleaning drops "- Live at ..." and "live" is inside "alive"
+        // a remix/live/stage take the source didn't ask for is a different song, whole words on the raw titles since cleaning drops live markers and live is inside alive
         val rawTarget = " ${normalizeText(track.title)} "
         val rawCandidate = " ${normalizeText(candidate.title)} "
         val versionPenalty = VERSION_WORDS.count { word ->
@@ -147,10 +132,7 @@ class TrackMatcher(
             albumScore(track.album, candidate.album?.name) + uploadScore(candidate) - versionPenalty
     }
 
-    /**
-     * A small lift for the same album, and a penalty for a live or tour album the source's album
-     * isn't. Live albums often title their tracks plainly ("FIRE"), so the title alone can't tell.
-     */
+    /** small lift for the same album and a penalty for a live or tour album the source isn't on, live albums often title tracks plainly so the title alone can't tell */
     private fun albumScore(sourceAlbum: String?, candidateAlbum: String?): Double {
         if (candidateAlbum.isNullOrBlank()) return 0.0
         val candidate = " ${normalizeText(candidateAlbum)} "
@@ -161,7 +143,7 @@ class TrackMatcher(
         return if (similarity(source.trim(), candidate.trim()) >= 0.8) 0.05 else 0.0
     }
 
-    /** The artist's own audio (a "Topic" track) is the album version; a fan upload often isn't. */
+    /** the artist's own audio (a "topic" track) is the album version; a fan upload often isn't */
     private fun uploadScore(candidate: SongItem): Double = when (candidate.musicVideoType) {
         MUSIC_VIDEO_TYPE_ATV -> 0.05
         MUSIC_VIDEO_TYPE_UGC -> -0.08
@@ -187,7 +169,7 @@ class TrackMatcher(
         private const val SONG_FALLBACK_ACCEPT = 0.5
         private const val MIN_TITLE = 0.45
 
-        /** Within this many seconds of the source's length, a result is taken to be the same recording. */
+        /** within this many seconds of the source's length, a result is taken to be the same recording */
         const val CLOSE_SECONDS = 3.0
         private const val VERSION_PENALTY = 0.3
 
@@ -226,7 +208,7 @@ class TrackMatcher(
             return folded.replace(NON_WORD, " ").trim()
         }
 
-        /** Best of token overlap and character edit distance, so both reordered words and scripts without spaces score fairly. */
+        /** best of token overlap and character edit distance, so both reordered words and scripts without spaces score fairly */
         fun similarity(a: String, b: String): Double {
             if (a.isEmpty() || b.isEmpty()) return 0.0
             if (a == b) return 1.0
@@ -237,7 +219,7 @@ class TrackMatcher(
             val compactA = a.replace(" ", "")
             val compactB = b.replace(" ", "")
             val edit = 1.0 - levenshtein(compactA, compactB).toDouble() / max(compactA.length, compactB.length)
-            // one title fully containing the other ("Song" vs "Song Pt. 1") is close but not exact
+            // one title fully containing the other ("song" vs "song pt. 1") is close but not exact
             val containment = if (compactA.length >= 3 && compactB.length >= 3 &&
                 (compactA.contains(compactB) || compactB.contains(compactA))
             ) 0.8 else 0.0

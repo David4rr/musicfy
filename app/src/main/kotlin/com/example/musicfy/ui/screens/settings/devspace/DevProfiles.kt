@@ -1,8 +1,4 @@
-// DevProfiles.kt
-//
-// The people on the Dev Spaces page, and the top half of each one's page: a banner made from
-// their own picture, the avatar sitting on its edge, their name, a line about them, and where to
-// find (or support) them.
+// the people on dev spaces and the top half of each page: banner, avatar, name, a line about them and their links
 
 package com.example.musicfy.ui.screens.settings.devspace
 
@@ -66,7 +62,7 @@ internal data class DevPerson(
     val name: String,
     val bio: String,
     @DrawableRes val avatar: Int,
-    /** the main dev takes donations; the Donate section only shows for them */
+    /** the main dev takes donations, the donate section only shows for them */
     val takesDonations: Boolean = false,
     val socials: List<DevSocial> = emptyList(),
 )
@@ -90,7 +86,7 @@ internal val DevPeople = listOf(
     ),
 )
 
-/** Someone's picture, round, on the mock's light grey. */
+/** someone's picture, round, on the mock's light grey */
 @Composable
 internal fun DevAvatar(person: DevPerson, modifier: Modifier = Modifier) {
     Image(
@@ -104,10 +100,7 @@ internal fun DevAvatar(person: DevPerson, modifier: Modifier = Modifier) {
 private val AvatarSize = 84.dp
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-/**
- * One person's whole page: header, about, links, then [below] (the playground card and, for the
- * main dev, the repo). Sections rise in one after another the first time the page shows.
- */
+/** one person's whole page, its sections rise in one after another the first time it shows */
 @Composable
 internal fun DevProfilePage(
     person: DevPerson,
@@ -176,10 +169,7 @@ internal fun DevProfilePage(
     }
 }
 
-/**
- * The banner is the person's own picture, blurred soft and dimmed, so every page gets its own
- * colour. It drifts up slower than the page and the avatar shrinks a touch as you scroll.
- */
+/** the banner is the person's own picture, blurred and dimmed, so every page gets its own colour */
 @Composable
 private fun ProfileHeader(person: DevPerson, scrollState: ScrollState, bannerHeight: Dp) {
     val context = LocalContext.current
@@ -243,7 +233,7 @@ private fun SectionTitle(text: String) {
     Text(text, style = devText(17f, tracking = -0.6f), modifier = Modifier.padding(bottom = 10.dp))
 }
 
-/** A dark row with a grey label, as in the mock. It squishes a little under the finger. */
+/** a dark row with a grey label as in the mock, it squishes a little under the finger */
 @Composable
 private fun DevLinkRow(label: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }

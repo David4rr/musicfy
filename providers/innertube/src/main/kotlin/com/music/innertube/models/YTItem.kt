@@ -1,5 +1,3 @@
-// YTItem.kt
-
 package com.music.innertube.models
 
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV

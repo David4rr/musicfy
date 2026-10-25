@@ -1,5 +1,3 @@
-// YouLyPlus.kt
-
 package com.music.youlyplus
 
 import com.music.youlyplus.models.LyricsResponse
@@ -22,8 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 object YouLyPlus {
 
-    // The workers.dev, atomix and both Vercel mirrors were dead as of October 2026 (Cloudflare
-    // error 1042, no DNS, deployments disabled). Racing them only wasted four requests per song.
+    // the workers.dev, atomix and both vercel mirrors were dead as of october 2026 (cloudflare error 1042, no dns, deployments disabled), racing them wasted four requests per song
     private val BASE_SERVERS = listOf(
         "https://lyricsplus.prjktla.my.id",
         "https://lyricsplus.binimum.org",
@@ -43,7 +40,7 @@ object YouLyPlus {
                 connectTimeoutMillis = 3_000
                 requestTimeoutMillis = 8_000
             }
-            // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+            // says who's asking so the server owner can reach us instead of blocking us
             install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
             install(ContentNegotiation) {
                 json(
@@ -142,8 +139,7 @@ object YouLyPlus {
 
             val isBg = item.syllabus?.any { it.isBackground == true } == true
             val lineTimestamp = formatTime(lineTime)
-            // A line is either a background vocal or attributed to a voice, never both — the app's
-            // parser treats {bg} as its own kind of line and centres it regardless of singer.
+            // a line is either a background vocal or attributed to a voice, never both, the app's parser treats {bg} as its own kind of line and centres it regardless of singer
             val marker = when {
                 isBg -> "{bg}"
                 !item.element?.singer.isNullOrBlank() -> "{agent:${item.element?.singer}}"
@@ -154,11 +150,7 @@ object YouLyPlus {
             if (!syllabus.isNullOrEmpty()) {
                 val sb = StringBuilder(lineTimestamp)
                 sb.append(marker)
-                // The API times SYLLABLES and carries word boundaries in the text itself: a
-                // syllable that ends a word ends with a space ("Ta", "hun ", "CAS", "KET "). Adding
-                // a space after every syllable without one split words apart - "Ta hun", "CAS KET",
-                // "wa nt". Only when a line carries no spacing at all (one entry per word, no
-                // trailing spaces) do the gaps have to be supplied here.
+                // the api times syllables and carries word boundaries in the text itself, so spaces are supplied only when a line has none at all
                 val spacedByApi = syllabus.dropLast(1).any { it.text?.lastOrNull()?.isWhitespace() == true }
                 syllabus.forEachIndexed { index, syl ->
                     val sylTime = syl.time ?: 0L

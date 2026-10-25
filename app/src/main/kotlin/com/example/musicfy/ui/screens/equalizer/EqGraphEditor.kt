@@ -1,8 +1,4 @@
-// EqGraphEditor.kt
-//
-// The equalizer's Graph tab: the frequency response with a coloured hill for every band and the
-// white sum on top, the music's own spectrum moving faintly behind, nodes to drag (left-right is
-// frequency, up-down is gain), double-tap to add one, and the picked node's settings below.
+// the equalizer's graph tab: drag nodes for frequency and gain, double tap to add one
 
 package com.example.musicfy.ui.screens.equalizer
 

@@ -65,7 +65,6 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -294,6 +293,7 @@ private fun PlayerSheet(
     var menuFromLyrics by remember { mutableStateOf(false) }
 
     val menuReveal = remember { mutableFloatStateOf(0f) }
+    val menuRevealShape = remember { AnimatedCornerShape() }
 
     var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
     val (savedPlayerStyle, savePlayerStyle) = rememberEnumPreference(
@@ -326,9 +326,8 @@ private fun PlayerSheet(
         com.example.musicfy.constants.PlayerStyle.fromStored(storedPlayerStyle)?.let { onStoredPlayerStyle(it.name) }
     }
 
-    var coverArtRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    var controlsRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    var bottomCardRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    // plain fields, not state: they are written every frame of the slide but only read when a swipe starts
+    val rects = remember { PlayerRects() }
 
     val studioEngaged by remember { derivedStateOf { studio.engaged } }
     LaunchedEffect(studioEngaged) {
@@ -389,17 +388,15 @@ private fun PlayerSheet(
     // Keyed on where the sheet is headed, not on it sitting exactly at the top: that drops when
     // the window's height changes under the open player, until the sheet catches up, and each
     // drop shut the chevron's menu as it opened.
-    LaunchedEffect(state.isExpandedOrExpanding) {
-        if (!state.isExpandedOrExpanding) {
-            studio.reset()
+    OnSheetHeadingDown(state) {
+        studio.reset()
 
-            showActionMenu = false
-            menuReveal.floatValue = 0f
-            showExpandMenu = false
-            likeBurst.clear()
-            showSleepTimer = false
-            showSongDetails = false
-        }
+        showActionMenu = false
+        menuReveal.floatValue = 0f
+        showExpandMenu = false
+        likeBurst.clear()
+        showSleepTimer = false
+        showSongDetails = false
     }
 
     // A page open when the player closes stays open: next time the player opens, it opens on that
@@ -437,8 +434,6 @@ private fun PlayerSheet(
     }
     val statusBarTopInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val density = LocalDensity.current
-
-    var controlsInset by remember { mutableStateOf(220.dp) }
 
     // The bar at the top of the open player, on every style: bright while it's touched, faint
     // once left alone. The sheet tells it about every touch.
@@ -603,8 +598,8 @@ private fun PlayerSheet(
                  */
                 private fun aroundControls(start: Offset): Boolean {
                     if (controlsHidden >= 0.5f) return false
-                    val controlsTop = controlsRect?.top ?: return false
-                    val coverBottom = if (currentCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE) null else coverArtRect?.bottom
+                    val controlsTop = rects.controls?.top ?: return false
+                    val coverBottom = if (currentCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE) null else rects.cover?.bottom
                     return start.y >= minOf(controlsTop, coverBottom ?: controlsTop)
                 }
 
@@ -673,12 +668,12 @@ private fun PlayerSheet(
                     val pageOpen = transition.page != PlayerPage.NONE
                     // down to the cover's top when there's room above it (with a page open the
                     // cover is the header's thumbnail, inside the strip anyway)
-                    val coverTop = if (pageOpen) null else coverArtRect?.top
+                    val coverTop = if (pageOpen) null else rects.cover?.top
                     val stripBottom = maxOf(currentCloseStripBottom, coverTop ?: 0f)
                     if (start.y < stripBottom) return true
                     if (pageOpen || currentCoverStyle != PlayerCoverStyle.EDGE_TO_EDGE) return false
                     // the edge-to-edge cover is the player's top: all of it, down to the title
-                    val controlsTop = controlsRect?.top ?: return false
+                    val controlsTop = rects.controls?.top ?: return false
                     return start.y < controlsTop
                 }
             }
@@ -766,24 +761,23 @@ private fun PlayerSheet(
                         val scale = 1f - 0.08f * r
                         scaleX = scale
                         scaleY = scale
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp * r)
+                        menuRevealShape.radius = 28.dp * r
+                        shape = menuRevealShape
                         clip = true
                     }
                 }
                 .then(Modifier.studioSheetLayer(studio))
-                .then(Modifier.studioCaptureSource(studioCapture))
-                // holding anywhere on the open flagship opens the studio, not just the cover and card.
-                // Only attached while open: this box is full screen and sits above the app, so a
-                // pointer handler on it took every touch meant for the app under the mini player
-                .then(
-                    if (!state.isExpanded) Modifier else Modifier.holdAnywhere(
-                        enabled = {
-                            state.isExpanded && currentPlayerStyle.flagshipFamily && !studio.engaged &&
-                                transition.page == PlayerPage.NONE && !showExpandMenu && !showActionMenu
-                        },
-                        onHold = holdToStudio,
-                    )
-                ),
+                .then(Modifier.studioCaptureSource(studioCapture)),
+            // holding anywhere on the open flagship opens the studio, not just the cover and card.
+            // Only attached while open: this box is full screen and sits above the app, so a
+            // pointer handler on it took every touch meant for the app under the mini player
+            expandedModifier = Modifier.holdAnywhere(
+                enabled = {
+                    state.isExpanded && currentPlayerStyle.flagshipFamily && !studio.engaged &&
+                        transition.page == PlayerPage.NONE && !showExpandMenu && !showActionMenu
+                },
+                onHold = holdToStudio,
+            ),
 
             isExpandable = !studioEngaged,
             isPillTransition = true,
@@ -826,7 +820,7 @@ private fun PlayerSheet(
                             likeBurst.likeFromDoubleTap(position, trackInfo.liked, playerConnection::toggleLike)
                         }
                     },
-                    onArtBoundsChanged = { coverArtRect = it },
+                    onArtBoundsChanged = { rects.cover = it },
                 )
                 if (playerStyle.flagshipFamily) MorphingSongInfo(
                     trackInfo = trackInfo,
@@ -1017,7 +1011,6 @@ private fun PlayerSheet(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
 
-                        .onGloballyPositioned { bottomCardRect = it.boundsInRoot() }
                         .padding(horizontal = 26.dp)
                         .then(Modifier.studioAnchor(studioAnchors) { it.card })
                         .then(Modifier.studioBarLayer(studioParts) { it.card })
@@ -1104,16 +1097,10 @@ private fun PlayerSheet(
                     }
 
                     .onGloballyPositioned { coords ->
-                        val parentHeight = coords.parentLayoutCoordinates?.size?.height ?: return@onGloballyPositioned
-                        val topY = coords.positionInParent().y
-                        val insetPx = (parentHeight - topY).coerceAtLeast(0f)
-                        val inset = with(density) { insetPx.toDp() }
-                        if ((inset - controlsInset).value.absoluteValue > 0.5f) {
-                            controlsInset = inset
-                        }
+                        if (coords.parentLayoutCoordinates == null) return@onGloballyPositioned
 
                         val bounds = coords.boundsInRoot()
-                        controlsRect = androidx.compose.ui.geometry.Rect(
+                        rects.controls = androidx.compose.ui.geometry.Rect(
                             left = bounds.left,
                             top = bounds.top - with(density) { controlsDrawShift.toPx() },
                             right = bounds.right,
@@ -1422,7 +1409,8 @@ private fun PlayerSheet(
             isActive = ::menuActionActive,
             onAction = onMenuAction,
             repeatMode = transportState.repeatMode,
-            chevronRect = if (showLyrics || showQueue) lyricsChevronRect ?: chevronButtonRect else chevronButtonRect,
+            // a lambda, so the chevron moving with the sheet doesn't recompose the whole player
+            getChevronRect = { if (showLyrics || showQueue) lyricsChevronRect ?: chevronButtonRect else chevronButtonRect },
             screenWidth = screenWidth,
             screenHeight = screenHeight,
             controlsDrawShift = controlsDrawShift,
@@ -1435,13 +1423,11 @@ private fun PlayerSheet(
             onDispose { state.collapseOnNestedOverscroll = true }
         }
 
-        if ((showQueue || showLyrics) && state.isExpandedOrExpanding) {
-            // Composed only while a page is open on the expanded player, so it registers after -
-            // and wins over - the sheet's own back handler: back shrinks the page into its card
-            // first, then collapses the player. Not while collapsed: the page is remembered then,
-            // and back belongs to the app.
-            BackHandler { transition.close() }
-        }
+        // Composed only while a page is open on the expanded player, so it registers after -
+        // and wins over - the sheet's own back handler: back shrinks the page into its card
+        // first, then collapses the player. Not while collapsed: the page is remembered then,
+        // and back belongs to the app.
+        PageBackHandler(state, pageOpen = showQueue || showLyrics) { transition.close() }
 
         if (showSleepTimer) {
             com.example.musicfy.ui.player.menu.SleepTimerSheet(
@@ -1610,6 +1596,27 @@ private fun Modifier.blurBleedRoom(room: androidx.compose.ui.unit.Dp): Modifier 
     }
 
 
+// where the cover and the controls sit on screen (root px), for the swipe handler
+private class PlayerRects {
+    var cover: androidx.compose.ui.geometry.Rect? = null
+    var controls: androidx.compose.ui.geometry.Rect? = null
+}
+
+// runs the block each time the sheet starts heading down, read here so the flip doesn't recompose the player
+@Composable
+private fun OnSheetHeadingDown(state: BottomSheetState, onHeadingDown: () -> Unit) {
+    val currentOnHeadingDown by androidx.compose.runtime.rememberUpdatedState(onHeadingDown)
+    LaunchedEffect(state.isExpandedOrExpanding) {
+        if (!state.isExpandedOrExpanding) currentOnHeadingDown()
+    }
+}
+
+// the back press belongs to the open page while it is up, read here so the flip doesn't recompose the player
+@Composable
+private fun PageBackHandler(state: BottomSheetState, pageOpen: Boolean, onBack: () -> Unit) {
+    if (pageOpen && state.isExpandedOrExpanding) BackHandler(onBack = onBack)
+}
+
 @Composable
 private fun ExpandMenuOverlay(
     visible: Boolean,
@@ -1619,7 +1626,7 @@ private fun ExpandMenuOverlay(
     isActive: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Boolean,
     onAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit,
     repeatMode: Int,
-    chevronRect: androidx.compose.ui.geometry.Rect?,
+    getChevronRect: () -> androidx.compose.ui.geometry.Rect?,
     screenWidth: androidx.compose.ui.unit.Dp,
     screenHeight: androidx.compose.ui.unit.Dp,
     controlsDrawShift: androidx.compose.ui.unit.Dp,
@@ -1680,6 +1687,7 @@ private fun ExpandMenuOverlay(
     }
 
     if (isRendered) {
+        val chevronRect = getChevronRect()
         val chevronBottomDp = if (chevronRect != null) {
             val screenHeightPx = with(density) { screenHeight.toPx() }
             val bottomPx = (screenHeightPx - chevronRect.bottom).coerceAtLeast(0f)

@@ -1,5 +1,3 @@
-// SearchSummaryPage.kt
-
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album
@@ -211,9 +209,7 @@ data class SearchSummaryPage(
             }
         }
 
-        // Songs inside an artist's top-result card read "Song • 3:02" with no artist, so
-        // clean() used to promote the duration into the artist slot. Prefer the segment that
-        // links to an artist, never take a timestamp, and let the card supply its own artist.
+        // a top-result card's songs read "song • 3:02" with no artist, so take the segment that links to an artist, never a timestamp, and let the card supply its own artist
         private fun songArtists(segments: List<List<Run>>, fallback: Artist?): List<Artist> {
             val linked = segments.firstOrNull { seg ->
                 seg.any { it.navigationEndpoint?.browseEndpoint?.isArtistEndpoint == true }

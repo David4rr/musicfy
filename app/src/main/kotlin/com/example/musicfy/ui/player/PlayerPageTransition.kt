@@ -378,19 +378,39 @@ internal const val CardToPageLyricScale = 17f / (32f * 1.06f)
 internal const val CardToPageArtScale = 28f / 44f
 
 /**
- * A rounded rect clip at an arbitrary place inside the layer. A data class on purpose: the layer
- * only rebuilds its outline when the shape stops being equal to the last one, so a shape that
- * mutated its own fields would be stuck on its first outline.
+ * A rounded rect clip at an arbitrary place inside the layer. One instance is kept and moved each
+ * frame: the layer asks it for a fresh outline on every run, and a new shape per frame made it
+ * redo its semantics too.
  */
-internal data class InsetRoundRectShape(
-    val left: Float,
-    val top: Float,
-    val right: Float,
-    val bottom: Float,
-    val radius: Float,
-) : Shape {
+internal class InsetRoundRectShape : Shape {
+    var left = 0f
+    var top = 0f
+    var right = 0f
+    var bottom = 0f
+    var radius = 0f
+
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
         Outline.Rounded(RoundRect(left, top, right, bottom, CornerRadius(radius, radius)))
+}
+
+/**
+ * Rounded corners of one size on all four, the same maths as RoundedCornerShape (a radius too big
+ * for the box shrinks to fit, none at all is a plain rectangle). One instance is kept and its
+ * [radius] changed each frame, so a layer clipped to it doesn't see a new shape every frame.
+ */
+internal class AnimatedCornerShape : Shape {
+    var radius = 0.dp
+
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        var radiusPx = with(density) { radius.toPx() }
+        val minDimension = size.minDimension
+        if (radiusPx + radiusPx > minDimension) {
+            val scale = minDimension / (radiusPx + radiusPx)
+            radiusPx *= scale
+        }
+        if (radiusPx + radiusPx + radiusPx + radiusPx == 0.0f) return Outline.Rectangle(Rect(Offset.Zero, size))
+        return Outline.Rounded(RoundRect(Rect(Offset.Zero, size), CornerRadius(radiusPx, radiusPx)))
+    }
 }
 
 internal fun mixF(start: Float, stop: Float, fraction: Float) = start + (stop - start) * fraction
@@ -478,36 +498,39 @@ internal fun ExpandingCardSurface(
  * revealed inside it, and its rows slide up into place within it. Switching between pages, it
  * crossfades with a slight zoom as before.
  */
+@Composable
 internal fun Modifier.pageTransitionLayer(
     page: PlayerPage,
     transition: PlayerPageTransition,
     morph: CardMorphState,
     crossfadeProgress: () -> Float,
-): Modifier = graphicsLayer {
-    if (transition.isCardMorph(page)) {
-        val e = transition.headerProgress
-        if (e < 0.9995f) {
-            val r = expandingCardRect(morph.cardRectOr(size.width, size.height, this), size.width, size.height, e)
-            shape = InsetRoundRectShape(
-                r.left,
-                r.top,
-                r.right,
-                r.bottom,
-                mixF(PlayerCardCorner.toPx(), 0f, e.coerceIn(0f, 1f)),
-            )
-            clip = true
+): Modifier {
+    val cardClip = remember { InsetRoundRectShape() }
+    return graphicsLayer {
+        if (transition.isCardMorph(page)) {
+            val e = transition.headerProgress
+            if (e < 0.9995f) {
+                val r = expandingCardRect(morph.cardRectOr(size.width, size.height, this), size.width, size.height, e)
+                cardClip.left = r.left
+                cardClip.top = r.top
+                cardClip.right = r.right
+                cardClip.bottom = r.bottom
+                cardClip.radius = mixF(PlayerCardCorner.toPx(), 0f, e.coerceIn(0f, 1f))
+                shape = cardClip
+                clip = true
+            } else {
+                shape = RectangleShape
+                clip = false
+            }
         } else {
-            shape = RectangleShape
-            clip = false
+            val p = crossfadeProgress()
+            alpha = (p / 0.45f).coerceIn(0f, 1f)
+            val s = 0.88f + 0.12f * p
+            scaleX = s
+            scaleY = s
+            transformOrigin = TransformOrigin(0.5f, 0.86f)
+            translationY = (1f - p) * size.height * 0.10f
         }
-    } else {
-        val p = crossfadeProgress()
-        alpha = (p / 0.45f).coerceIn(0f, 1f)
-        val s = 0.88f + 0.12f * p
-        scaleX = s
-        scaleY = s
-        transformOrigin = TransformOrigin(0.5f, 0.86f)
-        translationY = (1f - p) * size.height * 0.10f
     }
 }
 

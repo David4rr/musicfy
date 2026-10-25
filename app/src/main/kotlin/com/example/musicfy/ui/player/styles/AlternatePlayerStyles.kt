@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -189,16 +190,25 @@ private fun StyleFrame(
 @Composable
 private fun rememberBackdropClock(running: Boolean): () -> Float {
     val time = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    androidx.compose.runtime.LaunchedEffect(running) {
+    val showing = rememberStyleShowing()
+    androidx.compose.runtime.LaunchedEffect(running, showing) {
         if (!running) return@LaunchedEffect
-        while (true) {
-            androidx.compose.animation.core.withInfiniteAnimationFrameNanos { frameTimeNanos ->
-                time.floatValue = ((frameTimeNanos / 1_000_000f) * (100f / 100_000f)).mod(100f)
+        // the time is absolute, so it can sleep while the player is collapsed and wake up in step
+        androidx.compose.runtime.snapshotFlow { showing() }.collectLatest { shown ->
+            if (!shown) return@collectLatest
+            time.floatValue = backdropTime(System.nanoTime())
+            while (true) {
+                androidx.compose.animation.core.withInfiniteAnimationFrameNanos { frameTimeNanos ->
+                    time.floatValue = backdropTime(frameTimeNanos)
+                }
             }
         }
     }
     return remember { { time.floatValue } }
 }
+
+private fun backdropTime(frameTimeNanos: Long): Float =
+    ((frameTimeNanos / 1_000_000f) * (100f / 100_000f)).mod(100f)
 
 /**
  * Insets the way they fall on a style: upright, the status bar is at its top and the navigation
@@ -576,7 +586,7 @@ private fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
     val all = remember(lyricsEntity?.lyrics) {
         val raw = lyricsEntity?.lyrics
         if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) emptyList()
-        else runCatching { LyricsUtils.parseLyrics(raw) }.getOrDefault(emptyList())
+        else runCatching { LyricsUtils.parseLyricsCached(raw) }.getOrDefault(emptyList())
             .takeIf { it.isNotEmpty() && !LyricsUtils.isUnsynced(it) }.orEmpty()
     }
     if (readings && connection != null) {

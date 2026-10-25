@@ -5,6 +5,7 @@ package com.example.musicfy.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -120,9 +121,26 @@ fun PlayingIndicatorBox(
     color: Color = Color.White,
     dimColor: Color = Color.Black,
     shape: Shape? = null,
+) = PlayingIndicatorBox(modifier, isActive, { playWhenReady }, color, dimColor, shape)
+
+// the same box, but playWhenReady is read only while it shows, so a play or pause skips every idle cover
+@Composable
+fun PlayingIndicatorBox(
+    modifier: Modifier = Modifier,
+    isActive: Boolean,
+    playWhenReady: () -> Boolean,
+    color: Color = Color.White,
+    dimColor: Color = Color.Black,
+    shape: Shape? = null,
 ) {
+    // starts at the current value, so a cover that is already active doesn't fade in
+    val visibleState = remember { MutableTransitionState(isActive) }
+    visibleState.targetState = isActive
+    // a hidden cover that isn't mid-fade builds no transition at all
+    if (!isActive && visibleState.isIdle) return
+
     AnimatedVisibility(
-        visible = isActive,
+        visibleState = visibleState,
         enter = fadeIn(tween(500)),
         exit = fadeOut(tween(500)),
         modifier = modifier,
@@ -137,7 +155,7 @@ fun PlayingIndicatorBox(
                 )
             }
             if (large) {
-                if (playWhenReady) {
+                if (playWhenReady()) {
                     // the same bottom-right slot as the play glyph, so playing and paused swap in place
                     Box(
                         contentAlignment = Alignment.Center,
@@ -162,7 +180,7 @@ fun PlayingIndicatorBox(
                 }
             } else {
                 val side = maxWidth.coerceAtMost(maxHeight)
-                if (playWhenReady) {
+                if (playWhenReady()) {
                     PlayingIndicator(
                         color = color,
                         barWidth = 2.dp,

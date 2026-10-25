@@ -1,8 +1,4 @@
-// ManageDownloadsSheet.kt
-//
-// Storage → Manage downloads: every downloaded song with its size. Without a search it suggests
-// what to clear first - the biggest songs, and the ones downloaded a while ago but hardly played -
-// then lists them all in the order you pick. Tap songs to pick them, then remove them together.
+// storage → manage downloads: every downloaded song with its size, suggestions of what to clear first, pick songs to remove them together
 
 package com.example.musicfy.ui.screens.settings.storage
 
@@ -68,13 +64,13 @@ import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.viewmodels.DownloadedSong
 import com.example.musicfy.viewmodels.StorageViewModel
 
-/** How many songs each suggestion shelf shows. */
+/** how many songs each suggestion shelf shows */
 private const val ShelfSize = 4
 
-/** Fewer downloads than this and the suggestions would only repeat the full list. */
+/** fewer downloads than this and the suggestions would only repeat the full list */
 private const val ShelvesFrom = 8
 
-/** A download younger than this hasn't had a fair chance to be played yet. */
+/** a download younger than this hasn't had a fair chance to be played yet */
 private const val SettleMillis = 14L * 24 * 60 * 60 * 1000
 
 private enum class DownloadSort(val label: String) {
@@ -93,7 +89,7 @@ private enum class DownloadSort(val label: String) {
     }
 }
 
-/** The songs picked so far; it lives as long as the sheet, so searching never drops a pick. */
+/** the songs picked so far, it lives as long as the sheet so searching never drops a pick */
 @Stable
 private class DownloadPicks {
     val ids = mutableStateListOf<String>()
@@ -209,10 +205,7 @@ private fun ManageDownloadsContent(viewModel: StorageViewModel, picks: DownloadP
     }
 }
 
-/**
- * Downloads at least two weeks old, fewest plays first. If everything is newer than that, the
- * shelf stays away rather than calling yesterday's download unloved.
- */
+/** downloads at least two weeks old, fewest plays first, no shelf if everything is newer than that */
 private fun lessListened(all: List<DownloadedSong>): List<DownloadedSong> {
     val cutoff = System.currentTimeMillis() - SettleMillis
     return all
@@ -262,7 +255,7 @@ private fun LazyListScope.downloadRows(prefix: String, songs: List<DownloadedSon
     }
 }
 
-/** "Sort by - size ›": a tap moves to the next order, the word rolling over to the new one. */
+/** the sort switch, a tap moves to the next order and the word rolls over to the new one */
 @Composable
 private fun SortSwitch(sort: DownloadSort, onNext: () -> Unit) {
     Row(

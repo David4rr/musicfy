@@ -1,5 +1,3 @@
-// Audioscrobbler.kt
-
 package com.music.lastfm
 
 import io.ktor.client.HttpClient
@@ -19,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.security.MessageDigest
 
-/** A song as a scrobbling service wants it. Times are in seconds. */
+/** a song as a scrobbling service wants it, times are in seconds */
 @Serializable
 data class ScrobbleTrack(
     val artist: String,
@@ -28,28 +26,28 @@ data class ScrobbleTrack(
     val durationSeconds: Int? = null,
 )
 
-/** A signed-in account: the name it goes by and the key every scrobble is sent with. */
+/** a signed-in account: the name it goes by and the key every scrobble is sent with */
 data class AudioscrobblerSession(val name: String, val key: String)
 
-/** What the service said went wrong, by its own error codes (see the Last.fm API docs). */
+/** what the service said went wrong, by its own error codes (see the last.fm api docs) */
 class AudioscrobblerException(val code: Int, message: String) : Exception(message) {
-    /** The account took back Musicfy's access, or the session is gone: sign in again. */
+    /** the account took back musicfy's access or the session is gone: sign in again */
     val isSignedOut: Boolean get() = code == INVALID_SESSION
 
-    /** Turned down for good, like a song with no title: sending it again won't help. */
+    /** turned down for good, like a song with no title, sending it again won't help */
     val isRejected: Boolean get() = code == INVALID_PARAMETERS || code == INVALID_RESOURCE
 
-    /** Worth trying the same request again later. */
+    /** worth trying the same request again later */
     val isTemporary: Boolean get() = code in TemporaryCodes
 
-    /** Signing in: the user hasn't allowed Musicfy on the page yet. */
+    /** signing in: the user hasn't allowed musicfy on the page yet */
     val isWaitingForUser: Boolean get() = code == TOKEN_NOT_AUTHORIZED
 
-    /** Signing in: the token is too old or unknown, so a new one is needed. */
+    /** signing in: the token is too old or unknown so a new one is needed */
     val isTokenExpired: Boolean get() = code == TOKEN_EXPIRED || code == INVALID_TOKEN
 
     companion object {
-        /** Not one of the service's codes: the server itself failed, or answered with no JSON. */
+        /** not one of the service's codes: the server itself failed or answered with no json */
         const val SERVER_ERROR = -1
         private const val INVALID_TOKEN = 4
         private const val INVALID_PARAMETERS = 6
@@ -61,28 +59,23 @@ class AudioscrobblerException(val code: Int, message: String) : Exception(messag
     }
 }
 
-/**
- * One Audioscrobbler 2.0 server: Last.fm's own, or one that copies its API, like Libre.fm. Every
- * call is signed the way the API asks: the parameters sorted by name and joined, the shared
- * secret added, then MD5. Network failures come out as IOExceptions, the service's own errors as
- * [AudioscrobblerException].
- */
+/** one audioscrobbler 2.0 server (last.fm or a copy of its api like libre.fm), calls are signed with md5, network failures are IOExceptions and the service's own errors AudioscrobblerException */
 class Audioscrobbler(
     private val apiRoot: String,
     private val authPage: String,
     private val apiKey: String,
     private val secret: String,
 ) {
-    /** False in a build made without this service's API key, which can't sign anyone in. */
+    /** false in a build made without this service's api key, which can't sign anyone in */
     val isConfigured: Boolean get() = apiKey.isNotEmpty() && secret.isNotEmpty()
 
-    /** A request token: the first step of signing in. */
+    /** a request token, the first step of signing in */
     suspend fun getToken(): String = call("auth.getToken").string("token") ?: throw unreadable()
 
-    /** The service's page where the user signs in and lets Musicfy scrobble for them. */
+    /** the service's page where the user signs in and lets musicfy scrobble for them */
     fun authUrl(token: String): String = "$authPage?api_key=$apiKey&token=$token"
 
-    /** Once the user has allowed Musicfy on [authUrl]; until then this fails with [AudioscrobblerException.isWaitingForUser]. */
+    /** once the user has allowed musicfy on authUrl, until then this fails with AudioscrobblerException.isWaitingForUser */
     suspend fun getSession(token: String): AudioscrobblerSession {
         val session = call("auth.getSession", mapOf("token" to token))["session"] as? JsonObject ?: throw unreadable()
         return AudioscrobblerSession(
@@ -95,7 +88,7 @@ class Audioscrobbler(
         call("track.updateNowPlaying", track.params(index = null), sessionKey)
     }
 
-    /** Up to [MAX_BATCH] plays in one go, each with the time it started playing. */
+    /** up to MAX_BATCH plays in one go, each with the time it started playing */
     suspend fun scrobble(sessionKey: String, plays: List<Pair<ScrobbleTrack, Long>>) {
         require(plays.size <= MAX_BATCH) { "At most $MAX_BATCH scrobbles per request" }
         val params = buildMap {
@@ -163,7 +156,7 @@ class Audioscrobbler(
     private fun unreadable() = AudioscrobblerException(AudioscrobblerException.SERVER_ERROR, "The answer couldn't be read")
 
     companion object {
-        /** The most plays one track.scrobble request takes. */
+        /** the most plays one track.scrobble request takes */
         const val MAX_BATCH = 50
 
         private const val USER_AGENT = "Musicfy"

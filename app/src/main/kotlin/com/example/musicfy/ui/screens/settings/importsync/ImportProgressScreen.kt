@@ -1,5 +1,3 @@
-// ImportProgressScreen.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import android.widget.Toast

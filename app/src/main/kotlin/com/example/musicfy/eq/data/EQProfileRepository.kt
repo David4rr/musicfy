@@ -1,5 +1,3 @@
-// EQProfileRepository.kt
-
 package com.example.musicfy.eq.data
 
 import android.content.Context

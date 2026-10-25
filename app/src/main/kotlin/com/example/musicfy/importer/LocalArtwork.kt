@@ -14,15 +14,11 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 
-/**
- * Covers taken out of local audio files. They live in the app's own files folder. They used to be
- * saved in the cache folder, which Android (and phone cleaners like MIUI's) empties whenever it
- * likes, and since a song that had a cover path was never read again, its cover was gone for good.
- */
+/** covers taken out of local audio files, kept in the app's files folder because android and phone cleaners empty the cache folder */
 object LocalArtwork {
     private const val FOLDER = "local_artwork"
 
-    /** Saves [bytes] as [songId]'s cover and returns the file's uri, or null if it couldn't be written. */
+    /** saves bytes as songId's cover and returns the file's uri, or null if it couldn't be written */
     fun save(context: Context, songId: String, bytes: ByteArray): String? = runCatching {
         val folder = File(context.filesDir, FOLDER).apply { mkdirs() }
         val file = File(folder, "${songId.replace(UnsafeInName, "_")}.jpg")
@@ -36,7 +32,7 @@ object LocalArtwork {
         Uri.fromFile(file).toString()
     }.getOrNull()
 
-    /** True for a cover file on this phone that is gone, or that sits where it could vanish. */
+    /** true for a cover file on this phone that is gone, or that sits where it could vanish */
     fun needsRepair(context: Context, thumbnailUrl: String?): Boolean {
         val uri = thumbnailUrl?.toUri() ?: return false
         if (uri.scheme != "file") return false
@@ -44,12 +40,7 @@ object LocalArtwork {
         return !File(path).exists() || path.startsWith(context.cacheDir.path)
     }
 
-    /**
-     * Fixes the covers of local songs: moves any still in the cache folder to where they stay, and
-     * reads the song's file again for one that's gone. With [includeMissing], songs that never had
-     * a cover get another look too (a re-scan, where the file may have been retagged since).
-     * Returns how many covers it fixed.
-     */
+    /** fixes covers of local songs: moves ones still in the cache folder and re-reads the file for missing ones, includeMissing also retries songs that never had a cover, returns how many it fixed */
     suspend fun repair(context: Context, database: MusicDatabase, includeMissing: Boolean = false): Int =
         withContext(Dispatchers.IO) {
             val songs = database.localSongsByRowIdAsc().first().map { it.song }
@@ -70,8 +61,7 @@ object LocalArtwork {
                     Timber.w(e, "Couldn't repair the cover of ${song.id}")
                     null
                 }
-                // a cover that's gone for good is cleared, so the song shows the plain placeholder
-                // rather than a broken picture, and playing it tries the file again
+                // a cover that's gone for good is cleared so the song shows the placeholder, and playing it tries the file again
                 if (newUrl != current && (newUrl != null || current != null)) {
                     database.query { update(song.copy(thumbnailUrl = newUrl)) }
                     if (newUrl != null) fixed++
@@ -80,7 +70,7 @@ object LocalArtwork {
             fixed
         }
 
-    /** A cover still in the cache folder, copied out before Android clears it. */
+    /** a cover still in the cache folder, copied out before android clears it */
     private fun moveOutOfCache(context: Context, songId: String, thumbnailUrl: String?): String? {
         val path = thumbnailUrl?.toUri()?.path ?: return null
         val file = File(path)

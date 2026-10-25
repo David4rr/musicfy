@@ -1,5 +1,3 @@
-// IpVersion.kt
-
 package com.music.innertube.models
 
 enum class IpVersion {

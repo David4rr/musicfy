@@ -1,8 +1,4 @@
-// OnboardingDesign.kt
-//
-// The pieces every onboarding page is built from, matched to the "edit page" mocks: a light circle
-// (or a provider squircle) top-left, a big bold title, a grey subtitle, content, and pill buttons
-// pinned to the bottom. Pages cap their width so tablets and big display sizes don't stretch them.
+// shared building blocks for every onboarding page, width is capped so tablets don't stretch them
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -69,29 +65,22 @@ internal object Onb {
     val ButtonSecondary = Color(0xFF353535)
     val Badge = Color(0xFFD9D9D9)
 
-    /** Wider than this and pages stop growing, centred, so a tablet doesn't get 1000dp lines. */
+    /** wider than this and pages stop growing, centred, so a tablet doesn't get 1000dp lines */
     val MaxContentWidth = 560.dp
 
-    /** Room the sheet's handle needs above the page. */
+    /** room the sheet's handle needs above the page */
     val TopClearance = 52.dp
 }
 
-/**
- * Tracking for the big page titles and the line under them: as tight as Home's headings. They were
- * -0.5sp and -0.2sp, which at 34sp and 18sp is looser than the -0.05em every other line in the app
- * gets, so the headings read wider than the text around them.
- */
+/** title tracking as tight as home's headings, the old looser values made them read wider than the text around them */
 internal val OnbTitleTracking = (-0.04).em
 internal val OnbSubtitleTracking = (-0.035).em
 
-/** Side padding that shrinks on very narrow screens (or very large display-size settings). */
+/** side padding that shrinks on very narrow screens or big display-size settings */
 @Composable
 internal fun rememberSidePadding(maxWidth: Dp): Dp = remember(maxWidth) { if (maxWidth < 340.dp) 20.dp else 28.dp }
 
-/**
- * One onboarding page. [content] scrolls when it doesn't fit (big font or display size, short
- * phones); [footer] stays pinned to the bottom above the navigation bar.
- */
+/** one onboarding page, content scrolls when it doesn't fit and footer stays pinned above the navigation bar */
 @Composable
 internal fun OnboardingPage(
     badge: @Composable () -> Unit,
@@ -99,7 +88,7 @@ internal fun OnboardingPage(
     subtitle: String? = null,
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
-    /** Space above the badge. A popup sheet already has its own handle row, so it needs less. */
+    /** space above the badge, a popup sheet has its own handle row so it needs less */
     contentTop: Dp = Onb.TopClearance + 18.dp,
     footer: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {},
@@ -157,7 +146,7 @@ internal fun OnboardingPage(
     }
 }
 
-/** The light circle in the top-left corner of every page, with the page's own glyph. */
+/** the light circle top-left of every page, holding the page's own glyph */
 @Composable
 internal fun PageBadge(icon: Painter, size: Dp = 40.dp) {
     Box(
@@ -173,7 +162,7 @@ internal fun PageBadge(icon: Painter, size: Dp = 40.dp) {
 
 internal enum class OnbButtonStyle { Primary, Secondary }
 
-/** The pill buttons. Pressing dips the pill slightly, like the rest of the app's buttons. */
+/** the pill buttons, pressing dips the pill like the app's other buttons */
 @Composable
 internal fun OnbButton(
     text: String,
@@ -211,7 +200,7 @@ internal fun OnbButton(
     }
 }
 
-/** The round single-line field the profile pages type the username into. */
+/** round single-line field for the username on the profile pages */
 @Composable
 internal fun OnbTextField(
     value: String,
@@ -242,7 +231,7 @@ internal fun OnbTextField(
     )
 }
 
-/** A tappable card that dims a touch while pressed. */
+/** a tappable card that dims a touch while pressed */
 @Composable
 internal fun OnbCard(
     modifier: Modifier = Modifier,
@@ -270,7 +259,7 @@ internal fun OnbCard(
     }
 }
 
-/** "Import / Import & sync / Import from backup": a big circle glyph, a title and a line of detail. */
+/** big circle glyph, a title and a line of detail, used for import, import and sync, import from backup */
 @Composable
 internal fun OnbChoiceCard(
     icon: Painter,
@@ -294,7 +283,7 @@ internal fun OnbChoiceCard(
     }
 }
 
-/** A setting with a switch, optionally with an illustration above it (the crossfade banner). */
+/** a setting with a switch, optionally with an illustration above it */
 @Composable
 internal fun OnbToggleCard(
     title: String,
@@ -330,5 +319,5 @@ internal fun OnbToggleCard(
     }
 }
 
-/** Soft fade at the bottom of scrolling content, so it slides under the buttons instead of ending in a hard line. */
+/** soft fade at the bottom of scrolling content so it slides under the buttons instead of ending in a hard line */
 internal val BottomFade = Brush.verticalGradient(listOf(Color.Transparent, Onb.Page))

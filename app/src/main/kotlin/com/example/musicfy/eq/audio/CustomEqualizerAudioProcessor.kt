@@ -1,5 +1,3 @@
-// CustomEqualizerAudioProcessor.kt
-
 package com.example.musicfy.eq.audio
 
 import androidx.media3.common.C
@@ -10,18 +8,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.pow
 
-/**
- * The equalizer: a cascade of biquads over 16-bit PCM, any channel count up to 7.1.
- *
- * Settings change live while a band is dragged, so a new design never resets the music: the new
- * filters take over the old ones' state and the two are crossfaded over [FadeSeconds], which keeps
- * every change (a preset, switching off, adding a band) free of clicks. Nothing is reset or
- * re-seeked when a setting moves.
- *
- * A [PeakLimiter] follows the filters, so boosts that would clip are caught by the limiter instead
- * of breaking up. It keeps running when the equalizer is off (the sound is untouched then, only a
- * few milliseconds late), because switching its delay on and off would make the music skip.
- */
+/** the equalizer: biquads over 16-bit pcm up to 7.1, a new design crossfades in so nothing resets or re-seeks, the peak limiter always runs since toggling its delay would make the music skip */
 @UnstableApi
 @Suppress("DEPRECATION")
 class CustomEqualizerAudioProcessor : AudioProcessor {
@@ -93,7 +80,7 @@ class CustomEqualizerAudioProcessor : AudioProcessor {
         render(frames, replaceOutputBuffer(bytes))
     }
 
-    /** filters, limits and writes out the [frames] frames waiting in [work] */
+    /** filters, limits and writes out the frames waiting in work */
     private fun render(frames: Int, out: ByteBuffer) {
         syncDesign()
         val count = frames * channels

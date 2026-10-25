@@ -1,8 +1,4 @@
-// DevPersonPicker.kt
-//
-// The capsule beside the back button that switches between the people on Dev Spaces. Folded it's
-// just their faces; tapped it opens out to show names. The light pill behind the current person
-// is tied to the pager, so it slides under your finger while you swipe between pages.
+// the capsule beside the back button that switches between people on dev spaces, its pill follows the pager while you swipe
 
 package com.example.musicfy.ui.screens.settings.devspace
 

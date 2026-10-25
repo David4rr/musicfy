@@ -9,21 +9,18 @@ data class ImportedTrack(
     val artist: String,
     val album: String?,
     val durationMs: Long? = null,
-    /** Exact YouTube id when the source already knows it (Musicfy CSV, YouTube links) — no search needed. */
+    /** exact youtube id when the source already knows it (musicfy csv, youtube links) — no search needed */
     val videoId: String? = null,
     val thumbnailUrl: String? = null,
-    /** Full YouTube item when the source is YouTube itself, so nothing is lost converting back. */
+    /** full youtube item when the source is youtube itself, so nothing is lost converting back */
     val ytItem: SongItem? = null,
-    /** When it was added to the source's list (liked, saved to the library), so imports keep that order. */
+    /** when it was added to the source's list (liked, saved to the library), so imports keep that order */
     val addedAtMs: Long? = null,
-    /** The track's own id on its service ("spotify:track:..."), which a hand-picked version is saved under. */
+    /** the track's own id on its service ("spotify:track:..."), which a hand-picked version is saved under */
     val sourceId: String? = null,
 )
 
-/**
- * Where imported music came from. Kept with every imported song (see `ImportedSong`) so the Library
- * can list "Imported from Spotify" and the YouTube library sync knows to leave these songs alone.
- */
+/** where imported music came from, kept on every imported song so the library can list imported from spotify and the youtube sync leaves these songs alone */
 enum class ImportSource(val key: String, val label: String) {
     SPOTIFY("spotify", "Spotify"),
     APPLE_MUSIC("apple_music", "Apple Music"),
@@ -31,10 +28,10 @@ enum class ImportSource(val key: String, val label: String) {
     YOUTUBE_MUSIC("youtube_music", "YouTube Music"),
     DEEZER("deezer", "Deezer"),
 
-    /** A file or a service with no name of its own (a TuneMyMusic CSV, a Musicfy backup). */
+    /** a file or a service with no name of its own (a tunemymusic csv, a musicfy backup) */
     OTHER("other", "other sources");
 
-    /** The sources the Library gives a category of their own. */
+    /** the sources the library gives a category of their own */
     val isListed: Boolean get() = this != OTHER
 
     companion object {
@@ -45,55 +42,52 @@ enum class ImportSource(val key: String, val label: String) {
 data class ParsedImport(
     val likedSongs: List<ImportedTrack>,
     val playlists: Map<String, List<ImportedTrack>>,
-    /** Songs that go straight into the Library (an account's whole song library), in no playlist. */
+    /** songs that go straight into the library (an account's whole song library), in no playlist */
     val librarySongs: List<ImportedTrack> = emptyList(),
-    /** Things the user should know before importing, e.g. a source that only shares part of a playlist. */
+    /** things the user should know before importing, e.g. a source that only shares part of a playlist */
     val warnings: List<String> = emptyList(),
-    /** Which service this came from; null when that isn't known (a plain CSV). */
+    /** which service this came from; null when that isn't known (a plain csv) */
     val provider: ImportSource? = null,
-    /** Each playlist's own cover on the source service, by its name in [playlists]. */
+    /** each playlist's own cover on the source service, by its name in playlists */
     val playlistCovers: Map<String, String> = emptyMap(),
-    /** Where each playlist lives on the service, by its name in [playlists], so it can be re-synced. */
+    /** where each playlist lives on the service, by its name in playlists, so it can be re-synced */
     val playlistOrigins: Map<String, PlaylistOrigin> = emptyMap(),
 ) {
     val totalSongs: Int get() = likedSongs.size + librarySongs.size + playlists.values.sumOf { it.size }
     val totalPlaylists: Int get() = playlists.size
 }
 
-/** Where a playlist lives on its service. Either is enough for Re-sync to read it again. */
+/** where a playlist lives on its service. either is enough for re-sync to read it again */
 data class PlaylistOrigin(
-    /** Its id on the service: what the service's account lists it under. */
+    /** its id on the service: what the service's account lists it under */
     val remoteId: String? = null,
-    /** The share link it was read from. */
+    /** the share link it was read from */
     val remoteUrl: String? = null,
 )
 
-/** One Re-sync run: the playlist being read now, and what the run has done so far. */
+/** one re-sync run: the playlist being read now, and what the run has done so far */
 data class ResyncSummary(
     val playlistName: String,
-    /** How many playlists the run re-syncs (Re-sync all), and how many are finished. */
+    /** how many playlists the run re-syncs (re-sync all), and how many are finished */
     val playlists: Int = 1,
     val done: Int = 0,
-    /** New songs added over every playlist so far, and how many playlists got any. */
+    /** new songs added over every playlist so far, and how many playlists got any */
     val added: Int = 0,
     val playlistsChanged: Int = 0,
-    /** Playlists that couldn't be read or added to. */
+    /** playlists that couldn't be read or added to */
     val failed: List<String> = emptyList(),
-    /** Something to know about how one was read, like a link that only shares part of the playlist. */
+    /** something to know about how one was read, like a link that only shares part of the playlist */
     val note: String? = null,
 )
 
-/** A Re-sync's read of a playlist: its songs on the service now, and where it was found. */
+/** a re-sync's read of a playlist: its songs on the service now, and where it was found */
 data class ResyncRead(
     val tracks: List<ImportedTrack>,
     val origin: PlaylistOrigin,
     val note: String? = null,
 )
 
-/**
- * One playlist for MusicImportService to re-sync. [read] runs inside the re-sync, so the wait for
- * the service already shows as progress.
- */
+/** one playlist for MusicImportService to re-sync, read runs inside the re-sync so the wait for the service already shows as progress */
 class ResyncRequest(
     val playlistId: String,
     val playlistName: String,
@@ -102,11 +96,11 @@ class ResyncRequest(
 )
 
 data class ImportOptions(
-    /** Also create the playlists (and likes) on the signed-in YouTube account. */
+    /** also create the playlists (and likes) on the signed-in youtube account */
     val mirrorToYouTube: Boolean = false,
 )
 
-/** A track that couldn't be matched, with where it came from so the user can find it by hand. */
+/** a track that couldn't be matched, with where it came from so the user can find it by hand */
 data class UnmatchedTrack(
     val track: ImportedTrack,
     val playlistName: String?,
@@ -120,19 +114,19 @@ data class ImportProgress(
     val currentLabel: String = "",
     val isDone: Boolean = false,
     val cancelled: Boolean = false,
-    /** The service being imported from, for the "Adding 12 of 340 tracks from Spotify" banner. */
+    /** the service being imported from, for the "adding 12 of 340 tracks from spotify" banner */
     val source: ImportSource? = null,
     val playlistsCreated: Int = 0,
     val likedAdded: Int = 0,
     val unmatched: List<UnmatchedTrack> = emptyList(),
-    /** Playlists that imported locally but couldn't be created or filled on YouTube. */
+    /** playlists that imported locally but couldn't be created or filled on youtube */
     val youtubeFailures: List<String> = emptyList(),
     val error: String? = null,
-    /** Set while this run is a Re-sync of one playlist rather than an import. */
+    /** set while this run is a re-sync of one playlist rather than an import */
     val resync: ResyncSummary? = null,
 )
 
-/** A YouTube song needs no matching: the id is exact, and the full item is kept. */
+/** a youtube song needs no matching: the id is exact, and the full item is kept */
 internal fun SongItem.toImportedTrack() = ImportedTrack(
     title = title,
     artist = artists.joinToString(", ") { it.name },

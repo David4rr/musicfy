@@ -1,5 +1,3 @@
-// AudioLabStore.kt
-
 package com.example.musicfy.eq
 
 import android.content.Context
@@ -41,11 +39,11 @@ import javax.inject.Singleton
 import kotlin.math.max
 import kotlin.math.pow
 
-/** what Sonic, the player's speed stage, can do */
+/** what sonic, the player's speed stage, can do */
 const val MinSpeed = 0.1f
 const val MaxSpeed = 8f
 
-/** A headphone correction picked from the AutoEq database, with the filters it came to. */
+/** a headphone correction picked from the autoeq database, with the filters it came to */
 @Serializable
 data class AutoEqCorrection(
     val model: String,
@@ -97,7 +95,7 @@ data class SpatialSettings(
     val feedDb: Float = 4.5f,
     val speakerAngle: Float = 30f,
     val amount: Float = 1f,
-    /** Dolby Atmos / surround rendered binaurally by Musicfy rather than by the device */
+    /** dolby atmos / surround rendered binaurally by musicfy rather than by the device */
     val surround: Boolean = false,
     /** both ears hear the whole mix */
     val mono: Boolean = false,
@@ -105,7 +103,7 @@ data class SpatialSettings(
     fun toParams() = SpatialParams(enabled, mode, cutoffHz, feedDb, speakerAngle, amount, surround, mono)
 }
 
-/** "Even out songs" for files that carry ReplayGain (Monochrome's FLACs, many local files) */
+/** "even out songs" for files that carry replaygain (monochrome's flacs, many local files) */
 @Serializable
 data class NormalizeSettings(
     val replayGainMode: ReplayGainMode = ReplayGainMode.Track,
@@ -137,11 +135,7 @@ data class VolumeSettings(
     fun toCurve() = VolumeCurve(enabled, exponent, limit)
 }
 
-/**
- * Everything Audio Lab sets, in one place: the equalizer (curve, presets, headphone correction)
- * and Audio FX (reverb, loudness, spatial, speed and pitch, volume curve). Each change goes
- * straight to the players, live, and is saved a moment later, so a slider can be dragged freely.
- */
+/** everything audio lab sets (equalizer and audio fx), each change goes to the players live and is saved a moment later, so a slider can be dragged freely */
 @Singleton
 class AudioLabStore @Inject constructor(
     @ApplicationContext context: Context,
@@ -184,10 +178,7 @@ class AudioLabStore @Inject constructor(
     private val _normalize = MutableStateFlow(load("normalize") ?: NormalizeSettings())
     val normalize: StateFlow<NormalizeSettings> = _normalize.asStateFlow()
 
-    /**
-     * Whether anything here is changing the sound. Offloaded playback hands decoding to the phone's
-     * audio chip and skips every effect, so it has to stay off while this is true.
-     */
+    /** whether anything here changes the sound: offloaded playback skips every effect, so it has to stay off while this is true */
     val shapesSound: Flow<Boolean> = combine(eq, reverb, loudness, spatial) { eq, reverb, loudness, spatial ->
         eq.enabled || reverb.enabled || loudness.enabled || spatial.enabled || spatial.mono
     }.distinctUntilChanged()
@@ -251,11 +242,7 @@ class AudioLabStore @Inject constructor(
         if (_eq.value.presetId == id) updateEq { it.copy(presetId = null) } else scheduleSave()
     }
 
-    /**
-     * The dB the auto preamp takes off for [settings], 0 or less. Only the part of each boost the
-     * limiter can't catch: taking off the whole boost left a bass boost no louder than no EQ at all,
-     * with everything else quieter.
-     */
+    /** the db the auto preamp takes off for settings (0 or less): only the boost the limiter can't catch, taking off all of it left a bass boost no louder than no eq */
     fun autoHeadroom(settings: EqSettings = _eq.value): Double = synchronized(headroomCurve) {
         val response = headroomCurve.response(audibleBands(settings))
         var over = 0.0
@@ -263,7 +250,7 @@ class AudioLabStore @Inject constructor(
         -over
     }
 
-    /** what the processors play for [settings]; null is a straight wire */
+    /** what the processors play for settings; null is a straight wire */
     fun design(settings: EqSettings): ParametricEQ? {
         if (!settings.enabled) return null
         val bands = audibleBands(settings)
@@ -344,7 +331,7 @@ class AudioLabStore @Inject constructor(
     }
 }
 
-/** The built-in curves, as gains for the ten classic bands. */
+/** the built-in curves, as gains for the ten classic bands */
 object EqPresets {
     const val FlatId = "flat"
 

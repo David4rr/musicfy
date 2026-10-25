@@ -8,10 +8,10 @@ import com.music.innertube.utils.completed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
-/** Creates a YouTube copy of a local playlist and links the two, so later edits reach both. */
+/** creates a youtube copy of a local playlist and links the two, so later edits reach both */
 object YouTubePlaylistMirror {
 
-    /** True when the playlist exists on YouTube with all its (YouTube) songs added. */
+    /** true when the playlist exists on youtube with all its (youtube) songs added */
     suspend fun mirror(database: MusicDatabase, playlistId: String, name: String): Boolean {
         val newBrowseId = runCatching { YouTube.createPlaylist(name) }.getOrNull() ?: return false
         val current = database.playlist(playlistId).first()?.playlist ?: return false
@@ -19,7 +19,7 @@ object YouTubePlaylistMirror {
 
         val ids = database.playlistSongs(playlistId).first()
             .sortedBy { it.map.position }
-            // songs from files on this phone have no YouTube video to add
+            // songs from files on this phone have no youtube video to add
             .filterNot { it.song.song.isLocal }
             .map { it.map.songId }
         if (ids.isEmpty()) return true
@@ -28,10 +28,7 @@ object YouTubePlaylistMirror {
         return true
     }
 
-    /**
-     * Removing a song from a YouTube playlist needs the per-entry setVideoId, which only exists once
-     * YouTube has the songs. Fill them in without ever dropping a local entry.
-     */
+    /** removing a song from a youtube playlist needs its per-entry setVideoId, which only exists once youtube has the songs, fill them in without dropping any local entry */
     private suspend fun attachSetVideoIds(database: MusicDatabase, playlistId: String, browseId: String) {
         delay(1500)
         val remote = YouTube.playlist(browseId).completed().getOrNull()?.songs ?: return

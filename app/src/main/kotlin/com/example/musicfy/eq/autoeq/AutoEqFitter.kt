@@ -1,5 +1,3 @@
-// AutoEqFitter.kt
-
 package com.example.musicfy.eq.autoeq
 
 import com.example.musicfy.eq.audio.Biquad
@@ -17,14 +15,14 @@ import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.sqrt
 
-/** How a correction is fitted: AutoEq's own 10-band fit unless something here is changed. */
+/** how a correction is fitted: autoeq's own 10-band fit unless something here is changed */
 @Serializable
 data class AutoEqTuning(
     val bands: Int = 10,
     val maxHz: Int = 16_000,
-    /** a low shelf at 105 Hz added to the target */
+    /** a low shelf at 105 hz added to the target */
     val bassDb: Double = 0.0,
-    /** dB per octave around 1 kHz, positive brighter */
+    /** db per octave around 1 khz, positive brighter */
     val tiltDbPerOctave: Double = 0.0,
 ) {
     val isDefault: Boolean get() = bands == 10 && maxHz == 16_000 && bassDb == 0.0 && tiltDbPerOctave == 0.0
@@ -35,11 +33,7 @@ data class AutoEqTuning(
     }
 }
 
-/**
- * Fits parametric filters that bend a headphone's measured response onto its target, the way
- * AutoEq does: a low shelf and a high shelf for the broad tilt, peaks for the rest, then all of
- * them tuned together to the smallest error. Runs in a fraction of a second on a phone.
- */
+/** fits parametric filters that bend a headphone's measured response onto its target the way autoeq does: shelves for the broad tilt, peaks for the rest, then all tuned together */
 object AutoEqFitter {
 
     private const val SampleRate = 48_000
@@ -167,10 +161,7 @@ object AutoEqFitter {
         return ParametricEQ(preamp = round(-max(0.0, maxBoost) * 10) / 10, bands = bandsOut)
     }
 
-    /**
-     * Adam on every filter's frequency (log), gain and Q (log) at once, with numeric gradients:
-     * only the nudged filter's curve is recomputed for each probe.
-     */
+    /** adam on every filter's frequency (log), gain and q (log) at once with numeric gradients, only the nudged filter's curve is recomputed per probe */
     private fun optimize(
         filters: List<Filter>,
         total: DoubleArray,
@@ -239,7 +230,7 @@ object AutoEqFitter {
         private var curve: DoubleArray? = null
         fun response(n: Int): DoubleArray = curve ?: DoubleArray(n).also { curve = it }
 
-        /** a copy with parameter [j] (0 log-frequency, 1 gain, 2 log-Q) moved by [h] */
+        /** a copy with parameter j (0 log-frequency, 1 gain, 2 log-q) moved by h */
         fun nudged(j: Int, h: Double): Filter = when (j) {
             0 -> Filter(type, frequency * 2.0.pow(h), gain, q)
             1 -> Filter(type, frequency, gain + h, q)
@@ -262,10 +253,7 @@ object AutoEqFitter {
         return if (count == 0) 0.0 else sum / count
     }
 
-    /**
-     * Moving average over a window [halfWidth] octaves either side, on the log-frequency grid.
-     * The window can change width along the way, so each point gathers its own neighbours.
-     */
+    /** moving average over halfWidth octaves either side on the log-frequency grid, the window changes width along the way so each point gathers its own neighbours */
     private inline fun smooth(values: DoubleArray, octave: DoubleArray, halfWidth: (Double) -> Double): DoubleArray {
         val n = values.size
         val out = DoubleArray(n)

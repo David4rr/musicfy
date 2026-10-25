@@ -1,5 +1,3 @@
-// MusicDatabase.kt
-
 package com.example.musicfy.db
 
 import android.annotation.SuppressLint

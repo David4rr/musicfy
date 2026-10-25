@@ -1,5 +1,3 @@
-// AppleMusicToken.kt
-
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient
@@ -9,16 +7,10 @@ import io.ktor.client.request.header
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * the developer token Apple's web player signs its catalog calls with. it's baked into the web
- * player's main script and rotated every few months, so a copy hardcoded in the app goes stale (the
- * last one expired on 17 June 2026 and took the artist backgrounds with it). this reads the current
- * one out of music.apple.com once per run and keeps it until shortly before it expires.
- */
+/** the developer token apple's web player signs its catalog calls with, read from music.apple.com once per run because the baked-in one is rotated every few months */
 object AppleMusicToken {
 
-    // read from the web player on 10 Oct 2026, good until 10 Dec 2026. only used when the page
-    // can't be reached; the live one replaces it as soon as it can be read
+    // read from the web player on 10 oct 2026 and good until 10 dec 2026, only used while the page can't be reached
     private const val FALLBACK =
         "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IldlYlBsYXlLaWQifQ" +
             ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzkwODk0NTM2LCJleHAiOjE3OTY5NDI1MzYsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ" +

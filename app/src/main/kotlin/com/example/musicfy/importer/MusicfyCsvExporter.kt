@@ -9,10 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-/**
- * Liked songs and library playlists as a CSV that Musicfy imports back exactly (rows carry the
- * YouTube id) and that other tools can still read (TuneMyMusic column names).
- */
+/** liked songs and library playlists as a csv musicfy imports back exactly (rows carry the youtube id) and other tools can read (tunemymusic column names) */
 object MusicfyCsvExporter {
 
     data class Summary(val likedSongs: Int, val playlists: Int, val playlistSongs: Int)
@@ -52,7 +49,7 @@ object MusicfyCsvExporter {
         artist = artists.joinToString(", ") { it.name },
         album = album?.title ?: song.albumName,
         durationMs = song.duration.takeIf { it > 0 }?.times(1000L),
-        // files on this phone have no YouTube id; the import searches for those by name instead
+        // files on this phone have no youtube id; the import searches for those by name instead
         videoId = song.id.takeUnless { song.isLocal },
         thumbnailUrl = song.thumbnailUrl?.takeIf { it.startsWith("https://") },
     )

@@ -1,5 +1,3 @@
-// ImportSyncComponents.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import android.widget.Toast
@@ -65,7 +63,7 @@ fun rememberYouTubeSignedIn(): Boolean {
     return remember(cookie) { runCatching { "SAPISID" in parseCookieString(cookie) }.getOrDefault(false) }
 }
 
-/** Same surface as a grouped settings card, for content that isn't a list of rows. */
+/** same surface as a grouped settings card, for content that isn't a list of rows */
 @Composable
 fun ImportInfoCard(
     modifier: Modifier = Modifier,
@@ -127,10 +125,7 @@ fun LinkInputDialog(
     }
 }
 
-/**
- * Shows whatever the pending import is doing (reading, failed, ready to review) and, once the
- * user confirms, starts it and opens the progress page. Put one on every screen that loads imports.
- */
+/** shows what the pending import is doing and starts it on confirm, put one on every screen that loads imports */
 @Composable
 fun PendingImportHost(
     viewModel: ImportSyncViewModel,

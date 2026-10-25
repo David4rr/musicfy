@@ -1,5 +1,3 @@
-// AudioLabEntryPoint.kt
-
 package com.example.musicfy.di
 
 import com.example.musicfy.eq.AudioLabStore

@@ -23,6 +23,7 @@ import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.size.Size as CoilSize
 import com.example.musicfy.ui.player.BackdropBlurTransformation
+import com.example.musicfy.ui.player.LocalCrossfadeShown
 import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.isActive
 import com.example.musicfy.ui.component.createAgslShader
@@ -37,33 +38,14 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Spacer
 
-@Composable
-fun rememberWarpShader(): Any? = remember {
-    if (android.os.Build.VERSION.SDK_INT >= 33) {
-        createAgslShader(
-            """
-            uniform float2 resolution;
-            uniform float time;
-            uniform shader image;
-
-            half4 main(float2 fragCoord) {
-                float2 uv = fragCoord / resolution;
-                float t = time * 0.5;
-
-                float2 warpOffset = float2(
-                    sin(uv.y * 3.0 + t) * 0.05 + cos(uv.x * 2.0 - t * 0.6) * 0.04,
-                    cos(uv.x * 3.0 + t * 0.7) * 0.05 + sin(uv.y * 2.5 + t * 0.9) * 0.04
-                );
-
-                float2 distortedCoord = fragCoord + warpOffset * resolution;
-                return image.eval(distortedCoord);
-            }
-            """.trimIndent()
-        )
-    } else {
-        null
-    }
+// one warp shader for every backdrop copy: each draw sets its own numbers first, and a song change compiles nothing
+private val sharedWarpShader: Any? by lazy {
+    if (android.os.Build.VERSION.SDK_INT >= 33) createAgslShader(DirectWarpShaderSource) else null
 }
+
+// null below android 13, where the warp can't run; passing null to a backdrop turns the warp off
+@Composable
+fun rememberWarpShader(): Any? = sharedWarpShader
 
 @Composable
 fun CoverGradientBackdrop(
@@ -82,6 +64,7 @@ fun CoverGradientBackdrop(
 ) {
     val context = LocalContext.current
     val currentOnLoaded by androidx.compose.runtime.rememberUpdatedState(onLoaded)
+    val isShown by androidx.compose.runtime.rememberUpdatedState(LocalCrossfadeShown.current)
 
     val ownTime = remember { mutableFloatStateOf(0f) }
     val runOwnClock = timeProvider == null
@@ -117,7 +100,7 @@ fun CoverGradientBackdrop(
                 value = runCatching { context.imageLoader.execute(request).image?.toBitmap() }.getOrNull()
                 currentOnLoaded?.invoke()
             }
-            val directWarp = remember { createAgslShader(DirectWarpShaderSource) }
+            val directWarp = checkNotNull(sharedWarpShader)
             Spacer(
                 modifier = Modifier
                     .requiredSize(width, height)
@@ -139,7 +122,8 @@ fun CoverGradientBackdrop(
                             }
                         }
                         onDrawBehind {
-                            if (input == null) return@onDrawBehind
+                            // a crossfade copy at zero opacity draws nothing, and doesn't follow the clock either
+                            if (input == null || !isShown()) return@onDrawBehind
                             directWarp.setAgslInputShader("image", input)
                             directWarp.setAgslUniform("resolution", size.width, size.height)
                             directWarp.setAgslUniform("time", time())
@@ -177,7 +161,7 @@ fun CoverGradientBackdrop(
 private const val BackdropZoom = 1.6f
 
 /**
- * The liquid warp of [rememberWarpShader], drawn straight onto the screen: [image] is the picture
+ * The liquid warp, drawn straight onto the screen: [image] is the picture
  * stretched over [resolution], and [zoom] (about the centre) is the scale the layer version applied
  * after warping. Every visible pixel samples inside the picture, so its edges never come into it.
  */

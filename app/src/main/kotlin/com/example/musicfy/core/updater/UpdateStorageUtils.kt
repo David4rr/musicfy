@@ -1,5 +1,3 @@
-// UpdateStorageUtils.kt
-
 package com.example.musicfy.core.updater
 
 import android.content.Context

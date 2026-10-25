@@ -202,6 +202,18 @@ extensions.configure<ApplicationExtension> {
             matchingFallbacks += listOf("release")
             proguardFiles("proguard-profileable.pro")
         }
+
+        // not debuggable so ART uses the baseline profile, but no r8, so it builds about as fast as debug
+        create("fast") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".fast"
+            isDebuggable = false
+            isProfileable = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+            // the provider modules only publish debug and release variants
+            matchingFallbacks += listOf("debug")
+        }
     }
 
     compileOptions {
@@ -297,7 +309,9 @@ composeCompiler {
     // Both release and profileable must strip source info — profileable exists precisely to
     // measure release performance, so it has to be compiled identically.
     val buildingReleaseLike = gradle.startParameter.taskNames.any { name ->
-        name.contains("Release", ignoreCase = true) || name.contains("Profileable", ignoreCase = true)
+        name.contains("Release", ignoreCase = true) ||
+            name.contains("Profileable", ignoreCase = true) ||
+            name.contains("Fast", ignoreCase = true)
     }
     includeSourceInformation.set(!buildingReleaseLike)
 

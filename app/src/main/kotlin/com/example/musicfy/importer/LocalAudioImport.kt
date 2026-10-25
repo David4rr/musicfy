@@ -19,10 +19,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.util.UUID
 
-/**
- * Adds one audio file to the library as a local song and returns the new song's id.
- * [uri] has to stay readable, so a shared file is copied into the app first (see [importSharedAudio]).
- */
+/** adds one audio file to the library as a local song and returns its id, uri has to stay readable so a shared file is copied into the app first (importSharedAudio) */
 suspend fun importLocalAudio(
     context: Context,
     database: MusicDatabase,
@@ -32,8 +29,7 @@ suspend fun importLocalAudio(
         extractAudioMetadata(context, uri)
     }
 
-    // the file's own lyrics, if its tags have any: saved with it, so they're
-    // there offline from the first play
+    // the file's own lyrics if its tags have any, saved with it so they work offline from the first play
     val embeddedLyrics = withContext(Dispatchers.IO) {
         com.example.musicfy.lyrics.readEmbeddedLyrics(context, uri)
     }
@@ -113,7 +109,7 @@ suspend fun importLocalAudio(
     return songId
 }
 
-/** Copies a file another app shared into the app's own storage, then imports it. */
+/** copies a file another app shared into the app's own storage, then imports it */
 suspend fun importSharedAudio(
     context: Context,
     database: MusicDatabase,

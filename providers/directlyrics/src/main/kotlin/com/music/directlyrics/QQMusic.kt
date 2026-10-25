@@ -1,5 +1,3 @@
-// QQMusic.kt
-
 package com.music.directlyrics
 
 import com.music.directlyrics.models.QQLyricResponse
@@ -14,10 +12,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.Base64
 
-/**
- * QQ Music, asked directly with no account. Lyrics are timed per line. QQ also has word timing,
- * but sends it encrypted, so it isn't read here.
- */
+/** qq music asked directly with no account, lyrics are timed per line, qq has word timing too but sends it encrypted so it isn't read here */
 object QQMusic {
 
     suspend fun getLyrics(title: String, artist: String, duration: Int): Result<String> = runCatching {
@@ -55,7 +50,7 @@ object QQMusic {
             )
         }
 
-    // Every QQ Music call goes through this one endpoint, named by a module and a method.
+    // every qq music call goes through this one endpoint, named by a module and a method
     private suspend fun musicu(module: String, method: String, param: JsonObject) =
         lyricsHttp.post("https://u.y.qq.com/cgi-bin/musicu.fcg") {
             val body = buildJsonObject {

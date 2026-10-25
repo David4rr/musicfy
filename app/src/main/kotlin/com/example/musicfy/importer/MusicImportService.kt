@@ -42,16 +42,16 @@ class MusicImportService @Inject constructor(
     private val _progress = MutableStateFlow(ImportProgress())
     val progress: StateFlow<ImportProgress> = _progress.asStateFlow()
 
-    /** The work itself; one import or re-sync runs at a time, so they share it. */
+    /** the work itself; one import or re-sync runs at a time, so they share it */
     private val steps = ImportSteps(context, database, _progress)
 
-    /** Re-syncs waiting behind the one running, and whether a re-sync run is going (guarded by the queue). */
+    /** re-syncs waiting behind the one running, and whether a re-sync run is going (guarded by the queue) */
     private val resyncQueue = ArrayDeque<ResyncRequest>()
     private var resyncing = false
 
     val isRunning: Boolean get() = runningJob?.isActive == true
 
-    /** Starts an import in the background; false if one is already running. */
+    /** starts an import in the background; false if one is already running */
     fun startImport(parsed: ParsedImport, options: ImportOptions = ImportOptions()): Boolean {
         if (isRunning) return false
         steps.source = parsed.provider ?: ImportSource.OTHER
@@ -79,15 +79,7 @@ class MusicImportService @Inject constructor(
         return true
     }
 
-    /**
-     * Reads imported playlists from their service again ([ResyncRequest.read]) and adds the songs
-     * that are new there to their end, in the service's order. New means the service didn't have
-     * it last time, so a song the user took out of a playlist here stays out. Ends with a toast
-     * saying what changed, since the menu that started it is long closed.
-     *
-     * Requests that arrive while a re-sync runs join it (Re-sync all hands over one service at a
-     * time). False if an import is running instead.
-     */
+    /** re-reads imported playlists and adds songs new on the service to their end, ones the user removed here stay out, requests during a run join it, false while an import runs */
     fun startResync(requests: List<ResyncRequest>): Boolean {
         val first = requests.firstOrNull() ?: return true
         synchronized(resyncQueue) {
@@ -123,7 +115,7 @@ class MusicImportService @Inject constructor(
         return true
     }
 
-    /** One playlist of a re-sync run. A playlist that fails is noted and the run goes on. */
+    /** one playlist of a re-sync run. a playlist that fails is noted and the run goes on */
     private suspend fun resyncOne(request: ResyncRequest) {
         steps.source = request.source
         _progress.update {
@@ -138,8 +130,7 @@ class MusicImportService @Inject constructor(
             val read = request.read()
             val playlist = database.playlist(request.playlistId).first()?.playlist
                 ?: throw LinkImportException("That playlist isn't in your library any more.")
-            // new songs go in under the import that brought the playlist, so undoing it takes
-            // them too; a playlist copied from a YouTube page never put its songs in the library
+            // new songs go in under the import that brought the playlist so undoing it takes them too, a playlist copied from a youtube page never put its songs in the library
             val owner = database.getImportedPlaylist(playlist.id)?.sessionId
             if (owner != null) {
                 steps.sessionId = owner.takeIf { database.importSessionExists(it) }
@@ -179,22 +170,17 @@ class MusicImportService @Inject constructor(
         }
     }
 
-    /** Stops after the current song; everything imported so far stays. */
+    /** stops after the current song; everything imported so far stays */
     fun cancel() {
         runningJob?.cancel()
     }
 
-    /** Forgets a finished import's summary so the next one starts clean. */
+    /** forgets a finished import's summary so the next one starts clean */
     fun clearFinished() {
         if (!isRunning) _progress.value = ImportProgress()
     }
 
-    /**
-     * Imports from before library songs had their own place made them a playlist named after the
-     * service ("Apple Music library"), and older ones never put anything in the Library at all.
-     * Their songs are filed into the Library and tagged with the service, once. The playlist stays:
-     * it may have been edited since, and deleting it is the user's call.
-     */
+    /** early imports made a playlist named after the service and never filled the library, file their songs into the library once and keep the playlist since it may have been edited */
     suspend fun repairEarlierImports() {
         if (isRunning) return
         val legacy = database.playlistsByNameAsc().first()
@@ -214,7 +200,7 @@ class MusicImportService @Inject constructor(
     }
 
     private companion object {
-        /** What earlier versions named the playlist they made of a service's whole library. */
+        /** what earlier versions named the playlist they made of a service's whole library */
         val LegacyLibraryPlaylists = mapOf("Apple Music library" to ImportSource.APPLE_MUSIC)
     }
 }

@@ -91,7 +91,7 @@ fun LyricsEditorSheet(onDismiss: () -> Unit) {
         if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) {
             emptyList()
         } else {
-            LyricsUtils.parseLyrics(raw)
+            LyricsUtils.parseLyricsCached(raw)
         }
     }
 

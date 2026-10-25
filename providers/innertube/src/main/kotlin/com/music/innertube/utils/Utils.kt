@@ -1,5 +1,3 @@
-// Utils.kt
-
 package com.music.innertube.utils
 
 import com.music.innertube.YouTube
@@ -93,8 +91,7 @@ fun parseCookieString(cookie: String): Map<String, String> =
         }
         .toMap()
 
-// Some languages write durations with a dot instead of a colon (Indonesian "3.45", Finnish,
-// Danish), so either separator is accepted.
+// some languages write durations with a dot instead of a colon (indonesian "3.45", finnish, danish), so either separator is accepted
 private val DURATION_REGEX = Regex("^(?:(\\p{Nd}+)[:.])?(\\p{Nd}+)[:.](\\p{Nd}{2})$")
 
 fun String.parseTime(): Int? {

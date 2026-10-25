@@ -1,11 +1,4 @@
-// UpdateNotifications.kt
-//
-// "There's an update" notifications, at most three per release: when the app first sees it, two
-// weeks later, and three months later (both counted from the first). Nothing runs in the
-// background for this - no WorkManager job, no alarm. The check rides on the release lookup the
-// app already does on launch (getLatestRelease, cached and shared with the version sheet), so it
-// costs one SharedPreferences read when there's nothing to say. If the app isn't opened for a
-// while, overdue reminders collapse into one, never back to back.
+// update notifications, at most three per release, riding the launch-time release check with no background job (see docs/notes/update.md)
 
 package com.example.musicfy.ui.screens.update
 
@@ -28,7 +21,7 @@ import com.example.musicfy.core.updater.getLatestRelease
 import com.example.musicfy.core.updater.isNewerThanInstalled
 import com.example.musicfy.ui.component.LocalZoomOutOverlayState
 
-/** Intent action the notification opens MainActivity with; it then shows the version sheet. */
+/** intent action the notification opens MainActivity with, it then shows the version sheet */
 const val ActionOpenUpdate = "com.example.musicfy.action.OPEN_UPDATE"
 
 private const val PrefsName = "update_notifications"
@@ -38,22 +31,19 @@ private const val KeyPosted = "posted"
 
 private const val DayMs = 24L * 60 * 60 * 1000
 
-/** When each reminder is due, counted from the first time this release was seen. */
+/** when each reminder is due, counted from the first time this release was seen */
 private val ReminderOffsets = longArrayOf(0L, 14 * DayMs, 90 * DayMs)
 
-/** Same channel App.kt registers at startup. */
+/** the same channel App.kt registers at startup */
 private const val ChannelId = "updates"
 private const val NotificationId = 1001
 
-/**
- * Call after a launch-time check found [release] newer than what's installed. Posts a notification
- * if one of its three reminders is due, otherwise does nothing.
- */
+/** call after a launch-time check found release newer than what's installed, posts a notification if one of its three reminders is due */
 fun maybeNotifyUpdate(context: Context, release: GithubRelease, now: Long = System.currentTimeMillis()) {
     val prefs = context.getSharedPreferences(PrefsName, Context.MODE_PRIVATE)
     val releaseKey = release.tag.ifBlank { release.version }
 
-    // A newer release than the one being tracked starts its own three reminders.
+    // a newer release than the one being tracked starts its own three reminders
     val sameRelease = prefs.getString(KeyRelease, null) == releaseKey
     val firstSeenAt = if (sameRelease) prefs.getLong(KeyFirstSeenAt, now) else now
     val posted = if (sameRelease) prefs.getInt(KeyPosted, 0) else 0
@@ -66,13 +56,13 @@ fun maybeNotifyUpdate(context: Context, release: GithubRelease, now: Long = Syst
         return
     }
 
-    // Only count it as sent if it actually was (no permission = try again next launch).
+    // only count it as sent if it actually was (no permission = try again next launch)
     if (!postNotification(context, release)) return
 
     prefs.edit()
         .putString(KeyRelease, releaseKey)
         .putLong(KeyFirstSeenAt, firstSeenAt)
-        // Jump to however many are due, so missed reminders don't fire one per launch.
+        // jump to however many are due, so missed reminders don't fire one per launch
         .putInt(KeyPosted, due)
         .apply()
 }
@@ -108,10 +98,7 @@ private fun postNotification(context: Context, release: GithubRelease): Boolean 
     return runCatching { NotificationManagerCompat.from(context).notify(NotificationId, notification) }.isSuccess
 }
 
-/**
- * Opens the version sheet each time [requests] goes up (MainActivity bumps it when launched from
- * the notification). Place inside PopupSheetHost's content.
- */
+/** opens the version sheet each time requests goes up (MainActivity bumps it when launched from the notification), place inside PopupSheetHost's content */
 @Composable
 fun UpdateNotificationOpener(requests: Int) {
     val popup = LocalZoomOutOverlayState.current

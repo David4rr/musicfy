@@ -2,6 +2,10 @@
 
 package com.example.musicfy.ui.utils
 
+// built once, because resize() runs for every thumbnail on screen and compiling a regex each call is wasted work
+private val YtimgQualityRegex = Regex("(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg")
+private val GoogleUserContentRegex = Regex("https://lh\\d\\.googleusercontent\\.com/.*")
+
 fun String.resize(
     width: Int? = null,
     height: Int? = null,
@@ -10,10 +14,7 @@ fun String.resize(
 
     if (this.contains("i.ytimg.com")) {
         val targetQuality = if (width != null && width >= 1200) "maxresdefault.jpg" else "hqdefault.jpg"
-        return this.replace(
-            Regex("(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"),
-            targetQuality
-        )
+        return this.replace(YtimgQualityRegex, targetQuality)
     }
 
     if (this.contains("googleusercontent.com") && this.contains("=w")) {
@@ -30,7 +31,7 @@ fun String.resize(
         return "$baseUrl=s${width ?: height}"
     }
 
-    "https://lh\\d\\.googleusercontent\\.com/.*".toRegex().matchEntire(this)?.let {
+    GoogleUserContentRegex.matchEntire(this)?.let {
         val w = width ?: 0
         val h = height ?: width ?: 0
         return "${this.split("=")[0]}=w$w-h$h-p-l90-rj"

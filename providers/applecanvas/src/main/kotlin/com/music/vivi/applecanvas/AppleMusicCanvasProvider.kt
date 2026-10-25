@@ -1,5 +1,3 @@
-// AppleMusicCanvasProvider.kt
-
 package com.example.musicfy.applecanvas
 
 import com.example.musicfy.canvas.CanvasArtwork
@@ -180,10 +178,7 @@ object AppleMusicCanvasProvider {
         return result
     }
 
-    /**
-     * The motion cover of [song]'s album. [durationSec] is the song's length when known; a result
-     * more than a few seconds off is another recording and is passed over.
-     */
+    /** the motion cover of the song's album, a result more than a few seconds off the song's length is another recording and is skipped */
     suspend fun getBySongArtist(
         song: String,
         artist: String,
@@ -274,9 +269,7 @@ object AppleMusicCanvasProvider {
 
                 if (!artistFuzzy) return@mapNotNull null
 
-                // A song result has to be this song. A fuzzy name match used to take another song
-                // by the same artist ("Fire" matched "Burning Up (FIRE)") and show its album's
-                // motion cover. No canvas is fine; the wrong one isn't.
+                // a song result has to be this song, a fuzzy name match once showed another song's album cover, no canvas is fine but the wrong one isn't
                 if (type == "songs") {
                     if (!CanvasMatch.sameSong(resultName, term)) return@mapNotNull null
                     val resultSeconds = attributes["durationInMillis"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()?.div(1000)

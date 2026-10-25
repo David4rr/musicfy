@@ -1,5 +1,3 @@
-// AccountInfo.kt
-
 package com.music.innertube.models
 
 data class AccountInfo(

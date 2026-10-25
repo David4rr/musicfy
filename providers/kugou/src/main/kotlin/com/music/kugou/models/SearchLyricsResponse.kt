@@ -1,5 +1,3 @@
-// SearchLyricsResponse.kt
-
 package com.music.kugou.models
 
 import kotlinx.serialization.SerialName

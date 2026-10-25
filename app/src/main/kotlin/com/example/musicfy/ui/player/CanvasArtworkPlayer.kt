@@ -29,6 +29,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.music.innertube.YouTube
@@ -36,6 +37,11 @@ import com.music.innertube.models.YouTubeClient
 import okhttp3.OkHttpClient
 import java.util.Locale
 import android.content.Context
+import android.graphics.SurfaceTexture
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
+import android.view.Surface
 import android.view.ViewGroup
 import android.view.TextureView
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -138,40 +144,17 @@ fun CanvasArtworkPlayer(
             setBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
     }
-    val exoPlayer =
-        remember(initial) {
-            ExoPlayer.Builder(context)
-                .setMediaSourceFactory(mediaSourceFactory)
-                .build()
-                .apply {
-                trackSelectionParameters = trackSelectionParameters
-                    .buildUpon()
-                    .setMaxVideoSize(1280, 1280)
-                    .setMaxVideoBitrate(2_500_000)
-                    .setForceHighestSupportedBitrate(false)
-                    .build()
-                setAudioAttributes(
-                    AudioAttributes
-                        .Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                        .build(),
-                    false,
-                )
-                volume = 0f
-                repeatMode = Player.REPEAT_MODE_ONE
-                videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
-                playWhenReady = isPlaying
-            }
-        }
-
-    LaunchedEffect(isPlaying) {
-        if (exoPlayer.playWhenReady != isPlaying) {
-            exoPlayer.playWhenReady = isPlaying
-        }
+    // the texture outlives a session, so a new url's player draws into the same view
+    val texture = remember { CanvasTexture() }
+    val session = remember(initial) {
+        CanvasVideoSession(context, mediaSourceFactory, isPlaying).also { texture.session = it }
     }
 
-    DisposableEffect(exoPlayer, primary, fallback) {
+    LaunchedEffect(isPlaying) {
+        session.setPlaying(isPlaying)
+    }
+
+    DisposableEffect(session, primary, fallback) {
         val listener =
             object : Player.Listener {
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -192,15 +175,18 @@ fun CanvasArtworkPlayer(
 
                 override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                     if (videoSize.width > 0 && videoSize.height > 0) {
-                        aspectRatioFrameLayout.setAspectRatio(videoSize.width.toFloat() / videoSize.height)
+                        // callbacks land on the canvas thread, but the view only takes changes on the main one
+                        aspectRatioFrameLayout.post {
+                            aspectRatioFrameLayout.setAspectRatio(videoSize.width.toFloat() / videoSize.height)
+                        }
                     }
                 }
             }
-        exoPlayer.addListener(listener)
-        onDispose { exoPlayer.removeListener(listener) }
+        session.addListener(listener)
+        onDispose { session.removeListener(listener) }
     }
 
-    LaunchedEffect(currentUrl, exoPlayer) {
+    LaunchedEffect(currentUrl, session) {
         val normalized = currentUrl.trim()
         val mimeType =
             when {
@@ -225,16 +211,13 @@ fun CanvasArtworkPlayer(
                 .setMimeType(mimeType)
                 .build()
 
-        exoPlayer.stop()
         isVideoReady = false
-        exoPlayer.setMediaItem(mediaItem)
-        exoPlayer.prepare()
-        exoPlayer.playWhenReady = isPlaying
+        session.load(mediaItem, isPlaying)
     }
 
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(session) {
         onDispose {
-            exoPlayer.release()
+            session.release()
         }
     }
 
@@ -250,9 +233,9 @@ fun CanvasArtworkPlayer(
                 if (childCount == 0) {
                 val textureView = TextureView(viewContext).apply {
                     layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
+                    surfaceTextureListener = texture
                 }
                 addView(textureView)
-                exoPlayer.setVideoTextureView(textureView)
                 }
             }
         },
@@ -269,4 +252,120 @@ fun CanvasArtworkPlayer(
         },
         modifier = modifier.alpha(alpha),
     )
+}
+
+// one thread runs every canvas player, so building or releasing one never stalls the main thread mid-scroll
+private object CanvasVideoThread {
+    val handler: Handler by lazy { Handler(HandlerThread("CanvasVideo").apply { start() }.looper) }
+}
+
+// one canvas video's player, touched only on the canvas thread; the main thread just posts to it
+private class CanvasVideoSession(
+    context: Context,
+    mediaSourceFactory: MediaSource.Factory,
+    playing: Boolean,
+) {
+    private val handler = CanvasVideoThread.handler
+    private var player: ExoPlayer? = null
+    private var surface: Surface? = null
+
+    init {
+        handler.post {
+            player = ExoPlayer.Builder(context)
+                .setLooper(handler.looper)
+                .setMediaSourceFactory(mediaSourceFactory)
+                .build()
+                .apply {
+                    trackSelectionParameters = trackSelectionParameters
+                        .buildUpon()
+                        .setMaxVideoSize(1280, 1280)
+                        .setMaxVideoBitrate(2_500_000)
+                        .setForceHighestSupportedBitrate(false)
+                        .build()
+                    setAudioAttributes(
+                        AudioAttributes
+                            .Builder()
+                            .setUsage(C.USAGE_MEDIA)
+                            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                            .build(),
+                        false,
+                    )
+                    volume = 0f
+                    repeatMode = Player.REPEAT_MODE_ONE
+                    videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                    playWhenReady = playing
+                    surface?.let(::setVideoSurface)
+                }
+        }
+    }
+
+    fun setPlaying(playing: Boolean) = handler.post {
+        player?.let { if (it.playWhenReady != playing) it.playWhenReady = playing }
+    }
+
+    fun addListener(listener: Player.Listener) = handler.post { player?.addListener(listener) }
+
+    fun removeListener(listener: Player.Listener) = handler.post { player?.removeListener(listener) }
+
+    fun load(mediaItem: MediaItem, playing: Boolean) = handler.post {
+        player?.apply {
+            stop()
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = playing
+        }
+    }
+
+    fun attach(texture: SurfaceTexture) = handler.post {
+        surface?.release()
+        surface = Surface(texture).also { player?.setVideoSurface(it) }
+    }
+
+    // waits here, off the main thread, until the decoder lets go of the texture, then hands it back to be freed
+    fun detach(texture: SurfaceTexture) = handler.post {
+        surface?.let { player?.clearVideoSurface(it) }
+        surface?.release()
+        surface = null
+        mainHandler.post { texture.release() }
+    }
+
+    fun release() = handler.post {
+        player?.release()
+        player = null
+        surface?.release()
+        surface = null
+    }
+
+    private companion object {
+        val mainHandler = Handler(Looper.getMainLooper())
+    }
+}
+
+// keeps the view's texture alive until the canvas thread is done with it, and gives it to whichever session is current
+private class CanvasTexture : TextureView.SurfaceTextureListener {
+    private var available: SurfaceTexture? = null
+
+    var session: CanvasVideoSession? = null
+        set(value) {
+            field = value
+            available?.let { value?.attach(it) }
+        }
+
+    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+        available = texture
+        session?.attach(texture)
+    }
+
+    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+        available = null
+        val current = session
+        if (current == null) return true
+        current.detach(texture)
+        // false: the texture is freed after the decoder lets go of it, not while it still draws into it
+        return false
+    }
+
+    override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) = Unit
+
+    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
 }

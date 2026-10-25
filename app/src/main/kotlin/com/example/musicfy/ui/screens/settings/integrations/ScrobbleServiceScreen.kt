@@ -1,8 +1,4 @@
-// ScrobbleServiceScreen.kt
-//
-// Musicfy → Settings → Integrations → Last.fm or Libre.fm. Sign in and every song that counts is
-// scrobbled there, with Now Playing while it plays. Plays made offline wait on the phone and go
-// out once there's a network.
+// the last.fm or libre.fm page: every song that counts is scrobbled, and offline plays wait for a network
 
 package com.example.musicfy.ui.screens.settings.integrations
 
@@ -129,7 +125,7 @@ fun ScrobbleServiceScreen(
     }
 }
 
-/** Sign in, or once signed in: scrobbling on or paused, the profile, and sign out. */
+/** sign in, or once signed in: scrobbling on or paused, the profile, and sign out */
 @Composable
 private fun ScrobbleAccountGroup(
     site: ScrobbleSite,

@@ -1,5 +1,3 @@
-// PlaylistSong.kt
-
 package com.example.musicfy.db.entities
 
 import androidx.room.Embedded

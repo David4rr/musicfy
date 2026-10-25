@@ -1,5 +1,3 @@
-// PlaybackSettingsScreen.kt
-
 package com.example.musicfy.ui.screens.settings
 
 import androidx.compose.foundation.layout.Spacer

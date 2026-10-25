@@ -138,6 +138,8 @@ fun Modifier.damageBoundary(): Modifier =
                 target.nativeCanvas.drawDamageNode(node)
             }
         }
+            // a plain layer inside, so content that draws itself repaints only this rectangle
+            .graphicsLayer()
     }
 
 fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): Modifier = this

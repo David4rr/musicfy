@@ -1,5 +1,3 @@
-// UpdateSheet.kt
-
 package com.example.musicfy.ui.screens.update
 
 import androidx.compose.animation.AnimatedContent
@@ -98,7 +96,7 @@ fun rememberUpdateState(): androidx.compose.runtime.State<UpdateState> {
     return state
 }
 
-/** Asks GitHub (or the shared copy, unless [force]d) whether a newer release is out. */
+/** asks github (or the shared copy, unless force is set) whether a newer release is out */
 private suspend fun checkUpdate(force: Boolean): UpdateState =
     getLatestRelease(force).fold(
         onSuccess = { release ->
@@ -111,7 +109,7 @@ private suspend fun checkUpdate(force: Boolean): UpdateState =
         onFailure = { UpdateState.Failed(it.message ?: "Couldn't reach GitHub") },
     )
 
-/** Shows the "app version" sheet as a PopupSheet - see docs/popup-sheet.skill.md. */
+/** shows the app version sheet as a PopupSheet, see docs/popup-sheet.skill.md */
 fun PopupSheetState.showUpdateSheet(updateState: UpdateState) {
     val popup = this
     show(buttonBar = { SheetPrimaryButton(text = "Done", onClick = popup::dismiss) }) {
@@ -124,10 +122,9 @@ private fun PopupSheetState.showUpdateDetailSheet(release: GithubRelease) {
     popup.show {
         UpdateDetailContent(
             release = release,
-            // Pushed on top of the version sheet, so back just pops down to it again.
+            // pushed on top of the version sheet, so back just pops down to it again
             onBack = popup::dismiss,
-            // Locks this same sheet while a download is in flight. Re-showing the content locked
-            // instead would push a second copy of it with fresh, not-downloading state.
+            // locks this same sheet during a download, re-showing it locked would push a second copy with fresh state
             onLocked = popup::setLocked,
         )
     }
@@ -156,10 +153,7 @@ private val BetaYellow = Color(0xFFF5E27A)
 /** "8.1.0 build#1165" -> "8.1.0", "8.0.2 (1100)" -> "8.0.2" */
 private fun shortVersion(version: String): String = version.substringBefore(' ')
 
-/**
- * The app version sheet: the app, the version you're on and its channel, what's newer if
- * anything, and what you can do about it. The ring in the corner turns the whole time it's open.
- */
+/** the app version sheet: the app, the version you're on and its channel, what's newer, and what you can do about it */
 @Composable
 private fun ColumnScope.UpdateSheetContent(initialState: UpdateState, popup: PopupSheetState) {
     val scope = rememberCoroutineScope()
@@ -184,8 +178,7 @@ private fun ColumnScope.UpdateSheetContent(initialState: UpdateState, popup: Pop
 
     val installed = shortVersion(BuildConfig.VERSION_NAME)
     Box(Modifier.fillMaxWidth()) {
-        // centred just inside the sheet's top-right corner, so the sheet's own edge cuts it off.
-        // Placed with no size of its own, so it never pushes the content around.
+        // centred just inside the sheet's top-right corner so its edge cuts the ring off, no size of its own so it never pushes content around
         VersionRing(
             text = "MUSICFY $installed",
             modifier = Modifier
@@ -272,10 +265,7 @@ private fun ColumnScope.UpdateSheetContent(initialState: UpdateState, popup: Pop
     }
 }
 
-/**
- * Which channel this build is: a nightly says so, a build newer than anything released is a
- * beta, everything else is stable.
- */
+/** which channel this build is: nightly says so, newer than any release is beta, the rest is stable */
 @Composable
 private fun ChannelBadge(latest: GithubRelease?) {
     val aheadOfReleases = latest != null &&
@@ -306,7 +296,7 @@ private fun ChannelBadge(latest: GithubRelease?) {
     }
 }
 
-/** The card under the version: what GitHub said, and the one thing to do about it. */
+/** the card under the version: what github said, and the one thing to do about it */
 @Composable
 private fun UpdateStatusCard(
     state: UpdateState,
@@ -400,7 +390,7 @@ private fun StatusRow(
     }
 }
 
-/** A row under Actions: a light disc with the icon, then the label. Dimmed ones can't be tapped. */
+/** a row under actions: a light disc with the icon, then the label, dimmed ones can't be tapped */
 @Composable
 private fun ActionRow(
     icon: Int,

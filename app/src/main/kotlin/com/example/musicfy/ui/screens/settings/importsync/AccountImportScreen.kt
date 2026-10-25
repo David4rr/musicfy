@@ -1,5 +1,3 @@
-// AccountImportScreen.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import android.net.Uri
@@ -55,17 +53,17 @@ import timber.log.Timber
 const val AccountImportRoutePattern = "account_import/{service}?resync={resync}&then={then}"
 fun accountImportRoute(service: AccountService) = "account_import/${service.route}"
 
-/** The same sign-in, opened by a playlist's Re-sync: it reads just that playlist again. */
+/** the same sign-in, opened by a playlist's re-sync so it reads just that playlist again */
 fun accountResyncRoute(service: AccountService, playlistId: String) = "account_import/${service.route}?resync=$playlistId"
 
-/** What the page's resync argument says for Re-sync all. */
+/** what the page's resync argument says for re-sync all */
 const val ResyncAllArg = "all"
 
-/** Re-sync all through each service's sign-in in turn, [services] first to last. */
+/** re-sync all through each service's sign-in in turn, services first to last */
 fun accountResyncAllRoute(services: List<AccountService>) =
     "account_import/${services.first().route}?resync=$ResyncAllArg&then=${services.drop(1).joinToString(",") { it.route }}"
 
-/** Reads MusicKit's own tokens once the user has signed in on music.apple.com. */
+/** reads musickit's own tokens once the user has signed in on music.apple.com */
 internal const val ApplePageProbeJs = """
 (function() {
   try {
@@ -77,10 +75,7 @@ internal const val ApplePageProbeJs = """
 })();
 """
 
-/**
- * music.apple.com opens signed out with a Sign In button in its header; press it once per page so
- * the sign-in form comes up straight away. Does nothing once MusicKit is authorized.
- */
+/** music.apple.com opens signed out, so press its sign in button once per page to bring the form up straight away */
 internal const val AppleAutoSignInJs = """
 (function() {
   try {
@@ -99,15 +94,10 @@ internal const val AppleAutoSignInJs = """
 private const val SpotifyPlayerOrigin = "https://open.spotify.com"
 private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/tracks"
 
-/** Spotify's sign-in cookie, set on .spotify.com once the account is signed in. */
+/** spotify's sign-in cookie, set on .spotify.com once the account is signed in */
 private const val SpotifySignedInCookie = "sp_dc"
 
-/**
- * Reads the queries the web player reads the library with (name and hash) straight out of its own
- * script, and reports them as if they'd been sent. Liked Songs comes out of the web player's cache,
- * so its query is often never sent at all, and a playlist's only goes out once one is opened.
- * Looks at each script once; done once Liked Songs' query has turned up.
- */
+/** reads the library query names and hashes out of the web player's own script, see docs/notes/settings.md */
 private val SpotifyFindQueriesJs = """
 (function() {
   try {
@@ -143,13 +133,7 @@ private val SpotifyFindQueriesJs = """
 })();
 """
 
-/**
- * Spotify's phone site has no library (it says to use the app), so its web player never asks for
- * one and never sends the signed-in token. Once the sign-in cookie is there and the login pages are
- * done, the view switches to the desktop site and opens Liked Songs, which loads the library and
- * sends the token. Switches once: after that the view is already a desktop one, and only looks for
- * the web player's queries (see [SpotifyFindQueriesJs]).
- */
+/** the phone site has no library, so once signed in the view switches to the desktop site, see docs/notes/settings.md */
 private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
     if (view.isDesktopSite()) {
         if (view.url?.startsWith(SpotifyPlayerOrigin) == true) view.evaluateJavascript(SpotifyFindQueriesJs, null)
@@ -165,7 +149,7 @@ private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
     view.loadUrl(SpotifyLibraryUrl)
 }
 
-/** Everything a sign-in page's periodic tick does for [service]. */
+/** everything a sign-in page's periodic tick does for this service */
 internal fun AccountService.onSignInTick(
     view: WebView,
     onApplePageProbe: (String?) -> Unit,
@@ -197,7 +181,7 @@ fun AccountImportScreen(
     val context = LocalContext.current
     var askingForLink by remember { mutableStateOf(false) }
 
-    // a Re-sync carries on in the background once its songs are read; the toast at the end says how it went
+    // a re-sync carries on in the background once its songs are read, the toast at the end says how it went
     LaunchedEffect(resyncStart) {
         if (resyncStart != ResyncStart.Started) return@LaunchedEffect
         val missing = viewModel.missingFromAccount
@@ -205,7 +189,7 @@ fun AccountImportScreen(
             if (missing.isEmpty()) "" else " Couldn't find ${missing.joinToString(", ")} there."
         Toast.makeText(context, started, Toast.LENGTH_LONG).show()
         navController.navigateUp()
-        // Re-sync all: on to the next service that needs signing in
+        // re-sync all: on to the next service that needs signing in
         if (viewModel.nextServices.isNotEmpty()) navController.navigate(accountResyncAllRoute(viewModel.nextServices))
     }
 
@@ -371,7 +355,7 @@ fun AccountImportScreen(
     PendingImportHost(viewModel = importViewModel, navController = navController)
 }
 
-/** A Re-sync that couldn't find its playlist by name: the user says which one in the account it is. */
+/** a re-sync that couldn't find its playlist by name, the user says which one in the account it is */
 @Composable
 private fun PickForResyncContent(
     service: AccountService,

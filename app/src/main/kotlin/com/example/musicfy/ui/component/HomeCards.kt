@@ -215,6 +215,23 @@ fun HomeCoverCard(
     sharedElementKey: String? = null,
     badges: @Composable RowScope.() -> Unit = {},
     cover: (@Composable (Dp) -> Unit)? = null,
+) = HomeCoverCard(
+    title, subtitle, thumbnailUrl, modifier, circular, isActive, { isPlaying }, sharedElementKey, badges, cover,
+)
+
+// isPlaying is read only inside the cover's indicator, so a play or pause doesn't recompose every card
+@Composable
+fun HomeCoverCard(
+    title: String,
+    subtitle: String?,
+    thumbnailUrl: String?,
+    modifier: Modifier = Modifier,
+    circular: Boolean = false,
+    isActive: Boolean = false,
+    isPlaying: () -> Boolean,
+    sharedElementKey: String? = null,
+    badges: @Composable RowScope.() -> Unit = {},
+    cover: (@Composable (Dp) -> Unit)? = null,
 ) {
     val size = homeCardSize()
     val shape = if (circular) CircleShape else RoundedCornerShape(HomeCardCornerRadius)
@@ -305,6 +322,19 @@ fun HomeVideoCard(
     isActive: Boolean,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+) = HomeVideoCard(title, subtitle, videoId, fallbackThumbnailUrl, width, isActive, { isPlaying }, modifier)
+
+// isPlaying is read only inside the indicator, same as the cover card
+@Composable
+fun HomeVideoCard(
+    title: String,
+    subtitle: String?,
+    videoId: String,
+    fallbackThumbnailUrl: String?,
+    width: Dp,
+    isActive: Boolean,
+    isPlaying: () -> Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(HomeCardCornerRadius)
     var useFallback by remember(videoId) { mutableStateOf(false) }
@@ -378,6 +408,28 @@ fun HomeTrackRow(
     /** Applied to the cover itself, e.g. to open a playlist growing out of it. */
     coverModifier: Modifier = Modifier,
     /** A song's id: marks the row when the song is downloaded or an imported file. */
+    songId: String? = null,
+) = HomeTrackRow(
+    thumbnailUrl, title, subtitle, isActive, { isPlaying }, onClick, onLongClick, onMoreClick, modifier,
+    rank, coverShape, coverModifier, songId,
+)
+
+// isPlaying is read only inside the cover's indicator, so a play or pause doesn't recompose every row
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun HomeTrackRow(
+    thumbnailUrl: String?,
+    title: String,
+    subtitle: String?,
+    isActive: Boolean,
+    isPlaying: () -> Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onMoreClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    rank: Int? = null,
+    coverShape: Shape = HomeRowShape,
+    coverModifier: Modifier = Modifier,
     songId: String? = null,
 ) {
     Row(

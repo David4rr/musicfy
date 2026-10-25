@@ -1,10 +1,4 @@
-// DeveloperSpaceScreen.kt
-//
-// "Dev Spaces": a page for each person who makes Musicfy, side by side in a pager. Each page has
-// their header, about and links, then the Developer playground card (what the repo did since this
-// build was made), which opens the playground page with the issues and Experimental settings.
-// The numbers are fetched from GitHub every time the page opens (DevSpaceRepository). The capsule
-// in the top bar switches people; so does a swipe.
+// dev spaces: a pager with a page for each person who makes musicfy, the repo numbers are fetched on every open
 
 package com.example.musicfy.ui.screens.settings.devspace
 
@@ -62,7 +56,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-/** How long the picker stays open showing names after the last tap or swipe. */
+/** how long the picker stays open showing names after the last tap or swipe */
 private const val PickerOpenMs = 2600L
 
 @Composable
@@ -105,7 +99,7 @@ fun DeveloperSpaceScreen(navController: NavController) {
     val ready = stats != null || !loading
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // glassRoot wraps the content only; the glass bar below is a sibling (see glassroot-rendernode-crash)
+        // glassRoot wraps the content only, the glass bar is a sibling or it crashes (see docs/notes/settings.md)
         Box(
             Modifier
                 .fillMaxSize()
@@ -136,7 +130,6 @@ fun DeveloperSpaceScreen(navController: NavController) {
             }
         }
 
-        // glass bar, a sibling of the glassRoot box
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -1,5 +1,3 @@
-// YouTube.kt
-
 package com.music.innertube
 
 import com.music.innertube.models.AccountInfo
@@ -116,7 +114,7 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
-    /** Offline mode: every YouTube request fails at once with [OfflineModeException]. */
+    /** offline mode: every youtube request fails at once with OfflineModeException */
     var offline: Boolean
         get() = innerTube.offline
         set(value) {
@@ -770,7 +768,7 @@ object YouTube {
                     content.musicCarouselShelfRenderer != null -> {
                         BrowseResult.Item(
                             title = content.musicCarouselShelfRenderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.firstOrNull()?.text,
-                            // genre pages list their "Songs" shelf as rows, not cards
+                            // genre pages list their "songs" shelf as rows, not cards
                             items = content.musicCarouselShelfRenderer.contents.mapNotNull { item ->
                                 item.musicTwoRowItemRenderer?.let(RelatedPage.Companion::fromMusicTwoRowItemRenderer)
                                     ?: item.musicResponsiveListItemRenderer?.let(RelatedPage.Companion::fromMusicResponsiveListItemRenderer)
@@ -1167,7 +1165,7 @@ object YouTube {
         innerTube.addToPlaylist(WEB_REMIX, playlistId, videoId)
     }
 
-    /** Adds [videoIds] in batches of [batchSize] — one edit_playlist call each instead of one per song. */
+    /** adds the videos in batches of batchSize, one edit_playlist call each instead of one per song */
     suspend fun addVideosToPlaylist(playlistId: String, videoIds: List<String>, batchSize: Int = 50) = runCatching {
         videoIds.chunked(batchSize).forEach { batch ->
             val response = innerTube.addVideosToPlaylist(WEB_REMIX, playlistId, batch)
@@ -1266,7 +1264,7 @@ object YouTube {
             return@runCatching next(watchPlaylistEndpoint).getOrThrow().let { result ->
                 result.copy(
                     title = title,
-                    // The automix usually opens with the song it was made from, which is already in songs.
+                    // the automix usually opens with the song it was made from, which is already in songs
                     items = songs + result.items.filter { item -> songs.none { it.id == item.id } },
                     lyricsEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
                     relatedEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
@@ -1369,21 +1367,14 @@ object YouTube {
         }!!
     }
 
-    /**
-     * The video's captions as line-synced lyrics: YouTube's auto-generated ones, or a track
-     * uploaded for the video in the same language when there is one (written by a person, so
-     * likelier to have the words right). See [pickCaptionTrack].
-     *
-     * Asked as clients whose caption links work as they are: a web client's need a PoToken and
-     * come back empty without one.
-     */
+    /** the video's captions as line-synced lyrics: youtube's auto-generated ones or an uploaded track in the same language, asked as clients whose caption links work without a PoToken */
     suspend fun captions(videoId: String): Result<String> = runCatching {
         CAPTION_CLIENTS.firstNotNullOfOrNull { client ->
             runCatching { captionsAs(videoId, client) }.getOrNull()?.takeIf { it.isNotBlank() }
         } ?: throw IllegalStateException("No captions for $videoId")
     }
 
-    /** Null when the video has no track worth using for [client]; throws when asking fails. */
+    /** null when the video has no track worth using for client, throws when asking fails */
     private suspend fun captionsAs(videoId: String, client: YouTubeClient): String? {
         val tracks = player(videoId, client = client).getOrThrow()
             .captions?.playerCaptionsTracklistRenderer?.captionTracks.orEmpty()

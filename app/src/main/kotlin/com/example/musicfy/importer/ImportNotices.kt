@@ -12,7 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.musicfy.R
 
-/** How a finished import or Re-sync tells the user, wherever they are in the app by then. */
+/** how a finished import or re-sync tells the user, wherever they are in the app by then */
 internal object ImportNotices {
 
     fun importFinished(context: Context, matched: Int, total: Int) {
@@ -40,7 +40,7 @@ internal object ImportNotices {
         runCatching { notificationManager.notify(4242, notification) }
     }
 
-    /** What a finished Re-sync changed, said the way a person would. */
+    /** what a finished re-sync changed, said the way a person would */
     fun resyncFinished(context: Context, done: ImportProgress) {
         val resync = done.resync ?: return
         toast(context, if (resync.playlists == 1) oneResynced(done, resync) else manyResynced(done, resync))
@@ -71,7 +71,7 @@ internal object ImportNotices {
         return listOfNotNull(result, failed).joinToString(". ")
     }
 
-    /** Shown over whatever the user is on now: Re-sync carries on after its menu has closed. */
+    /** shown over whatever the user is on now: re-sync carries on after its menu has closed */
     fun toast(context: Context, text: String) {
         Handler(Looper.getMainLooper()).post { Toast.makeText(context, text, Toast.LENGTH_LONG).show() }
     }

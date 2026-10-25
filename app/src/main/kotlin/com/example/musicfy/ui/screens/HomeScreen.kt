@@ -45,11 +45,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.LazyGridPrefetchStrategy
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.res.pluralStringResource
@@ -129,6 +132,7 @@ import com.example.musicfy.db.entities.Song
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
+import com.example.musicfy.models.ArtistGroup
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
@@ -210,14 +214,27 @@ sealed class HomeSection(val id: String) {
 private fun LazyListScope.homeItem(
     key: String,
     revealSeen: RevealSeenState,
+    contentType: String,
     content: @Composable () -> Unit,
 ) {
-    item(key = key) {
+    item(key = key, contentType = contentType) {
         Box(modifier = Modifier.revealOnAppear(key, revealSeen, cascade = true)) {
             content()
         }
     }
 }
+
+// a row scrolling into view prefetches 2 cards by default, but 3 to 4 are showing, so the rest composed in the frame that revealed them
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun rememberCardRowState(): LazyListState =
+    rememberLazyListState(prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 4) })
+
+// same for the song grids, which show about two columns of three rows
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun rememberTrackGridState(): LazyGridState =
+    rememberLazyGridState(prefetchStrategy = remember { LazyGridPrefetchStrategy(nestedPrefetchItemCount = 6) })
 
 /** a horizontally scrolling row of cards, lined up with the section title. cards cascade in once. */
 @Composable
@@ -229,6 +246,7 @@ private fun <T> HomeCardRow(
     content: @Composable (T) -> Unit,
 ) {
     LazyRow(
+        state = rememberCardRowState(),
         contentPadding = PaddingValues(horizontal = HomeContentInset),
         horizontalArrangement = Arrangement.spacedBy(HomeCardSpacing),
     ) {
@@ -616,6 +634,8 @@ fun HomeScreen(
     // which landed as a hitch whenever the track changed mid-scroll
     val isPlayingState = playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadataState = playerConnection.mediaMetadata.collectAsState()
+    // handed to the cards as a lambda so only the active cover's indicator reads it
+    val isPlayingNow: () -> Boolean = remember(isPlayingState) { { isPlayingState.value } }
 
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsState()
     val keepListening by viewModel.keepListening.collectAsState()
@@ -724,8 +744,8 @@ fun HomeScreen(
             .distinctBy { it.id }
     }
 
-    val quickPicksLazyGridState = rememberLazyGridState()
-    val forgottenFavoritesLazyGridState = rememberLazyGridState()
+    val quickPicksLazyGridState = rememberTrackGridState()
+    val forgottenFavoritesLazyGridState = rememberTrackGridState()
 
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
@@ -771,6 +791,8 @@ fun HomeScreen(
     }
 
     val heroScrollProgressProvider = remember { { heroScrollProgress } }
+    // the glass layer only switches on or off once, so reading the raw progress would redraw the list on every scroll frame
+    val heroGlassActive = remember { derivedStateOf { heroScrollProgress > 0f } }
 
     // Home's own entry, the one a tap on its tab flags (onTabTapped only does that while Home is the
     // current page). Following the current entry instead recomposed all of Home on every navigation,
@@ -881,7 +903,7 @@ fun HomeScreen(
                 is Album -> localItem.id == mediaMetadataState.value?.album?.id
                 else -> false
             },
-            isPlaying = isPlayingState.value,
+            isPlaying = isPlayingNow,
             sharedElementKey = when (localItem) {
                 is Album -> "album-${localItem.id}"
                 is Playlist -> "playlist-${localItem.id}"
@@ -930,7 +952,7 @@ fun HomeScreen(
             thumbnailUrl = item.thumbnail,
             circular = item is ArtistItem,
             isActive = item.id in listOf(mediaMetadataState.value?.album?.id, mediaMetadataState.value?.id),
-            isPlaying = isPlayingState.value,
+            isPlaying = isPlayingNow,
             sharedElementKey = when (item) {
                 is AlbumItem -> "album-${item.id}"
                 is PlaylistItem -> "playlist-${item.id}"
@@ -996,7 +1018,7 @@ fun HomeScreen(
             fallbackThumbnailUrl = video.item.thumbnail,
             width = width,
             isActive = video.item.id == mediaMetadataState.value?.id,
-            isPlaying = isPlayingState.value,
+            isPlaying = isPlayingNow,
             modifier = Modifier.combinedClickable(
                 interactionSource = null,
                 indication = HomeCardHighlight,
@@ -1023,6 +1045,96 @@ fun HomeScreen(
                     }
                 },
             ),
+        )
+    }
+
+    // each row's card is written once up here and passed straight in: a fresh lambda at the call site
+    // makes every composed card recompose whenever the feed list updates, e.g. while loading more
+    val communityCard: @Composable (CommunityPlaylistItem) -> Unit = { item ->
+        CommunityPlaylistCard(
+            item = item,
+            onClick = { navController.navigate("online_playlist/${item.playlist.id}") }
+        )
+    }
+
+    val artistGroupCard: @Composable (ArtistGroup) -> Unit = { group ->
+        ArtistListCard(
+            group = group,
+            onClick = {
+                group.artistId?.let {
+                    com.example.musicfy.utils.ArtistPageCache.putPicks(it, group)
+                    navController.navigate("artist/$it/similar")
+                }
+            },
+            onItemClick = { item ->
+                when (item) {
+                    is SongItem -> playerConnection.playQueue(
+                        YouTubeQueue(
+                            item.endpoint ?: WatchEndpoint(videoId = item.id),
+                            item.toMediaMetadata()
+                        )
+                    )
+                    is AlbumItem -> navController.navigate("album/${item.id}")
+                    is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                    else -> {}
+                }
+            }
+        )
+    }
+
+    val hitsCard: @Composable (YTItem) -> Unit = { item ->
+        AllTimeHitsCard(
+            item = item,
+            modifier = Modifier
+                .width(160.dp)
+                .combinedClickable(
+                    onClick = {
+                        when (item) {
+                            is SongItem -> playerConnection.playQueue(
+                                YouTubeQueue(
+                                    item.endpoint ?: WatchEndpoint(videoId = item.id),
+                                    item.toMediaMetadata()
+                                )
+                            )
+                            is AlbumItem -> navController.navigate("album/${item.id}")
+                            is ArtistItem -> navController.navigate("artist/${item.id}")
+                            is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                        }
+                    },
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                )
+        )
+    }
+
+    // the song rows of the paged grids: Most Played numbers them, History and Don't Forget don't
+    val rankedTrackRow: @Composable (Int, Song) -> Unit = { index, song ->
+        HomeTrackRow(
+            thumbnailUrl = song.song.thumbnailUrl,
+            songId = song.id,
+            title = song.song.title,
+            subtitle = song.artists.joinToString(", ") { it.name },
+            isActive = song.id == mediaMetadataState.value?.id,
+            isPlaying = isPlayingNow,
+            rank = index + 1,
+            onClick = { playSong(song) },
+            onLongClick = { showSongMenu(song) },
+            onMoreClick = { showSongMenu(song) },
+        )
+    }
+
+    val trackRow: @Composable (Int, Song) -> Unit = { _, song ->
+        HomeTrackRow(
+            thumbnailUrl = song.song.thumbnailUrl,
+            songId = song.id,
+            title = song.song.title,
+            subtitle = song.artists.joinToString(", ") { it.name },
+            isActive = song.id == mediaMetadataState.value?.id,
+            isPlaying = isPlayingNow,
+            onClick = { playSong(song) },
+            onLongClick = { showSongMenu(song) },
+            onMoreClick = { showSongMenu(song) },
         )
     }
 
@@ -1116,6 +1228,7 @@ fun HomeScreen(
             val trackColumnWidth = if (maxWidth * 0.475f >= 320.dp) maxWidth * 0.475f else maxWidth * 0.76f
             // a video banner is 314 of 402, so the next one peeks in the same way
             val videoCardWidth = minOf(maxWidth * 0.78f, 340.dp)
+            val videoRowCard: @Composable (HomeVideo) -> Unit = { video -> videoCard(video, videoCardWidth) }
 
             val homeGlassState = remember { GlassState() }
 
@@ -1130,14 +1243,14 @@ fun HomeScreen(
                     LazyColumn(
                         modifier = Modifier.glassRoot(
                             homeGlassState,
-                            isActive = { heroScrollProgressProvider() > 0f }
+                            isActive = { heroGlassActive.value }
                         ),
                         state = lazylistState,
                         contentPadding = PaddingValues(
                             bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
                         )
                     ) {
-                item(key = "hero") {
+                item(key = "hero", contentType = "hero") {
                     HeroCarousel(
                         keepListening = keepListening,
                         lastPlayedSong = mediaMetadataState.value ?: lastPlayedSong,
@@ -1162,33 +1275,33 @@ fun HomeScreen(
                     when (section) {
                         HomeSection.SpeedDial -> {
                             speedDialItems.takeIf { it.isNotEmpty() }?.let { items ->
-                                homeItem("speed_dial_title", revealSeen) {
+                                homeItem("speed_dial_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(R.string.speed_dial),
                                         onClick = { navController.navigate("section_detail/speed_dial") }
                                     )
                                 }
-                                homeItem("speed_dial_list", revealSeen) {
-                                    HomeCardRow("speed_dial", items, revealSeen, key = { it.id }) { ytItemCard(it) }
+                                homeItem("speed_dial_list", revealSeen, "cardRow") {
+                                    HomeCardRow("speed_dial", items, revealSeen, key = { it.id }, content = ytItemCard)
                                 }
                             }
                         }
                         HomeSection.RecentlyPlayed -> {
                             recentlyPlayed?.takeIf { it.isNotEmpty() }?.let { items ->
-                                homeItem("recently_played_title", revealSeen) {
+                                homeItem("recently_played_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(R.string.recently_played),
                                         onClick = { navController.navigate("section_detail/recently_played") }
                                     )
                                 }
-                                homeItem("recently_played_list", revealSeen) {
-                                    HomeCardRow("recently_played", items, revealSeen, key = { it.id }) { localItemCard(it) }
+                                homeItem("recently_played_list", revealSeen, "cardRow") {
+                                    HomeCardRow("recently_played", items, revealSeen, key = { it.id }, content = localItemCard)
                                 }
                             }
                         }
                         HomeSection.MostPlayed -> {
                             mostPlayedSongsForHome?.takeIf { it.isNotEmpty() }?.let { mostPlayed ->
-                                homeItem("most_played_title", revealSeen) {
+                                homeItem("most_played_title", revealSeen, "title") {
                                     val mostPlayedTitle = stringResource(R.string.home_most_played)
                                     HomeSectionTitle(
                                         title = mostPlayedTitle,
@@ -1203,169 +1316,92 @@ fun HomeScreen(
                                         }
                                     )
                                 }
-                                homeItem("most_played_list", revealSeen) {
+                                homeItem("most_played_list", revealSeen, "trackGrid") {
                                     HomeTrackGrid(
                                         items = mostPlayed,
                                         state = quickPicksLazyGridState,
                                         rowSpacing = 6.dp,
                                         columnWidth = trackColumnWidth,
                                         key = { _, song -> song.id },
-                                    ) { index, song ->
-                                        HomeTrackRow(
-                                            thumbnailUrl = song.song.thumbnailUrl,
-                                            songId = song.id,
-                                            title = song.song.title,
-                                            subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadataState.value?.id,
-                                            isPlaying = isPlayingState.value,
-                                            rank = index + 1,
-                                            onClick = { playSong(song) },
-                                            onLongClick = { showSongMenu(song) },
-                                            onMoreClick = { showSongMenu(song) },
-                                        )
-                                    }
+                                        content = rankedTrackRow,
+                                    )
                                 }
                             }
                         }
                         HomeSection.History -> {
                             recentHistorySongs?.takeIf { it.isNotEmpty() }?.let { history ->
-                                homeItem("history_title", revealSeen) {
+                                homeItem("history_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(R.string.home_history),
                                         onClick = { navController.navigate("history") }
                                     )
                                 }
-                                homeItem("history_list", revealSeen) {
+                                homeItem("history_list", revealSeen, "trackGrid") {
                                     HomeTrackGrid(
                                         items = history,
-                                        state = rememberLazyGridState(),
+                                        state = rememberTrackGridState(),
                                         rowSpacing = 6.dp,
                                         columnWidth = trackColumnWidth,
                                         key = { index, song -> "history_${index}_${song.id}" },
-                                    ) { _, song ->
-                                        HomeTrackRow(
-                                            thumbnailUrl = song.song.thumbnailUrl,
-                                            songId = song.id,
-                                            title = song.song.title,
-                                            subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadataState.value?.id,
-                                            isPlaying = isPlayingState.value,
-                                            onClick = { playSong(song) },
-                                            onLongClick = { showSongMenu(song) },
-                                            onMoreClick = { showSongMenu(song) },
-                                        )
-                                    }
+                                        content = trackRow,
+                                    )
                                 }
                             }
                         }
                         HomeSection.FromTheCommunity -> {
                             communityPlaylists?.takeIf { it.isNotEmpty() }?.let { playlists ->
-                                homeItem("community_playlists_title", revealSeen) {
+                                homeItem("community_playlists_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(R.string.from_the_community),
                                         onClick = { navController.navigate("section_detail/from_the_community") }
                                     )
                                 }
-                                homeItem("community_playlists_content", revealSeen) {
-                                    HomeCardRow("community_playlists", playlists, revealSeen, key = { it.playlist.id }) { item ->
-                                        CommunityPlaylistCard(
-                                            item = item,
-                                            onClick = { navController.navigate("online_playlist/${item.playlist.id}") }
-                                        )
-                                    }
+                                homeItem("community_playlists_content", revealSeen, "cardRow") {
+                                    HomeCardRow("community_playlists", playlists, revealSeen, key = { it.playlist.id }, content = communityCard)
                                 }
                             }
                         }
                         HomeSection.ArtistList -> {
                             artistListItems?.takeIf { it.isNotEmpty() }?.let { items ->
-                                homeItem("artist_list_title", revealSeen) {
+                                homeItem("artist_list_title", revealSeen, "title") {
                                     // just a title: each box below is its own artist's page
                                     HomeSectionTitle(title = stringResource(R.string.artist_list))
                                 }
-                                homeItem("artist_list_content", revealSeen) {
-                                    HomeCardRow("artist_list", items, revealSeen, key = { "${it.artistId}_${it.artistName}" }) { group ->
-                                        ArtistListCard(
-                                            group = group,
-                                            onClick = {
-                                                group.artistId?.let {
-                                                    com.example.musicfy.utils.ArtistPageCache.putPicks(it, group)
-                                                    navController.navigate("artist/$it/similar")
-                                                }
-                                            },
-                                            onItemClick = { item ->
-                                                when (item) {
-                                                    is SongItem -> playerConnection.playQueue(
-                                                        YouTubeQueue(
-                                                            item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                                            item.toMediaMetadata()
-                                                        )
-                                                    )
-                                                    is AlbumItem -> navController.navigate("album/${item.id}")
-                                                    is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
-                                                    else -> {}
-                                                }
-                                            }
-                                        )
-                                    }
+                                homeItem("artist_list_content", revealSeen, "cardRow") {
+                                    HomeCardRow("artist_list", items, revealSeen, key = { "${it.artistId}_${it.artistName}" }, content = artistGroupCard)
                                 }
                             }
                         }
                         HomeSection.AllTimeHits -> {
                             allTimeHits?.takeIf { it.isNotEmpty() }?.let { hits ->
-                                homeItem("all_time_hits_title", revealSeen) {
+                                homeItem("all_time_hits_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(R.string.all_time_hits),
                                         onClick = { navController.navigate("section_detail/all_time_hits") }
                                     )
                                 }
-                                homeItem("all_time_hits_list", revealSeen) {
-                                    HomeCardRow("all_time_hits", hits, revealSeen, key = { it.id }) { item ->
-                                        AllTimeHitsCard(
-                                            item = item,
-                                            modifier = Modifier
-                                                .width(160.dp)
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        when (item) {
-                                                            is SongItem -> playerConnection.playQueue(
-                                                                YouTubeQueue(
-                                                                    item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                                                    item.toMediaMetadata()
-                                                                )
-                                                            )
-                                                            is AlbumItem -> navController.navigate("album/${item.id}")
-                                                            is ArtistItem -> navController.navigate("artist/${item.id}")
-                                                            is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    }
-                                                )
-                                        )
-                                    }
+                                homeItem("all_time_hits_list", revealSeen, "cardRow") {
+                                    HomeCardRow("all_time_hits", hits, revealSeen, key = { it.id }, content = hitsCard)
                                 }
                             }
                         }
                         HomeSection.LiveShows, HomeSection.MusicVideos -> {
                             val isLive = section == HomeSection.LiveShows
                             (if (isLive) liveRow else musicVideoRow)?.takeIf { it.isNotEmpty() }?.let { videos ->
-                                homeItem("${section.id}_title", revealSeen) {
+                                homeItem("${section.id}_title", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = stringResource(if (isLive) R.string.live_shows else R.string.music_videos_for_you),
                                         onClick = { navController.navigate("section_detail/${section.id}") }
                                     )
                                 }
-                                homeItem("${section.id}_list", revealSeen) {
-                                    HomeCardRow(section.id, videos, revealSeen, key = { it.item.id }) { video ->
-                                        videoCard(video, videoCardWidth)
-                                    }
+                                homeItem("${section.id}_list", revealSeen, "cardRow") {
+                                    HomeCardRow(section.id, videos, revealSeen, key = { it.item.id }, content = videoRowCard)
                                 }
                             }
                         }
                         is HomeSection.Category -> {
                             homeCategories?.firstOrNull { it.id == section.categoryId }?.let { category ->
-                                homeItem("${section.id}_title", revealSeen) {
+                                homeItem("${section.id}_title", revealSeen, "title") {
                                     val categorySongs = category.items.filterIsInstance<SongItem>()
                                     val title = when (category.kind) {
                                         HomeCategory.Kind.NewFromArtists -> stringResource(R.string.home_new_from_your_artists)
@@ -1419,14 +1455,14 @@ fun HomeScreen(
                                         } else null,
                                     )
                                 }
-                                homeItem("${section.id}_list", revealSeen) {
-                                    HomeCardRow(section.id, category.items, revealSeen, key = { it.id }) { ytItemCard(it) }
+                                homeItem("${section.id}_list", revealSeen, "cardRow") {
+                                    HomeCardRow(section.id, category.items, revealSeen, key = { it.id }, content = ytItemCard)
                                 }
                             }
                         }
                         HomeSection.AccountPlaylists -> {
                             if (!localPlaylists.isNullOrEmpty() || !accountPlaylists.isNullOrEmpty()) {
-                                homeItem("account_playlists_title", revealSeen) {
+                                homeItem("account_playlists_title", revealSeen, "title") {
                                     Box {
                                         HomeSectionTitle(
                                             label = "Your Playlists",
@@ -1457,8 +1493,9 @@ fun HomeScreen(
                                     }
                                 }
 
-                                homeItem("account_playlists_list", revealSeen) {
+                                homeItem("account_playlists_list", revealSeen, "cardRow") {
                                     LazyRow(
+                                        state = rememberCardRowState(),
                                         contentPadding = PaddingValues(horizontal = HomeContentInset),
                                         horizontalArrangement = Arrangement.spacedBy(HomeCardSpacing)
                                     ) {
@@ -1478,7 +1515,7 @@ fun HomeScreen(
                         }
                         HomeSection.DontForgetTheseSongs -> {
                             forgottenFavorites?.takeIf { it.isNotEmpty() }?.let { forgottenFavorites ->
-                                homeItem("forgotten_favorites_title", revealSeen) {
+                                homeItem("forgotten_favorites_title", revealSeen, "title") {
                                     val forgottenFavoritesTitle = stringResource(R.string.dont_forget_these_songs)
                                     HomeSectionTitle(
                                         title = forgottenFavoritesTitle,
@@ -1493,26 +1530,15 @@ fun HomeScreen(
                                         }
                                     )
                                 }
-                                homeItem("forgotten_favorites_list", revealSeen) {
+                                homeItem("forgotten_favorites_list", revealSeen, "trackGrid") {
                                     HomeTrackGrid(
                                         items = forgottenFavorites,
                                         state = forgottenFavoritesLazyGridState,
                                         rowSpacing = 6.dp,
                                         columnWidth = trackColumnWidth,
                                         key = { _, song -> song.id },
-                                    ) { _, song ->
-                                        HomeTrackRow(
-                                            thumbnailUrl = song.song.thumbnailUrl,
-                                            songId = song.id,
-                                            title = song.song.title,
-                                            subtitle = song.artists.joinToString(", ") { it.name },
-                                            isActive = song.id == mediaMetadataState.value?.id,
-                                            isPlaying = isPlayingState.value,
-                                            onClick = { playSong(song) },
-                                            onLongClick = { showSongMenu(song) },
-                                            onMoreClick = { showSongMenu(song) },
-                                        )
-                                    }
+                                        content = trackRow,
+                                    )
                                 }
                             }
                         }
@@ -1521,7 +1547,7 @@ fun HomeScreen(
                             sectionData?.let {
                                 val sectionSongs = sectionData.items.filterIsInstance<SongItem>()
 
-                                homeItem("home_section_title_${section.id}", revealSeen) {
+                                homeItem("home_section_title_${section.id}", revealSeen, "title") {
                                     HomeSectionTitle(
                                         title = sectionData.title,
                                         label = sectionData.label,
@@ -1566,25 +1592,24 @@ fun HomeScreen(
                                     )
                                 }
 
-                                homeItem("home_section_list_${section.id}", revealSeen) {
+                                homeItem("home_section_list_${section.id}", revealSeen, "cardRow") {
                                     if (feedVideoKinds[section.index] == FeedVideoKind.Other) {
                                         HomeCardRow(
                                             "home_section_${section.id}",
                                             sectionSongs.map(ArtistVideos::feedVideo),
                                             revealSeen,
                                             key = { it.item.id },
-                                        ) { video -> videoCard(video, videoCardWidth) }
+                                            content = videoRowCard,
+                                        )
                                     } else {
-                                        HomeCardRow("home_section_${section.id}", sectionData.items, revealSeen, key = { it.id }) {
-                                            ytItemCard(it)
-                                        }
+                                        HomeCardRow("home_section_${section.id}", sectionData.items, revealSeen, key = { it.id }, content = ytItemCard)
                                     }
                                 }
                             }
                         }
                     }
 
-                    item(key = "section_spacer_${section.id}") {
+                    item(key = "section_spacer_${section.id}", contentType = "spacer") {
                         Spacer(modifier = Modifier.height(34.dp))
                     }
                 }
@@ -1592,7 +1617,7 @@ fun HomeScreen(
                 // only while something is really on its way; a page token alone used to leave
                 // these bones up forever when the next page couldn't load
                 if (launchHold || (isFirstLoad && speedDialItems.isEmpty() && keepListening.isNullOrEmpty()) || isLoadingMore) {
-                    item(key = "loading_bones") {
+                    item(key = "loading_bones", contentType = "bones") {
                         BonesHost(
                             modifier = Modifier
                                 .animateItem(
@@ -1610,7 +1635,7 @@ fun HomeScreen(
                     }
                 }
 
-                item(key = "bottom_spacer") {
+                item(key = "bottom_spacer", contentType = "spacer") {
                     Spacer(modifier = Modifier.height(30.dp))
                 }
             }
@@ -1645,16 +1670,15 @@ fun HomeScreen(
                         modifier = Modifier
                             .matchParentSize()
                             .drawWithCache {
+                                // every stop is black, so the fade is built once and only its alpha follows the scroll
+                                val fade = Brush.verticalGradient(
+                                    0f to Color.Black.copy(alpha = 0.9f),
+                                    0.3f to Color.Black.copy(alpha = 0.6f),
+                                    0.6f to Color.Black.copy(alpha = 0.3f),
+                                    1f to Color.Transparent
+                                )
                                 onDrawBehind {
-                                    val p = heroScrollProgressProvider().coerceIn(0f, 1f)
-                                    drawRect(
-                                        brush = Brush.verticalGradient(
-                                            0f to Color.Black.copy(alpha = p * 0.9f),
-                                            0.3f to Color.Black.copy(alpha = p * 0.6f),
-                                            0.6f to Color.Black.copy(alpha = p * 0.3f),
-                                            1f to Color.Transparent
-                                        )
-                                    )
+                                    drawRect(brush = fade, alpha = heroScrollProgressProvider().coerceIn(0f, 1f))
                                 }
                             }
                     )

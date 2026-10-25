@@ -1,5 +1,3 @@
-// Qualifiers.kt
-
 package com.example.musicfy.di
 
 import javax.inject.Qualifier

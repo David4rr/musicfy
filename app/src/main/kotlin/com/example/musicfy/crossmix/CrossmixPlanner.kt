@@ -6,11 +6,7 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * One planned hand-over. Both songs share a clock counted in the outgoing song's beats: beat 0 is
- * [outStartMs] in the outgoing song, the outgoing side has handed over by beat [lengthBeats], and
- * the incoming song's [inCueMs] is heard at beat [entryBeat].
- */
+/** one planned hand-over on a clock counted in the outgoing song's beats: beat 0 is outStartMs, handed over by lengthBeats, and the incoming inCueMs is heard at entryBeat */
 data class CrossmixPlan(
     val style: CrossmixStyle,
     val variation: Int,
@@ -24,18 +20,18 @@ data class CrossmixPlan(
     /** the incoming song's playback speed during the mix (1 when not tempo-matched) */
     val inSpeed: Float,
     val beatMatched: Boolean,
-    /** the transition beat the incoming player starts on (silently, if before [entryBeat]) */
+    /** the transition beat the incoming player starts on (silently, if before entryBeat) */
     val inStartBeat: Float,
     /** the voices would overlap: the outgoing one is dampened and drawn away as the next comes in */
     val yieldVocals: Boolean = false,
 ) {
-    /** incoming media time heard at transition beat [beat] */
+    /** incoming media time heard at a transition beat */
     fun inMediaAt(beat: Float): Double = inCueMs + (beat - entryBeat) * inMediaPerBeat
 
     /** where the incoming player starts */
     val inStartMs: Long get() = inMediaAt(inStartBeat).toLong().coerceAtLeast(0L)
 
-    /** outgoing media time of transition beat [beat] */
+    /** outgoing media time of a transition beat */
     fun outMediaAt(beat: Float): Double = outStartMs + beat * outBeatMs
 
     /** the outgoing player can be let go after this (tails included) */
@@ -65,10 +61,7 @@ object CrossmixPlanner {
     /** the yield overlay changes how a style sounds: only worth it when it saves a real clash */
     private const val YieldCost = 0.15f
 
-    /**
-     * the one transition that suits these two songs best. nothing is left to chance: the same two
-     * songs always get the same mix, and a different mix only ever comes from different music.
-     */
+    /** the one transition that suits these two songs best, the same two songs always get the same mix */
     fun plan(
         outgoing: CrossmixTrackInput,
         incoming: CrossmixTrackInput,
@@ -100,8 +93,7 @@ object CrossmixPlanner {
 
         data class Candidate(val plan: CrossmixPlan, val score: Float)
         val candidates = ArrayList<Candidate>()
-        // the variants of a style differ in how many beats a spin, a stop or an echo takes: at a
-        // quick tempo the longer count, so either way it lasts about as long in seconds
+        // variants differ in how many beats a spin, stop or echo takes: quick tempos use the longer count so both last about as long in seconds
         val variation = if (60_000.0 / outGrid.periodMs >= 118.0) 1 else 0
 
         for (style in CrossmixStyle.entries) {
@@ -110,8 +102,7 @@ object CrossmixPlanner {
             if (styleFit <= -5f) continue
             for (length in style.lengths) {
                 val lengthMs = length * outGrid.periodMs
-                // the outgoing song must have handed over (tails aside) before it runs out, and the
-                // whole thing must start no earlier than 30 s before the end
+                // the outgoing song must hand over (tails aside) before it runs out, and no earlier than 30 s before the end
                 val latestEnd = naturalEnd - 150L
                 val earliestEnd = (windowStart + lengthMs).toLong()
                 if (earliestEnd > latestEnd) continue
@@ -123,8 +114,7 @@ object CrossmixPlanner {
                     if (start < windowStart) continue
                     val exitScore = exitScore(out, outGrid, end, naturalEnd, outLines, style)
                     val cue = pickCue(style, out, inc, end, length, outGrid.periodMs, tempo, outVoice, inVoice)
-                    // overlapping styles lock the beat whenever the tempos allow; hand-over
-                    // styles only need the next song's downbeat on the outgoing one's
+                    // overlapping styles lock the beat when tempos allow, hand-over styles only need the next downbeat on the outgoing one's
                     val match = if (tempo != null && (style.needsBeatMatch || !style.entersAtEnd)) {
                         beatMatch(inc!!, cue.timeMs, tempo, outGrid.periodMs)
                     } else {
@@ -133,8 +123,7 @@ object CrossmixPlanner {
                     if (style.needsBeatMatch && match == null) continue
                     val inBeat = match?.inBeatMs ?: outGrid.periodMs
                     val entryBeat = if (style.entersAtEnd) length.toFloat() else 0f
-                    // up to a bar of silent run-up before the next song is heard, so its beat is
-                    // locked before anyone can hear it
+                    // up to a bar of silent run-up, so the beat is locked before anyone hears the next song
                     val preRoll = min(4f, (cue.timeMs / inBeat).toFloat()).coerceAtLeast(0f)
                     val startBeat = entryBeat - preRoll
                     val plan = CrossmixPlan(
@@ -151,9 +140,7 @@ object CrossmixPlanner {
                         inStartBeat = startBeat,
                     )
                     val lengthFit = lengthFit(style, length, out, inc)
-                    // two voices at once is the one thing a mix must never do: count the beats where
-                    // both would be clearly heard singing, and where a blend would have them, try it
-                    // with the outgoing voice drawn away instead
+                    // two voices at once is the one thing a mix must never do: where a blend would clash, try it with the outgoing voice drawn away
                     var chosen = plan
                     var clash = vocalClash(plan, outVoice, inVoice, scratchOut, scratchIn) * ClashPerBeat
                     if (clash > 0.08f && !style.entersAtEnd && style != CrossmixStyle.FarAway && style != CrossmixStyle.Dampen) {
@@ -170,8 +157,7 @@ object CrossmixPlanner {
         }
 
         if (candidates.isEmpty()) return smoothFade(outgoing, incoming, naturalEnd)
-        // the best fit wins outright; a dead heat goes to the longer, then earlier-listed style,
-        // so the choice never depends on the order candidates happened to be found in
+        // best fit wins, a dead heat goes to the longer then earlier-listed style so the pick never depends on search order
         return candidates.maxWith(
             compareBy<Candidate> { it.score }
                 .thenBy { it.plan.lengthBeats }
@@ -180,11 +166,7 @@ object CrossmixPlanner {
         ).plan
     }
 
-    /**
-     * where a song's voice is, 0..1 by the moment: from its synced lyrics when it has them (to the
-     * line), from the analyser's lead-presence curve when it doesn't (a good guess), or a middling
-     * guess with neither
-     */
+    /** where a song's voice is, 0..1: from synced lyrics if it has them, else the analyser's lead curve (a good guess), else a middling guess */
     private class Voice(private val lines: List<Line>, private val curve: FloatArray?) {
         fun at(ms: Double): Float {
             if (lines.isNotEmpty()) return if (lines.any { ms >= it.start - 200 && ms <= it.end }) 1f else 0f
@@ -203,9 +185,9 @@ object CrossmixPlanner {
         }
     }
 
-    /** how clearly a voice would come through these settings: its level, its band, its words */
+    /** how clearly a voice comes through these settings: level, band and words */
     private fun clarity(p: FxParams): Float {
-        // the consonants that make words live above ~2 kHz; a low-pass under 400 Hz leaves a hum
+        // the consonants that make words live above ~2 khz; a low-pass under 400 hz leaves a hum
         val words = (ln(p.highCutHz / 400f) / ln(3_500f / 400f)).coerceIn(0f, 1f)
         // a high-pass leaves a voice alone until it starts cutting into its body
         val body = 1f - (ln(max(p.lowCutHz, 20f) / 900f) / ln(3_200f / 900f)).coerceIn(0f, 1f)
@@ -233,11 +215,7 @@ object CrossmixPlanner {
         return clash
     }
 
-    /**
-     * how much these two songs could pass for one continuous piece: the same tempo, keys that sit
-     * together, the same energy and both made to move to. 0 is nothing alike, 1 seamless. a high
-     * score asks for a long beat-matched blend in which the beat never stops, rather than a stunt.
-     */
+    /** how much two songs could pass for one piece (tempo, keys, energy, groove): 0 nothing alike, 1 seamless, a high score asks for a long beat-matched blend */
     internal fun continuity(out: TrackAnalysis, inc: TrackAnalysis?, beatMatchable: Boolean, keyDistance: Int?): Float {
         if (inc == null || !beatMatchable) return 0f
         val energy = 1f - (abs(inc.vibe.energy - out.vibe.energy) / 0.35f).coerceIn(0f, 1f)
@@ -257,10 +235,7 @@ object CrossmixPlanner {
 
     private data class Match(val inBeatMs: Double, val speed: Float)
 
-    /**
-     * whether the two tempos can be laid on each other at all: the same, or near enough to nudge
-     * (6% at most, so nobody hears the stretch), allowing for half and double time
-     */
+    /** whether the tempos can be laid on each other: the same, or within 6% so nobody hears the stretch, allowing half and double time */
     private fun tempoFactor(out: TrackAnalysis, inc: TrackAnalysis?): Tempo? {
         if (inc == null || !inc.isBeatReliable) return null
         val outBpm = out.bpm ?: return null
@@ -273,19 +248,14 @@ object CrossmixPlanner {
         return null
     }
 
-    /**
-     * the exact beat length of the next song where it's entered, from the beats fitted around
-     * the cue rather than the song-wide tempo (an error of a fraction of a percent there would
-     * drift a long blend off the beat), and the speed that lays it on the outgoing beat. within
-     * 0.3% nothing is stretched: the renderer's delay line keeps the two locked, which is cleaner
-     * than any time-stretch.
-     */
+    /** beat length at the cue from the locally fitted beats (the song-wide tempo drifts a long blend), and the speed that lays it on the outgoing beat */
     private fun beatMatch(inc: TrackAnalysis, cueMs: Long, tempo: Tempo, outBeatMs: Double): Match? {
         val local = inc.localGrid(cueMs + 4_000L)?.periodMs ?: return null
         // the grid counts the song's own beats; half or double time counts them in pairs or halves
         val inBeat = local / tempo.factor
         val speed = (inBeat / outBeatMs).toFloat()
         if (abs(speed - 1f) > MaxSpeedChange) return null
+        // within 0.3% nothing is stretched, the delay line keeps the two locked and that sounds cleaner than a time-stretch
         return Match(inBeat, if (abs(speed - 1f) < 0.003f) 1f else speed)
     }
 
@@ -338,8 +308,7 @@ object CrossmixPlanner {
             CrossmixStyle.HarmonicGlide -> 0.2f + (if (harmonic) 1.1f else -0.8f) + dance * 0.3f
             CrossmixStyle.BreakdownBridge -> 0.3f + (if (clash) 0.7f else 0f) + calm * 0.2f
             CrossmixStyle.ThunderDrop -> 0.1f + max(0f, delta) * 1.3f + out.vibe.bassWeight * 0.4f
-            // the distance styles are the everyday ones: a far-off drift for the dreamy and the
-            // slow, a dampened room for anything with singing to hand over
+            // the distance styles are the everyday ones: far-off for the dreamy and slow, a dampened room for anything with singing
             CrossmixStyle.FarAway -> 0.55f + calm * 0.7f + (1f - dance) * 0.3f + (if (!beatMatchable) 0.35f else 0f) + vocalPair * 0.6f
             CrossmixStyle.Dampen -> 0.6f + vocalPair * 0.8f + dance * 0.15f + (if (!beatMatchable) 0.2f else 0f)
         }
@@ -347,8 +316,7 @@ object CrossmixPlanner {
         if (overlaps && clash && style != CrossmixStyle.BreakdownBridge && style != CrossmixStyle.FilterSweep) score -= 0.6f
         // a quiet outro wants a gentle hand-over, not a stunt
         if (outro && style.entersAtEnd && style != CrossmixStyle.VocalHandoff && style != CrossmixStyle.EchoOut) score -= 0.3f
-        // two songs that belong together run into each other with the beat never stopping; the
-        // further apart they are, the more a mix needs an effect to carry the change of scene
+        // songs that belong together run into each other with the beat never stopping, the further apart they are the more a mix needs an effect
         score += when (style) {
             CrossmixStyle.BassSwap, CrossmixStyle.HarmonicGlide -> continuous * 1.6f
             CrossmixStyle.SilkBlend, CrossmixStyle.GateFade -> continuous * 1.0f
@@ -394,11 +362,7 @@ object CrossmixPlanner {
 
     private data class Cue(val timeMs: Long, val score: Float)
 
-    /**
-     * where to enter the next song, at most two minutes in: on a phrase start, at an energy that
-     * suits the hand-over (a drop for the drop styles, a calm intro for the long blends), without a
-     * vocal stepping on the outgoing song, and skipping as little of it as will do
-     */
+    /** where to enter the next song (two minutes in at most): a phrase start at an energy that suits the hand-over, no vocal on the outgoing one, skipping as little as will do */
     private fun pickCue(
         style: CrossmixStyle,
         out: TrackAnalysis,
@@ -456,10 +420,7 @@ object CrossmixPlanner {
         return (length / longest - 0.5f) * (calm - 0.4f) * 0.6f
     }
 
-    /**
-     * no reliable beat to work with: a smooth equal-power blend that finishes before the song
-     * runs out, starting after the last sung line where that fits
-     */
+    /** no reliable beat: a smooth equal-power blend that finishes before the song runs out, starting after the last sung line where that fits */
     private fun smoothFade(
         outgoing: CrossmixTrackInput,
         incoming: CrossmixTrackInput,
@@ -474,8 +435,7 @@ object CrossmixPlanner {
         val beatMs = fadeMs / 16.0
         val cue = incoming.analysis?.leadingSilenceEndMs?.coerceAtMost(MaxEntryMs) ?: 0L
         return CrossmixPlan(
-            // with nothing known about either song, the safest hand-over there is: the outgoing
-            // one dampened behind the next, so not even two voices can fight
+            // nothing is known about either song, so the safest hand-over: the outgoing one dampened behind the next, not even two voices can fight
             style = CrossmixStyle.Dampen,
             variation = 0,
             lengthBeats = 16,

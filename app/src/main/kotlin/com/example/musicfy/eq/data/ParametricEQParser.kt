@@ -1,5 +1,3 @@
-// ParametricEQParser.kt
-
 package com.example.musicfy.eq.data
 
 import java.io.File

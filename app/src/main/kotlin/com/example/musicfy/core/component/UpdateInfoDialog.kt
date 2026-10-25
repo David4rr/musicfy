@@ -1,5 +1,3 @@
-// UpdateInfoDialog.kt
-
 package com.example.musicfy.core.component
 
 import androidx.compose.foundation.layout.Arrangement

@@ -1,5 +1,3 @@
-// BetterLyrics.kt
-
 package com.example.musicfy.betterlyrics
 
 import com.example.musicfy.betterlyrics.models.TTMLResponse
@@ -38,7 +36,7 @@ object BetterLyrics {
                 url("https://lyrics-api.boidu.dev")
             }
 
-            // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+            // says who's asking so the server owner can reach us instead of blocking us
             install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
 
             expectSuccess = false

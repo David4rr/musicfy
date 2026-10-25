@@ -1,9 +1,4 @@
-// DevSpaceData.kt
-//
-// What the Developer Space shows, straight from GitHub: issue and release counts, the commits since
-// this build was made, and the latest issues. The page asks for a fresh copy every time it opens;
-// the Musicfy page's card borrows whatever is already here. Anything GitHub refuses (rate limit,
-// offline) leaves the last good numbers in place and sets [DevSpaceRepository.error].
+// repo numbers for dev spaces straight from github, if github refuses (rate limit, offline) the last good numbers stay
 
 package com.example.musicfy.ui.screens.settings.devspace
 
@@ -33,7 +28,7 @@ data class DevIssue(
     val url: String,
     val createdAt: Instant,
 ) {
-    /** A "bug" label, or the word in the title - reporters don't always label. */
+    /** a "bug" label, or the word in the title, reporters don't always label */
     val isBug: Boolean = labels.any { it.contains("bug", true) } || title.contains("bug", true)
 
     val isFeature: Boolean = !isBug && (
@@ -68,7 +63,7 @@ object DevSpaceRepository {
     private const val Api = "https://api.github.com"
     private const val Repo = "$GithubOwner/$GithubRepo"
 
-    /** Fetches everything again; with [force] false, a copy under [maxAgeMs] old is left alone. */
+    /** fetches everything again, unless force is false and the copy is newer than maxAgeMs */
     suspend fun refresh(sinceMillis: Long, force: Boolean, maxAgeMs: Long = 60_000L) {
         val known = stats.value
         if (!force && known != null && System.currentTimeMillis() - known.fetchedAt < maxAgeMs) return
@@ -136,13 +131,13 @@ object DevSpaceRepository {
         }
     }
 
-    /** Issues (never pull requests) matching [qualifiers], counted by GitHub. */
+    /** issues (never pull requests) matching the qualifiers, counted by github */
     private fun searchCount(qualifiers: String): Int {
         val q = URLEncoder.encode("repo:$Repo is:issue $qualifiers", "UTF-8")
         return JSONObject(get("/search/issues?q=$q&per_page=1").first).getInt("total_count")
     }
 
-    /** One commit per page, so the last page's number is the count. */
+    /** one commit per page, so the last page's number is the count */
     private fun commitsSince(since: String): Int {
         val (body, link) = get("/repos/$Repo/commits?since=$since&per_page=1")
         val last = link?.let { Regex("[?&]page=(\\d+)>; rel=\"last\"").find(it)?.groupValues?.get(1)?.toIntOrNull() }

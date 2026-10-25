@@ -1,5 +1,3 @@
-// AudioDeviceBottomSheet.kt
-
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.example.musicfy.core

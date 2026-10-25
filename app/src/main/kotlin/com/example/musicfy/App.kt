@@ -69,7 +69,7 @@ class App : Application(), SingletonImageLoader.Factory {
 
         CipherDeobfuscator.initialize(this)
 
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "fast") {
             Timber.plant(Timber.DebugTree())
         }
 

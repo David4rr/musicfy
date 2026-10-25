@@ -1,11 +1,4 @@
-// ChangelogMarkdown.kt
-//
-// Renders a GitHub release body. Release notes are written in GitHub-flavoured markdown and often
-// paste screenshots as HTML (<img src=...>), so showing the raw body printed the asterisks, the
-// `![...]()` syntax and the tags instead of bold text and pictures. This covers what release
-// notes actually use - headings, paragraphs, bullet/numbered lists, quotes, rules, code fences,
-// **bold**, *italic*, ~~strike~~, `code`, links, and images (markdown or <img>) - not all of
-// CommonMark. Anything it doesn't recognise falls through as plain text, never dropped.
+// renders a github release body (markdown and html img tags), anything it doesn't recognise shows as plain text, never dropped
 
 package com.example.musicfy.ui.screens.update
 
@@ -62,7 +55,7 @@ private val NumberLine = Regex("""^(\s*)(\d+)[.)]\s+(.*)$""")
 private val RuleLine = Regex("""^\s*([-*_])(\s*\1){2,}\s*$""")
 private val Fence = Regex("""^\s*(```|~~~)""")
 
-/** Pulls image references out of [line]; returns the text left over plus the images, in order. */
+/** pulls image references out of line, returns the text left over plus the images in order */
 private fun extractImages(line: String): Pair<String, List<MdBlock.Image>> {
     val images = mutableListOf<Pair<Int, MdBlock.Image>>()
     MdImage.findAll(line).forEach { images += it.range.first to MdBlock.Image(it.groupValues[2], it.groupValues[1]) }
@@ -104,7 +97,7 @@ private fun parseBlocks(markdown: String): List<MdBlock> {
             continue
         }
 
-        // HTML comments (release templates leave them in) and <br>-style tags carry no text.
+        // html comments (release templates leave them in) and <br> tags carry no text
         val (withoutImages, images) = extractImages(raw.replace(Regex("<!--.*?-->"), ""))
         val line = withoutImages.replace(Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE), " ")
             .replace(HtmlTag, "")
@@ -139,7 +132,7 @@ private fun parseBlocks(markdown: String): List<MdBlock> {
                 blocks += MdBlock.Quote(line.trimStart().removePrefix(">").trim())
             }
             else -> {
-                // A line under a list item that's just indented continues that item.
+                // a line under a list item that's just indented continues that item
                 val last = blocks.lastOrNull()
                 if (paragraph.isEmpty() && last is MdBlock.ListItem && raw.startsWith("  ")) {
                     blocks[blocks.lastIndex] = last.copy(text = last.text + " " + line.trim())
@@ -207,10 +200,7 @@ private fun inline(text: String, strongColor: Color): AnnotatedString = buildAnn
     )
 }
 
-/**
- * A release body as styled text and images. [color] is the body text colour; bold text, headings
- * and links use [strongColor] so they stand out from it.
- */
+/** a release body as styled text and images, bold text, headings and links use strongColor so they stand out from color */
 @Composable
 fun ChangelogMarkdown(
     markdown: String,
@@ -319,10 +309,7 @@ fun ChangelogMarkdown(
     }
 }
 
-/**
- * First meaningful line of a release body as plain text - for one-line summaries and the update
- * notification, where markdown syntax would just show up as stray symbols.
- */
+/** first meaningful line of a release body as plain text, for one-line summaries and the update notification where markdown would show as stray symbols */
 fun changelogSummaryLine(markdown: String): String =
     parseBlocks(markdown).firstNotNullOfOrNull { block ->
         when (block) {

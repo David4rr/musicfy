@@ -1,5 +1,3 @@
-// GeneralSettingsScreen.kt
-
 package com.example.musicfy.ui.screens.settings
 
 import androidx.compose.foundation.layout.Spacer
@@ -77,7 +75,6 @@ fun GeneralSettingsScreen(navController: NavController) {
             modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
         )
 
-        // Toggle options
         val toggleItems = listOf(
             SettingsItem(
                 title = { Text("Disable App Updates notice") },

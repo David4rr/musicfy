@@ -1,5 +1,3 @@
-// YouTubeClient.kt
-
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

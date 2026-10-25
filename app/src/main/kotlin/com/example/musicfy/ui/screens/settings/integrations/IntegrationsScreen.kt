@@ -1,7 +1,4 @@
-// IntegrationsScreen.kt
-//
-// Musicfy → Settings → Integrations: a card per service (Discord, Last.fm, Libre.fm), each with
-// its banner and icon. Tapping one opens that service's own page.
+// musicfy → settings → integrations: a card per service, tapping one opens its own page
 
 package com.example.musicfy.ui.screens.settings.integrations
 

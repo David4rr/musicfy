@@ -1,5 +1,3 @@
-// Converters.kt
-
 package com.example.musicfy.db
 
 import androidx.room.TypeConverter

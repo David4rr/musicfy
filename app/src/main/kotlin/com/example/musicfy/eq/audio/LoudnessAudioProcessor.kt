@@ -1,5 +1,3 @@
-// LoudnessAudioProcessor.kt
-
 package com.example.musicfy.eq.audio
 
 import androidx.media3.common.C
@@ -16,20 +14,14 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.tanh
 
-/** Loudness: [boostDb] of gain, [compression] 0..1 of lifting the quiet parts. */
+/** loudness: boostDb of gain, compression 0..1 of lifting the quiet parts */
 data class LoudnessParams(
     val enabled: Boolean = false,
     val boostDb: Float = 4f,
     val compression: Float = 0.3f,
 )
 
-/**
- * Makes music louder without it breaking up: a stereo-linked compressor that brings quiet
- * passages up (more [LoudnessParams.compression] = lower threshold, higher ratio, more makeup),
- * the boost, then a peak limiter holding everything under -0.5 dBFS with a soft knee as the last
- * guard. Gains are worked out every [Block] frames and glide in between, so it never zips; on
- * and off fade over [ToggleSeconds]. Last in Audio FX, so it also catches the reverb's peaks.
- */
+/** louder without breaking up: a stereo-linked compressor lifts quiet parts, then the boost, then a peak limiter under -0.5 dbfs with a soft knee; last in audio fx so it also catches the reverb's peaks */
 @UnstableApi
 @Suppress("DEPRECATION")
 class LoudnessAudioProcessor(private val service: AudioFxService) : AudioProcessor {

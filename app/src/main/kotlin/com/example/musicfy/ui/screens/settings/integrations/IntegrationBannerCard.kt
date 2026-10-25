@@ -1,5 +1,3 @@
-// IntegrationBannerCard.kt
-
 package com.example.musicfy.ui.screens.settings.integrations
 
 import androidx.annotation.DrawableRes
@@ -35,7 +33,7 @@ private val CardColor = Color(0xFF232323)
 private val CardHeight = 167.dp
 private val BannerHeight = 110.dp
 
-/** Grey line under a settings page's big title, as in the Integrations and Discord mocks. */
+/** grey line under a settings page's big title, as in the integrations and discord mocks */
 @Composable
 internal fun IntegrationPageSubtitle(text: String) {
     Text(
@@ -47,10 +45,7 @@ internal fun IntegrationPageSubtitle(text: String) {
     )
 }
 
-/**
- * One service on the Integrations page: its banner across the top fading into the card, then
- * its app icon and name sitting over the fade.
- */
+/** one service on the integrations page: its banner fading into the card, with the app icon and name over the fade */
 @Composable
 internal fun IntegrationBannerCard(
     name: String,
@@ -109,7 +104,7 @@ internal fun IntegrationBannerCard(
     }
 }
 
-/** A banner that's one of the user's pictures, filling the width. */
+/** a banner that's one of the user's pictures, filling the width */
 @Composable
 internal fun BoxScope.PictureBanner(@DrawableRes picture: Int) {
     Image(
@@ -126,7 +121,7 @@ internal fun BoxScope.PictureBanner(@DrawableRes picture: Int) {
     )
 }
 
-/** A plain colour banner, with the service's wordmark on it when there is one. */
+/** a plain colour banner, with the service's wordmark on it when there is one */
 @Composable
 internal fun BoxScope.ColorBanner(color: Color, @DrawableRes wordmark: Int? = null) {
     Box(

@@ -1,5 +1,3 @@
-// UpdatePromptSheet.kt
-
 package com.example.musicfy.ui.screens.update
 
 import androidx.compose.animation.animateContentSize

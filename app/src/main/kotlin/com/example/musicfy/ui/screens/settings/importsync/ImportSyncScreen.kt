@@ -1,5 +1,3 @@
-// ImportSyncScreen.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,7 +27,7 @@ import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.viewmodels.ImportSyncViewModel
 import java.time.LocalDate
 
-/** Experimental hub: Import (other services), Sync (YouTube account), TuneMyMusic CSV, and backup. */
+/** experimental hub: import from other services, sync a youtube account, tunemymusic csv, and backup */
 @Composable
 fun ImportSyncScreen(
     navController: NavController,

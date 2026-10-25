@@ -1,5 +1,3 @@
-// NetEaseModels.kt
-
 package com.music.directlyrics.models
 
 import kotlinx.serialization.Serializable
@@ -13,10 +11,10 @@ internal data class NetEaseSearchResponse(val result: SearchResult? = null) {
     data class Song(
         val id: Long,
         val name: String = "",
-        /** Milliseconds. */
+        /** milliseconds */
         val duration: Long = 0,
         val artists: List<Artist> = emptyList(),
-        /** Other names the song goes by, often its English or original title. */
+        /** other names the song goes by, often its english or original title */
         val alias: List<String> = emptyList(),
     )
 
@@ -26,9 +24,9 @@ internal data class NetEaseSearchResponse(val result: SearchResult? = null) {
 
 @Serializable
 internal data class NetEaseLyricResponse(
-    /** Line-timed LRC. */
+    /** line-timed lrc */
     val lrc: Lyric? = null,
-    /** Word-timed lyrics in NetEase's own format, when the song has them. */
+    /** word-timed lyrics in netease's own format, when the song has them */
     val yrc: Lyric? = null,
 ) {
     @Serializable

@@ -1,5 +1,3 @@
-// GetQueueResponse.kt
-
 package com.music.innertube.models.response
 
 import com.music.innertube.models.PlaylistPanelRenderer

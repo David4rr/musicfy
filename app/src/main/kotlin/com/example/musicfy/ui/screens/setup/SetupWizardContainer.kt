@@ -58,8 +58,7 @@ fun SetupWizardContainer(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             if (isFirstLaunch) {
-                // on a first launch: the splash mark flies into Home, its bones rise, and only
-                // then does onboarding come up over them
+                // first launch: the splash mark flies into home and its bones rise before onboarding comes up
                 LaunchGate.awaitIntro()
                 kotlinx.coroutines.delay(SheetAfterIntroMillis)
                 isFirstLaunch = false

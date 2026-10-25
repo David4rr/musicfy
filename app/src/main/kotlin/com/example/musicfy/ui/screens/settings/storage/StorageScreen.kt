@@ -1,8 +1,4 @@
-// StorageScreen.kt
-//
-// Settings → Storage: how much of the phone Musicfy takes, what that's made of (cache,
-// downloads, database, the app itself), and what you can do about it - the song cache limit,
-// clearing downloads or the cache, and the Manage downloads sheet.
+// settings → storage: how much of the phone musicfy takes, the cache limit, clearing downloads or the cache, and manage downloads
 
 package com.example.musicfy.ui.screens.settings.storage
 
@@ -50,7 +46,7 @@ import com.example.musicfy.viewmodels.StorageViewModel
 
 const val StorageRoute = "storage_settings"
 
-/** Song cache limits on offer, in MB; -1 is no limit. The player's default is 1 GB. */
+/** song cache limits on offer, in mb, -1 is no limit, the player's default is 1 gb */
 private val CacheLimitSteps = listOf(0, 256, 512, 1024, 2048, 4096, 8192, -1)
 
 @Composable
@@ -138,7 +134,7 @@ fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hi
     }
 }
 
-/** "1.4%", or "<1%" for a sliver, so a small app never reads as using nothing. */
+/** like 1.4%, or <1% for a sliver, so a small app never reads as using nothing */
 private fun percentOf(part: Long, total: Long): String {
     if (total <= 0L) return "0%"
     val p = part * 100.0 / total
@@ -201,11 +197,7 @@ private fun BreakdownCard(usage: StorageUsage?) {
     }
 }
 
-/**
- * One line pointing at the biggest easy win: the cache when it's the larger part (it costs
- * nothing to clear), the downloads sheet when downloads are, and a nudge when the phone is
- * nearly full.
- */
+/** one line pointing at the biggest easy win: the cache, the downloads sheet, or a nudge when the phone is nearly full */
 @Composable
 private fun SmartHint(usage: StorageUsage, downloadCount: Int) {
     val nearlyFull = usage.deviceTotal > 0 && usage.deviceFree * 10 < usage.deviceTotal

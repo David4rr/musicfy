@@ -15,20 +15,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-/** A song found in the phone's storage, before it is imported. */
+/** a song found in the phone's storage, before it is imported */
 @Immutable
 data class DeviceSong(
     val uri: Uri,
     val title: String,
     val artist: String?,
     val durationMs: Long,
-    /** The album picture Android keeps for the file, if it has one. */
+    /** the album picture android keeps for the file, if it has one */
     val artworkUri: String?,
 )
 
-/** Finds the music already on the phone, once the user lets Musicfy read its storage. */
+/** finds the music already on the phone, once the user lets musicfy read its storage */
 object DeviceMusicScanner {
-    /** Android 13 split audio out of the general storage permission. */
+    /** android 13 split audio out of the general storage permission */
     val permission: String
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
@@ -39,10 +39,7 @@ object DeviceMusicScanner {
     fun hasAccess(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
-    /**
-     * Every song on the phone, newest first, leaving out the files in [alreadyImported] (their
-     * uris). Only what Android marks as music: ringtones, alarms and voice notes stay out.
-     */
+    /** every song on the phone, newest first, minus the uris in alreadyImported, only what android marks as music so ringtones and voice notes stay out */
     suspend fun scan(context: Context, alreadyImported: Set<String>): List<DeviceSong> = withContext(Dispatchers.IO) {
         if (!hasAccess(context)) return@withContext emptyList()
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -77,7 +74,7 @@ object DeviceMusicScanner {
                     songs += DeviceSong(
                         uri = uri,
                         title = cursor.getString(titleColumn)?.takeIf { it.isNotBlank() } ?: "Unknown song",
-                        // Android writes "<unknown>" when a file has no artist tag
+                        // android writes "<unknown>" when a file has no artist tag
                         artist = cursor.getString(artistColumn)?.takeIf { it.isNotBlank() && it != MediaStore.UNKNOWN_STRING },
                         durationMs = cursor.getLong(durationColumn),
                         artworkUri = ContentUris.withAppendedId(AlbumArtUri, cursor.getLong(albumColumn)).toString(),
@@ -85,7 +82,7 @@ object DeviceMusicScanner {
                 }
             }
         } catch (e: Exception) {
-            // a storage provider that refuses the query shouldn't take the Library down with it
+            // a storage provider that refuses the query shouldn't take the library down with it
             Timber.w(e, "Scanning the phone for music failed")
         }
         songs

@@ -1,5 +1,3 @@
-// TTMLParser.kt
-
 package com.example.musicfy.betterlyrics
 
 import org.w3c.dom.Element

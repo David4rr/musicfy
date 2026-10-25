@@ -1,5 +1,3 @@
-// AppleMusicModule.kt
-
 package com.example.musicfy.module.applemusic
 
 import com.example.musicfy.module.AccountState

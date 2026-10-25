@@ -1,5 +1,3 @@
-// PlaylistResyncEntryPoint.kt
-
 package com.example.musicfy.di
 
 import com.example.musicfy.importer.PlaylistResync

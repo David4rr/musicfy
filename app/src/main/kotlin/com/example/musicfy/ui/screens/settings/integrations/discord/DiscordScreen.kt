@@ -1,8 +1,4 @@
-// DiscordScreen.kt
-//
-// Musicfy → Settings → Integrations → Discord. Log in on Discord's own page in the browser, then
-// shape the status friends see: the activity line, each text line, both pictures and the buttons,
-// with a live preview at the top (and floating at the bottom once that scrolls away).
+// musicfy → settings → integrations → discord: log in in the browser, then shape the status friends see with a live preview
 
 package com.example.musicfy.ui.screens.settings.integrations.discord
 
@@ -90,8 +86,7 @@ fun DiscordScreen(
             viewModel.dismissProblem()
         }
     }
-    // Back from the browser without an answer: give the redirect a moment to land, then let the
-    // button go back to "Log in" instead of waiting forever.
+    // back from the browser without an answer, give the redirect a moment to land before the button goes back to log in
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         scope.launch {
             delay(1_500)

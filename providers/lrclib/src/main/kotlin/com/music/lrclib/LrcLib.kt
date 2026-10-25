@@ -1,5 +1,3 @@
-// LrcLib.kt
-
 package com.music.lrclib
 
 import com.music.lrclib.models.Track
@@ -35,7 +33,7 @@ object LrcLib {
                 url("https://lrclib.net")
             }
 
-            // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+            // says who's asking so the server owner can reach us instead of blocking us
             install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
 
             expectSuccess = true

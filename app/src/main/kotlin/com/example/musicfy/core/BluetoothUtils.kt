@@ -1,5 +1,3 @@
-// BluetoothUtils.kt
-
 package com.example.musicfy.core
 
 import android.content.Context

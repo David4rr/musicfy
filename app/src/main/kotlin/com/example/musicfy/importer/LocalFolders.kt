@@ -12,11 +12,7 @@ import androidx.core.net.toUri
 import timber.log.Timber
 import java.io.File
 
-/**
- * Music folders the user picked themselves, like Salt Player's folder list. Picking one keeps
- * access to everything inside it, so Musicfy can read those songs without being allowed to see
- * all the music on the phone, and Re-scan reads the folders again for new files.
- */
+/** music folders the user picked themselves (like salt player), picking one keeps access to everything inside it so musicfy can read those songs without seeing all the music on the phone, re-scan reads them again */
 object LocalFolders {
     private const val FILE_NAME = "local_music_folders.txt"
     private const val MAX_FILES = 5_000
@@ -31,7 +27,7 @@ object LocalFolders {
         }.getOrNull().orEmpty()
     }
 
-    /** Keeps access to [tree] for good and remembers it for the next re-scan. */
+    /** keeps access to tree for good and remembers it for the next re-scan */
     fun add(context: Context, tree: Uri) {
         context.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         synchronized(lock) {
@@ -40,11 +36,7 @@ object LocalFolders {
         }
     }
 
-    /**
-     * The audio files in [tree] and the folders inside it that aren't in the library yet.
-     * [known] are the library's file uris. A file that's already in through the phone-wide scan
-     * has another uri there, so on Android 10+ each file's MediaStore uri is checked as well.
-     */
+    /** audio files in tree (and folders inside it) that aren't in the library yet, known are the library's file uris, on android 10+ each file's MediaStore uri is checked too since the phone-wide scan stores another uri */
     fun newAudioFiles(context: Context, tree: Uri, known: Set<String>): List<Uri> {
         val files = audioFiles(context, tree)
         val checkMediaStore = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -55,13 +47,13 @@ object LocalFolders {
         }
     }
 
-    /** The MediaStore uri of a file picked through a folder, or null if MediaStore doesn't have it. */
+    /** the MediaStore uri of a file picked through a folder, or null if MediaStore doesn't have it */
     fun mediaStoreUri(context: Context, document: Uri): Uri? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         return runCatching { MediaStore.getMediaUri(context, document) }.getOrNull()
     }
 
-    /** Every audio file under [tree], folders inside it included. Hidden folders are skipped. */
+    /** every audio file under tree, folders inside it included. hidden folders are skipped */
     private fun audioFiles(context: Context, tree: Uri): List<Uri> {
         val found = ArrayList<Uri>()
         val pending = ArrayDeque<String>()

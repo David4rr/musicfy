@@ -1,10 +1,4 @@
-// AudioQualityScreen.kt
-//
-// Audio Lab's streaming quality, to the user's mock: Streaming (YouTube Music's tiers, then each
-// source module's qualities), Download, and the provider order, where a tap turns a provider on
-// or off (or opens its sign-in) and the handle sorts them. The header's bars play the music as the
-// first provider would: the lower the quality, the fewer and coarser the bars and the jerkier they
-// move, until Low is stacked pixels; lossless is smooth with the fine detail between the bars.
+// audio lab's quality page: streaming tiers per provider, download quality and the provider order
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -158,8 +152,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
             }
         }
 
-        // what downloads are saved as, apart from what plays: Lossless downloads Monochrome's FLAC
-        // whatever the provider order says, since a download is kept
+        // downloads are saved apart from what plays: lossless downloads monochrome's flac whatever the provider order says, since a download is kept
         Spacer(Modifier.height(24.dp))
         LabSheetTitle("Download")
         LabGroup {
@@ -230,7 +223,7 @@ internal fun providerLogo(id: String): Int? = when (id) {
     else -> null
 }
 
-/** A provider's name over its qualities in the Streaming group, dimmed while it's off. */
+/** a provider's name over its qualities in the streaming group, dimmed while it's off */
 @Composable
 private fun ProviderCaption(logo: Int?, name: String, status: String, on: Boolean) {
     Row(

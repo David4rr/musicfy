@@ -1,5 +1,3 @@
-// BiquadFilter.kt
-
 package com.example.musicfy.eq.audio
 
 import com.example.musicfy.eq.data.FilterType
@@ -11,12 +9,7 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 
-/**
- * RBJ cookbook biquads, shared by the audio thread (coefficients) and the equalizer's graphs
- * (magnitude response), so what the curve shows is exactly what the processor plays.
- *
- * Coefficients are normalised (a0 = 1) and packed as b0, b1, b2, a1, a2.
- */
+/** rbj cookbook biquads shared by the audio thread and the graphs, so the curve shows exactly what the processor plays; coefficients are normalised (a0 = 1), packed b0, b1, b2, a1, a2 */
 object Biquad {
 
     const val Stride = 5
@@ -101,7 +94,7 @@ object Biquad {
         out[offset + 4] = a2 / a0
     }
 
-    /** |H| in dB at [frequency] for the packed coefficients at [offset] */
+    /** magnitude in db at frequency for the packed coefficients at offset */
     fun magnitudeDb(c: DoubleArray, offset: Int, frequency: Double, sampleRate: Int): Double {
         val w = 2.0 * PI * frequency / sampleRate
         val cos1 = cos(w)
@@ -121,23 +114,20 @@ object Biquad {
         return 10.0 * log10(max(num, 1e-20) / max(den, 1e-20))
     }
 
-    /** whether a band changes the sound at all: a 0 dB peak or shelf is a straight line */
+    /** whether a band changes the sound at all: a 0 db peak or shelf is a straight line */
     fun isAudible(band: ParametricEQBand): Boolean = band.enabled && when (band.filterType) {
         FilterType.LPQ, FilterType.HPQ -> true
         else -> kotlin.math.abs(band.gain) >= 0.05
     }
 }
 
-/**
- * Sums the response of a set of bands at many frequencies, cheaply: the cosines for each
- * frequency are worked out once and the coefficients once per band.
- */
+/** sums the response of a set of bands at many frequencies cheaply: cosines once per frequency, coefficients once per band */
 class ResponseCurve(val frequencies: DoubleArray, private val sampleRate: Int = 48_000) {
     private val cos1 = DoubleArray(frequencies.size) { cos(2.0 * PI * frequencies[it] / sampleRate) }
     private val cos2 = DoubleArray(frequencies.size) { cos(4.0 * PI * frequencies[it] / sampleRate) }
     private val scratch = DoubleArray(Biquad.Stride)
 
-    /** adds [band]'s response into [into] (dB) */
+    /** adds the response of band into into (db) */
     fun accumulate(band: ParametricEQBand, into: DoubleArray) {
         if (!Biquad.isAudible(band)) return
         Biquad.coefficients(band, sampleRate, scratch)
@@ -151,7 +141,7 @@ class ResponseCurve(val frequencies: DoubleArray, private val sampleRate: Int = 
     }
 
     companion object {
-        /** [count] frequencies spread evenly on a log scale between [from] and [to] Hz */
+        /** count frequencies spread evenly on a log scale between from and to hz */
         fun logSpaced(count: Int, from: Double = 20.0, to: Double = 20_000.0): DoubleArray {
             val lo = log10(from)
             val hi = log10(to)

@@ -673,6 +673,10 @@ private fun HeroPager(
         }
     }
 
+    // roll() is a new local function on every recomposition; the gacha page gets one stable callback that calls the latest
+    val latestRoll = androidx.compose.runtime.rememberUpdatedState { roll() }
+    val onRoll = remember { { latestRoll.value() } }
+
     // a playing canvas repaints the hero, and both blur bands with it, on every video frame. while
     // Home is receding behind an opened playlist, or coming back from one, that lands on top of the
     // transition and makes it stutter, so the video holds still until Home has settled. coming back,
@@ -762,7 +766,7 @@ private fun HeroPager(
                     transitionBlur = edgeBlur,
                     held = heroHeld,
                     onShown = { sounds.prepare() },
-                    onRoll = { roll() },
+                    onRoll = onRoll,
                 )
             } else {
                 HeroPage(

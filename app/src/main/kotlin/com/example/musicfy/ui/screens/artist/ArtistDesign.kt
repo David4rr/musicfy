@@ -55,6 +55,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,6 +93,7 @@ import com.example.musicfy.ui.component.BlurDirection
 import com.example.musicfy.ui.component.BlurEffectCache
 import com.example.musicfy.ui.component.BoneColor
 import com.example.musicfy.ui.component.DownscaledBlur
+import com.example.musicfy.ui.component.damageBoundary
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.component.ScrollAwayCover
@@ -170,7 +172,7 @@ internal fun ArtistBanner(
     photoUrl: String?,
     stillUrl: String?,
     motionUrl: String?,
-    playMotion: Boolean,
+    playMotion: () -> Boolean,
     edgeBlur: Boolean,
     height: Dp,
     scrollProgress: () -> Float,
@@ -187,6 +189,9 @@ internal fun ArtistBanner(
         animationSpec = tween(450),
         label = "artistStill",
     )
+    // only a flip of the answer recomposes here, not each change of the scroll or the player sheet behind it
+    val latestPlayMotion = rememberUpdatedState(playMotion)
+    val motionPlaying by remember { derivedStateOf { latestPlayMotion.value() } }
 
     ScrollAwayCover(
         progress = scrollProgress,
@@ -197,7 +202,8 @@ internal fun ArtistBanner(
             .fillMaxWidth()
             .height(height),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        // each video frame would repaint the whole window and both glass bars; bounded, only the banner repaints
+        Box(modifier = Modifier.fillMaxSize().damageBoundary()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -238,7 +244,7 @@ internal fun ArtistBanner(
                     CanvasArtworkPlayer(
                         primaryUrl = motionUrl,
                         fallbackUrl = null,
-                        isPlaying = playMotion,
+                        isPlaying = motionPlaying,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

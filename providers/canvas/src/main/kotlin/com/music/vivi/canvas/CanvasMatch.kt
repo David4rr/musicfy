@@ -1,16 +1,11 @@
-// CanvasMatch.kt
-
 package com.example.musicfy.canvas
 
 import java.text.Normalizer
 import kotlin.math.abs
 
-/**
- * Whether a search result is the song being played, for the canvas providers. Strict on purpose:
- * a canvas from another song by the same artist is a bug, while no canvas is fine.
- */
+/** whether a search result is the song being played, strict on purpose: a canvas from another song by the same artist is a bug while no canvas is fine */
 object CanvasMatch {
-    /** Further than this from the song's length, a result is another recording. */
+    /** further than this from the song's length, a result is another recording */
     private const val DURATION_TOLERANCE_SEC = 4.0
 
     // a different take of the song: only a match when the song asked for is that take too
@@ -23,10 +18,7 @@ object CanvasMatch {
     private val Marks = Regex("\\p{M}+")
     private val NonWord = Regex("[^\\p{L}\\p{N}]+")
 
-    /**
-     * Same title once the extras are stripped ("(feat. X)", "(2011 Remaster)", "- Radio Edit"),
-     * and not a live, remix or other take the wanted title doesn't name.
-     */
+    /** same title once extras like (feat. x), (2011 remaster) or - radio edit are stripped, and not a live, remix or other take the wanted title doesn't name */
     fun sameSong(candidate: String, wanted: String): Boolean {
         val key = titleKey(candidate)
         if (key.isEmpty() || key != titleKey(wanted)) return false
@@ -39,7 +31,7 @@ object CanvasMatch {
         return a.isNotEmpty() && b.isNotEmpty() && (a.contains(b) || b.contains(a))
     }
 
-    /** True when either length is unknown: there's nothing to tell them apart by. */
+    /** true when either length is unknown, there's nothing to tell them apart by */
     fun closeDuration(candidateSec: Double?, wantedSec: Int?): Boolean {
         if (candidateSec == null || candidateSec <= 0 || wantedSec == null || wantedSec <= 0) return true
         return abs(candidateSec - wantedSec) <= DURATION_TOLERANCE_SEC

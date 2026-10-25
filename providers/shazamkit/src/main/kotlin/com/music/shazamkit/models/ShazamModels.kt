@@ -1,5 +1,3 @@
-// ShazamModels.kt
-
 package com.music.shazamkit.models
 
 import kotlinx.serialization.SerialName

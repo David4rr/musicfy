@@ -42,6 +42,7 @@ apk-generated/
 plan.md
 implementation_plan.md
 transcript_*.txt
+docs/
 
 # Logs, crash dumps & API response dumps
 *.log

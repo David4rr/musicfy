@@ -1,5 +1,3 @@
-// LyricsHelperEntryPoint.kt
-
 package com.example.musicfy.di
 
 import com.example.musicfy.lyrics.LyricsHelper

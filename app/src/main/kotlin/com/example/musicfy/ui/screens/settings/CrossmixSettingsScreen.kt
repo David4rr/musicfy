@@ -84,7 +84,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
     )
     val (testTools, _) = rememberPreference(CrossmixTestToolsKey, defaultValue = false)
 
-    // Users upgrading from the previous Crossfade switch land on the equivalent manual mode.
+    // people upgrading from the old crossfade switch land on the equivalent manual mode
     val selectedMode = if (storedMode == CrossmixMode.OFF && crossfadeEnabled) {
         CrossmixMode.MANUAL_CROSSFADE
     } else {
@@ -99,13 +99,13 @@ fun CrossmixSettingsScreen(navController: NavController) {
         }
     }
 
-    /** the mode switches act as one choice: turning one off falls back to Off */
+    /** the mode switches act as one choice: turning one off falls back to off */
     fun toggle(mode: CrossmixMode, on: Boolean) = selectMode(if (on) mode else CrossmixMode.OFF)
 
     val crossmixTools = crossmixTestItems(isVisible = testTools && selectedMode == CrossmixMode.CROSSMIX)
     val manualSeconds = crossfadeDuration.coerceIn(ManualMinSeconds, ManualMaxSeconds)
 
-    // the CrossMix picture glows with the music
+    // the crossmix picture glows with the music
     ListenToAudio()
 
     SubSettingsScaffold(
@@ -208,11 +208,7 @@ fun CrossmixSettingsScreen(navController: NavController) {
 
 private enum class TransitionStyle { Auto, Manual, CrossMix }
 
-/**
- * Two songs as waveforms, the outgoing one fading under the incoming one. Auto blends on
- * equal-power curves, Manual on straight lines as wide as its length, CrossMix glows where the two
- * meet. The chosen one plays: a playhead runs through and each song's lyric lights while it's heard.
- */
+/** two songs as waveforms, the old one fading under the new one, with a playhead that lights each song's lyric while it's heard */
 @Composable
 private fun TransitionPicture(style: TransitionStyle, overlap: Float, active: Boolean) {
     val width by animateFloatAsState(overlap, spring(dampingRatio = 0.85f, stiffness = 200f), label = "overlap")
@@ -267,7 +263,7 @@ private fun TransitionPicture(style: TransitionStyle, overlap: Float, active: Bo
             x += step
         }
 
-        // CrossMix: the meeting point glows, with the music
+        // crossmix: the meeting point glows, with the music
         if (style == TransitionStyle.CrossMix) {
             val glow = 0.25f + 0.35f * on + 0.3f * level.punch
             drawCircle(

@@ -1,8 +1,4 @@
-// ModulesScreens.kt
-//
-// Settings → Modules: the sources Musicfy can play from besides YouTube. Each module has its page:
-// its account (signed into on the service's own site), its switch and quality, and a test that runs
-// every step of playback on this phone and says where it stops.
+// settings → modules: the sources musicfy plays from besides youtube, each with its account, switch, quality and a playback test
 
 package com.example.musicfy.ui.screens.settings.modules
 
@@ -187,7 +183,7 @@ fun ModuleScreen(navController: NavController, id: String, viewModel: ModulesVie
 
         module.choices.forEach { choice ->
             if (choice.options.isEmpty()) return@forEach
-            // a pick the module no longer offers (Spatial, before it went) reads as the default
+            // a pick the module no longer offers (spatial, before it went) reads as the default
             val picked = entry.picks[choice.id]?.takeIf { p -> choice.options.any { it.id == p } } ?: choice.options.first().id
             LabSectionLabel(choice.label)
             LabChips(

@@ -1,5 +1,3 @@
-// CommentRenderer.kt
-
 package com.music.innertube.models.comment
 
 import com.music.innertube.models.Runs

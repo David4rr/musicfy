@@ -210,7 +210,6 @@ fun OnlinePlaylistScreen(
     val featuredArtists = remember(songs) {
         featuredArtistsOf(songs.flatMap { it.artists }, id = { it.id }, name = { it.name })
     }
-    val isThisQueue = playlist != null && queueTitle == playlist?.title
 
     PlaylistDetailScaffold(
         sharedElementKey = "playlist-${viewModel.playlistId}",
@@ -292,6 +291,8 @@ fun OnlinePlaylistScreen(
 
         if (!isSearching) {
             item(key = "playlist_header") {
+                // read here, not at the top of the screen: a new queue then only redraws the header
+                val isThisQueue = queueTitle == currentPlaylist.title
                 val isEditableRemote = currentPlaylist.id == "LM" || currentPlaylist.isEditable
                 PlaylistHeader(
                     title = currentPlaylist.title,
@@ -332,7 +333,11 @@ fun OnlinePlaylistScreen(
             }
         }
 
-        itemsIndexed(filteredSongs, key = { _, (index, song) -> "${index}_${song.id}" }) { position, (_, songItem) ->
+        itemsIndexed(
+            items = filteredSongs,
+            key = { _, (index, song) -> "${index}_${song.id}" },
+            contentType = { _, _ -> "track" },
+        ) { position, (_, songItem) ->
             val onCheckedChange: (Boolean) -> Unit = {
                 if (it) selection.add(songItem.id) else selection.remove(songItem.id)
             }

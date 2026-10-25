@@ -1,5 +1,3 @@
-// CanvasArtwork.kt
-
 package com.example.musicfy.canvas
 
 import kotlinx.serialization.SerialName

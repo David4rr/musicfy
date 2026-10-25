@@ -1,8 +1,4 @@
-// DevRepoCards.kt
-//
-// The repo half of Dev Spaces: the Developer playground numbers (what happened since this build
-// was made, and in total) and the open and resolved issues with their filters. Everything here reads
-// DevSpaceRepository, which the screen refreshes on every open.
+// the repo half of dev spaces: the playground numbers and the open and resolved issues with their filters
 
 package com.example.musicfy.ui.screens.settings.devspace
 
@@ -85,10 +81,7 @@ internal fun DevPanel(modifier: Modifier = Modifier, content: @Composable Column
     )
 }
 
-/**
- * "Developer playground": what the repo did since this build was made. A tap opens the
- * playground page with the repo's issues.
- */
+/** the developer playground card: what the repo did since this build, a tap opens the playground page */
 @Composable
 internal fun PlaygroundCard(stats: DevSpaceStats?, settled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
@@ -109,10 +102,7 @@ internal fun PlaygroundCard(stats: DevSpaceStats?, settled: Boolean, onClick: ()
     )
 }
 
-/**
- * A card of big numbers side by side. Each column is as wide as the card allows, and the figures
- * shrink a step when a number runs long so nothing wraps.
- */
+/** a card of big numbers side by side, the figures shrink a step when one runs long so nothing wraps */
 @Composable
 internal fun RepoFiguresCard(
     title: String,
@@ -168,7 +158,7 @@ internal fun RepoFiguresCard(
     }
 }
 
-/** The open issues (with filters) and, under them, the resolved ones. */
+/** the open issues with filters and, under them, the resolved ones */
 @Composable
 internal fun RepoIssuesSection(
     stats: DevSpaceStats?,

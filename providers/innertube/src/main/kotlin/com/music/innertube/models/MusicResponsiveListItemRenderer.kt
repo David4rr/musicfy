@@ -1,5 +1,3 @@
-// MusicResponsiveListItemRenderer.kt
-
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package com.music.innertube.models

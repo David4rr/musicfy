@@ -1,5 +1,3 @@
-// ArtistVideo.kt
-
 package com.example.musicfy.artistvideo
 
 import android.view.TextureView

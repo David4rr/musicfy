@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import com.example.musicfy.constants.BlurQuality
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.utils.rememberPreference
 
@@ -44,29 +45,19 @@ fun rememberCoverBlurAvailable(): Boolean {
     return !disableBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 }
 
-/**
- * what a big cover does as the list scrolls it away. the playlist backdrop and the Home hero use
- * the same one: the frame rides up a little slower than the list, zooms in, goes soft, dims,
- * dissolves from the bottom up and fades out.
- *
- * the softness blurs the whole frame, not just the picture in it. the frame is recorded once and
- * drawn a second time through a fixed blur, and scrolling only crossfades between the two. a blur
- * whose radius followed the scroll would be worked out again on every frame of it; this one is
- * worked out once and then only composited, which a modest GPU keeps up with easily.
- *
- * [follow] is how far it travels on top of whatever the list does, as a share of its height: a
- * backdrop pinned behind the list wants about -0.8, a list item that already scrolls wants +0.2.
- * [softFrom] holds the blur back until that much progress, for content that is still moving at rest.
- */
+/** what a big cover does as the list scrolls it away: rides up, zooms, blurs, dims, dissolves from the bottom and fades; the Home hero and the playlist backdrop share it */
 @Composable
 fun ScrollAwayCover(
     progress: () -> Float,
     modifier: Modifier = Modifier,
+    // extra travel as a share of its height: about -0.8 for a backdrop pinned behind a list, +0.2 for an item that already scrolls
     follow: Float = 0f,
+    // holds the blur back until this much progress, for content that is still moving at rest
     softFrom: Float = 0f,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val frameBlur = rememberCoverBlurAvailable()
+    val highQuality = LocalBlurQuality.current == BlurQuality.HIGH
     val frame = rememberGraphicsLayer()
 
     Box(
@@ -128,15 +119,29 @@ fun ScrollAwayCover(
                 ),
             content = content,
         )
-        if (frameBlur) {
-            // the soft copy: the same recording through a fixed blur, so only its alpha moves.
-            // a sibling of the sharp frame, never inside it, so the recording can't contain itself
+        if (frameBlur && highQuality) {
+            // high quality: the same recording blurred more as it scrolls; fading a fixed blur over the sharp frame made its text bloom
+            DownscaledBlur(
+                radius = { CoverSoftRadius * smoothstep(softFrom, CoverSoftBy, progress()) },
+                tileMode = Shader.TileMode.CLAMP,
+                mask = null,
+                modifier = Modifier
+                    .matchParentSize()
+                    // at rest the sharp frame below already shows everything, so nothing is drawn or blurred here
+                    .graphicsLayer { alpha = if (progress() > softFrom) 1f else 0f },
+            ) {
+                drawLayer(frame)
+            }
+        } else if (frameBlur) {
+            // low quality: one fixed blur faded in, cheaper while scrolling but it blooms a little around text
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .graphicsLayer {
-                        alpha = smoothstep(softFrom, CoverSoftBy, progress())
-                        renderEffect = BlurEffectCache.get(CoverSoftRadius, Shader.TileMode.CLAMP)
+                        val soft = smoothstep(softFrom, CoverSoftBy, progress())
+                        alpha = soft
+                        // a blur layer re-blurs on every frame change even at alpha 0, so it's only switched on while it shows
+                        renderEffect = if (soft > 0f) BlurEffectCache.get(CoverSoftRadius, Shader.TileMode.CLAMP) else null
                         clip = true
                     }
                     .drawBehind { drawLayer(frame) },

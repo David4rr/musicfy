@@ -39,7 +39,6 @@ const val ForceDarkTheme = true
 fun MusicfyTheme(
     darkTheme: Boolean = ForceDarkTheme,
     pureBlack: Boolean = false,
-    themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current

@@ -1,5 +1,3 @@
-// CipherSettingsScreen.kt
-
 package com.example.musicfy.ui.screens.settings
 
 import androidx.compose.foundation.layout.Arrangement
@@ -45,12 +43,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-/**
- * Rate limiter for manual cipher refreshes.
- *
- * Each refresh re-downloads YouTube's player script, so hammering the button is both
- * pointless and a good way to get throttled upstream.
- */
+/** each refresh re-downloads youtube's player script, so spamming the button just gets us throttled */
 private object CipherRefreshRateLimiter {
     private const val MAX_REFRESHES = 3
     private val WINDOW_MS = TimeUnit.MINUTES.toMillis(10)
@@ -70,7 +63,7 @@ private object CipherRefreshRateLimiter {
         return (MAX_REFRESHES - timestamps.size).coerceAtLeast(0)
     }
 
-    /** Milliseconds until another refresh is allowed, or 0 if one is available now. */
+    /** milliseconds until another refresh is allowed, or 0 if one is available now */
     @Synchronized
     fun cooldownMs(): Long {
         val now = System.currentTimeMillis()
@@ -106,7 +99,7 @@ fun CipherSettingsScreen(navController: NavController) {
     var status by remember { mutableStateOf(PlayerJsFetcher.readCacheStatus()) }
     var isRefreshing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
-    // Drives the countdown; updated once a second.
+    // drives the countdown, ticks once a second
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
@@ -116,7 +109,7 @@ fun CipherSettingsScreen(navController: NavController) {
         }
     }
 
-    // Referencing `now` here keeps these recomputing as the clock ticks.
+    // reading now here keeps these recomputing as the clock ticks
     val remainingMs = remember(status, now) { status.remainingMs }
     val cooldownMs = remember(now) { CipherRefreshRateLimiter.cooldownMs() }
     val remainingRefreshes = remember(now) { CipherRefreshRateLimiter.remaining() }

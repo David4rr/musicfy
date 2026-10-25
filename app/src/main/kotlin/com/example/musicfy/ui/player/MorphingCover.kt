@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -134,7 +133,7 @@ import com.example.musicfy.ui.player.customize.isDisc
 import com.example.musicfy.ui.component.ChromeHighlightColor
 import com.example.musicfy.ui.component.FrostedChromeGlass
 import com.example.musicfy.ui.component.agslRenderEffect
-import com.example.musicfy.ui.component.createAgslShader
+import com.example.musicfy.ui.player.customize.rememberWarpShader
 import com.example.musicfy.ui.component.setAgslUniform
 import com.example.musicfy.ui.component.drawGlassNode
 import com.example.musicfy.ui.component.glassNodeHasContent
@@ -554,32 +553,8 @@ fun MorphingCover(
     val swipesDisc by androidx.compose.runtime.rememberUpdatedState(isDiscStyle)
     val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(coverStyle)
 
-    val warpShader = remember {
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            createAgslShader(
-                """
-                uniform float2 resolution;
-                uniform float time;
-                uniform shader image;
-
-                half4 main(float2 fragCoord) {
-                    float2 uv = fragCoord / resolution;
-                    float t = time * 0.5;
-
-                    float2 warpOffset = float2(
-                        sin(uv.y * 3.0 + t) * 0.05 + cos(uv.x * 2.0 - t * 0.6) * 0.04,
-                        cos(uv.x * 3.0 + t * 0.7) * 0.05 + sin(uv.y * 2.5 + t * 0.9) * 0.04
-                    );
-
-                    float2 distortedCoord = fragCoord + warpOffset * resolution;
-                    return image.eval(distortedCoord);
-                }
-                """.trimIndent()
-            )
-        } else {
-            null
-        }
-    }
+    // the backdrop draws its own shared warp, this only tells it whether the warp can run here
+    val warpShader = rememberWarpShader()
 
     val warpTimeState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     // Started and stopped from a flow, not keyed on a derived state: read in composition, its flip
@@ -673,6 +648,9 @@ fun MorphingCover(
             animationSpec = tween(400, easing = FastOutSlowInEasing),
             label = "pauseScale"
         )
+        // kept between frames: a new shape and a new colour filter each frame cost the layer more than they should
+        val artShape = remember { AnimatedCornerShape() }
+        val pauseFilter = remember { SaturationFilterCache() }
         val targetPauseSaturation = if (isPlaying) 1.0f else 0.80f
         val animatedPauseSaturation by animateFloatAsState(
             targetValue = targetPauseSaturation,
@@ -709,7 +687,7 @@ fun MorphingCover(
                         val clipped = !isDiscStyle ||
                             discWeight(progressProvider, lyricsProgressProvider) < 0.5f
                         colorFilter = if (clipped && animatedPauseSaturation < 0.999f) {
-                            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(animatedPauseSaturation) })
+                            pauseFilter.forSaturation(animatedPauseSaturation)
                         } else {
                             null
                         }
@@ -722,7 +700,8 @@ fun MorphingCover(
                             0.dp
                         }
                         val base = lerp(ThumbnailCornerRadius, expandedRadius, p)
-                        shape = RoundedCornerShape(lerp(base, LyricsHeaderCornerRadius, lyricsProgressProvider()))
+                        artShape.radius = lerp(base, LyricsHeaderCornerRadius, lyricsProgressProvider())
+                        shape = artShape
                     }
                     .then(
 
@@ -1387,6 +1366,21 @@ private fun coverMorphSideFade(p: Float): Float {
 private fun smoothstep(x: Float): Float {
     val t = x.coerceIn(0f, 1f)
     return t * t * (3f - 2f * t)
+}
+
+/** The grey filter of a paused cover, built again only when the saturation moves. */
+private class SaturationFilterCache {
+    private var saturation = Float.NaN
+    private var filter: ColorFilter? = null
+
+    fun forSaturation(value: Float): ColorFilter {
+        val cached = filter
+        if (cached != null && value == saturation) return cached
+        return ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(value) }).also {
+            filter = it
+            saturation = value
+        }
+    }
 }
 
 /** How far in from each side the sheet's clip sits as the mini player (BottomSheet's pill branch). */

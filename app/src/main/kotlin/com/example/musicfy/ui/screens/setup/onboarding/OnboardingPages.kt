@@ -1,7 +1,4 @@
-// OnboardingPages.kt
-//
-// Every page after the welcome screen, as plain stateless composables. OnboardingFlow decides which
-// one shows and wires them to the view model.
+// every page after the welcome screen as stateless composables, OnboardingFlow picks the page and wires the view model
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -74,10 +71,10 @@ import com.music.innertube.models.ArtistItem
 
 private const val GoBack = "hell nah, go back"
 
-/** "Let's build your home" needs this many artists to have something to build from. */
+/** "let's build your home" needs this many artists to have something to build from */
 internal const val MinArtists = 3
 
-// ---- 1. Import? ----
+// ---- 1. import? ----
 
 @Composable
 internal fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
@@ -92,7 +89,7 @@ internal fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
     )
 }
 
-// ---- 2. Which kind ----
+// ---- 2. which kind ----
 
 @Composable
 internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: () -> Unit, backupError: String?) {
@@ -122,7 +119,7 @@ internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: 
     }
 }
 
-// ---- 3. Provider ----
+// ---- 3. provider ----
 
 @Composable
 internal fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Unit) {
@@ -156,7 +153,7 @@ internal fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Un
     }
 }
 
-// ---- 4. Setup (instructions; the browser sheet opens over this) ----
+// ---- 4. setup (instructions, the browser sheet opens over this) ----
 
 @Composable
 internal fun ProviderSetupPage(
@@ -196,7 +193,7 @@ internal fun ProviderSetupPage(
     }
 }
 
-// ---- 5. What to sync / import ----
+// ---- 5. what to sync or import ----
 
 @Composable
 internal fun WhatToSyncPage(
@@ -346,7 +343,7 @@ private fun CoverTile(playlist: RemotePlaylist, selected: Boolean, onClick: () -
     }
 }
 
-// ---- 6. YouTube only: also keep it in sync? ----
+// ---- 6. youtube only: also keep it in sync? ----
 
 @Composable
 internal fun SyncOptionsPage(
@@ -407,7 +404,7 @@ internal fun SyncOptionsPage(
     }
 }
 
-// ---- 7. Profile ----
+// ---- 7. profile ----
 
 @Composable
 internal fun ProfilePage(
@@ -455,7 +452,7 @@ internal fun ProfilePage(
     }
 }
 
-// ---- 8. Build your home (only when nothing was imported) ----
+// ---- 8. build your home (only when nothing was imported) ----
 
 @Composable
 internal fun BuildHomePage(
@@ -664,7 +661,7 @@ internal fun BlurWarningPage(
     }
 }
 
-// ---- 10. Last one ----
+// ---- 10. last one ----
 
 @Composable
 internal fun LastOnePage(

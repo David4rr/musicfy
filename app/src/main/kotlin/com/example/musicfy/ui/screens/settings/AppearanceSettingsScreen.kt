@@ -1,5 +1,3 @@
-// AppearanceSettingsScreen.kt
-
 package com.example.musicfy.ui.screens.settings
 
 import android.os.Build
@@ -129,7 +127,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        // Section 1: Player appearance
         Text(
             text = "Player appearance",
             fontFamily = InterFontFamily,
@@ -139,7 +136,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
             modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
         )
 
-        // Card 1: Player appearance pages
         val playerPageItems = listOf(
             SettingsItem(
                 title = { Text("Customize player") },
@@ -177,7 +173,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
             Spacer(Modifier.height(14.dp))
         }
 
-        // Card 2: Player appearance toggles
         val playerToggleItems = listOf(
             SettingsItem(
                 title = { Text("Lyrics animation") },
@@ -197,7 +192,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
             SettingsItem(
                 title = { Text("Lyrics Shader") },
                 highlightKey = "Lyrics letter animation",
-                // Style 1's rise is drawn, not shaded, so it keeps working with this off.
+                // style 1's rise is drawn, not shaded, so it keeps working with glow off
                 descriptionText = "Glow on sung lyrics (and Style 2's letter wave)",
                 icon = painterResource(R.drawable.biotech),
                 iconShape = CircleShape,
@@ -330,7 +325,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
             Spacer(Modifier.height(18.dp))
         }
 
-        // Section 2: Global Appearance
         Text(
             text = "Global Appearance",
             fontFamily = InterFontFamily,
@@ -340,7 +334,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
             modifier = Modifier.padding(bottom = 10.dp, start = 4.dp)
         )
 
-        // Card 3: Global Appearance toggles
         val globalToggleItems = listOf(
             SettingsItem(
                 title = { Text("Blur") },
@@ -460,7 +453,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
     }
 }
 
-/** Two-option pill for the lyrics animation style: "1" is the new motion, "2" the legacy wave. */
+/** two-option pill for the lyrics animation style: "1" is the new motion, "2" the legacy wave */
 @Composable
 private fun LyricsStyleToggle(
     selected: LyricsMotionStyle,

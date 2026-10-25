@@ -1,5 +1,3 @@
-// NewPipe.kt
-
 package com.music.innertube
 
 import com.music.innertube.models.YouTubeClient

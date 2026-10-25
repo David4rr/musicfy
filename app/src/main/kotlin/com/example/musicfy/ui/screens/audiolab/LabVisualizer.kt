@@ -1,9 +1,4 @@
-// LabVisualizer.kt
-//
-// The bar visualizers on the Audio Lab pages: the headers' bars and the mini ones on the Audio FX
-// cards. They follow the music through one spectrum per page, and drift in a slow idle wave when
-// nothing plays. The Audio Quality header also uses them to show what a quality keeps: lower
-// qualities get fewer bars, coarser heights, jerkier updates, and at the bottom, stacked pixels.
+// the bar visualizers on the audio lab pages, they follow the music through one spectrum per page and drift in an idle wave when nothing plays
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -27,10 +22,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * One spectrum for a page's pictures, worked out at most once a frame however many bars read it.
- * [values] are 0..1 per band, low to high.
- */
+/** one spectrum for a page's pictures, worked out at most once a frame however many bars read it, values are 0..1 per band low to high */
 class LabSpectrum(val count: Int) {
     private val analyzer = SpectrumAnalyzer(DoubleArray(count) { i -> 45.0 * (14_000.0 / 45.0).pow(i / (count - 1.0)) })
     val values = FloatArray(count)
@@ -61,12 +53,7 @@ class LabSpectrum(val count: Int) {
 @Composable
 fun rememberLabSpectrum(count: Int): LabSpectrum = remember(count) { LabSpectrum(count) }
 
-/**
- * Bars standing on the bottom edge, one per band of [spectrum] (or fewer, merged, at a low
- * [resolution]). [resolution] 1 is smooth and fine; towards 0 the heights step, the updates jerk
- * and, below the middle, the bars become stacked squares. [depth] adds Dolby Atmos's two faint
- * layers behind. Still while [hidden] or off screen.
- */
+/** bars on the bottom edge, one per band; resolution 1 is smooth, lower steps the heights and jerks the updates, below the middle they turn into stacked squares */
 @Composable
 fun LabBars(
     spectrum: LabSpectrum,

@@ -115,10 +115,11 @@ constructor(
         val (lastResort, regular) = providers.withIndex()
             .partition { it.value.name == YouTubeCaptionsLyricsProvider.name }
         var candidates = fetchIndexed(mediaMetadata, regular)
-        var best = pickBest(mediaMetadata, candidates, providers.size)
+        // picking parses every candidate's lyrics, so it runs off the main thread the player calls from
+        var best = withContext(Dispatchers.Default) { pickBest(mediaMetadata, candidates, providers.size) }
         if (best == null && lastResort.isNotEmpty()) {
             candidates = candidates + fetchIndexed(mediaMetadata, lastResort)
-            best = pickBest(mediaMetadata, candidates, providers.size)
+            best = withContext(Dispatchers.Default) { pickBest(mediaMetadata, candidates, providers.size) }
         }
         if (best == null) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         val result = LyricsWithProvider(best.lyrics, best.providerName)

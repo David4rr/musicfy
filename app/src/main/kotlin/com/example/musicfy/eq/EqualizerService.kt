@@ -1,5 +1,3 @@
-// EqualizerService.kt
-
 package com.example.musicfy.eq
 
 import androidx.annotation.OptIn
@@ -10,10 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Hands the current equalizer design to every player's processor (a Crossmix runs two at once).
- * A processor added later picks up whatever is current, so a new player sounds the same.
- */
+/** hands the current equalizer design to every player's processor (a crossmix runs two at once), one added later picks up the current design */
 @Singleton
 @OptIn(UnstableApi::class)
 class EqualizerService @Inject constructor() {

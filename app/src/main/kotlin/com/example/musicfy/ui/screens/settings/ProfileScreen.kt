@@ -287,7 +287,8 @@ fun ProfileScreen(navController: NavController) {
     var rootOnScreen by remember { mutableStateOf(Offset.Zero) }
     var cardOnScreen by remember { mutableStateOf(Rect.Zero) }
 
-    val time = rememberRecapTime(running = !storyCovering && !obscured.value, held = { profile.holdsPage })
+    // the player covering the page is a hold, not a stop, so opening it doesn't recompose the whole page
+    val time = rememberRecapTime(running = !storyCovering, held = { profile.holdsPage || obscured.value })
     val measurer = rememberTextMeasurer()
     val giant = remember {
         GiantTextState("MUSICFY", filledRows = 0..0).apply { color = { lerp(HeaderText, StoryTextDark, expand) } }

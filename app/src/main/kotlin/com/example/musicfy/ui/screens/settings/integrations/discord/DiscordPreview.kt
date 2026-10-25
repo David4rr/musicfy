@@ -1,8 +1,4 @@
-// DiscordPreview.kt
-//
-// The top of the Discord page: the switch, and the user's Discord profile with the status as
-// friends will see it. The status is built by PresenceActivity, the same code that sends it, so
-// the preview can't drift from the real thing.
+// the top of the discord page: the switch and a preview of the status, built by PresenceActivity, the same code that sends it
 
 package com.example.musicfy.ui.screens.settings.integrations.discord
 
@@ -108,7 +104,7 @@ internal fun DiscordToggleCard(
     }
 }
 
-/** The user's Discord profile card, banner to bio, with the status underneath. */
+/** the user's discord profile card, banner to bio, with the status underneath */
 @Composable
 internal fun DiscordProfileCard(
     profile: DiscordProfile?,
@@ -206,14 +202,14 @@ private fun Avatar(url: String?, modifier: Modifier) {
     }
 }
 
-/** The status card itself: "Listening to ...", the pictures, the lines, the bar and the buttons. */
+/** the status card itself: listening to ..., the pictures, the lines, the bar and the buttons */
 @Composable
 internal fun DiscordActivityPreview(
     track: NowPlaying,
     settings: PresenceSettings,
     modifier: Modifier = Modifier,
 ) {
-    // a once-a-second clock moves the bar and the ring, like Discord's own card
+    // a once-a-second clock moves the bar and the ring, like discord's own card
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
             delay(1_000)
@@ -276,7 +272,7 @@ private fun Line(text: String, size: Int = 11, weight: FontWeight = FontWeight.N
     Text(text, color = color, fontSize = size.sp, fontWeight = weight, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
-/** Listening shows a bar from start to end; Playing counts up; a paused song shows neither. */
+/** listening shows a bar from start to end, playing counts up, a paused song shows neither */
 @Composable
 private fun Times(activity: PresenceActivity, now: Long) {
     val start = activity.startMs ?: return
@@ -314,7 +310,7 @@ private fun clock(ms: Long): String {
     return "%d:%02d".format(seconds / 60, seconds % 60)
 }
 
-/** The big picture with the small round one tucked into its corner, as Discord lays them out. */
+/** the big picture with the small round one tucked into its corner, as discord lays them out */
 @Composable
 private fun Pictures(large: PresencePicture?, small: PresencePicture?) {
     Box(Modifier.size(66.dp)) {
@@ -343,10 +339,7 @@ private fun Pictures(large: PresencePicture?, small: PresencePicture?) {
     }
 }
 
-/**
- * One picture as Discord will show it. The badge and the spinning disc are drawn here rather
- * than fetched, so the preview works before the pictures are on GitHub or uploaded.
- */
+/** one picture as discord shows it, the badge and the spinning disc are drawn here so the preview works before the pictures are uploaded */
 @Composable
 private fun PictureView(picture: PresencePicture) {
     val fill = Modifier.fillMaxSize()
@@ -357,7 +350,7 @@ private fun PictureView(picture: PresencePicture) {
                 painter = painterResource(R.mipmap.ic_launcher_foreground),
                 contentDescription = "Musicfy",
                 contentScale = ContentScale.Crop,
-                // the launcher picture has a safe margin around it; the GitHub copy is cropped the same
+                // the launcher picture has a safe margin around it, the github copy is cropped the same
                 modifier = fill.graphicsLayer {
                     scaleX = 1.5f
                     scaleY = 1.5f
@@ -369,7 +362,7 @@ private fun PictureView(picture: PresencePicture) {
     }
 }
 
-/** The same badge scripts/discord_presence_images.py draws, at preview size. */
+/** the same badge scripts/discord_presence_images.py draws, at preview size */
 @Composable
 private fun StatusBadge(status: PresencePicture.Status, modifier: Modifier) {
     Canvas(modifier) {
@@ -410,7 +403,7 @@ private fun StatusBadge(status: PresencePicture.Status, modifier: Modifier) {
     }
 }
 
-/** The rotating disc, turning at the user's speed like the GIF. */
+/** the rotating disc, turning at the user's speed like the gif */
 @Composable
 private fun SpinningPicture(url: String, secondsPerTurn: Int, modifier: Modifier) {
     val turn = rememberInfiniteTransition(label = "spin")
@@ -430,7 +423,7 @@ private fun SpinningPicture(url: String, secondsPerTurn: Int, modifier: Modifier
     )
 }
 
-/** The status again, floating at the bottom while the user edits further down the page. */
+/** the status again, floating at the bottom while the user edits further down the page */
 @Composable
 internal fun DiscordFloatingPreview(
     visible: Boolean,

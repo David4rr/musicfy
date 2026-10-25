@@ -1,5 +1,3 @@
-// LyricsHttp.kt
-
 package com.music.directlyrics
 
 import io.ktor.client.HttpClient
@@ -18,8 +16,7 @@ internal val LyricsJson = Json {
     isLenient = true
 }
 
-// One client for NetEase, QQ Music and Deezer. Some of them label their JSON as plain text or
-// HTML, so those are read as JSON too.
+// one client for netease, qq music and deezer, some label their json as plain text or html so those are read as json too
 internal val lyricsHttp by lazy {
     HttpClient(OkHttp) {
         expectSuccess = true
@@ -27,7 +24,7 @@ internal val lyricsHttp by lazy {
             connectTimeoutMillis = 5_000
             requestTimeoutMillis = 10_000
         }
-        // Says who's asking, so whoever runs the server can reach us instead of just blocking us.
+        // says who's asking so the server owner can reach us instead of blocking us
         install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
         install(ContentNegotiation) {
             json(LyricsJson)

@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -406,9 +408,20 @@ fun CarouselCrossfade(
                         .fillMaxSize()
                         .graphicsLayer { alpha = carousel.crossfadeAlpha(slot) },
                 ) {
-                    background(slot.artworkUrl)
+                    // a copy at zero opacity can skip drawing, so it isn't redrawn every frame for nothing
+                    val shown = remember(carousel, slot) {
+                        val visible = derivedStateOf { carousel.crossfadeAlpha(slot) > 0f }
+                        val read: () -> Boolean = { visible.value }
+                        read
+                    }
+                    CompositionLocalProvider(LocalCrossfadeShown provides shown) {
+                        background(slot.artworkUrl)
+                    }
                 }
             }
         }
     }
 }
+
+/** Whether this crossfade copy shows anything right now. Read it while drawing, never in composition. */
+val LocalCrossfadeShown = compositionLocalOf<() -> Boolean> { { true } }

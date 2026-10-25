@@ -1,7 +1,4 @@
-// DiscordSettingCards.kt
-//
-// The pieces the Discord page is built from, drawn to the user's mock: dark rounded cards with a
-// bold title, pill-shaped text boxes and pickers, a two-way switch and a thin slider.
+// the pieces the discord page is built from, drawn to the user's mock: dark pill-shaped cards, pickers, a switch and a slider
 
 package com.example.musicfy.ui.screens.settings.integrations.discord
 
@@ -79,7 +76,7 @@ import com.example.musicfy.ui.theme.InterFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-/** The mock's colours, read straight off it. */
+/** the mock's colours, read straight off it */
 internal object DiscordColors {
     val Card = Color(0xFF1F1F1F)
     val ToggleCard = Color(0xFF232323)
@@ -146,7 +143,7 @@ private fun FieldLabel(text: String) {
     )
 }
 
-/** A pill text box. [hint] shows while it's empty, so the user knows what empty means. */
+/** a pill text box, hint shows while it's empty so the user knows what empty means */
 @Composable
 internal fun DiscordTextField(
     value: String,
@@ -185,7 +182,7 @@ internal fun DiscordTextField(
     )
 }
 
-/** A text line of the status: title and its box. */
+/** a text line of the status: title and its box */
 @Composable
 internal fun DiscordTextCard(
     title: String,
@@ -200,11 +197,7 @@ internal fun DiscordTextCard(
     }
 }
 
-/**
- * A pill that unfolds into its own list: it grows downwards at the same width, and each choice
- * is a row the same height and type as the pill, so it reads as one shape opening up rather than
- * a menu popping up somewhere else. [optionIcon] adds a picture to each choice (the services).
- */
+/** a pill that unfolds into its own list at the same width and row height, so it reads as one shape opening up and not a menu popping up elsewhere */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun <T> DiscordDropdown(
@@ -271,7 +264,7 @@ internal fun <T> DiscordDropdown(
     }
 }
 
-/** One row of the dropdown: centred text in the pill's own size, the chosen one on a lighter pill. */
+/** one row of the dropdown: centred text in the pill's own size, the chosen one on a lighter pill */
 @Composable
 private fun DropdownRow(
     text: String,
@@ -383,7 +376,7 @@ internal fun DiscordButtonCard(
     }
 }
 
-/** Two choices side by side; the chosen one sits on a lighter pill. */
+/** two choices side by side, the chosen one sits on a lighter pill */
 @Composable
 internal fun <T> DiscordSegmented(
     options: List<T>,
@@ -429,10 +422,7 @@ internal fun <T> DiscordSegmented(
     }
 }
 
-/**
- * A thin track with the value riding above the end of the fill and the last value at the far
- * right, as in the mock. Tap or drag anywhere along it; it snaps to one of [values].
- */
+/** a thin track with the value riding above the end of the fill, tap or drag anywhere and it snaps to one of values */
 @Composable
 internal fun DiscordStepSlider(
     value: Int,
@@ -501,7 +491,7 @@ internal fun DiscordStepSlider(
 
 private val SliderLabelWidth = 52.dp
 
-/** The bold one-liner card ("Empty it to disable"). */
+/** the bold one-liner card, like "empty it to disable" */
 @Composable
 internal fun DiscordNoticeCard(text: String) {
     DiscordCard {
@@ -509,7 +499,7 @@ internal fun DiscordNoticeCard(text: String) {
     }
 }
 
-/** What each placeholder means, with a worked example. */
+/** what each placeholder means, with a worked example */
 @Composable
 internal fun DiscordPlaceholderCard() {
     val body = TextStyle(

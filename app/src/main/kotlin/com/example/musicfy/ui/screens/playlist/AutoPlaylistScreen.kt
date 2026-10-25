@@ -582,6 +582,7 @@ fun AutoPlaylistScreen(
             itemsIndexed(
                 items = filteredSongs,
                 key = { _, song -> song.id },
+                contentType = { _, _ -> "track" },
             ) { index, song -> trackRow(index, song) }
         } else {
             filteredSections.forEach { section ->
@@ -596,6 +597,7 @@ fun AutoPlaylistScreen(
                 itemsIndexed(
                     items = section.songs,
                     key = { _, song -> song.id },
+                    contentType = { _, _ -> "track" },
                 ) { index, song -> trackRow(index, song) }
             }
         }

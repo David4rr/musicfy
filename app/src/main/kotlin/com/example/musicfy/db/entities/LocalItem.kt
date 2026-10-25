@@ -1,5 +1,3 @@
-// LocalItem.kt
-
 package com.example.musicfy.db.entities
 
 sealed class LocalItem {

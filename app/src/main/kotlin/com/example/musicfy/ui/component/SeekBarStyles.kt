@@ -71,6 +71,35 @@ fun SeekBarTrack(
     /** The track is still loading: a light sweeps along the bar instead of the wave moving. */
     loading: Boolean = false,
 ) {
+    SeekBarTrack(
+        style = style,
+        fractionProvider = { fraction },
+        activeColor = activeColor,
+        inactiveColor = inactiveColor,
+        modifier = modifier,
+        animateWave = animateWave,
+        active = active,
+        loading = loading,
+    )
+}
+
+/**
+ * Same bar, but [fractionProvider] is read while drawing, so a moving position redraws the bar
+ * without recomposing whatever holds it. [clockRunning] false holds the wave and sweep still
+ * (the player is collapsed and the bar can't be seen).
+ */
+@Composable
+fun SeekBarTrack(
+    style: SeekBarStyle,
+    fractionProvider: () -> Float,
+    activeColor: Color,
+    inactiveColor: Color,
+    modifier: Modifier = Modifier,
+    animateWave: Boolean = true,
+    active: Boolean = false,
+    loading: Boolean = false,
+    clockRunning: Boolean = true,
+) {
     val wavy = style == SeekBarStyle.M3_EXPRESSIVE || style == SeekBarStyle.M3_EXPRESSIVE_LINE
 
     // The wave flattens out when playback is paused, the user grabs the bar, or the track is still
@@ -92,8 +121,11 @@ fun SeekBarTrack(
     val needsClock = (wavy && waveScale > 0f) || (wavy && animateWave && !active && !loading) ||
         loading || loadingAlpha > 0f
     val clockMs = remember { mutableLongStateOf(0L) }
-    LaunchedEffect(needsClock) {
-        if (!needsClock) return@LaunchedEffect
+    val wavePath = remember { Path() }
+    LaunchedEffect(needsClock, clockRunning) {
+        if (!needsClock || !clockRunning) return@LaunchedEffect
+        // the clock is absolute time, so catch up now instead of showing the old phase for a frame
+        clockMs.longValue = System.nanoTime() / 1_000_000L
         while (true) {
             withFrameMillis { clockMs.longValue = it }
         }
@@ -110,7 +142,7 @@ fun SeekBarTrack(
             .fillMaxWidth()
             .height(height)
     ) {
-        val f = fraction.coerceIn(0f, 1f)
+        val f = fractionProvider().coerceIn(0f, 1f)
         val phase = if (wavy && waveScale > 0f) {
             (clockMs.longValue % WaveSpeedMillis) / WaveSpeedMillis.toFloat()
         } else {
@@ -120,6 +152,7 @@ fun SeekBarTrack(
             SeekBarStyle.DEFAULT -> drawDefaultTrack(f, activeColor, inactiveColor)
             SeekBarStyle.PLAIN -> drawPlainTrack(f, activeColor, inactiveColor)
             SeekBarStyle.M3_EXPRESSIVE -> drawWavyTrack(
+                path = wavePath,
                 fraction = f,
                 phase = phase,
                 waveScale = waveScale,
@@ -128,6 +161,7 @@ fun SeekBarTrack(
                 thumb = ThumbShape.ROUND,
             )
             SeekBarStyle.M3_EXPRESSIVE_LINE -> drawWavyTrack(
+                path = wavePath,
                 fraction = f,
                 phase = phase,
                 waveScale = waveScale,
@@ -227,6 +261,7 @@ private fun DrawScope.drawPlainTrack(fraction: Float, activeColor: Color, inacti
  * sits on the boundary between them.
  */
 private fun DrawScope.drawWavyTrack(
+    path: Path,
     fraction: Float,
     phase: Float,
     waveScale: Float,
@@ -247,7 +282,9 @@ private fun DrawScope.drawWavyTrack(
     val x = usable * fraction
 
     if (x > 0.5f) {
-        val path = Path().apply {
+        // one path for every frame; reset keeps its memory instead of allocating a new one
+        path.reset()
+        path.apply {
             moveTo(0f, y)
             var px = 0f
             // 2dp steps: fine enough that the curve reads as smooth, coarse enough to stay cheap

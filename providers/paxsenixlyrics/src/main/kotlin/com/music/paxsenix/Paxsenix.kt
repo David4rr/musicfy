@@ -1,5 +1,3 @@
-// Paxsenix.kt
-
 package com.music.paxsenix
 
 import android.content.Context
@@ -298,8 +296,7 @@ object Paxsenix {
         Timber.d("Using content array as source, hasWordLevel=$hasWordLevel")
 
         if (!hasWordLevel) {
-            // "Line" lyrics still carry a start time per line. Dropping it turned line-synced
-            // lyrics into plain text; only fall back to plain when there is genuinely no timing.
+            // "line" lyrics still carry a start time per line, dropping it turned synced lyrics into plain text
             val timed = response.content.any { it.timestamp > 0 }
             val text = response.content
                 .mapNotNull { line ->
@@ -419,12 +416,7 @@ object Paxsenix {
     }
 }
 
-/**
- * A line's text from its timed pieces. On "Syllable" lyrics each piece is a syllable, and joining
- * them all with spaces split words apart ("wa nt yo u"). Word boundaries come from the pieces
- * themselves: a trailing space when the API includes one, otherwise the `part` flag, which marks a
- * syllable that runs on into the next one without a break.
- */
+/** a line's text from its timed pieces, syllable pieces are joined by the api's trailing space or the part flag, joining all with spaces split words apart like "wa nt yo u" */
 private fun List<com.music.paxsenix.models.LyricText>.joinedLineText(): String {
     if (isEmpty()) return ""
     val spacedByApi = dropLast(1).any { it.text.lastOrNull()?.isWhitespace() == true }

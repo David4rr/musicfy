@@ -1,9 +1,4 @@
-// LabHeaderCard.kt
-//
-// The tilted card the Audio Lab headers show, from the user's mocks: a dark rounded card with a
-// thin edge, a small line of type at the top, a name, and the music's bars in a darker panel
-// underneath. Stood at [LabCardStart] and [LabCardBottom] from the header's bottom corner, it
-// always dips under the sheet's top edge, so the sheet cuts it off whatever height the title is.
+// the tilted card the audio lab headers show, it always dips under the sheet's top edge so the sheet cuts it off whatever height the title is
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -60,10 +55,7 @@ internal fun LabHeaderCardFrame(modifier: Modifier = Modifier, content: @Composa
     )
 }
 
-/**
- * What's on a card: [topStart] and [topEnd] in small type, [label] under them, and [bars] in the
- * panel that fills the rest. Leave all three out for a card that's only bars.
- */
+/** what's on a card: topStart and topEnd in small type, label under them, bars in the panel that fills the rest, leave the text ones out for a card that's only bars */
 @Composable
 internal fun LabCardFace(
     modifier: Modifier = Modifier,
@@ -85,7 +77,7 @@ internal fun LabCardFace(
                 label.uppercase(),
                 fontFamily = InterFontFamily,
                 fontWeight = FontWeight.Medium,
-                // a long name gets smaller rather than cut: "LOUDNESS" still fits
+                // a long name gets smaller rather than cut, loudness still fits
                 fontSize = (20f * (7f / label.length).coerceAtMost(1f)).coerceAtLeast(13f).sp,
                 letterSpacing = (-0.01).em,
                 color = Color(0xFFA2A2A8),

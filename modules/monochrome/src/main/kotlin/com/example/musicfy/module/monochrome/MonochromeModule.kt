@@ -1,5 +1,3 @@
-// MonochromeModule.kt
-
 package com.example.musicfy.module.monochrome
 
 import com.example.musicfy.module.AccountState

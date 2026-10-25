@@ -27,15 +27,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.media3.common.Player
@@ -74,8 +78,33 @@ fun PlayerProgressSlider(
         com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
     )
     val progressFlow = playerConnection.uiState.progressState
-    val progress by produceState(initialValue = progressFlow.value, active) {
-        if (active) progressFlow.collect { value = it }
+    // only the bar and the time texts read the position, so a tick redraws them and not the whole slider
+    val progress = remember { mutableStateOf(progressFlow.value) }
+    var sliderPosition by remember { mutableStateOf<Long?>(null) }
+    val durationKnown by remember {
+        derivedStateOf { progress.value.duration.let { it != C.TIME_UNSET && it > 0L } }
+    }
+    val rangeEnd by remember { derivedStateOf { if (durationKnown) progress.value.duration.toFloat() else 0f } }
+    val sliderState = remember(rangeEnd) {
+        val start = Snapshot.withoutReadObservation { sliderPosition ?: progress.value.position }
+        SliderState(valueRange = 0f..rangeEnd).also { it.value = start.toFloat() }
+    }
+    LaunchedEffect(active, sliderState) {
+        if (!active) return@LaunchedEffect
+        progressFlow.collect { latest ->
+            progress.value = latest
+            if (sliderPosition == null) sliderState.value = latest.position.toFloat()
+        }
+    }
+    sliderState.onValueChange = { raw ->
+        val position = raw.toLong()
+        sliderPosition = position
+        sliderState.value = position.toFloat()
+    }
+    sliderState.onValueChangeFinished = {
+        sliderPosition?.let { playerConnection.player.seekTo(it) }
+        sliderPosition = null
+        sliderState.value = progress.value.position.toFloat()
     }
     val transportState by playerConnection.uiState.transportState.collectAsState()
     val seekBarStyle by com.example.musicfy.utils.rememberEnumPreference(
@@ -97,17 +126,27 @@ fun PlayerProgressSlider(
     val failureProgress = rememberStreamFailureProgress()
     val failureLabel by rememberStreamFailureLabel(failureProgress)
 
-    var sliderPosition by remember { mutableStateOf<Long?>(null) }
-    val displayedPosition = sliderPosition ?: progress.position
-
-    val durationKnown = progress.duration != C.TIME_UNSET && progress.duration > 0L
     val buffering = transportState.playbackState == Player.STATE_BUFFERING
     // Loading the track itself (not a rebuffer mid-song): no length yet, or still at the start.
     // That's when the time read a meaningless 00:00 with nothing on the right.
-    val loadingTrack = buffering && (!durationKnown || progress.position < LoadingStartWindowMs)
+    val loadingTrack by remember(buffering) {
+        derivedStateOf { buffering && (!durationKnown || progress.value.position < LoadingStartWindowMs) }
+    }
     // Held back a moment, so a short rebuffer after a seek doesn't flash the bar.
     val showBuffering by rememberSettled(buffering)
     val showLoading by rememberSettled(loadingTrack)
+    // the time strings change once a second, so only their texts recompose on a tick
+    val elapsedText = remember { derivedStateOf { makeTimeString(sliderPosition ?: progress.value.position) } }
+    val endText = remember(showLoading, endTimestamp) {
+        derivedStateOf {
+            when {
+                !durationKnown || showLoading -> ""
+                endTimestamp == com.example.musicfy.constants.PlayerEndTimestamp.TIME_LEFT ->
+                    "-" + makeTimeString((progress.value.duration - (sliderPosition ?: progress.value.position)).coerceAtLeast(0L))
+                else -> makeTimeString(progress.value.duration)
+            }
+        }
+    }
 
     val trackInteractionSource = remember { MutableInteractionSource() }
     val isTrackDragged by trackInteractionSource.collectIsDraggedAsState()
@@ -124,27 +163,21 @@ fun PlayerProgressSlider(
             .height(28.dp)
     ) {
         Slider(
-            value = displayedPosition.toFloat(),
-            valueRange = 0f..(if (progress.duration == C.TIME_UNSET || progress.duration <= 0L) 0f else progress.duration.toFloat()),
-            onValueChange = { sliderPosition = it.toLong() },
-            onValueChangeFinished = {
-                sliderPosition?.let { playerConnection.player.seekTo(it) }
-                sliderPosition = null
-            },
+            state = sliderState,
             interactionSource = trackInteractionSource,
             thumb = { Spacer(modifier = Modifier.size(0.dp)) },
-            track = { sliderState ->
-                val range = sliderState.valueRange
+            track = { trackState ->
+                val range = trackState.valueRange
                 val span = (range.endInclusive - range.start).takeIf { it > 0f }
-                val fraction = span?.let { (sliderState.value - range.start) / it } ?: 0f
                 com.example.musicfy.ui.component.SeekBarTrack(
                     style = seekBarStyle,
-                    fraction = fraction,
+                    fractionProvider = { span?.let { (trackState.value - range.start) / it } ?: 0f },
                     activeColor = barActiveColor,
                     inactiveColor = Color.White.copy(alpha = 0.24f),
                     animateWave = transportState.isPlaying,
                     active = isTrackDragged || isTrackPressed,
                     loading = showBuffering,
+                    clockRunning = active,
                 )
             },
             modifier = Modifier
@@ -182,29 +215,29 @@ fun PlayerProgressSlider(
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
-                Text(
-                    text = makeTimeString(displayedPosition),
-                    style = timeStyle,
-                    color = timeColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                TimeText(text = elapsedText, style = timeStyle, color = timeColor)
             }
         }
-        Text(
-            text = when {
-                !durationKnown || showLoading -> ""
-                endTimestamp == com.example.musicfy.constants.PlayerEndTimestamp.TIME_LEFT ->
-                    "-" + makeTimeString((progress.duration - displayedPosition).coerceAtLeast(0L))
-                else -> makeTimeString(progress.duration)
-            },
+        TimeText(
+            text = endText,
             style = timeStyle,
             color = timeColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             modifier = (onEndTimePlaced?.let { Modifier.onGloballyPositioned(it) } ?: Modifier).then(endTimeModifier),
         )
     }
+}
+
+/** A time label that reads its string itself, so only this text recomposes when the second changes. */
+@Composable
+private fun TimeText(text: State<String>, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
+    Text(
+        text = text.value,
+        style = style,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier,
+    )
 }
 
 /** Stand for the loading and failure labels in the time's switch, so the failure's ticking text doesn't re-fade each second. */

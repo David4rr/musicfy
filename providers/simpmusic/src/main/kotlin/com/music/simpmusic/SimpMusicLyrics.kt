@@ -1,5 +1,3 @@
-// SimpMusicLyrics.kt
-
 package com.music.simpmusic
 
 import com.music.simpmusic.models.LyricsData

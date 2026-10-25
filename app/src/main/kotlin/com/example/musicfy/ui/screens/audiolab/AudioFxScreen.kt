@@ -1,9 +1,4 @@
-// AudioFxScreen.kt
-//
-// Audio Lab's effects. Each one is its own card: a live picture of what it does, its switch, and
-// its options, which fold away while it's off. Reverb leads, as in the design, then loudness,
-// spatial, mono, Dolby Atmos, speed and pitch, and the volume curve. Reverb has its own file.
-// The header shows the effects that are on as a stack of cards (FxCardStack).
+// audio lab's effects as cards, each with a live picture, a switch and options that fold away while it is off
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -119,7 +114,7 @@ internal fun EffectCard(
 
 internal fun pct(v: Float) = "${(v * 100).roundToInt()}%"
 
-// ---- Loudness ------------------------------------------------------------------------------
+// ---- loudness ------------------------------------------------------------------------------
 
 @Composable
 private fun LoudnessCard(viewModel: AudioLabViewModel) {
@@ -199,7 +194,7 @@ private fun LoudnessCard(viewModel: AudioLabViewModel) {
     )
 }
 
-// ---- Spatial -------------------------------------------------------------------------------
+// ---- spatial -------------------------------------------------------------------------------
 
 private class CrossfeedLevel(val key: String, val label: String, val cutoff: Float, val feed: Float)
 
@@ -263,7 +258,7 @@ private fun SpatialCard(viewModel: AudioLabViewModel) {
     )
 }
 
-// ---- Mono --------------------------------------------------------------------------------
+// ---- mono --------------------------------------------------------------------------------
 
 @Composable
 private fun MonoCard(viewModel: AudioLabViewModel) {
@@ -279,7 +274,7 @@ private fun MonoCard(viewModel: AudioLabViewModel) {
     }
 }
 
-// ---- Dolby Atmos ---------------------------------------------------------------------------
+// ---- dolby atmos ---------------------------------------------------------------------------
 
 @Composable
 private fun AtmosCard(viewModel: AudioLabViewModel) {
@@ -319,7 +314,7 @@ private fun AtmosCard(viewModel: AudioLabViewModel) {
 
 private class AtmosSupport(val decoder: String, val spatializer: String)
 
-/** what this phone can do with an Atmos stream: decode it, and spatialise it itself */
+/** what this phone can do with an atmos stream: decode it, and spatialise it itself */
 private fun atmosSupport(context: Context): AtmosSupport {
     val decoder = runCatching {
         MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
@@ -350,7 +345,7 @@ private fun SupportPill(label: String, value: String) {
     }
 }
 
-// ---- Speed & pitch -------------------------------------------------------------------------
+// ---- speed & pitch -------------------------------------------------------------------------
 
 private class SpeedPreset(val key: String, val label: String, val speed: Float, val preservePitch: Boolean, val withReverb: Boolean = false)
 
@@ -409,7 +404,7 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
                             viewModel.updateReverb { it.withPreset(hall).copy(enabled = true) }
                         }
                     } else if (key == "slowed" && reverb.enabled) {
-                        // otherwise the tap does nothing: the chip stays on "Slowed + reverb" while the reverb plays
+                        // otherwise the tap does nothing: the chip stays on slowed + reverb while the reverb plays
                         viewModel.updateReverb { it.copy(enabled = false) }
                     }
                 },
@@ -453,7 +448,7 @@ private fun StepButton(label: String, onClick: () -> Unit) {
     }
 }
 
-// ---- Volume curve --------------------------------------------------------------------------
+// ---- volume curve --------------------------------------------------------------------------
 
 private class CurveShape(val key: String, val label: String, val exponent: Float)
 

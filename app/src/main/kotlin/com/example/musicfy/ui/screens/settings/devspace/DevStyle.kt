@@ -1,6 +1,4 @@
-// DevStyle.kt
-//
-// The colours, type and small helpers every part of the Dev Spaces page shares.
+// colours, type and small helpers shared by the dev spaces page
 
 package com.example.musicfy.ui.screens.settings.devspace
 
@@ -36,7 +34,7 @@ internal fun devText(
     tracking: Float = -0.4f,
 ) = TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
 
-/** A big figure's size in dp, so it follows the card's width rather than the font-size setting. */
+/** a big figure's size in dp, so it follows the card's width rather than the font-size setting */
 @Composable
 internal fun devFigureSp(dp: Float): TextUnit = with(LocalDensity.current) { dp.dp.toSp() }
 

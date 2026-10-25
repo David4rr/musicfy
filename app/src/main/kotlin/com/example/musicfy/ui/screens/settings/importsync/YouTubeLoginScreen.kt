@@ -1,5 +1,3 @@
-// YouTubeLoginScreen.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import android.annotation.SuppressLint
@@ -66,7 +64,7 @@ import timber.log.Timber
 
 private const val LOGIN_URL = "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com"
 
-/** Reads the session ids YouTube Music keeps in its page config. */
+/** reads the session ids youtube music keeps in its page config */
 private const val READ_CONFIG_JS = """
 (function() {
   try {
@@ -80,7 +78,7 @@ private const val READ_CONFIG_JS = """
 })();
 """
 
-/** The full-screen sign-in page used from the Sync settings. */
+/** the full-screen sign-in page used from the sync settings */
 @Composable
 fun YouTubeLoginScreen(navController: NavController) {
     val context = LocalContext.current
@@ -127,11 +125,7 @@ fun YouTubeLoginScreen(navController: NavController) {
     }
 }
 
-/**
- * Google sign-in in a WebView, without chrome. Once it lands on music.youtube.com signed in, the
- * session cookie and ids are saved the same way the rest of the app reads them (App picks them up
- * live) and [onSignedIn] gets the account, if YouTube shared it.
- */
+/** google sign-in in a webview without chrome, once signed in on music.youtube.com it saves the session where the app reads it */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun YouTubeLoginWebContent(
@@ -161,7 +155,7 @@ fun YouTubeLoginWebContent(
             val dataSyncId = config?.optString("dataSyncId")?.takeIf { it.isNotBlank() && it != "null" }
             scope.launch(Dispatchers.IO) {
                 try {
-                    // account details need the new session; App would set these from the prefs anyway
+                    // account details need the new session, the app would set these from prefs anyway
                     YouTube.cookie = cookie
                     visitorData?.let { YouTube.visitorData = it }
                     YouTube.dataSyncId = dataSyncId?.let {
@@ -213,7 +207,7 @@ fun YouTubeLoginWebContent(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 WebView(ctx).apply {
-                    // see CaptureWebContent: WRAP_CONTENT makes Chromium lay pages out at zero height
+                    // see CaptureWebContent: wrap_content makes chromium lay pages out at zero height
                     layoutParams = android.view.ViewGroup.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -223,7 +217,7 @@ fun YouTubeLoginWebContent(
                     settings.setSupportZoom(true)
                     settings.builtInZoomControls = true
                     settings.displayZoomControls = false
-                    // Google refuses sign-in from pages that announce themselves as an embedded WebView
+                    // google refuses sign-in from pages that announce themselves as an embedded webview
                     settings.userAgentString = settings.userAgentString.replace("; wv", "")
                     disableForcedDarkening()
                     CookieManager.getInstance().setAcceptCookie(true)

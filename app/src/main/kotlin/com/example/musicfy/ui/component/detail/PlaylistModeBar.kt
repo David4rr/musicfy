@@ -17,6 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -84,7 +86,7 @@ internal fun PlaylistModeBarRow(
     glassState: GlassState,
     coverUrl: String?,
     cover: (@Composable (Modifier) -> Unit)?,
-    tint: Color,
+    tint: State<Color>,
     modifier: Modifier = Modifier,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -223,28 +225,34 @@ private fun ModeCircleButton(
     }
 }
 
+/** the frosted fill and hairline of the edit pill; the theme colour is read here so only this recomposes */
+@Composable
+private fun BoxScope.EditOrderGlass(glassState: GlassState, tint: State<Color>) {
+    GlassPillBackground(
+        state = glassState,
+        blurRadius = { 28f },
+        tint = Color.White.copy(alpha = 0.12f),
+        foundationColor = tint.value,
+        shape = ModePillShape,
+        modifier = Modifier.matchParentSize(),
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .border(1.dp, Color.White.copy(alpha = 0.12f), ModePillShape)
+    )
+}
+
 /** the frosted pill from the mock: a small copy of the cover and what you're doing */
 @Composable
 private fun EditOrderPill(
     glassState: GlassState,
     coverUrl: String?,
     cover: (@Composable (Modifier) -> Unit)?,
-    tint: Color,
+    tint: State<Color>,
 ) {
     Box(modifier = Modifier.height(47.dp)) {
-        GlassPillBackground(
-            state = glassState,
-            blurRadius = { 28f },
-            tint = Color.White.copy(alpha = 0.12f),
-            foundationColor = tint,
-            shape = ModePillShape,
-            modifier = Modifier.matchParentSize(),
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .border(1.dp, Color.White.copy(alpha = 0.12f), ModePillShape)
-        )
+        EditOrderGlass(glassState = glassState, tint = tint)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

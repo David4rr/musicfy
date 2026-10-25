@@ -5,7 +5,9 @@ package com.example.musicfy.lyrics
 import android.text.format.DateUtils
 import com.atilika.kuromoji.ipadic.Tokenizer
 import com.github.promeg.pinyinhelper.Pinyin
+import com.example.musicfy.db.entities.LyricsEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -398,6 +400,32 @@ object LyricsUtils {
             parseStandardLyrics(lines)
         }
         return fixWordSpacing(parsed)
+    }
+
+    // the last few songs' parsed lines, never handed out themselves, since each caller fills its own reading flows
+    private val parsedCache = object : LinkedHashMap<String, List<LyricsEntry>>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<LyricsEntry>>?) = size > 4
+    }
+
+    // same as parseLyrics, but the card, the page and the styles stop re-parsing one song on the main thread
+    fun parseLyricsCached(lyrics: String): List<LyricsEntry> {
+        val template = synchronized(parsedCache) { parsedCache[lyrics] }
+            ?: parseLyrics(lyrics).also { parsed -> synchronized(parsedCache) { parsedCache[lyrics] = parsed } }
+        return template.map { entry ->
+            entry.copy(
+                romanizedTextFlow = MutableStateFlow(null),
+                rubyFlow = MutableStateFlow(null),
+                translatedTextFlow = MutableStateFlow(null),
+            )
+        }
+    }
+
+    // parse in the background as soon as a song's lyrics land, so opening the player finds them ready
+    fun warmParsedLyrics(lyrics: String?) {
+        if (lyrics.isNullOrBlank() || lyrics == LyricsEntity.LYRICS_NOT_FOUND) return
+        if (synchronized(parsedCache) { parsedCache.containsKey(lyrics) }) return
+        val parsed = runCatching { parseLyrics(lyrics) }.getOrNull() ?: return
+        synchronized(parsedCache) { parsedCache[lyrics] = parsed }
     }
 
     /**

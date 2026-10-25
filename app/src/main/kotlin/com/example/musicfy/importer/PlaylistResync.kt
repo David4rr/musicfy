@@ -17,11 +17,7 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * The service an imported playlist can be re-synced with. Null for a playlist made here, one from
- * a file, or one of YouTube's own: a playlist with a [browseId] follows YouTube through Sync, and
- * so does one YouTube sync brought in.
- */
+/** the service an imported playlist re-syncs with, null for one made here, from a file or youtube's own (a playlist with a browseId follows youtube through sync, and so does one sync brought in) */
 fun resyncSourceOf(imported: ImportedPlaylist?, browseId: String?): ImportSource? {
     if (imported == null) return null
     val source = ImportSource.fromKey(imported.source)?.takeIf { it.isListed } ?: return null
@@ -30,21 +26,21 @@ fun resyncSourceOf(imported: ImportedPlaylist?, browseId: String?): ImportSource
     return source.takeUnless { followsYouTube }
 }
 
-/** How a Re-sync gets going, for the menu that asked for it. */
+/** how a re-sync gets going, for the menu that asked for it */
 sealed interface ResyncStart {
-    /** Reading in the background now; a toast says what changed. */
+    /** reading in the background now; a toast says what changed */
     data object Started : ResyncStart
 
-    /** Only the signed-in account can read it: open the service's sign-in page in Re-sync mode. */
+    /** only the signed-in account can read it: open the service's sign-in page in re-sync mode */
     data class ThroughAccount(val service: AccountService) : ResyncStart
 
-    /** Nothing says where it lives, so the user pastes its link. */
+    /** nothing says where it lives, so the user pastes its link */
     data object NeedsLink : ResyncStart
 
     data class Failed(val message: String) : ResyncStart
 }
 
-/** How far Re-sync all got on its own. [busy]: an import was running, so nothing started. */
+/** how far re-sync all got on its own. busy: an import was running, so nothing started */
 data class ResyncAllStart(
     val started: Int,
     val throughAccount: List<AccountService>,
@@ -52,13 +48,7 @@ data class ResyncAllStart(
     val busy: Boolean = false,
 )
 
-/**
- * Re-sync for imported playlists: reads one again on the service it came from and adds what's new
- * there (MusicImportService.startResync does the adding). This part works out how to read it:
- * straight from its link or YouTube id, or through the service's sign-in page for a playlist that
- * came from an account. Imports from before Re-sync saved neither, so the account page finds
- * those by name, and a Deezer one asks for its link.
- */
+/** works out how to read an imported playlist again (its link or youtube id, or the service's sign-in page), old imports saved neither so they're found by name, deezer ones ask for a link */
 @Singleton
 class PlaylistResync @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -74,11 +64,7 @@ class PlaylistResync @Inject constructor(
         }
     }
 
-    /**
-     * Re-sync all, as far as it goes without the user: every imported playlist that can be read
-     * straight away starts now. The rest are left for the caller to say about: the services whose
-     * sign-in page has to open, and old imports that only a pasted link can find.
-     */
+    /** re-sync all as far as it goes without the user: playlists that can be read straight away start now, the rest (sign-in pages, old imports needing a link) are left for the caller */
     suspend fun startAll(): ResyncAllStart = withContext(Dispatchers.IO) {
         val direct = mutableListOf<ResyncRequest>()
         val accounts = linkedSetOf<AccountService>()
@@ -95,7 +81,7 @@ class PlaylistResync @Inject constructor(
         ResyncAllStart(started = if (failed) 0 else direct.size, throughAccount = accounts.toList(), needLink = needLink, busy = failed)
     }
 
-    /** With the playlist's link, pasted by the user for an import that didn't save one. */
+    /** with the playlist's link, pasted by the user for an import that didn't save one */
     suspend fun startFromLink(playlistId: String, link: String): ResyncStart = withContext(Dispatchers.IO) {
         val found = lookUp(playlistId) ?: return@withContext ResyncStart.Failed(NOT_IMPORTED)
         val linkSource = LinkImporter.detect(link)?.importSource()
@@ -106,18 +92,18 @@ class PlaylistResync @Inject constructor(
         launch(listOf(request(found) { readLink(link, found.source) }))
     }
 
-    /** With songs the account page has already read, by the playlist they're for. */
+    /** with songs the account page has already read, by the playlist they're for */
     suspend fun startWithReads(reads: Map<String, ResyncRead>): ResyncStart = withContext(Dispatchers.IO) {
         val requests = reads.mapNotNull { (playlistId, read) -> lookUp(playlistId)?.let { request(it) { read } } }
         if (requests.isEmpty()) ResyncStart.Failed(NOT_IMPORTED) else launch(requests)
     }
 
-    /** What the account page looks for once the user is signed in. */
+    /** what the account page looks for once the user is signed in */
     suspend fun target(playlistId: String): ResyncTarget? = withContext(Dispatchers.IO) {
         lookUp(playlistId)?.target()
     }
 
-    /** Every imported playlist only [service]'s signed-in account can read, for Re-sync all. */
+    /** every imported playlist only service's signed-in account can read, for re-sync all */
     suspend fun accountTargets(service: AccountService): List<ResyncTarget> = withContext(Dispatchers.IO) {
         database.importedPlaylists().first()
             .mapNotNull { lookUp(it.playlistId) }
@@ -135,11 +121,11 @@ class PlaylistResync @Inject constructor(
         data object NeedsLink : Route
     }
 
-    /** How [found] can be read again: straight from its link or YouTube id, or through an account. */
+    /** how found can be read again: straight from its link or youtube id, or through an account */
     private suspend fun routeOf(found: Found): Route {
         val url = found.imported.remoteUrl
         return when {
-            // a link only shows Spotify's first 100 songs, so a playlist that long needs the account
+            // a link only shows spotify's first 100 songs, so a playlist that long needs the account
             found.source == ImportSource.SPOTIFY && url != null &&
                 database.importedPlaylistTrackCount(found.imported.playlistId) >= LinkImporter.SPOTIFY_EMBED_LIMIT ->
                 Route.ThroughAccount(AccountService.SPOTIFY)
@@ -175,7 +161,7 @@ class PlaylistResync @Inject constructor(
         return ResyncRead(tracks, parsed.playlistOrigins.values.firstOrNull() ?: PlaylistOrigin(remoteUrl = link), note)
     }
 
-    /** By its YouTube id, or for an account import that saved none, by its name in the account. */
+    /** by its youtube id, or for an account import that saved none, by its name in the account */
     private suspend fun readYouTube(remoteId: String?, name: String): ResyncRead {
         if (remoteId != null) {
             val parsed = if (remoteId.startsWith("MPREb_")) {

@@ -17,41 +17,34 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Takes imports back out: the newest session, everything from one service, or everything. Each
- * session only reverses what it changed itself (see `ImportSessionSong`), so a song that was in
- * the library or liked before an import stays that way.
- *
- * Only local data changes. Likes the import sent to YouTube are taken back the same way a tap on
- * the heart would; playlists it copied to YouTube stay there.
- */
+/** takes imports back out, each session only reverses what it changed itself so songs that were already liked or in the library stay that way */
 @Singleton
 class ImportHistory @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) {
-    /** Undoes the newest import from a service. Null when there is none to undo. */
+    /** undoes the newest import from a service. null when there is none to undo */
     suspend fun undoLatestImport(): Int? = withContext(Dispatchers.IO) {
         database.importSessionsExcept(ImportSession.DEVICE_SOURCE).firstOrNull()?.let { undo(it) }
     }
 
-    /** Undoes the newest import of files from the phone. Null when there is none to undo. */
+    /** undoes the newest import of files from the phone. null when there is none to undo */
     suspend fun undoLatestLocalImport(): Int? = withContext(Dispatchers.IO) {
         database.importSessions(ImportSession.DEVICE_SOURCE).firstOrNull()?.let { undo(it) }
     }
 
-    /** Everything one service brought in. Returns how many songs left the library. */
+    /** everything one service brought in. returns how many songs left the library */
     suspend fun deleteImportsFrom(source: ImportSource): Int = withContext(Dispatchers.IO) {
         database.importSessions(source.key).sumOf { undo(it) }
     }
 
-    /** Every import from every service; files from the phone are left alone. */
+    /** every import from every service; files from the phone are left alone */
     suspend fun deleteAllImports(): Int = withContext(Dispatchers.IO) {
         database.importSessionsExcept(ImportSession.DEVICE_SOURCE).sumOf { undo(it) }
     }
 
-    /** Takes files imported from the phone out of the library. The files themselves stay on the phone. */
+    /** takes files imported from the phone out of the library. the files themselves stay on the phone */
     suspend fun removeLocalSongs(songIds: Collection<String>) = withContext(Dispatchers.IO) {
         val songs = songIds.mapNotNull { database.getSongById(it)?.song }.filter { it.isLocal }
         if (songs.isEmpty()) return@withContext
@@ -63,7 +56,7 @@ class ImportHistory @Inject constructor(
 
     private suspend fun undo(session: ImportSession): Int {
         val rows = database.importSessionSongs(session.id)
-        // read before the transaction: a Flow query inside it would wait on the transaction itself
+        // read before the transaction: a flow query inside it would wait on the transaction itself
         val playlists = database.importSessionPlaylistIds(session.id)
             .mapNotNull { database.playlist(it).first()?.playlist }
         val isLocal = session.source == ImportSession.DEVICE_SOURCE
@@ -103,13 +96,13 @@ class ImportHistory @Inject constructor(
         }
 
         removedFiles.forEach { deleteOwnCopies(it) }
-        // a like still waiting to go up to YouTube shouldn't go now; one already there is taken back
+        // a like still waiting to go up to youtube shouldn't go now; one already there is taken back
         PendingYouTubeLikes.remove(context, unliked.map { it.id })
         if (context.isSyncEnabled()) unliked.forEach { syncUtils.likeSong(it) }
         return removed
     }
 
-    /** Removes a local song's row and everything hanging off it that has no foreign key to it. */
+    /** removes a local song's row and everything hanging off it that has no foreign key to it */
     private fun MusicDatabase.deleteLocalSong(song: SongEntity) {
         delete(song)
         deleteFormat(song.id)
@@ -117,10 +110,7 @@ class ImportHistory @Inject constructor(
         deleteImportSessionSong(song.id)
     }
 
-    /**
-     * The artwork pulled out of the file's tags, and the app's own copy of a file shared from
-     * another app. Both live in the app's folders and are no use once the song is gone.
-     */
+    /** the artwork pulled out of the file's tags and the app's own copy of a shared file, both live in app folders and are useless once the song is gone */
     private fun deleteOwnCopies(song: SongEntity) {
         runCatching {
             song.thumbnailUrl?.let(Uri::parse)?.takeIf { it.scheme == "file" }?.path?.let { File(it) }

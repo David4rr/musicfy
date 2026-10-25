@@ -159,6 +159,8 @@ private fun androidx.compose.ui.graphics.GraphicsLayerScope.placeSheet(state: Bo
 fun BottomSheet(
     state: BottomSheetState,
     modifier: Modifier = Modifier,
+    /** Added to [modifier] only while the sheet sits fully open (pill transition only). */
+    expandedModifier: Modifier = Modifier,
     background: @Composable (BoxScope.() -> Unit) = { },
     onDismiss: (() -> Unit)? = null,
     collapsedContent: @Composable BoxScope.() -> Unit,
@@ -330,6 +332,7 @@ fun BottomSheet(
 
             Box(
                 modifier = modifier
+                    .then(if (state.isExpanded) expandedModifier else Modifier)
                     .fillMaxSize()
                     .nestedScroll(remember(state) { state.preUpPostDownNestedScrollConnection })
             ) {
@@ -337,30 +340,7 @@ fun BottomSheet(
                 // The mini player's faint shadow. The sheet's clip would cut it off, so it's a
                 // layer of its own placed and tilted exactly like the sheet, and it fades with the
                 // hairline. It stays the pill's size: the opening sheet grows over it.
-                val showPillShadow by remember(state) {
-                    derivedStateOf { !state.isDismissed && state.progress < PillEdgeFadeEnd }
-                }
-                if (showPillShadow) {
-                    Box(
-                        modifier = Modifier
-                            .align(androidx.compose.ui.Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(state.expandedBound)
-                            .graphicsLayer {
-                                placeSheet(state, pillPress)
-                                alpha = (1f - state.progress / PillEdgeFadeEnd).coerceIn(0f, 1f)
-                                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
-                            }
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = PillInset)
-                                .fillMaxWidth()
-                                .height(PillHeight)
-                                .dropShadow(PillShape, ChromeShadow)
-                        )
-                    }
-                }
+                PillShadow(state, pillPress)
 
                 Box(
                     modifier = Modifier
@@ -669,12 +649,47 @@ fun BottomSheet(
                     }
                 }
 
-                if (!state.isCollapsed && !state.isDismissed) {
-                    BackHandler(onBack = state::collapseSoft)
-                }
+                SheetBackHandler(state)
             }
         }
     }
+
+// its own function, so the shadow showing or hiding at 8% open recomposes only this
+@Composable
+private fun BoxScope.PillShadow(state: BottomSheetState, pillPress: PillPress) {
+    val showPillShadow by remember(state) {
+        derivedStateOf { !state.isDismissed && state.progress < PillEdgeFadeEnd }
+    }
+    if (showPillShadow) {
+        Box(
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(state.expandedBound)
+                .graphicsLayer {
+                    placeSheet(state, pillPress)
+                    alpha = (1f - state.progress / PillEdgeFadeEnd).coerceIn(0f, 1f)
+                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.ModulateAlpha
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = PillInset)
+                    .fillMaxWidth()
+                    .height(PillHeight)
+                    .dropShadow(PillShape, ChromeShadow)
+            )
+        }
+    }
+}
+
+// its own function, so the sheet leaving collapsed or dismissed doesn't recompose the whole sheet
+@Composable
+private fun SheetBackHandler(state: BottomSheetState) {
+    if (!state.isCollapsed && !state.isDismissed) {
+        BackHandler(onBack = state::collapseSoft)
+    }
+}
 
 val LocalPlayerBottomSheetState = compositionLocalOf<BottomSheetState?> { null }
 

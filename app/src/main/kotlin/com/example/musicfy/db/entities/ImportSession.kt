@@ -1,5 +1,3 @@
-// ImportSession.kt
-
 package com.example.musicfy.db.entities
 
 import androidx.compose.runtime.Immutable

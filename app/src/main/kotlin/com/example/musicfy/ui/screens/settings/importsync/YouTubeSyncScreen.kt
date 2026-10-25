@@ -1,5 +1,3 @@
-// YouTubeSyncScreen.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import androidx.compose.foundation.layout.Row

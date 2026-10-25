@@ -1,12 +1,4 @@
-// AudioLabPage.kt
-//
-// The page every Audio Lab screen sits on (the hub, Audio FX, Audio Quality), from the user's
-// mocks: a dotted dark backdrop with the page's big title and its picture fixed in place, and a
-// black sheet with rounded top corners over it. When there's more than fits, scrolling slides the
-// sheet up over the title, which stays where it is behind it. The back button stays on top.
-//
-// The header is measured before the sheet is placed, so a big system font makes it taller rather
-// than cutting the title off, and on a tablet the sheet's content keeps to a readable width.
+// the page every audio lab screen sits on: a dotted backdrop with the title and picture fixed, and a black sheet that slides up over it
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -83,7 +75,7 @@ private val ContentMaxWidth = 680.dp
 private val SideMargin = 24.dp
 private val BackSize = 32.dp
 
-/** How the page's two-line title is set: "Audio" over a big "FX", say. */
+/** how the page's two-line title is set, audio over a big fx say */
 class LabTitle(
     val first: String,
     val second: String,
@@ -93,10 +85,7 @@ class LabTitle(
     val firstDim: Boolean = false,
 )
 
-/**
- * [art] is drawn at the header's right, behind the sheet; it's handed whether it's hidden (the
- * sheet over it), so it can stop animating. [subtitle] is a small line under the title.
- */
+/** art is drawn at the header's right behind the sheet and is told when it's hidden so it can stop animating, subtitle is a small line under the title */
 @Composable
 fun AudioLabPage(
     title: LabTitle,
@@ -188,11 +177,7 @@ fun AudioLabPage(
 /** how far the header's picture reaches below the header, under the sheet */
 internal val LabArtOverhang = 64.dp
 
-/**
- * The dotted backdrop with the title and picture on it, as one layer. As the sheet slides up over
- * it, it shrinks back a little, rounds its corners, dims and blurs, so it reads as behind the sheet.
- * Blur needs Android 12; older phones get the rest without it.
- */
+/** the dotted backdrop with title and picture as one layer, it shrinks, rounds, dims and blurs as the sheet slides over it, blur only on android 12+ */
 @Composable
 private fun LabBackdrop(scroll: ScrollState, headerHeight: Int, content: @Composable BoxScope.() -> Unit) {
     Box(
@@ -207,7 +192,7 @@ private fun LabBackdrop(scroll: ScrollState, headerHeight: Int, content: @Compos
                 alpha = 1f - 0.4f * covered
                 shape = RoundedCornerShape((30f * covered).dp)
                 clip = covered > 0f
-                // DECAL is Android 12's: named outside this check it fails to load on older phones
+                // DECAL is android 12's, named outside this check it fails to load on older phones
                 renderEffect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     BlurEffectCache.get(18.dp.toPx() * covered, android.graphics.Shader.TileMode.DECAL)
                 } else {
@@ -220,7 +205,7 @@ private fun LabBackdrop(scroll: ScrollState, headerHeight: Int, content: @Compos
     )
 }
 
-/** A section's name over its group, grey and bold, as in the mocks ("Streaming", "Download"). */
+/** a section's name over its group, grey and bold, as in the mocks */
 @Composable
 fun LabSheetTitle(text: String, modifier: Modifier = Modifier) {
     Text(
@@ -256,8 +241,7 @@ private fun LabHeader(
     statusTop: Dp,
     scale: Float,
 ) {
-    // headline type grows a little with a big system font, then holds: at twice the size these
-    // words wouldn't fit a phone's width
+    // headline type grows a little with a big system font, then holds: at twice the size these words wouldn't fit a phone's width
     val fontScale = LocalDensity.current.fontScale
     val keep = fontScale.coerceAtMost(1.15f) / fontScale * scale
     Column(
@@ -277,7 +261,7 @@ private fun LabHeader(
             overflow = TextOverflow.Clip,
             softWrap = false,
         )
-        // a one-word title ("Gesture") has no second line to leave a gap for
+        // a one-word title like gesture has no second line to leave a gap for
         if (title.second.isNotEmpty()) {
             Text(
                 title.second,
@@ -343,10 +327,7 @@ private fun BackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * The faint dot grid of the mocks' backdrop: one dot drawn into a tile once, then repeated by the
- * GPU. Drawing every dot was thousands of circles each time the backdrop was painted.
- */
+/** the faint dot grid of the backdrop: one dot drawn into a tile once and repeated by the gpu, drawing every dot was thousands of circles per paint */
 private fun Modifier.dotGrid(): Modifier = drawWithCache {
     val step = 12.dp.toPx().roundToInt().coerceAtLeast(2)
     val tile = ImageBitmap(step, step)

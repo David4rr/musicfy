@@ -1,5 +1,3 @@
-// AppleMusicArtistBackgroundProvider.kt
-
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient
@@ -25,17 +23,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * what Apple Music's editors made for an artist: the looping motion banner, its still frame, the
- * artist's name drawn as a logo, the newest release and the bio. image urls are mzstatic templates
- * with a {w}x{h} slot; size them with [appleArtworkUrl].
- */
+/** apple music's editorial for an artist: motion banner, still frame, name logo, newest release and bio, image urls are mzstatic templates with a {w}x{h} slot sized by appleArtworkUrl */
 data class AppleArtistEditorial(
     val appleId: String,
     val name: String,
-    /** 16:9 HLS loop, the one music.apple.com plays behind the header */
+    /** 16:9 hls loop, the one music.apple.com plays behind the header */
     val motionVideoUrl: String?,
-    /** 1:1 HLS loop, for when the wide one is missing */
+    /** 1:1 hls loop, for when the wide one is missing */
     val motionSquareUrl: String?,
     /** the still frame of the square loop (else the wide one), to show at once and while it loads */
     val previewFrameUrl: String?,
@@ -58,7 +52,7 @@ data class AppleRelease(
     val trackCount: Int?,
 )
 
-/** a sized url from an mzstatic {w}x{h} template; [format] "png"/"webp" keeps transparency */
+/** a sized url from an mzstatic {w}x{h} template, png or webp as format keeps transparency */
 fun appleArtworkUrl(template: String, width: Int, height: Int, format: String = "jpg"): String =
     template
         .replace("{w}", width.toString())
@@ -106,7 +100,7 @@ object AppleMusicArtistBackgroundProvider {
     // a miss is kept for less time: a network blip shouldn't hide an artist's banner all day
     private const val MISS_TTL_MS = 1000L * 60 * 10
 
-    /** the motion banner's video url, as before; [getArtistEditorial] has the rest */
+    /** the motion banner's video url as before, getArtistEditorial has the rest */
     suspend fun getByArtistName(
         artistName: String,
         storefront: String = "us",
@@ -234,7 +228,7 @@ object AppleMusicArtistBackgroundProvider {
             ?.let { release ->
                 val name = release["name"]?.jsonPrimitive?.contentOrNull ?: return@let null
                 AppleRelease(
-                    // "Kita Kesana - Single": the kind is in isSingle, and YouTube's title has no suffix
+                    // "kita kesana - single": the kind is in isSingle and youtube's title has no suffix
                     name = name.replace(Regex("""\s+-\s+(Single|EP)$"""), ""),
                     releaseDate = release["releaseDate"]?.jsonPrimitive?.contentOrNull,
                     artworkUrl = release["artwork"]?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull,
@@ -257,7 +251,7 @@ object AppleMusicArtistBackgroundProvider {
         )
     }.getOrNull()
 
-    // Apple's bios are small bits of HTML: line breaks, the odd <i>, entities
+    // apple's bios are small bits of html: line breaks, the odd <i>, entities
     private fun plainText(html: String): String? =
         html.replace(Regex("(?i)<br\\s*/?>"), "\n")
             .replace(Regex("<[^>]+>"), "")
@@ -275,7 +269,7 @@ object AppleMusicArtistBackgroundProvider {
         return null
     }
 
-    // "twenty one pilots" and "Twenty One Pilots", "Beyoncé" and "Beyonce", "AC/DC" and "ACDC"
+    // so "twenty one pilots" matches however it's cased, beyoncé matches beyonce and ac/dc matches acdc
     private fun normalize(name: String): String =
         java.text.Normalizer.normalize(name.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")

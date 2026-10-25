@@ -70,6 +70,34 @@ oh also thanks to [monochrome](https://github.com/monochrome-music/monochrome) w
 Or read contribute.md there
 
 ---
+## How we write comments in the code
+
+if you send code, please write comments this way. it keeps the code easy to read for everyone.
+
+- one comment is one line. no comment blocks, no paragraphs, no stacked lines.
+- all lowercase, plain everyday words, like you're telling a friend why the code is there.
+- say the reason or the trap, not what the code already says.
+- no backticks, no markdown, no shouting words like NOTE or IMPORTANT.
+- if one line isn't enough, the code probably wants to be split up. a long story (a crash we hit, a weird platform bug) goes in docs/notes instead.
+
+good:
+```kotlin
+// wait until the cover has loaded, otherwise the open spring jumps
+val cover = rememberCover(song)
+
+// paused while the player covers home, so the bars stop eating frames
+PlayingIndicator(isPlaying = isPlaying && !obscured)
+```
+
+not like this:
+```kotlin
+/**
+ * NOTE: This function is responsible for retrieving the `cover` resource
+ * and subsequently performing the initialization routine.
+ */
+```
+
+---
 ## Disclaimer
 
 Musicfy is an independent, unofficial project made for personal and educational use. It is provided as is, without warranty of any kind.

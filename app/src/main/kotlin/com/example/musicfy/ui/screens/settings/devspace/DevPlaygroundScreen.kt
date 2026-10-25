@@ -1,8 +1,4 @@
-// DevPlaygroundScreen.kt
-//
-// "Developer playground", opened from the card on Dev Spaces: what the repo did since this build
-// was made and in total, its open and resolved issues, and the Experimental settings. Asks GitHub
-// again on every open, like Dev Spaces does.
+// the developer playground page: what the repo did since this build, its issues, and the experimental settings
 
 package com.example.musicfy.ui.screens.settings.devspace
 

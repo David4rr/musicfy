@@ -1,5 +1,3 @@
-// ScrobblerEntryPoint.kt
-
 package com.example.musicfy.di
 
 import com.example.musicfy.scrobble.Scrobbler

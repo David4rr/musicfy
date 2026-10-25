@@ -1,10 +1,8 @@
-// TrackMatch.kt
-
 package com.music.directlyrics
 
 import kotlin.math.abs
 
-/** A search result, cut down to what tells whether it is the song being played. */
+/** a search result cut down to what tells whether it is the song being played */
 internal data class TrackCandidate<T>(
     val titles: List<String>,
     val artists: List<String>,
@@ -12,14 +10,10 @@ internal data class TrackCandidate<T>(
     val ref: T,
 )
 
-/** How many seconds a result's length may differ from the song's and still be the same recording. */
+/** how many seconds a result's length may differ from the song's and still be the same recording */
 private const val DurationTolerance = 8
 
-/**
- * The result that is this song: about the same length, the same title, and the same artist when
- * one matches. The top hit is often a cover or a live take (for 晴天 it was someone else's
- * "深情版"), so search order alone can't be trusted. A wrong song's lyrics are worse than none.
- */
+/** the result that is this song: about the same length, same title and same artist when one matches, the top hit is often a cover or a live take so search order can't be trusted */
 internal fun <T> List<TrackCandidate<T>>.bestMatch(title: String, artist: String, durationSec: Int): T? {
     val wantedTitle = normalize(title)
     val wantedArtist = normalize(artist)
@@ -42,7 +36,7 @@ private fun titleScore(candidate: TrackCandidate<*>, wantedTitle: String): Int =
         }
     } ?: 0
 
-// The app passes every artist joined into one string, so any one of the result's artists counts.
+// the app passes every artist joined into one string, so any one of the result's artists counts
 private fun artistScore(candidate: TrackCandidate<*>, wantedArtist: String): Int {
     if (wantedArtist.isEmpty()) return 0
     val matches = candidate.artists.map(::normalize).any { name ->
@@ -51,7 +45,7 @@ private fun artistScore(candidate: TrackCandidate<*>, wantedArtist: String): Int
     return if (matches) 2 else 0
 }
 
-// "Blinding Lights (Remastered)", "晴天（深情版）" and "Song [Live]" all come down to the bare name.
+// "blinding lights (remastered)", "晴天（深情版）" and "song [live]" all come down to the bare name
 private val Decorations = Regex("""\s*[(（\[【「『《].*?[)）\]】」』》]""")
 
 private fun normalize(text: String): String =

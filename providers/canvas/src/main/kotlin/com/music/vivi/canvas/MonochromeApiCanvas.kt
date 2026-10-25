@@ -1,5 +1,3 @@
-// MonochromeApiCanvas.kt
-
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient
@@ -64,10 +62,7 @@ object MonochromeApiCanvas {
 
     private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24
 
-    /**
-     * The animated cover of [song] by [artist], or null. [durationSec] is the song's length when
-     * known; a result that's more than a few seconds off is another recording.
-     */
+    /** the animated cover of the song by the artist, or null, a result more than a few seconds off the song's length is another recording */
     suspend fun getBySongArtist(
         song: String,
         artist: String,
@@ -104,9 +99,7 @@ object MonochromeApiCanvas {
                 val tracksSection = findSearchSection(root, "tracks") ?: continue
                 val items = tracksSection.jsonObject["items"]?.jsonArray ?: continue
 
-                // Only the song itself counts. A loose "title contains" match used to fall through to
-                // another song by the same artist whenever this one's album had no video, and showed
-                // that song's canvas instead. No canvas is fine; the wrong one isn't.
+                // only the song itself counts, a loose "title contains" match once fell through to another song by the same artist and showed its canvas
                 for (item in items) {
                     val track = item.jsonObject
 

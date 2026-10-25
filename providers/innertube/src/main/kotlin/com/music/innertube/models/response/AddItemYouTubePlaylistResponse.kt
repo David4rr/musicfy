@@ -1,5 +1,3 @@
-// AddItemYouTubePlaylistResponse.kt
-
 package com.music.innertube.models.response
 
 import kotlinx.serialization.Serializable

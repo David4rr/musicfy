@@ -1,5 +1,3 @@
-// LyricsResponse.kt
-
 package com.music.simpmusic.models
 
 import kotlinx.serialization.SerialName

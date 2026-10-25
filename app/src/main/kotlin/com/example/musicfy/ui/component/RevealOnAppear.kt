@@ -183,6 +183,8 @@ fun BonesHost(
     Column(
         modifier = modifier
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            // the wave never stops, so keep its repaints to these bones instead of the whole window and its glass
+            .damageBoundary()
             .drawWithContent {
                 drawContent()
                 val h = size.height

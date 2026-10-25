@@ -1,5 +1,3 @@
-// Deezer.kt
-
 package com.music.directlyrics
 
 import com.music.directlyrics.models.DeezerAuthResponse
@@ -23,10 +21,7 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import java.util.Base64
 
-/**
- * Deezer, asked directly with an anonymous login. Lyrics come word-timed when Deezer has that,
- * otherwise line-timed.
- */
+/** deezer asked directly with an anonymous login, lyrics come word-timed when deezer has that and line-timed otherwise */
 object Deezer {
 
     private val tokenLock = Mutex()
@@ -78,13 +73,13 @@ object Deezer {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Most likely the token went stale early. Forget it so the next song logs in again.
+            // most likely the token went stale early, forget it so the next song logs in again
             tokenLock.withLock { token = null }
             throw e
         }
     }
 
-    // The anonymous token only lasts about six minutes, so it is reused until shortly before then.
+    // the anonymous token only lasts about six minutes so it is reused until shortly before then
     private suspend fun accessToken(): String {
         tokenLock.withLock {
             token?.takeIf { System.currentTimeMillis() < tokenExpiresAt }?.let { return it }
@@ -99,16 +94,13 @@ object Deezer {
         }
     }
 
-    /** When the token stops working, read from its "exp" claim. */
+    /** when the token stops working, read from its "exp" claim */
     private fun expiryOf(jwt: String): Long? = runCatching {
         val payload = Base64.getUrlDecoder().decode(jwt.split('.')[1]).decodeToString()
         LyricsJson.parseToJsonElement(payload).jsonObject.getValue("exp").jsonPrimitive.long * 1000
     }.getOrNull()
 
-    /**
-     * Deezer sends bare words, so spaces go back between them, except before punctuation and
-     * between characters of scripts that are written without spaces.
-     */
+    /** deezer sends bare words so spaces go back between them, except before punctuation and between characters of scripts written without spaces */
     private fun joinWords(words: List<String>): String = buildString {
         words.map { it.trim() }.filter { it.isNotEmpty() }.forEach { word ->
             val attached = word.first() in NoSpaceBefore ||

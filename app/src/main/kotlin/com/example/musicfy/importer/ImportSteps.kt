@@ -30,26 +30,22 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.coroutines.coroutineContext
 
-/**
- * The work of an import or a re-sync: matching tracks on YouTube Music, putting their songs in
- * the library, and making or topping up playlists. MusicImportService runs one at a time and owns
- * the [progress] these steps report into.
- */
+/** the work of an import or re-sync: match tracks on youtube music, file songs in the library, make or top up playlists, MusicImportService runs one at a time and owns progress */
 internal class ImportSteps(
     private val context: Context,
     private val database: MusicDatabase,
     private val progress: MutableStateFlow<ImportProgress>,
 ) {
-    /** Where the run comes from; set by the service before each run. */
+    /** where the run comes from; set by the service before each run */
     @Volatile var source: ImportSource = ImportSource.OTHER
 
-    /** The session the run records what it changes under, so it can be undone. */
+    /** the session the run records what it changes under, so it can be undone */
     @Volatile var sessionId: Long? = null
 
-    /** Where each imported playlist lives on its service and what it had there, for Re-sync. */
+    /** where each imported playlist lives on its service and what it had there, for re-sync */
     val record = PlaylistSourceRecord(database)
 
-    /** A matcher for one run: it uses the versions the user picked and notes what it finds. */
+    /** a matcher for one run: it uses the versions the user picked and notes what it finds */
     fun newMatcher() = TrackMatcher(ImportMatches.get(context), source)
 
     suspend fun runImport(parsed: ParsedImport, options: ImportOptions) {
@@ -105,7 +101,7 @@ internal class ImportSteps(
         }
     }
 
-    /** An account's whole song library: into the Library's Songs, and nowhere else. */
+    /** an account's whole song library: into the library's songs, and nowhere else */
     private suspend fun importLibrarySongs(matcher: TrackMatcher, tracks: List<ImportedTrack>) {
         val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.item.id }
         if (matched.isEmpty()) return
@@ -115,11 +111,7 @@ internal class ImportSteps(
         fileIntoLibrary(matched.map { it.item.id }, sourceDates(matched))
     }
 
-    /**
-     * When each song was added on the source, so the Library and Liked songs list them in the
-     * source's order. A song the source gave no date gets one just before the song above it - a
-     * source without dates lists newest first.
-     */
+    /** when each song was added on the source so lists keep its order, a song with no date gets one just before the song above it since dateless sources list newest first */
     private fun sourceDates(matched: List<Matched>): Map<String, LocalDateTime> {
         val now = LocalDateTime.now()
         val dates = HashMap<String, LocalDateTime>()
@@ -134,7 +126,7 @@ internal class ImportSteps(
         return dates
     }
 
-    /** [cover] is the playlist's own picture on the source; without one the app shows its songs' covers. */
+    /** cover is the playlist's own picture on the source; without one the app shows its songs' covers */
     private suspend fun importPlaylist(
         matcher: TrackMatcher,
         name: String,
@@ -190,13 +182,13 @@ internal class ImportSteps(
         if (mirror) mirrorPlaylist(playlist.id, name)
     }
 
-    /** Tracks a playlist already had count as found, so the progress still reaches the end. */
+    /** tracks a playlist already had count as found, so the progress still reaches the end */
     private fun countAsDone(tracks: Int) {
         if (tracks <= 0) return
         progress.update { it.copy(processedTracks = it.processedTracks + tracks, matchedTracks = it.matchedTracks + tracks) }
     }
 
-    /** Finds [tracks] on YouTube Music and adds them to the end of [playlist], skipping any it has. Returns the ids added. */
+    /** finds tracks on youtube music and adds them to the end of playlist, skipping any it has. returns the ids added */
     suspend fun topUp(
         matcher: TrackMatcher,
         playlist: PlaylistEntity,
@@ -222,7 +214,7 @@ internal class ImportSteps(
         }
         if (intoLibrary) fileIntoLibrary(songIds)
 
-        // already linked to YouTube: keep both sides in step
+        // already linked to youtube: keep both sides in step
         val browseId = playlist.browseId
         if (browseId != null && signedIn && added.isNotEmpty()) {
             progress.update { it.copy(currentLabel = "Adding to \"${playlist.name}\" on YouTube") }
@@ -233,14 +225,7 @@ internal class ImportSteps(
         return added
     }
 
-    /**
-     * Puts imported songs where all music lives. The Library's Songs, Artists and Albums list what
-     * is `inLibrary`, so an imported song that only sat in a playlist - or in Liked songs - never
-     * showed up there. Each is also recorded as imported from [source], which is what the
-     * "Imported from" cards list and what the YouTube library sync reads to leave these songs be.
-     *
-     * Local only: this does not touch the user's YouTube library (see mirrorToYouTube for that).
-     */
+    /** files imported songs into the library (it only lists inLibrary songs) and tags them with source for the imported from cards and the youtube sync, local only, see mirrorToYouTube for youtube */
     suspend fun fileIntoLibrary(songIds: List<String>, addedAt: Map<String, LocalDateTime> = emptyMap()) {
         if (songIds.isEmpty()) return
         val now = LocalDateTime.now()
@@ -265,10 +250,10 @@ internal class ImportSteps(
         }
     }
 
-    /** A source track and the YouTube Music song found for it. */
+    /** a source track and the youtube music song found for it */
     private data class Matched(val track: ImportedTrack, val item: SongItem)
 
-    /** Matches in parallel (a few searches at a time) and keeps the source order. */
+    /** matches in parallel (a few searches at a time) and keeps the source order */
     private suspend fun matchAll(
         matcher: TrackMatcher,
         tracks: List<ImportedTrack>,

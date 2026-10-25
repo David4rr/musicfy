@@ -1,8 +1,4 @@
-// EqualizerScreen.kt
-//
-// Audio Lab's equalizer. One curve, shaped two ways (Graph: free parametric nodes; Bands: the
-// classic sliders over the same nodes), with an optional headphone correction from AutoEq under
-// it. Every move is heard straight away.
+// audio lab's equalizer: one curve shaped as a graph or as sliders, with an optional headphone correction
 
 package com.example.musicfy.ui.screens.equalizer
 

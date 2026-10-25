@@ -1,5 +1,3 @@
-// CommentResponse.kt
-
 package com.music.innertube.models.comment
 
 import kotlinx.serialization.Serializable

@@ -1,5 +1,3 @@
-// downloadnotificationmanager.kt
-
 package com.example.musicfy.core.updater.downloadmanager
 
 import android.app.Notification

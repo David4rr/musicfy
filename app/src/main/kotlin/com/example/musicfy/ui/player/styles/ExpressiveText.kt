@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -47,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.lyrics.LyricsEntry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.max
@@ -648,6 +651,8 @@ fun ExpressiveLyrics(
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 128)
     val density = LocalDensity.current
+    val fontFamilyResolver = LocalFontFamilyResolver.current
+    val layoutDirection = LocalLayoutDirection.current
     // only a song with more than one voice puts lines on both sides
     val duet = remember(lines) { lines.map { it.agent ?: "v1" }.distinct().size > 1 }
     val rtl = remember(lines) { readsRightToLeft(lines) }
@@ -709,25 +714,36 @@ fun ExpressiveLyrics(
         val basePx = with(density) { baseSize.toPx() }
         val stackGapPx = basePx * 0.28f
         val cache = remember(lines, widthPx, heightPx, basePx, color) { HashMap<LineKey, LineCells>() }
+        fun measureWith(textMeasurer: TextMeasurer, index: Int, reading: String?, translation: String?): LineCells {
+            // a line that shares the block with another gets half of it
+            val shared = overlaps[index] || (index > 0 && overlaps[index - 1])
+            val budget = if (shared) (heightPx * 0.94f - stackGapPx) / 2f else heightPx * 0.94f
+            return measureLine(
+                textMeasurer, lines[index], lines.getOrNull(index + 1)?.time, widthPx, budget, basePx,
+                density, color, sideOf(lines[index], duet, rtl), reading, translation,
+            )
+        }
         fun cellsOf(index: Int, reading: String?, translation: String?): LineCells =
-            cache.getOrPut(LineKey(index, reading, translation)) {
-                // a line that shares the block with another gets half of it
-                val shared = overlaps[index] || (index > 0 && overlaps[index - 1])
-                val budget = if (shared) (heightPx * 0.94f - stackGapPx) / 2f else heightPx * 0.94f
-                measureLine(
-                    measurer, lines[index], lines.getOrNull(index + 1)?.time, widthPx, budget, basePx,
-                    density, color, sideOf(lines[index], duet, rtl), reading, translation,
-                )
-            }
-        // the next line is measured a frame after this one lands, never on the frame it's needed
+            cache.getOrPut(LineKey(index, reading, translation)) { measureWith(measurer, index, reading, translation) }
+        // the next line is measured a frame after this one lands, off the main thread
         androidx.compose.runtime.LaunchedEffect(shown, cache) {
             androidx.compose.runtime.withFrameMillis { }
+            cache.keys.retainAll { it.index in (first - 1)..(shown + 1) }
             val next = shown + 1
             if (next in lines.indices) {
                 val e = lines[next]
-                cellsOf(next, readingOf(e.romanizedTextFlow.value, e.rubyFlow.value, e.text), e.translatedTextFlow.value?.takeIf { it.isNotBlank() && it != e.text })
+                val reading = readingOf(e.romanizedTextFlow.value, e.rubyFlow.value, e.text)
+                val translation = e.translatedTextFlow.value?.takeIf { it.isNotBlank() && it != e.text }
+                val key = LineKey(next, reading, translation)
+                if (key !in cache) {
+                    // its own measurer, because the shared one is only safe on the main thread
+                    val measured = withContext(Dispatchers.Default) {
+                        measureWith(TextMeasurer(fontFamilyResolver, density, layoutDirection, 128), next, reading, translation)
+                    }
+                    // if the line was needed before this finished, it was measured on the spot and stays
+                    if (key !in cache) cache[key] = measured
+                }
             }
-            cache.keys.retainAll { it.index in (first - 1)..(shown + 1) }
         }
 
         gap?.let { interlude ->

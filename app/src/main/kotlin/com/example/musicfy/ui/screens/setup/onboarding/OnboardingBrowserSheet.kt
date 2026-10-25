@@ -1,9 +1,4 @@
-// OnboardingBrowserSheet.kt
-//
-// The sign-in "browser window": a sheet that opens inside the onboarding sheet. The onboarding page
-// behind it recedes the way covered popup sheets do (shrinks about its top edge, dims, its top strip
-// still peeking), and the browser opens over it. Its top bar is a plain gradient — no blur — with
-// the provider's squircle, "Sign in to …", the live address, and a close button.
+// the sign-in browser sheet that opens inside the onboarding sheet, the page behind it recedes like a covered popup sheet
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -52,22 +47,18 @@ import com.example.musicfy.R
 import com.example.musicfy.importer.account.AccountService
 import kotlinx.coroutines.launch
 
-/** One spring for the sheet and the page behind it, so the two never drift apart. */
+/** one spring for the sheet and the page behind it so the two never drift apart */
 internal val BrowserSpring = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow, visibilityThreshold = 0.0005f)
 
-/** The browser bar: solid behind its text, then fading out over the top of the web page. */
+/** the browser bar is solid behind its text, then fades out over the top of the web page */
 private val BarSolidHeight = 76.dp
 private val BarFadeHeight = 28.dp
 
-/** How far the page behind shrinks, and how much of its top shows above the browser sheet. */
+/** how far the page behind shrinks and how much of its top shows above the browser sheet */
 internal const val BehindScale = 0.92f
 internal val BrowserPeek = 26.dp
 
-/**
- * The browser sheet. [presence] (0 hidden … 1 open) is owned by the caller, which also recedes the
- * page behind with it. [content] is the web page; it gets the live address and loading state back
- * through the two callbacks it's handed.
- */
+/** the browser sheet, presence goes 0 hidden to 1 open and the caller recedes the page behind with it */
 @Composable
 internal fun OnboardingBrowserSheet(
     service: AccountService,

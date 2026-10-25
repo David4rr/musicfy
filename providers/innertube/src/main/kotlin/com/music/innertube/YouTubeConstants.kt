@@ -1,5 +1,3 @@
-// YouTubeConstants.kt
-
 package com.music.innertube
 
 object YouTubeConstants {

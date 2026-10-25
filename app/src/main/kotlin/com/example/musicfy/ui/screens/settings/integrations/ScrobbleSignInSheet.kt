@@ -1,8 +1,4 @@
-// ScrobbleSignInSheet.kt
-//
-// Signing in to Last.fm or Libre.fm in a sheet, on the service's own page. Musicfy asks for a
-// token, opens the service's "allow access" page with it, and checks every few seconds whether
-// the user has said yes. The password is typed into the service's page and never reaches Musicfy.
+// last.fm or libre.fm sign-in in a sheet on the service's own page, the password never reaches musicfy
 
 package com.example.musicfy.ui.screens.settings.integrations
 
@@ -43,7 +39,7 @@ import com.music.lastfm.AudioscrobblerException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
-/** How often to ask whether the user has allowed Musicfy yet. */
+/** how often to ask whether the user has allowed musicfy yet */
 private const val CheckEveryMs = 2_500L
 
 @Composable

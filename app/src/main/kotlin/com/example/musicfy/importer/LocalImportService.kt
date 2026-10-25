@@ -33,11 +33,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
-/**
- * Imports audio files from the phone into the library, one at a time, in the background. It runs
- * here rather than in a screen so the import keeps going when the sheet that started it closes,
- * and so the Library's progress card can show it from anywhere.
- */
+/** imports audio files from the phone one at a time in the background, here and not in a screen so it keeps going when the sheet closes and the progress card can show it */
 @Singleton
 class LocalImportService @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -50,27 +46,27 @@ class LocalImportService @Inject constructor(
 
     private val _batch = MutableStateFlow(TransferBatch())
 
-    /** The import under way, or the last one until [clearFinished]. */
+    /** the import under way, or the last one until clearFinished */
     val batch: StateFlow<TransferBatch> = _batch.asStateFlow()
 
     val isRunning: Boolean get() = job?.isActive == true
 
-    /** A file waiting to be imported. Picked files need their read access kept to still play later. */
+    /** a file waiting to be imported. picked files need their read access kept to still play later */
     private class Pending(val uri: Uri, val title: String, val subtitle: String?, val artworkUrl: String?, val keepAccess: Boolean)
 
-    /** Files chosen in the system file picker. False if an import is already running. */
+    /** files chosen in the system file picker. false if an import is already running */
     fun importPicked(uris: List<Uri>): Boolean =
         start(uris.map { Pending(it, title = "", subtitle = null, artworkUrl = null, keepAccess = true) })
 
-    /** Songs found by a storage scan. False if an import is already running. */
+    /** songs found by a storage scan. false if an import is already running */
     fun importDeviceSongs(songs: List<DeviceSong>): Boolean =
         start(songs.map { Pending(it.uri, it.title, it.artist, it.artworkUri, keepAccess = false) })
 
-    /** Files found in a music folder the user picked. Access comes with the folder, so none is taken per file. */
+    /** files found in a music folder the user picked. access comes with the folder, so none is taken per file */
     fun importFolderFiles(uris: List<Uri>): Boolean =
         start(uris.map { Pending(it, title = "", subtitle = null, artworkUrl = null, keepAccess = false) })
 
-    /** Forgets a finished import, so the progress card and sheet start clean next time. */
+    /** forgets a finished import, so the progress card and sheet start clean next time */
     fun clearFinished() {
         if (!isRunning) _batch.value = TransferBatch()
     }
@@ -81,7 +77,7 @@ class LocalImportService @Inject constructor(
         if (isRunning || files.isEmpty()) return false
         _batch.value = TransferBatch(files.map { it.toItem() })
         job = scope.launch {
-            // A picked file only has its file name until it is read; show that rather than nothing.
+            // a picked file only has its file name until it is read; show that rather than nothing
             if (files.any { it.title.isEmpty() }) {
                 _batch.value = TransferBatch(files.map { it.toItem(fallbackTitle = displayName(it.uri)) })
             }
@@ -148,7 +144,7 @@ class LocalImportService @Inject constructor(
         state = TransferState.Waiting,
     )
 
-    /** "Night Drive.mp3" as "Night Drive". */
+    /** "night drive.mp3" as "night drive" */
     private fun displayName(uri: Uri): String? = runCatching {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { if (it.moveToFirst()) it.getString(0) else null }

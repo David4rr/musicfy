@@ -1,5 +1,3 @@
-// DeezerModels.kt
-
 package com.music.directlyrics.models
 
 import kotlinx.serialization.SerialName
@@ -14,9 +12,9 @@ internal data class DeezerSearchResponse(val data: List<Track> = emptyList()) {
     data class Track(
         val id: Long,
         val title: String = "",
-        /** The title without its version, "Song" for "Song (Remastered 2011)". */
+        /** the title without its version, "song" for "song (remastered 2011)" */
         @SerialName("title_short") val titleShort: String = "",
-        /** Seconds. */
+        /** seconds */
         val duration: Int = 0,
         val artist: Artist? = null,
     )

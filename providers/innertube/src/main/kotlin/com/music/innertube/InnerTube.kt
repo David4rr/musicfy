@@ -1,5 +1,3 @@
-// InnerTube.kt
-
 package com.music.innertube
 
 import com.music.innertube.models.Context
@@ -70,7 +68,7 @@ class InnerTube {
 
     var useLoginForBrowse: Boolean = false
 
-    /** Offline mode: every request fails at once with [OfflineModeException], none goes out. */
+    /** offline mode: every request fails at once with OfflineModeException, none goes out */
     @Volatile
     var offline: Boolean = false
 
@@ -287,7 +285,7 @@ class InnerTube {
         params: String? = null,
         continuation: String? = null,
         setLogin: Boolean = false,
-        /** Forces the response language (e.g. "en" so section titles can be parsed). */
+        /** forces the response language (e.g. "en" so section titles can be parsed) */
         hlOverride: String? = null,
     ) = withRetry {
         httpClient.post("browse") {
@@ -398,10 +396,7 @@ class InnerTube {
         }
     }
 
-    /**
-     * One caption track's cues in YouTube's JSON timed-text format. [baseUrl] comes from a player
-     * response made as [client], and the request goes out as that client too.
-     */
+    /** one caption track's cues in youtube's json timed-text format, baseUrl comes from a player response made as client and the request goes out as that client too */
     suspend fun timedText(baseUrl: String, client: YouTubeClient) = withRetry {
         httpClient.get(baseUrl) {
             url.parameters["fmt"] = "json3"

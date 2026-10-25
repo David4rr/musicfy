@@ -1,5 +1,3 @@
-// DownloadLyricsResponse.kt
-
 package com.music.kugou.models
 
 import kotlinx.serialization.Serializable

@@ -23,17 +23,7 @@ import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-/**
- * Analyses tracks for Crossmix and keeps the results on disk.
- *
- * The audio is read through the player's own data source: a YouTube song's media item only holds
- * its video id, which the player's resolving source turns into a stream URL (and serves from the
- * cache when it can). The old decoder handed that id straight to MediaExtractor, which can't open
- * it, so every streamed song came back unanalysed. Reading the next song this way also leaves its
- * opening in the player's cache, so it starts instantly.
- *
- * A failed decode is not cached: a stream URL that expired now may well work on the next try.
- */
+/** analyses tracks for crossmix and keeps them on disk, a failed decode is never cached since an expired stream url may work next time */
 @UnstableApi
 @OptIn(ExperimentalCoroutinesApi::class)
 class CrossmixAnalysisRepository(
@@ -51,18 +41,14 @@ class CrossmixAnalysisRepository(
     }.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
-    /**
-     * [wholeTrack]: the song that's playing, whose ending is mixed out of. otherwise only the
-     * first [HeadMs] are read: the next song is only ever entered in its first two minutes.
-     */
+    /** wholeTrack is the song that's playing, whose ending we mix out of; otherwise only the first HeadMs are read, the next song is entered early */
     suspend fun analyze(item: MediaItem, wholeTrack: Boolean): TrackAnalysis? {
         val uri = item.localConfiguration?.uri ?: return null
         val mediaId = item.mediaId.ifBlank { uri.toString() }
         usable(memory[mediaId], wholeTrack)?.let { return it }
 
         val key = "$mediaId|$wholeTrack"
-        // started only once it's in the map, so a quick finish can't remove itself before it's
-        // added and leave a stale (possibly failed) result behind for every later caller
+        // start only once it's in the map, so a quick finish can't remove itself first and leave a stale result for later callers
         val job = inFlight.getOrPut(key) {
             scope.async(start = CoroutineStart.LAZY) {
                 val progress = Progress()
@@ -104,7 +90,7 @@ class CrossmixAnalysisRepository(
     /** what's already known, without decoding anything */
     fun cached(mediaId: String): TrackAnalysis? = memory[mediaId]
 
-    /** why the last analysis of [mediaId] came back empty, if it did */
+    /** why the last analysis of mediaId came back empty, if it did */
     fun lastFailure(mediaId: String): String? = failures[mediaId]
 
     private class Progress {
@@ -222,7 +208,7 @@ class CrossmixAnalysisRepository(
     }
 }
 
-/** downmixes PCM 16 to mono and resamples it to the analyser's rate, carrying phase between calls */
+/** downmixes pcm 16 to mono and resamples it to the analyser's rate, carrying phase between calls */
 private class MonoResampler {
     private val out = FloatArray(8_192)
     private var count = 0

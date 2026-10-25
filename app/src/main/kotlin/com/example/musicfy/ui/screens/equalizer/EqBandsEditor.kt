@@ -1,7 +1,4 @@
-// EqBandsEditor.kt
-//
-// The equalizer's Bands tab: the same bands as the graph, as the classic row of sliders. A finger
-// swept across them draws the curve in one go; a smooth line threads the thumbs so the shape reads.
+// the equalizer's bands tab: the graph's bands as sliders, one sweep of a finger draws the curve
 
 package com.example.musicfy.ui.screens.equalizer
 

@@ -1,5 +1,3 @@
-// SpatialAudioProcessor.kt
-
 package com.example.musicfy.eq.audio
 
 import androidx.media3.common.C
@@ -29,25 +27,13 @@ data class SpatialParams(
     /** virtual speakers: how far each one sits from straight ahead, degrees */
     val speakerAngle: Float = 30f,
     val amount: Float = 1f,
-    /** 5.1 / 7.1 (Atmos) streams rendered to two ears instead of folded down by the device */
+    /** 5.1 / 7.1 (atmos) streams rendered to two ears instead of folded down by the device */
     val surround: Boolean = false,
     /** both ears hear the whole mix (one earbud, hearing in one ear) */
     val mono: Boolean = false,
 )
 
-/**
- * Headphone spatial audio.
- *
- * Stereo gets either crossfeed (Bauer's bs2b: each ear hears the other side low-passed and
- * quieter, as from speakers, so hard-panned mixes stop sitting inside the head) or virtual
- * speakers: each channel placed at an angle in front of a modelled head (Brown & Duda's spherical
- * head: the far ear hears it later and darker, the near ear brighter). Surround streams (5.1, 7.1,
- * Dolby Atmos decoded to beds) put every channel at its standard position around the head.
- *
- * Stereo settings change live and fade in and out. Whether a surround stream is rendered is
- * decided when its format is set up, since it changes the channel count, so that takes effect
- * from the next song.
- */
+/** headphone spatial audio: crossfeed or virtual speakers for stereo, standard speaker positions for surround; surround changes the channel count, so it only applies from the next song */
 @UnstableApi
 @Suppress("DEPRECATION")
 class SpatialAudioProcessor(private val service: AudioFxService) : AudioProcessor {
@@ -77,8 +63,7 @@ class SpatialAudioProcessor(private val service: AudioFxService) : AudioProcesso
                 pendingFormat = inputAudioFormat
                 inputAudioFormat
             }
-            // Dolby Atmos and other surround streams: rendered to two ears when asked, whatever the
-            // stereo setting is
+            // atmos and other surround streams are rendered to two ears when asked, whatever the stereo setting is
             in 3..8 -> if (params.surround) {
                 pendingSurround = true
                 pendingFormat = inputAudioFormat
@@ -284,11 +269,7 @@ class SpatialAudioProcessor(private val service: AudioFxService) : AudioProcesso
         }
     }
 
-    /**
-     * Brown & Duda's spherical head: for each source and ear, a time delay (Woodworth) and a
-     * first-order head-shadow shelf, from the angle between the source and that ear.
-     * [azimuths] in degrees, 0 ahead, positive to the right; NaN marks an LFE channel.
-     */
+    /** brown and duda's spherical head: per source and ear a woodworth time delay and a first-order head-shadow shelf, azimuths in degrees (0 ahead, positive right, nan marks an lfe channel) */
     private class HeadRenderer(sampleRate: Int, private val azimuths: FloatArray) {
         private val n = azimuths.size
         private val line = Array(n) { FloatArray(DelaySize) }
@@ -319,7 +300,7 @@ class SpatialAudioProcessor(private val service: AudioFxService) : AudioProcesso
                 for (ear in 0..1) {
                     val i = s * 2 + ear
                     if (az.isNaN()) {
-                        // LFE: no direction, straight to both ears
+                        // lfe: no direction, straight to both ears
                         b0[i] = 1f; b1[i] = 0f; a1[i] = 0f
                         continue
                     }
@@ -395,7 +376,7 @@ class SpatialAudioProcessor(private val service: AudioFxService) : AudioProcesso
         private const val SurroundGain = 0.45f
         private const val Knee = 0.9f
 
-        /** Android's channel order: FL FR FC LFE BL BR SL SR (fewer channels drop from the end) */
+        /** android's channel order: fl fr fc lfe bl br sl sr (fewer channels drop from the end) */
         private fun surroundAzimuths(channels: Int): FloatArray = when (channels) {
             3 -> floatArrayOf(-30f, 30f, 0f)
             4 -> floatArrayOf(-30f, 30f, -110f, 110f)

@@ -1,5 +1,3 @@
-// commitscreen.kt
-
 package com.example.musicfy.core.commitscreen
 
 import android.content.Intent

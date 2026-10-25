@@ -1,12 +1,4 @@
-// FxCardStack.kt
-//
-// Audio FX's header picture, from the user's mocks: a fanned stack of cards, one for each effect
-// that's on, each with the music's bars. At most three show, front to back; with more on, the
-// front card says "1 of 5" and a line above the stack counts the rest. The front card moves to the
-// back every few seconds, or on a tap. With nothing on there's one plain card of bars.
-//
-// Cards come and go from behind the sheet: switching an effect on slides its card up into the
-// stack, switching it off slides it back down out of sight.
+// audio fx header: a fanned stack of cards, one per effect that's on, the front one moves to the back every few seconds or on a tap
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -50,7 +42,7 @@ import com.example.musicfy.ui.component.damageBoundary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
-/** An effect that's on, as the header's cards and the hub's status line name it. */
+/** an effect that's on, as the header's cards and the hub's status line name it */
 class ActiveEffect(val key: String, val label: String)
 
 internal fun activeEffects(
@@ -75,7 +67,7 @@ private const val FrontSeconds = 3_200L
 /** the plain card shown while no effect is on */
 private const val IdleKey = "idle"
 
-/** One card in the stack. It stays after its effect goes off, until it has slid away. */
+/** one card in the stack, it stays after its effect goes off until it has slid away */
 private class StackCard(val key: String, val label: String?) {
     var leaving by mutableStateOf(false)
 
@@ -209,7 +201,7 @@ private fun BoxScope.StackedCard(
     }
 }
 
-/** Turns a line of text a quarter turn, to read top to bottom, and lays it out that way round. */
+/** turns a line of text a quarter turn to read top to bottom and lays it out that way round */
 private fun Modifier.readingDown(): Modifier = layout { measurable, _ ->
     val text = measurable.measure(Constraints())
     layout(text.height, text.width) {

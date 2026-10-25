@@ -1,10 +1,4 @@
-// AudioLabScreen.kt
-//
-// Audio Lab: the home of Musicfy's sound, to the user's mock. The title sits on the page, and
-// the cards on a sheet that slides up over it: big cards for the equalizer and the effects, each
-// with a green dot and its state in small type, then quality and transitions. Each card's drawing
-// shows its state: the equalizer's knobs sit where your curve is, the FX lights when an effect is
-// on, the quality waveform is as fine as what's streaming. Two columns on a tablet.
+// audio lab home: big cards for the equalizer and effects, shorter ones for quality and transitions, each drawing shows its state
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -175,7 +169,7 @@ fun AudioLabScreen(
     }
 }
 
-/** "REVERB, SURROUND and 2 more", as in the mock */
+/** the effects status line, first names then "and 2 more" as in the mock */
 private fun effectsStatus(effects: List<ActiveEffect>): String {
     val names = effects.map { it.label.uppercase() }
     return when {
@@ -203,7 +197,7 @@ private fun qualityName(q: AudioQuality, firstProvider: String?): String = when 
     }
 }
 
-/** The equalizer's and the effects' card: a green dot and the state in small type, the name under it. */
+/** the equalizer's and effects' card, a green dot and the state in small type with the name under it */
 @Composable
 private fun BigHubCard(
     title: String,
@@ -238,7 +232,7 @@ private fun BigHubCard(
     }
 }
 
-/** Quality's and transitions' shorter card: the name, its state under it, the drawing at the right. */
+/** the shorter card for quality and transitions: the name, its state under it, the drawing at the right */
 @Composable
 private fun SmallHubCard(
     title: String,

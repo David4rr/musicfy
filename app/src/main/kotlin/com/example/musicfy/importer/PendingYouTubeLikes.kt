@@ -5,11 +5,7 @@ package com.example.musicfy.importer
 import android.content.Context
 import java.io.File
 
-/**
- * Songs liked by an import that YouTube doesn't know about yet. YouTube sync treats "liked here but
- * not on YouTube" as "unliked elsewhere" and unlikes it locally, which would wipe every imported
- * like; sync checks this set first and pushes these up instead.
- */
+/** songs liked by an import that youtube doesn't know yet, sync checks this first or it would unlike every imported like */
 object PendingYouTubeLikes {
     private const val FILE_NAME = "yt_pending_likes.txt"
     private val lock = Any()

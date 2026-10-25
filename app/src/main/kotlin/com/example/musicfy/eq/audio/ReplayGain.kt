@@ -1,5 +1,3 @@
-// ReplayGain.kt
-
 package com.example.musicfy.eq.audio
 
 import androidx.annotation.OptIn
@@ -12,19 +10,14 @@ import kotlin.math.pow
 
 enum class ReplayGainMode { Track, Album }
 
-/** How ReplayGain is applied: which of the file's two gains, and a preamp on top. */
+/** how replaygain is applied: which of the file's two gains, and a preamp on top */
 data class ReplayGainParams(
     val mode: ReplayGainMode = ReplayGainMode.Track,
-    /** Monochrome's default: ReplayGain's 89 dB reference sits a little quiet for phones */
+    /** monochrome's default: replaygain's 89 db reference sits a little quiet for phones */
     val preampDb: Float = 3f,
 )
 
-/**
- * One player's song's ReplayGain, as its file carries it (Monochrome's FLACs do, as many local
- * files do). Read from the decoded track's Vorbis comments when its tracks change, and applied by
- * that player's sink as part of its volume: a gain can only bring a song down there, which is what
- * nearly every modern master needs, and it never takes a peak past full scale.
- */
+/** one player's song replaygain from its file (monochrome flacs, many local files), read from vorbis comments on track change; it can only bring a song down and never takes a peak past full scale */
 class ReplayGainTags {
     @Volatile var trackGain: Float? = null
         private set
@@ -54,7 +47,7 @@ class ReplayGainTags {
         update(comments)
     }
 
-    /** from the song's Vorbis comments (key, value); a song without any clears the last one's */
+    /** from the song's vorbis comments (key, value); a song without any clears the last one's */
     fun update(comments: List<Pair<String, String>>) {
         var tg: Float? = null
         var tp: Float? = null
@@ -75,7 +68,7 @@ class ReplayGainTags {
         albumPeak = ap
     }
 
-    /** the volume factor for [params]; 1 when there's nothing to apply */
+    /** the volume factor for params; 1 when there's nothing to apply */
     fun linear(params: ReplayGainParams, normalize: Boolean): Float {
         if (!normalize) return 1f
         val album = params.mode == ReplayGainMode.Album
@@ -87,7 +80,7 @@ class ReplayGainTags {
     }
 
     companion object {
-        /** "-8.89 dB", "1.000000", "+2.1 dB" */
+        /** "-8.89 db", "1.000000", "+2.1 db" */
         internal fun number(text: String): Float? =
             Regex("""[-+]?\d+(?:\.\d+)?""").find(text)?.value?.toFloatOrNull()
     }

@@ -1,9 +1,4 @@
-// ProviderOrder.kt
-//
-// The provider order card (Audio Quality, from the user's design): one row per provider with its
-// logo, name and a drag handle, a chevron between each. Drag a row by its handle and the others
-// slide out of its way; let go and the new order is saved. A tap on a row is the page's to handle
-// (turn it on or off, or sign in). Providers that are off read dimmed.
+// the provider order card on audio quality: drag a row by its handle and the others slide out of the way, a tap on a row is the page's to handle
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -150,8 +145,7 @@ fun ProviderOrder(
                                 Text(it, fontFamily = InterFontFamily, fontSize = 11.sp, color = LabColors.Secondary, maxLines = 1)
                             }
                         }
-                        // the handle: dragging it moves the row. A tap on it does nothing, rather
-                        // than reaching the row and switching the provider
+                        // the handle: dragging it moves the row, a tap on it does nothing rather than reaching the row and switching the provider
                         Canvas(
                             Modifier
                                 .size(48.dp)

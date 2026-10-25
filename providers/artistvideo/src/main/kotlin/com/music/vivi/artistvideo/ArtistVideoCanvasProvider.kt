@@ -1,5 +1,3 @@
-// ArtistVideoCanvasProvider.kt
-
 package com.example.musicfy.artistvideo
 
 import io.ktor.client.HttpClient

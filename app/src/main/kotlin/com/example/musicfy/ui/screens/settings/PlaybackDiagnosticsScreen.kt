@@ -1,5 +1,3 @@
-// PlaybackDiagnosticsScreen.kt
-
 package com.example.musicfy.ui.screens.settings
 
 import android.content.ClipData
@@ -37,7 +35,7 @@ import com.example.musicfy.utils.PlaybackLogLevel
 import com.example.musicfy.utils.PlaybackLogManager
 import com.example.musicfy.utils.YTPlayerUtils
 
-/** Newest entries first, capped so the scrolling column stays responsive. */
+/** newest entries first, capped so the scrolling column stays responsive */
 private const val VISIBLE_ENTRIES = 200
 
 @Composable

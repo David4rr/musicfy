@@ -617,6 +617,7 @@ fun LocalPlaylistScreen(
         itemsIndexed(
             items = if (isSearching) filteredSongs else mutableSongs,
             key = { _, song -> song.map.id },
+            contentType = { _, _ -> "track" },
         ) { index, song ->
             ReorderableItem(
                 state = reorderableState,

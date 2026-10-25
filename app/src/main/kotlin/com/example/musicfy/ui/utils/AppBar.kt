@@ -13,6 +13,9 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -24,13 +27,18 @@ fun appBarScrollBehavior(
     canScroll: () -> Boolean = { true },
     snapAnimationSpec: AnimationSpec<Float>? = spring(stiffness = Spring.StiffnessMediumLow),
     flingAnimationSpec: DecayAnimationSpec<Float>? = rememberSplineBasedDecay(),
-): TopAppBarScrollBehavior =
-    AppBarScrollBehavior(
-        state = state,
-        snapAnimationSpec = snapAnimationSpec,
-        flingAnimationSpec = flingAnimationSpec,
-        canScroll = canScroll,
-    )
+): TopAppBarScrollBehavior {
+    // keep one behavior alive, a new one on each recomposition would rebuild the nav graph
+    val currentCanScroll by rememberUpdatedState(canScroll)
+    return remember(state, snapAnimationSpec, flingAnimationSpec) {
+        AppBarScrollBehavior(
+            state = state,
+            snapAnimationSpec = snapAnimationSpec,
+            flingAnimationSpec = flingAnimationSpec,
+            canScroll = { currentCanScroll() },
+        )
+    }
+}
 
 @ExperimentalMaterial3Api
 class AppBarScrollBehavior(

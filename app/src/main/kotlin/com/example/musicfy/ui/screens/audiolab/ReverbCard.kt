@@ -1,8 +1,4 @@
-// ReverbCard.kt
-//
-// The reverb on the Audio FX page: a room you can hear the music bounce around in. The card has
-// the room presets and every slider, and its picture sends waves from a speaker into a wall that
-// moves with the room size, so you can see the echo grow and fade as you tune it.
+// the reverb card on audio fx: room presets and every slider, and a picture of waves bouncing off a wall that moves with room size
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -85,7 +81,7 @@ private fun FineTuneLabel() {
     )
 }
 
-// ---- The picture: waves leave the speaker, bounce between the walls and die away -----------
+// ---- the picture: waves leave the speaker, bounce between the walls and die away -----------
 
 private class RoomWaves {
     val born = FloatArray(14) { -100f }

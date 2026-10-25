@@ -1,5 +1,3 @@
-// changelogscreen.kt
-
 package com.example.musicfy.core.changelog
 
 import android.content.Context

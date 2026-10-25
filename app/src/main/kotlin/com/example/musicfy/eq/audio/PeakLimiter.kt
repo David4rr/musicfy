@@ -1,5 +1,3 @@
-// PeakLimiter.kt
-
 package com.example.musicfy.eq.audio
 
 import kotlin.math.abs
@@ -7,16 +5,7 @@ import kotlin.math.exp
 import kotlin.math.log2
 import kotlin.math.max
 
-/**
- * Catches the equalizer's loudest peaks, so a boost can stay loud instead of the whole song being
- * turned down to make room for it. It looks [LookaheadSeconds] ahead and eases the level down just
- * before a peak would pass full scale. It holds that level for [HoldSeconds], longer than a bass
- * note's cycle, then lets it back up over [ReleaseSeconds]. Rising between every crest would put a
- * buzz on loud bass. Every channel gets the same gain, so the stereo picture never moves.
- *
- * Music comes out [latencyFrames] late. Below full scale nothing else changes, so with the
- * equalizer off the sound is the same, sample for sample, only a few milliseconds later.
- */
+/** catches the equalizer's loudest peaks so a boost stays loud: looks ahead, eases down before full scale, holds longer than a bass cycle (rising between crests buzzes), one gain for all channels */
 class PeakLimiter {
 
     var latencyFrames = 0
@@ -74,7 +63,7 @@ class PeakLimiter {
         frame = 0
     }
 
-    /** limits [frames] interleaved frames of [buffer] in place; what comes out is [latencyFrames] older */
+    /** limits the first frames frames of buffer in place, what comes out is latencyFrames older */
     fun process(buffer: DoubleArray, frames: Int) {
         if (channels == 0) return
         // the usual case, nothing near full scale: skip the gain maths and only delay
@@ -135,7 +124,7 @@ class PeakLimiter {
         minSize = 0
     }
 
-    /** the lowest of the last [window] envelopes, [value] being the newest */
+    /** the lowest of the last window envelopes, value is the newest */
     private fun lowestInWindow(value: Double): Double {
         while (minSize > 0 && minFrame[minHead] <= frame - window) {
             minHead = if (minHead + 1 == window) 0 else minHead + 1
@@ -156,10 +145,7 @@ class PeakLimiter {
         return minGain[minHead]
     }
 
-    /**
-     * The average of the last [window] held gains. Each one is already at or below what the
-     * oldest frame in the delay needs, so the ramp lands in time and never lets a peak through.
-     */
+    /** the average of the last window held gains: each is at or below what the oldest frame in the delay needs, so the ramp lands in time and no peak gets through */
     private fun smooth(gain: Double): Double {
         val oldest = held[heldPos]
         if (oldest == 1.0) heldOnes--
@@ -177,7 +163,7 @@ class PeakLimiter {
 
     companion object {
         private const val LookaheadSeconds = 0.005
-        /** one cycle of a 40 Hz bass note */
+        /** one cycle of a 40 hz bass note */
         private const val HoldSeconds = 0.025
         private const val ReleaseSeconds = 0.15
         private const val Ceiling = 1.0
@@ -186,11 +172,7 @@ class PeakLimiter {
         /** how much of a bass or mid boost the limiter takes without the song sounding squashed */
         private const val BoostRoomDb = 4.0
 
-        /**
-         * How many dB of boost at [frequency] the limiter can take on its own, so the auto preamp
-         * only has to turn down the rest. Songs carry much less treble than bass, so a treble
-         * boost barely raises their peaks, and the room grows by 3 dB an octave above 1 kHz.
-         */
+        /** how many db of boost at frequency the limiter takes alone: songs carry less treble than bass, so the room grows 3 db an octave above 1 khz */
         fun boostRoomDb(frequency: Double): Double =
             BoostRoomDb + 3.0 * max(0.0, log2(frequency / 1000.0))
     }

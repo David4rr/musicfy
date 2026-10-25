@@ -42,7 +42,7 @@ data class YtSyncState(
     val message: String? = null,
 )
 
-/** The manual YouTube actions on the Sync page; automatic library sync stays in [SyncUtils]. */
+/** the manual youtube actions on the sync page; automatic library sync stays in SyncUtils */
 @Singleton
 class YouTubeSyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -131,14 +131,9 @@ class YouTubeSyncManager @Inject constructor(
         }
     }
 
-    /**
-     * Copies YouTube Music history into Musicfy's history. YouTube only says which day-ish bucket a
-     * play is in ("Today", "Last week", "March 2026"), so each play gets a time inside its bucket.
-     * A song that already has a play in that bucket is skipped — that covers songs played here (we
-     * report those to YouTube) and earlier copies, so pulling again never doubles up.
-     */
+    /** copies youtube music history into ours, youtube only gives day-ish buckets (today, last week, march 2026) so each play gets a time inside its bucket, a song already played in that bucket is skipped so pulling again never doubles up */
     private suspend fun pullHistory(): Int {
-        // English section titles, whatever the app language, so the buckets can be read
+        // english section titles, whatever the app language, so the buckets can be read
         val page = YouTube.musicHistory(hlOverride = "en").getOrThrow()
         val today = LocalDate.now()
         val now = LocalDateTime.now()

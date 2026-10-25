@@ -1,5 +1,3 @@
-// GetTranscriptBody.kt
-
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

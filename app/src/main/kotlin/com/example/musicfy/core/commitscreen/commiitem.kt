@@ -1,5 +1,3 @@
-// commiitem.kt
-
 package com.example.musicfy.core.commitscreen
 
 import androidx.compose.foundation.background

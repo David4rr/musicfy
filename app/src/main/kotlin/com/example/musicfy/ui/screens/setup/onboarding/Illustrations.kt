@@ -1,6 +1,4 @@
-// Illustrations.kt
-//
-// The crossfade banner on the "Last one" page.
+// the crossfade banner on the last one page
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -27,10 +25,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.sin
 
-/**
- * Two tracks trading places: the outgoing one's waveform shrinks as the incoming one's grows,
- * under the two gain curves crossing in the middle.
- */
+/** two tracks trading places, the outgoing waveform shrinks as the incoming one grows under crossing gain curves */
 @Composable
 internal fun CrossfadeBanner(modifier: Modifier = Modifier) {
     // a still picture: fixed waveform shapes, nothing animating

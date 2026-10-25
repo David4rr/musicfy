@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,6 +61,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
@@ -78,7 +78,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.palette.graphics.Palette
@@ -137,6 +141,25 @@ private const val ActiveLineViewportFraction = 0.055f
  * above it. One row is a 40sp line plus 16dp of vertical padding on each side.
  */
 private val MinPastLineVisibleHeight = 72.dp
+
+/**
+ * The list's top and bottom padding, worked out from its height while it is measured. The height
+ * is written by the box around the list, so the immersive toggle relayouts instead of recomposing.
+ */
+private class LyricsListPadding : PaddingValues {
+    var heightPx = 0
+    var density = 1f
+
+    private fun listHeight() = (heightPx / density).dp
+
+    override fun calculateTopPadding() = maxOf(listHeight() * ActiveLineViewportFraction, MinPastLineVisibleHeight)
+
+    override fun calculateBottomPadding() = listHeight() * 0.55f
+
+    override fun calculateLeftPadding(layoutDirection: LayoutDirection) = 0.dp
+
+    override fun calculateRightPadding(layoutDirection: LayoutDirection) = 0.dp
+}
 
 private const val ImmersiveDelayMs = 3_500L
 
@@ -271,7 +294,7 @@ fun LyricsScreen(
         if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) {
             emptyList<LyricsEntry>() to false
         } else {
-            val timed = LyricsUtils.parseLyrics(raw)
+            val timed = LyricsUtils.parseLyricsCached(raw)
             when {
                 timed.isEmpty() -> LyricsUtils.parsePlainLyrics(raw) to true
                 LyricsUtils.isUnsynced(timed) -> timed to true
@@ -604,14 +627,25 @@ fun LyricsScreen(
             // slot next to the seek bar (BottomSheetPlayer), within reach of the thumb.
         }
 
-        BoxWithConstraints(
+        val listPadding = remember { LyricsListPadding() }
+        Box(
             modifier = Modifier
                 .weight(1f)
                 // Ends at the top of the seek bar (contentBottomInset). It used to reach 28dp past
                 // its bottom, so lines scrolled behind the bar and the timestamps.
-                .padding(bottom = (contentBottomInset * (1f - immersion)).coerceAtLeast(0.dp))
+                // Read in layout, so the immersive toggle doesn't recompose the whole page.
+                .layout { measurable, constraints ->
+                    val inset = (contentBottomInset * (1f - immersion)).coerceAtLeast(0.dp).roundToPx()
+                    val inner = constraints.offset(vertical = -inset)
+                    listPadding.heightPx = inner.maxHeight
+                    listPadding.density = this.density
+                    val placeable = measurable.measure(inner)
+                    layout(
+                        constraints.constrainWidth(placeable.width),
+                        constraints.constrainHeight(placeable.height + inset),
+                    ) { placeable.place(0, 0) }
+                }
         ) {
-            val listHeight = maxHeight
             if (lines.isEmpty()) {
                 if (lyricsEntity == null) {
 
@@ -628,10 +662,7 @@ fun LyricsScreen(
                 LazyColumn(
                     state = listState,
 
-                    contentPadding = PaddingValues(
-                        top = maxOf(listHeight * ActiveLineViewportFraction, MinPastLineVisibleHeight),
-                        bottom = listHeight * 0.55f,
-                    ),
+                    contentPadding = listPadding,
                     userScrollEnabled = true,
                     modifier = Modifier
                         .fillMaxSize()
@@ -639,7 +670,6 @@ fun LyricsScreen(
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
 
                         .drawWithCache {
-                            @Suppress("UNUSED_EXPRESSION") immersion
                             val fade = Brush.verticalGradient(
                                 0f to Color.Transparent,
                                 TopFadeFraction to Color.Black,

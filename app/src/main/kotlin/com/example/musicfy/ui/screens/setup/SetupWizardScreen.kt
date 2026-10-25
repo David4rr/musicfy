@@ -92,15 +92,10 @@ private enum class Step {
     Profile, Hello, BuildHome, BlurWarning, LastOne, Done,
 }
 
-/** Pages that play once and move on by themselves; back never returns to them. */
+/** pages that play once and move on by themselves, back never returns to them */
 private val AutoSteps = setOf(Step.Hello, Step.Done)
 
-/**
- * Onboarding. The welcome page is the original; everything after it follows the "edit page"
- * mocks: import (or sync) → provider → sign in, in a browser sheet inside this sheet → pick
- * playlists → profile card → Hello → (artists, if nothing was imported) → (blur warning, on slow
- * phones) → Last one → Done.
- */
+/** the onboarding flow: welcome, import or sync, sign in, playlists, profile card, hello, artists, blur warning, last one, done */
 @Composable
 fun SetupWizardScreen(
     onComplete: (String, Uri?) -> Unit,
@@ -298,8 +293,7 @@ fun SetupWizardScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) { current ->
                     when (current) {
-                        // the welcome page runs all the way to the top of the sheet, under the handle;
-                        // pushed down, the strip above it showed as a bar
+                        // the welcome page runs to the top of the sheet under the handle, pushed down its strip showed as a bar
                         Step.Welcome -> Box(Modifier.fillMaxSize().background(Color.Black)) {
                             WelcomeStep(isHiding = isLeavingWelcome)
                             OnbButton(
@@ -365,7 +359,7 @@ fun SetupWizardScreen(
                             onSelectAll = { session?.selectAll() },
                             onSelectNone = { session?.selectNone() },
                             onConfirm = {
-                                // YouTube Music can also stay in sync; the others just import
+                                // youtube music can also stay in sync, the others just import
                                 if (session?.service == AccountService.YOUTUBE_MUSIC) go(Step.SyncOptions) else session?.readSelected()
                             },
                             onCancelReading = { session?.cancelReading() },

@@ -1,5 +1,3 @@
-// RecapEventRow.kt
-
 package com.example.musicfy.db
 
 /**

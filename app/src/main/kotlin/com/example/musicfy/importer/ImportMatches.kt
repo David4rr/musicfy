@@ -12,22 +12,19 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
 
-/**
- * One track from another service and the YouTube song it became. [key] is the track's id on that
- * service when it has one (Spotify's track id), otherwise its cleaned-up title and artist.
- */
+/** one track from another service and the youtube song it became, key is the service's track id (spotify) or else a cleaned title and artist */
 @Serializable
 data class TrackMatch(
     val key: String,
-    /** The track as the service has it: what "Choose different version" searches with. */
+    /** the track as the service has it: what "choose different version" searches with */
     val title: String,
     val artist: String,
     val album: String? = null,
     val durationMs: Long? = null,
-    /** An ImportSource key. */
+    /** an ImportSource key */
     val source: String,
     val songId: String,
-    /** Picked by hand, so every later import and Re-sync uses this song without searching. */
+    /** picked by hand, so every later import and re-sync uses this song without searching */
     val pinned: Boolean = false,
     // a pinned song's own details, to rebuild it if it has left the database since
     val songTitle: String? = null,
@@ -47,13 +44,7 @@ data class TrackMatch(
     )
 }
 
-/**
- * Which YouTube song each imported track became, and the versions the user picked by hand. A pick
- * holds for that track in every later import and Re-sync, and "Choose different version" uses the
- * track's own title, artist and length to search again.
- *
- * A small file rather than a table: it's only read by imports and by the version picker.
- */
+/** youtube song chosen for each imported track, hand picks win in every later import and re-sync, kept in a small file instead of a table */
 class ImportMatches private constructor(private val file: File) {
     private val lock = Any()
     private var loaded: HashMap<String, TrackMatch>? = null
@@ -62,16 +53,13 @@ class ImportMatches private constructor(private val file: File) {
     private fun all(): HashMap<String, TrackMatch> =
         loaded ?: load().also { loaded = it }
 
-    /**
-     * The song the user picked for this track, if they did. Picks made on songs imported before
-     * tracks kept their service id are saved by title and artist, so that's looked at too.
-     */
+    /** the song the user picked for this track, older imports saved picks by title and artist so that is checked too */
     fun pinned(track: ImportedTrack): TrackMatch? = synchronized(lock) {
         all()[track.matchKey()]?.takeIf { it.pinned }
             ?: all()[track.trackKey()]?.takeIf { it.pinned }
     }
 
-    /** Notes the song an import found for [track]. A hand-picked song is never replaced here. */
+    /** notes the song an import found for track. a hand-picked song is never replaced here */
     fun remember(track: ImportedTrack, source: ImportSource, song: SongItem) = synchronized(lock) {
         val key = track.matchKey()
         if (key.startsWith("yt:")) return@synchronized
@@ -89,13 +77,13 @@ class ImportMatches private constructor(private val file: File) {
         dirty = true
     }
 
-    /** The track [songId] was imported as, a hand-picked one first. */
+    /** the track songId was imported as, a hand-picked one first */
     fun forSong(songId: String): TrackMatch? = synchronized(lock) {
         val matches = all().values.filter { it.songId == songId }
         matches.firstOrNull { it.pinned } ?: matches.firstOrNull()
     }
 
-    /** From now on [match]'s track is [song], in this import and every later one. */
+    /** from now on match's track is song, in this import and every later one */
     fun pin(match: TrackMatch, song: SongItem) = synchronized(lock) {
         all()[match.key] = match.copy(
             songId = song.id,
@@ -109,14 +97,14 @@ class ImportMatches private constructor(private val file: File) {
         flushLocked()
     }
 
-    /** [match]'s track became [song] by a fresh search (Refetch), not by hand. */
+    /** match's track became song by a fresh search (refetch), not by hand */
     fun moveTo(match: TrackMatch, song: SongItem) = synchronized(lock) {
         all()[match.key] = match.copy(songId = song.id, pinned = false)
         dirty = true
         flushLocked()
     }
 
-    /** Lets imports search for [match]'s track again. */
+    /** lets imports search for match's track again */
     fun unpin(match: TrackMatch) = synchronized(lock) {
         val current = all()[match.key] ?: return@synchronized
         if (!current.pinned) return@synchronized
@@ -125,7 +113,7 @@ class ImportMatches private constructor(private val file: File) {
         flushLocked()
     }
 
-    /** Writes what changed since the last write. Imports call this once per playlist, not per song. */
+    /** writes what changed since the last write. imports call this once per playlist, not per song */
     fun flush() = synchronized(lock) { flushLocked() }
 
     private fun flushLocked() {
@@ -166,8 +154,5 @@ class ImportMatches private constructor(private val file: File) {
     }
 }
 
-/**
- * What a hand-picked version is saved under: the service's own id for the track when it gave one,
- * so the pick survives the track being renamed there, otherwise its title and artist.
- */
+/** what a pick is saved under, the service's own track id so it survives a rename there, else title and artist */
 internal fun ImportedTrack.matchKey(): String = sourceId ?: trackKey()

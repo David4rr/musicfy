@@ -1,6 +1,4 @@
-// ProviderSquircle.kt
-//
-// Each service's app icon, clipped to the same squircle app icons use.
+// each service's app icon, clipped to the squircle shape app icons use
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -34,9 +32,7 @@ internal fun ProviderSquircle(service: AccountService, size: Dp = 40.dp, modifie
     val art = when (service) {
         // logo on its own black square
         AccountService.SPOTIFY -> ProviderArt(R.drawable.provider_spotify, SolidColor(Color(0xFF191414)))
-        // round logo on white: shown as its circle, on black. Zoomed a touch inside the circle so its
-        // edge falls inside the black disc - clipped right at the disc's edge, the white around it
-        // bled into the antialiasing and drew a thin light ring round the icon.
+        // round logo on white: zoomed inside the black disc so no white edge draws a light ring
         AccountService.TIDAL -> ProviderArt(R.drawable.provider_tidal, SolidColor(Color.Black), circular = true, zoom = 1.06f)
         // red disc: red behind it, so the squircle reads as one red icon
         AccountService.YOUTUBE_MUSIC -> ProviderArt(R.drawable.provider_youtube_music, SolidColor(Color(0xFFFF0000)), zoom = 1.06f)
@@ -74,10 +70,10 @@ private class ProviderArt(
     val zoom: Float = 1f,
 )
 
-/** The app-icon squircle as a Shape, for clipping. */
+/** the app-icon squircle as a shape, for clipping */
 internal val SquircleShape = GenericShape { size, _ -> addPath(squirclePath(size)) }
 
-/** A continuous-corner squircle (superellipse, n = 5), the shape app icons use. */
+/** continuous-corner squircle (superellipse, n = 5), the shape app icons use */
 private fun squirclePath(size: Size): Path {
     val path = Path()
     val cx = size.width / 2f

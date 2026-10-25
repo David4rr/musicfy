@@ -1,5 +1,3 @@
-// AutoEqRepository.kt
-
 package com.example.musicfy.eq.autoeq
 
 import android.content.Context
@@ -22,19 +20,19 @@ import javax.inject.Singleton
 
 enum class HeadphoneForm { OverEar, InEar, Earbud }
 
-/** One measured result: a headphone as one reviewer measured it on one rig. */
+/** one measured result: a headphone as one reviewer measured it on one rig */
 data class AutoEqEntry(
     val name: String,
     val source: String,
     val rig: String?,
-    /** the result's folder under AutoEq's results/, decoded */
+    /** the result's folder under autoeq's results/, decoded */
     val path: String,
     val form: HeadphoneForm,
 ) {
     val sourceLabel: String get() = if (rig != null) "$source · $rig" else source
 }
 
-/** Every result for one headphone name, the unit the list shows. */
+/** every result for one headphone name, the unit the list shows */
 data class AutoEqModel(
     val name: String,
     val entries: List<AutoEqEntry>,
@@ -44,7 +42,7 @@ data class AutoEqModel(
     val form: HeadphoneForm get() = entries.first().form
 }
 
-/** A result's measured curve, the target AutoEq fitted it to, and AutoEq's own 10-band fit. */
+/** a result's measured curve, the target autoeq fitted it to, and autoeq's own 10-band fit */
 class AutoEqMeasurement(
     val entry: AutoEqEntry,
     val frequencies: DoubleArray,
@@ -53,12 +51,7 @@ class AutoEqMeasurement(
     val preset: ParametricEQ,
 )
 
-/**
- * The AutoEq project's database (github.com/jaakkopasanen/AutoEq): thousands of headphones measured
- * by reviewers, each with a correction toward a research target. The index (one line per result)
- * is fetched once and kept on disk for a week, so search works offline after the first visit;
- * a headphone's own files are fetched when it's picked and kept for good.
- */
+/** the autoeq database: the index is kept on disk for a week so search works offline after the first visit, a headphone's own files are fetched when picked and kept for good */
 @Singleton
 class AutoEqRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -75,7 +68,7 @@ class AutoEqRepository @Inject constructor(
 
     @Volatile private var models: List<AutoEqModel>? = null
 
-    /** the headphones, A to Z. Throws when there's neither a network nor a saved copy. */
+    /** the headphones, a to z; throws when there's neither a network nor a saved copy */
     suspend fun models(refresh: Boolean = false): List<AutoEqModel> = indexMutex.withLock {
         if (!refresh) models?.let { return it }
         withContext(Dispatchers.IO) {
@@ -127,14 +120,14 @@ class AutoEqRepository @Inject constructor(
             val q = normalize(query)
             if (q.isBlank()) return all
             val words = q.split(' ').filter { it.isNotEmpty() }
-            // "wh1000" finds "WH-1000XM5" too: punctuation and spaces don't have to be typed
+            // "wh1000" finds "wh-1000xm5" too: punctuation and spaces don't have to be typed
             val compact = q.replace(" ", "")
             return all.filter { model ->
                 words.all { model.searchKey.contains(it) } || model.compactKey.contains(compact)
             }.sortedBy { if (it.searchKey.startsWith(q) || it.compactKey.startsWith(compact)) 0 else 1 }
         }
 
-        /** `- [Name](./source/rig/Name) by Source on Rig`; the name and path can hold brackets */
+        /** one index line per result: a markdown link to ./source/rig/name, then by source on rig; the name and path can hold brackets */
         internal fun parseIndex(text: String): List<AutoEqModel> {
             val entries = ArrayList<AutoEqEntry>(9000)
             text.lineSequence().forEach { line ->
@@ -188,7 +181,7 @@ class AutoEqRepository @Inject constructor(
     }
 }
 
-/** %XX escapes back to UTF-8 text; a literal '+' stays a plus (unlike URLDecoder) */
+/** percent escapes back to utf-8 text; a literal plus stays a plus (unlike urldecoder) */
 internal fun percentDecode(text: String): String {
     if ('%' !in text) return text
     val bytes = java.io.ByteArrayOutputStream(text.length)

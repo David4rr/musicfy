@@ -2,13 +2,7 @@
 
 package com.example.musicfy.importer
 
-/**
- * Reads playlist CSVs from TuneMyMusic (any streaming service), Exportify-style exports and
- * Musicfy's own export. Columns are found by header name, so their order doesn't matter.
- *
- * Musicfy's export uses TuneMyMusic's column names plus "Duration (ms)", "Video ID" and
- * "Thumbnail", so the two formats share one reader and Musicfy rows skip search entirely.
- */
+/** reads playlist csvs from tunemymusic, exportify and musicfy's own export, columns are found by header name so order doesn't matter */
 fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playlist"): ParsedImport {
     val rows = parseCsvRows(text).filter { row -> row.any { it.isNotBlank() } }
     if (rows.isEmpty()) return ParsedImport(emptyList(), emptyMap())
@@ -37,13 +31,13 @@ fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playli
 
         val type = cell(typeIdx)?.lowercase()
         val isLiked = type == "favorite" || type == "favorites" || type == "liked" || type == "liked songs"
-        // TuneMyMusic also lists albums/artists the user follows; only songs are importable
+        // tunemymusic also lists albums/artists the user follows; only songs are importable
         if (type != null && !isLiked && type != "playlist" && type != "track" && type != "song") continue
 
         val playlistName = cell(playlistIdx) ?: fallbackPlaylistName
         val title = cell(titleIdx)
         if (title == null) {
-            // a playlist row with no track keeps an empty playlist from a Musicfy export
+            // a playlist row with no track keeps an empty playlist from a musicfy export
             if (!isLiked && playlistIdx >= 0 && cell(playlistIdx) != null) playlists.getOrPut(playlistName) { mutableListOf() }
             continue
         }
@@ -66,10 +60,10 @@ fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playli
     return ParsedImport(liked, playlists)
 }
 
-/** Kept for the setup wizard, which only ever offered TuneMyMusic files. */
+/** kept for the setup wizard, which only ever offered tunemymusic files */
 fun parseTuneMyMusicCsv(text: String): ParsedImport = parseImportCsv(text)
 
-/** One row of a Musicfy export; [playlistName] is null for liked songs. */
+/** one row of a musicfy export; playlistName is null for liked songs */
 data class CsvExportRow(
     val playlistName: String?,
     val title: String?,
@@ -103,7 +97,7 @@ private val YOUTUBE_ID_REGEX = Regex("[A-Za-z0-9_-]{11}")
 private fun normalizeHeader(name: String): String =
     name.removePrefix("﻿").trim().lowercase().replace(Regex("[\\s_]+"), " ")
 
-/** "3:25", "1:02:03" or plain seconds. */
+/** "3:25", "1:02:03" or plain seconds */
 private fun parseDurationMs(text: String): Long? {
     val parts = text.split(':').map { it.trim().toLongOrNull() ?: return null }
     val seconds = when (parts.size) {
@@ -129,7 +123,7 @@ private fun StringBuilder.appendCsvLine(fields: List<String>) {
 
 private fun parseCsvRows(text: String): List<List<String>> {
     val content = text.removePrefix("﻿")
-    // Excel in some locales saves "CSV" with semicolons; pick whichever the header uses more
+    // excel in some locales saves "csv" with semicolons; pick whichever the header uses more
     val headerLine = content.substringBefore('\n')
     val delimiter = if (headerLine.count { it == ';' } > headerLine.count { it == ',' }) ';' else ','
     val rows = mutableListOf<List<String>>()

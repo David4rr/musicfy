@@ -1,8 +1,4 @@
-// AutoEqTab.kt
-//
-// The equalizer's AutoEQ tab: pick your headphones from the AutoEq database and Musicfy bends them
-// onto a research target. The graph shows the measured response, the target and the corrected
-// result; the correction sits under your own curve, so both apply.
+// the equalizer's autoeq tab: pick your headphones and the correction sits under your own curve
 
 package com.example.musicfy.ui.screens.equalizer
 

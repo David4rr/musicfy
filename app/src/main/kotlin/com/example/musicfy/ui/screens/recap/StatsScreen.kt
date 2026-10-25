@@ -265,13 +265,14 @@ fun StatsScreen(navController: NavController) {
         }
 
         // glass bar: a sibling of the glassRoot box, never inside it
+        val showGlass by remember { derivedStateOf { collapse > 0.01f } }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(topInset + 84.dp)
                 .graphicsLayer { alpha = collapse },
         ) {
-            if (collapse > 0.01f) {
+            if (showGlass) {
                 ProgressiveGlassBackground(
                     state = glassState,
                     maxBlurRadius = { 50f * collapse },

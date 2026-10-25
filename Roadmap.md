@@ -12,10 +12,9 @@ What to expect in the next version & is it done
 - Lyrics share +
 - Better crossmix 
 - Device output +
-- Swipe to forward/backward still kina confusing +
-- Lyrics customizer +
+x- Lyrics customizer +
 - LastFM integration 
-- Voice and music recognition
+- Voice and music recognition   o
 - Playlist options refining +
 - Playlist transition +
 - Playlust descriptions +

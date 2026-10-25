@@ -1,5 +1,3 @@
-// NetworkConfig.kt
-
 package com.music.innertube
 
 import io.ktor.client.HttpClient

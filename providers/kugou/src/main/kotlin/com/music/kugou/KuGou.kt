@@ -1,5 +1,3 @@
-// KuGou.kt
-
 package com.music.kugou
 
 import com.music.kugou.models.DownloadLyricsResponse

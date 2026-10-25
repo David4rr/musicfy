@@ -1,5 +1,3 @@
-// NetEase.kt
-
 package com.music.directlyrics
 
 import com.music.directlyrics.models.NetEaseLyricResponse
@@ -8,10 +6,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 
-/**
- * NetEase Cloud Music, asked directly with no account. Many songs, English ones included, come
- * with real word-by-word timing.
- */
+/** netease cloud music asked directly with no account, many songs including english ones come with real word-by-word timing */
 object NetEase {
 
     suspend fun getLyrics(title: String, artist: String, duration: Int): Result<String> = runCatching {
@@ -42,11 +37,7 @@ object NetEase {
             )
         }
 
-    /**
-     * NetEase's word-timed format: "[lineStart,lineLength](wordStart,wordLength,0)word ..." in
-     * milliseconds. Each word keeps its own trailing space, so joining them gives the line back.
-     * Lines that aren't timed (NetEase mixes in JSON credit lines) are skipped.
-     */
+    /** netease's word-timed format "[lineStart,lineLength](wordStart,wordLength,0)word" in milliseconds, words keep their trailing space and untimed json credit lines are skipped */
     private fun parseYrc(yrc: String): List<TimedLine> = yrc.lineSequence().mapNotNull { raw ->
         val line = YrcLineRegex.matchEntire(raw.trim()) ?: return@mapNotNull null
         val words = YrcWordRegex.findAll(line.groupValues[2]).map { word ->
@@ -58,6 +49,6 @@ object NetEase {
 
     private const val SearchLimit = 10
     private val YrcLineRegex = Regex("""^\[(\d+),\d+](.*)$""")
-    // A word runs until the next "(start,length,0)" marker, so brackets inside the words survive.
+    // a word runs until the next "(start,length,0)" marker so brackets inside the words survive
     private val YrcWordRegex = Regex("""\((\d+),(\d+),-?\d+\)(.*?)(?=\(\d+,\d+,-?\d+\)|$)""")
 }

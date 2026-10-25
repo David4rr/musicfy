@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.extensions.currentMetadata
+import com.example.musicfy.lyrics.LyricsUtils
 import com.example.musicfy.extensions.getCurrentQueueIndex
 import com.example.musicfy.extensions.getQueueWindows
 import com.example.musicfy.extensions.isAutoplay
@@ -31,6 +32,9 @@ import com.example.musicfy.playback.queues.Queue
 import com.example.musicfy.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -50,12 +54,16 @@ class PlayerConnection(
     val context: Context,
     binder: MusicBinder,
     val database: MusicDatabase,
-    val scope: CoroutineScope,
+    parentScope: CoroutineScope,
 ) : Player.Listener {
     private companion object {
         private const val TAG = "PlayerConnection"
         private const val PLAYER_INIT_TIMEOUT_MS = 5000L
     }
+
+    // its own job under the parent's, so dispose() can stop the pollers and flows this connection started
+    val scope: CoroutineScope =
+        CoroutineScope(parentScope.coroutineContext + SupervisorJob(parentScope.coroutineContext[Job]))
 
     val service = binder.service
     private val playerReadinessFlow = service.isPlayerReady
@@ -144,6 +152,13 @@ class PlayerConnection(
 
     val currentLyrics = mediaMetadata.flatMapLatest { mediaMetadata ->
         database.lyrics(mediaMetadata?.id)
+    }
+
+    init {
+        // parse off the main thread, or the first frames of opening the player pay for it
+        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            currentLyrics.map { it?.lyrics }.distinctUntilChanged().collect(LyricsUtils::warmParsedLyrics)
+        }
     }
     val currentFormat =
         mediaMetadata.flatMapLatest { mediaMetadata ->
@@ -761,6 +776,7 @@ class PlayerConnection(
         try {
             attachedPlayer?.removeListener(this)
             attachedPlayer = null
+            scope.cancel()
             Timber.tag(TAG).d("PlayerConnection disposed successfully")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error during PlayerConnection disposal")

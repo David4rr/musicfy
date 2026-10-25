@@ -197,7 +197,7 @@ class HomeViewModel @Inject constructor(
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
 
-    val lastPlayedSong = database.events()
+    val lastPlayedSong = database.recentEvents(1)
         .map { it.firstOrNull()?.song?.toMediaMetadata() }
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
@@ -454,7 +454,7 @@ class HomeViewModel @Inject constructor(
                 quickPicks.value = topSongs.distinctBy { it.id }.take(20)
             }
             QuickPicks.LAST_LISTEN -> {
-                val song = database.events().first().firstOrNull()?.song
+                val song = database.recentEvents(1).first().firstOrNull()?.song
                 if (song != null && database.hasRelatedSongs(song.id)) {
                     quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs).shuffled().take(20)
                 }
@@ -582,7 +582,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadRecentHistory() {
-        recentHistorySongs.value = database.events().first().map { it.song }.take(15)
+        recentHistorySongs.value = database.recentEvents(15).first().map { it.song }
     }
 
     private suspend fun loadAllTimeHits() {

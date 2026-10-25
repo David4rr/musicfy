@@ -1150,6 +1150,19 @@ fun ItemThumbnail(
     albumIndex: Int? = null,
     isSelected: Boolean = false,
     thumbnailRatio: Float = 1f
+) = ItemThumbnail(thumbnailUrl, isActive, { isPlaying }, shape, modifier, albumIndex, isSelected, thumbnailRatio)
+
+// isPlaying is read only inside the indicator, so a play or pause leaves the cover image alone
+@Composable
+fun ItemThumbnail(
+    thumbnailUrl: String?,
+    isActive: Boolean,
+    isPlaying: () -> Boolean,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    albumIndex: Int? = null,
+    isSelected: Boolean = false,
+    thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt = LocalCropAlbumArt.current
 

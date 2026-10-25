@@ -1,5 +1,3 @@
-// AudioTap.kt
-
 package com.example.musicfy.eq.audio
 
 import kotlin.math.PI
@@ -9,23 +7,13 @@ import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * What the Audio Lab pictures listen to: the equalizer's output, folded to mono into a ring.
- *
- * The audio thread only copies samples in, and only while a page is looking ([listeners] > 0), so
- * playback pays nothing otherwise. Pages read the newest window on their own frame clock. Two
- * players can be processing at once during a Crossmix; whichever wrote first keeps the tap until it
- * goes quiet, so the picture never mixes two songs into noise.
- */
+/** what the audio lab pictures listen to: the equalizer output folded to mono into a ring, only filled while a page is looking so playback pays nothing otherwise */
 object AudioTap {
 
     private const val RingSize = 1 shl 15
     private const val Mask = RingSize - 1
 
-    /**
-     * Audio is processed ahead of the speaker by about the sink's buffer, so the pictures read this
-     * far behind the newest sample to line up with what is heard.
-     */
+    /** audio is processed ahead of the speaker by about the sink's buffer, so pictures read this far behind to line up with what is heard */
     private const val PlaybackLagSeconds = 0.2
 
     private val ring = FloatArray(RingSize)
@@ -47,9 +35,10 @@ object AudioTap {
     /** whether music went through recently: pictures settle into their idle motion when not */
     val isLive: Boolean get() = System.nanoTime() - lastWriteNanos < 400_000_000L
 
-    /** audio thread: [samples] interleaved, [frames] long */
+    /** audio thread: samples interleaved, frames long */
     fun write(writer: Int, samples: DoubleArray, frames: Int, channels: Int, rate: Int) {
         val now = System.nanoTime()
+        // two players write during a crossmix: the first keeps the tap until it goes quiet, so the picture never mixes two songs into noise
         if (owner != writer) {
             if (now - lastWriteNanos < 300_000_000L) return
             owner = writer
@@ -69,7 +58,7 @@ object AudioTap {
         writeIndex = w
     }
 
-    /** copies the [count] samples heard most recently into [into], oldest first */
+    /** copies the newest count samples into into, oldest first */
     fun read(into: FloatArray, count: Int = into.size): Boolean {
         if (!isLive) return false
         val lag = (sampleRate * PlaybackLagSeconds).toLong()
@@ -83,7 +72,7 @@ object AudioTap {
         return true
     }
 
-    /** RMS of the newest [window] samples heard, 0..1 */
+    /** rms of the newest samples heard (scratch.size of them), 0..1 */
     fun level(scratch: FloatArray): Float {
         if (!read(scratch)) return 0f
         var sum = 0.0
@@ -92,10 +81,7 @@ object AudioTap {
     }
 }
 
-/**
- * Turns the tap into a smoothed log-frequency spectrum (dB), for the equalizer's graph.
- * Runs on the UI's frame clock; a 2048-point FFT is well under a millisecond.
- */
+/** turns the tap into a smoothed log-frequency spectrum (db) for the equalizer graph, runs on the ui frame clock where a 2048-point fft is well under a millisecond */
 class SpectrumAnalyzer(private val bands: DoubleArray) {
     private val size = 2048
     private val samples = FloatArray(size)

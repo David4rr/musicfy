@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
+import com.example.musicfy.ui.component.damageBoundary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -211,6 +212,8 @@ fun LyricsInterludeDots(
                     placeable.place(0, (shown - full) / 2)
                 }
             }
+            // after the layout, so it covers the full row and not the shrinking slot
+            .damageBoundary()
             .height(RowHeight)
             .padding(horizontal = LyricsHeaderArtX)
             .graphicsLayer { alpha = height.value.coerceIn(0f, 1f) },

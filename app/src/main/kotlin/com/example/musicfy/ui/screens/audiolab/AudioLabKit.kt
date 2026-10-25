@@ -1,8 +1,4 @@
-// AudioLabKit.kt
-//
-// The pieces every Audio Lab page is built from, so the hub, the equalizer and Audio FX read as one
-// set: dark rounded cards, an outlined "stage" for each live picture, toggle rows with the app's
-// switch, labelled sliders on the player's seek-bar track, white-pill chips and segments.
+// shared pieces of every audio lab page (cards, stage, toggle rows, sliders, chips, segments) so the hub, equalizer and audio fx read as one set
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -92,7 +88,7 @@ object LabColors {
     val Faint = Color(0xFF5C5C63)
     val Ink = Color(0xFF8A8A92)
 
-    /** the equalizer's node colours: soft enough to sit on Musicfy's greys, apart enough to tell */
+    /** the equalizer's node colours, soft enough to sit on musicfy's greys and apart enough to tell */
     val Nodes = listOf(
         Color(0xFFF28BA8), Color(0xFFF2A46B), Color(0xFFF2D46B), Color(0xFF8FD98B),
         Color(0xFF6BD9C4), Color(0xFF6BBAF2), Color(0xFF8C9EF2), Color(0xFFB98CF2),
@@ -118,10 +114,7 @@ fun LabCard(
     )
 }
 
-/**
- * The outlined dark box a live picture draws in. It's bounded for the renderer, so a picture
- * animating every frame repaints only itself, not the page and every glass surface over it.
- */
+/** outlined dark box for a live picture, bounded so its animation repaints only itself and not the page and glass over it */
 @Composable
 fun LabStage(
     modifier: Modifier = Modifier,
@@ -394,7 +387,7 @@ fun LabSegmented(
     }
 }
 
-/** the 32dp light circle with a dark glyph that Musicfy's settings rows lead with */
+/** the 32dp light circle with a dark glyph that musicfy's settings rows lead with */
 @Composable
 fun LabGlyph(iconRes: Int, modifier: Modifier = Modifier, size: Dp = 32.dp) {
     Box(
@@ -412,10 +405,7 @@ fun Modifier.dimmedWhen(off: Boolean, alpha: Float): Modifier = graphicsLayer { 
 fun animatedDim(off: Boolean): Float =
     animateFloatAsState(if (off) 0.45f else 1f, tween(220), label = "dim").value
 
-/**
- * Whether the pictures should be moving: not while the player covers the app, not while this
- * page is opening or closing (it's one cached picture then), and not while scrolled out of view.
- */
+/** whether pictures should move: not while the player covers the app, the page is opening or closing, or it is scrolled out of view */
 @Composable
 fun rememberPicturesHeld(onScreen: State<Boolean>): State<Boolean> {
     val obscured = LocalAppContentObscured.current
@@ -428,11 +418,7 @@ fun rememberPicturesHeld(onScreen: State<Boolean>): State<Boolean> {
     }
 }
 
-/**
- * Seconds, advancing every frame while the picture is free to move. A picture that only moves
- * with the music passes [moving]: while it says no, the clock checks back a few times a second
- * instead of drawing every frame.
- */
+/** seconds, advancing every frame while the picture is free to move, or checking back a few times a second when moving says no */
 @Composable
 fun rememberLabTime(held: State<Boolean>, moving: () -> Boolean = { true }): State<Float> {
     val time = remember { mutableFloatStateOf(0f) }
@@ -487,7 +473,7 @@ class LevelFollower {
         private set
     private var slow = 0f
 
-    /** call once per frame; [dt] seconds since the last */
+    /** call once per frame with the seconds since the last one */
     fun update(dt: Float) {
         val now = AudioTap.level(scratch)
         level += (now - level) * (if (now > level) 0.5f else 0.12f)

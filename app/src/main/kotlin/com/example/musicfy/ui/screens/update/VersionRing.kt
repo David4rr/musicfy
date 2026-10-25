@@ -1,5 +1,3 @@
-// VersionRing.kt
-
 package com.example.musicfy.ui.screens.update
 
 import android.graphics.Paint
@@ -29,11 +27,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.floor
 
-/**
- * The thick ring from the mock with [text] running round it again and again, turning slowly for
- * as long as it's on screen. The ring and letters are recorded once; the turning only rotates
- * the layer, so it costs nothing to redraw.
- */
+/** the thick ring from the mock with text running round it, turning slowly, only the layer rotates so it costs nothing to redraw */
 @Composable
 fun VersionRing(
     text: String,

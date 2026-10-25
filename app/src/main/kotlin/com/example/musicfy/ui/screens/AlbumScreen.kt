@@ -158,7 +158,6 @@ fun AlbumScreen(
         featuredArtistsOf(filteredSongs.flatMap { it.artists }, id = { it.id }, name = { it.name })
     }
     val mainArtistName = album?.artists?.firstOrNull()?.name
-    val isThisAlbum = album != null && mediaMetadata?.album?.id == album.album.id
 
     fun play(startIndex: Int = 0, shuffled: Boolean = false) {
         val current = album ?: return
@@ -223,6 +222,8 @@ fun AlbumScreen(
         }
 
         item(key = "album_header", contentType = "header") {
+            // read here, not at the top of the screen: a track change then only redraws the header
+            val isThisAlbum = mediaMetadata?.album?.id == album.album.id
             PlaylistHeader(
                 title = album.album.title,
                 creators = album.artists.map { CreatorUi(name = it.name, avatarUrl = it.thumbnailUrl, artistId = it.id) },

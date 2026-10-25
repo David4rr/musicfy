@@ -1,5 +1,3 @@
-// RoundedStarShape.kt
-
 package com.example.musicfy.core.shapes
 
 import androidx.compose.ui.geometry.Size

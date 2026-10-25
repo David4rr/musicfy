@@ -1,5 +1,3 @@
-// DatabaseDao.kt
-
 package com.example.musicfy.db
 
 import androidx.room.Dao
@@ -1277,6 +1275,11 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
+
+    /** The newest [limit] plays, for callers that only need the head of [events]. */
+    @Transaction
+    @Query("SELECT * FROM event ORDER BY rowId DESC LIMIT :limit")
+    fun recentEvents(limit: Int): Flow<List<EventWithSong>>
 
     @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")

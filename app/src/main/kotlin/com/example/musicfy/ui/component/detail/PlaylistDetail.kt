@@ -79,6 +79,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
@@ -556,7 +557,7 @@ private fun PlaylistTopBar(
                     glassState = glassState,
                     coverUrl = coverUrl,
                     cover = cover,
-                    tint = background.value,
+                    tint = background,
                     modifier = barModifier,
                 )
             } else {
@@ -602,7 +603,7 @@ private fun PlaylistNormalBarRow(
             glassState = glassState,
             coverUrl = coverUrl,
             cover = cover,
-            tint = background.value,
+            tint = background,
             onBackClick = onBackClick,
             onBackLongClick = onBackLongClick,
             onMiniCoverClick = onMiniCoverClick,
@@ -644,7 +645,7 @@ private fun BackPill(
     glassState: GlassState,
     coverUrl: String?,
     cover: (@Composable (Modifier) -> Unit)?,
-    tint: Color,
+    tint: State<Color>,
     onBackClick: () -> Unit,
     onBackLongClick: () -> Unit,
     onMiniCoverClick: () -> Unit,
@@ -674,19 +675,9 @@ private fun BackPill(
                 }
                 .graphicsLayer { alpha = morph().coerceIn(0f, 1f) }
         ) {
-            GlassPillBackground(
-                state = glassState,
-                blurRadius = { 28f },
-                tint = Color.White.copy(alpha = 0.12f),
-                foundationColor = tint,
-                shape = pillShape,
-                modifier = Modifier.matchParentSize()
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .border(1.dp, Color.White.copy(alpha = 0.12f), pillShape)
-            )
+            // fully clear at morph 0, so the glass isn't composed (or recomposed by the theme colour tween) until the bar collapses
+            val showPill by remember { derivedStateOf { morph() > 0f } }
+            if (showPill) BackPillGlass(glassState = glassState, tint = tint, shape = pillShape)
         }
 
         Box(
@@ -743,6 +734,24 @@ private fun BackPill(
             }
         }
     }
+}
+
+/** the frosted fill and hairline of the collapsed back pill; the theme colour is read here so only this recomposes */
+@Composable
+private fun BoxScope.BackPillGlass(glassState: GlassState, tint: State<Color>, shape: Shape) {
+    GlassPillBackground(
+        state = glassState,
+        blurRadius = { 28f },
+        tint = Color.White.copy(alpha = 0.12f),
+        foundationColor = tint.value,
+        shape = shape,
+        modifier = Modifier.matchParentSize()
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .border(1.dp, Color.White.copy(alpha = 0.12f), shape)
+    )
 }
 
 /**

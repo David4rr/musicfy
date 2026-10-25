@@ -1,5 +1,3 @@
-// PaxsenixModels.kt
-
 package com.music.paxsenix.models
 
 import kotlinx.serialization.Serializable

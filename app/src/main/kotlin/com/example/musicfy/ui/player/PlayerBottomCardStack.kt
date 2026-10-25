@@ -162,7 +162,7 @@ internal fun PlayerBottomCardStack(
 
     val lines = remember(lyricsEntity?.lyrics) {
         val raw = lyricsEntity?.lyrics
-        if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) emptyList() else LyricsUtils.parseLyrics(raw)
+        if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) emptyList() else LyricsUtils.parseLyricsCached(raw)
     }
 
     val nextSong = remember(queue) {

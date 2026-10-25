@@ -84,6 +84,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import com.airbnb.lottie.compose.LottieAnimation
@@ -182,6 +183,7 @@ import com.example.musicfy.ui.component.onTabTapped
 import com.example.musicfy.ui.component.AppNavigationRail
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.BottomSheetState
 import com.example.musicfy.ui.component.rememberBottomSheetState
 import com.example.musicfy.ui.component.shimmer.ShimmerTheme
 import com.example.musicfy.ui.menu.YouTubeSongMenu
@@ -289,7 +291,7 @@ class MainActivity : ComponentActivity() {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (service is MusicBinder) {
                 try {
-                    playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
+                    connectTo(service)
                     Timber.tag("MainActivity").d("PlayerConnection created successfully")
                 } catch (e: Exception) {
                     Timber.tag("MainActivity").e(e, "Failed to create PlayerConnection")
@@ -297,7 +299,7 @@ class MainActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         delay(500)
                         try {
-                            playerConnection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
+                            connectTo(service)
                         } catch (e2: Exception) {
                             Timber.tag("MainActivity").e(e2, "Failed to create PlayerConnection on retry")
                         }
@@ -310,6 +312,13 @@ class MainActivity : ComponentActivity() {
             playerConnection?.dispose()
             playerConnection = null
         }
+    }
+
+    // each return to the app binds again, release the connection it replaces or its listener and poller keep running
+    private fun connectTo(binder: MusicBinder) {
+        val previous = playerConnection
+        playerConnection = PlayerConnection(this, binder, database, lifecycleScope)
+        previous?.dispose()
     }
 
     override fun onStart() {
@@ -341,8 +350,10 @@ class MainActivity : ComponentActivity() {
         ) {
             stopService(Intent(this, MusicService::class.java))
             unbindService(serviceConnection)
-            playerConnection = null
         }
+        // the service outlives us, so take our listener off its player or a recreate leaves the old one firing
+        playerConnection?.dispose()
+        playerConnection = null
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -452,7 +463,7 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val layoutParams = window.attributes
                 if (enableHighRefreshRate) {
-                    layoutParams.preferredDisplayModeId = 0
+                    layoutParams.preferredDisplayModeId = highRefreshModeId()
                 } else {
                     val modes = window.windowManager.defaultDisplay.supportedModes
                     val mode60 = modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
@@ -467,8 +478,10 @@ class MainActivity : ComponentActivity() {
                 val params = window.attributes
                 if (enableHighRefreshRate) {
                     params.preferredRefreshRate = 0f
+                    params.preferredDisplayModeId = highRefreshModeId()
                 } else {
                     params.preferredRefreshRate = 60f
+                    params.preferredDisplayModeId = 0
                 }
                 window.attributes = params
             }
@@ -541,7 +554,6 @@ class MainActivity : ComponentActivity() {
         MusicfyTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
-            themeColor = themeColor,
         ) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -682,34 +694,7 @@ class MainActivity : ComponentActivity() {
                     expandedBound = maxHeight,
                 )
 
-                // The open player hides the navigation bar: gone once the sheet sits at the top,
-                // back as soon as it heads down - not whenever it stops sitting exactly at the top
-                // (a resize it is catching up with), which brought the bar back over the open player.
-                val playerOpen = playerBottomSheetState.isExpanded
-                val playerHeadingDown = !playerBottomSheetState.isExpandedOrExpanding
-                // Back in the app (from Home, the recents, a dialog) it's hidden again: with
-                // gesture navigation a swipe from the bottom brings it back for good (see
-                // playerNavBarBehavior).
-                val windowFocused = configuration.isWindowFocused
-                LaunchedEffect(playerOpen, playerHeadingDown, windowFocused) {
-                    val controller = WindowCompat.getInsetsController(window, window.decorView.rootView)
-                    if (playerOpen) {
-                        controller.systemBarsBehavior = window.playerNavBarBehavior()
-                        controller.hide(WindowInsetsCompat.Type.navigationBars())
-                    } else if (playerHeadingDown) {
-                        controller.show(WindowInsetsCompat.Type.navigationBars())
-                    }
-                }
-                // A bar a swipe brought back while the player stays open (Samsung's swipe-from-
-                // bottom gestures) goes away again after a moment, as the transient one does.
-                @OptIn(ExperimentalLayoutApi::class)
-                val navBarsShown = WindowInsets.areNavigationBarsVisible
-                LaunchedEffect(playerOpen, navBarsShown) {
-                    if (!playerOpen || !navBarsShown) return@LaunchedEffect
-                    delay(2_500)
-                    WindowCompat.getInsetsController(window, window.decorView.rootView)
-                        .hide(WindowInsetsCompat.Type.navigationBars())
-                }
+                PlayerNavBarSync(playerBottomSheetState)
 
                 val playerAwareWindowInsets = remember(
                     bottomInset,
@@ -726,13 +711,6 @@ class MainActivity : ComponentActivity() {
                         .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                         .add(WindowInsets(top = AppBarHeight, bottom = bottom))
                 }
-                appBarScrollBehavior(
-                    canScroll = {
-                        !inSearchScreen &&
-                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
-                    }
-                )
-
                 val topAppBarScrollBehavior = appBarScrollBehavior(
                     canScroll = {
                         !inSearchScreen &&
@@ -855,7 +833,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
-                val eventCount by database.eventCount().collectAsState(initial = 0)
+                val eventCount by remember(database) { database.eventCount() }.collectAsState(initial = 0)
                 val showHistoryButton = remember(pauseListenHistory, eventCount) {
                     !(pauseListenHistory && eventCount == 0)
                 }
@@ -1034,16 +1012,20 @@ class MainActivity : ComponentActivity() {
                                                 .launchRise(order = 3)
                                                 .fillMaxWidth()
                                                 .height(bottomInset + navPadding + 40.dp)
-                                                .background(
-                                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                                        colors = listOf(
-                                                            Color.Transparent,
-                                                            navScrimTint.copy(alpha = 0.5f),
-                                                            navScrimTint.copy(alpha = 0.9f),
-                                                            navScrimTint
+                                                // the tint fades over 500 ms, read it while drawing so the bar doesn't recompose
+                                                .drawBehind {
+                                                    val tint = navScrimTint
+                                                    drawRect(
+                                                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                                                            colors = listOf(
+                                                                Color.Transparent,
+                                                                tint.copy(alpha = 0.5f),
+                                                                tint.copy(alpha = 0.9f),
+                                                                tint
+                                                            )
                                                         )
                                                     )
-                                                )
+                                                }
                                                 .graphicsLayer {
                                                     val navBarHeightPx = navigationBarHeight.toPx()
                                                     val totalHeightPx = navBarTotalHeight.toPx()
@@ -1242,7 +1224,6 @@ class MainActivity : ComponentActivity() {
                                         },
                                         modifier = Modifier
                                             .glassRoot(glassState, isActive = { true })
-                                            .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
                                     ) {
                                         navigationBuilder(
                                             navController = navController,
@@ -1297,6 +1278,55 @@ class MainActivity : ComponentActivity() {
 
                 }
             }
+        }
+    }
+
+    // fastest mode at the current screen size, 0 (no preference) on android 15+ where adaptive refresh handles it
+    @Suppress("DEPRECATION")
+    private fun highRefreshModeId(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) return 0
+        return try {
+            val display = window.windowManager.defaultDisplay
+            val current = display.mode
+            display.supportedModes
+                .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
+                .maxByOrNull { it.refreshRate }
+                ?.modeId ?: 0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    // reads the sheet state here, so its flips don't recompose the whole app root
+    @OptIn(ExperimentalLayoutApi::class)
+    @Composable
+    private fun PlayerNavBarSync(state: BottomSheetState) {
+        // The open player hides the navigation bar: gone once the sheet sits at the top,
+        // back as soon as it heads down - not whenever it stops sitting exactly at the top
+        // (a resize it is catching up with), which brought the bar back over the open player.
+        val playerOpen = state.isExpanded
+        val playerHeadingDown = !state.isExpandedOrExpanding
+        // Back in the app (from Home, the recents, a dialog) it's hidden again: with
+        // gesture navigation a swipe from the bottom brings it back for good (see
+        // playerNavBarBehavior).
+        val windowFocused = LocalWindowInfo.current.isWindowFocused
+        LaunchedEffect(playerOpen, playerHeadingDown, windowFocused) {
+            val controller = WindowCompat.getInsetsController(window, window.decorView.rootView)
+            if (playerOpen) {
+                controller.systemBarsBehavior = window.playerNavBarBehavior()
+                controller.hide(WindowInsetsCompat.Type.navigationBars())
+            } else if (playerHeadingDown) {
+                controller.show(WindowInsetsCompat.Type.navigationBars())
+            }
+        }
+        // A bar a swipe brought back while the player stays open (Samsung's swipe-from-
+        // bottom gestures) goes away again after a moment, as the transient one does.
+        val navBarsShown = WindowInsets.areNavigationBarsVisible
+        LaunchedEffect(playerOpen, navBarsShown) {
+            if (!playerOpen || !navBarsShown) return@LaunchedEffect
+            delay(2_500)
+            WindowCompat.getInsetsController(window, window.decorView.rootView)
+                .hide(WindowInsetsCompat.Type.navigationBars())
         }
     }
 

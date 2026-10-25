@@ -1,5 +1,3 @@
-// ReverbSettings.kt
-
 package com.example.musicfy.eq
 
 import com.example.musicfy.eq.audio.ReverbParams
@@ -33,7 +31,7 @@ data class ReverbSettings(
     )
 }
 
-/** Rooms to start from; any slider moved afterwards makes it Custom. */
+/** rooms to start from; any slider moved afterwards makes it custom */
 object ReverbPresets {
     class Preset(
         val id: String,

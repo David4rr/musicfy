@@ -1,12 +1,4 @@
-// BlurCapability.kt
-//
-// Should onboarding suggest turning blur off? Phone specs alone don't answer it: a Galaxy A03
-// (Unisoc, 720p at 60 Hz) and A24 (Helio G99, 90 Hz) run the glass fine, while a Redmi Note 11 Pro
-// (Helio G96, 1080p at 120 Hz) has a stronger GPU on paper and still drops frames, because it has
-// to fill four times the pixels per second. So the real answer comes from timing frames: the Hello
-// card page draws a blurred glow plus confetti for ~3 s, which costs about what the app's glass
-// does, and every frame's arrival is recorded. A small table of phones confirmed either way
-// settles the borderline cases.
+// decides whether onboarding suggests turning blur off, by timing real frames on the hello page
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -20,7 +12,7 @@ object BlurCapability {
 
     enum class Verdict { Fine, Laggy, NotApplicable }
 
-    /** Frame timings from the Hello page. */
+    /** frame timings measured on the hello page */
     data class Probe(
         val frames: Int,
         val slowFrames: Int,
@@ -32,16 +24,16 @@ object BlurCapability {
 
     data class Result(val verdict: Verdict, val summary: String)
 
-    /** Chips confirmed to stutter under the app's glass. */
+    /** chips confirmed to stutter under the app's glass */
     private val knownLaggy = listOf(
-        "mt6781", // Helio G96 — Redmi Note 11 Pro 4G, the reference "can, but laggy" phone
+        "mt6781", // helio g96, redmi note 11 pro 4g, the reference laggy phone
     )
 
-    /** Chips confirmed fine, even though the frame timing can be borderline. */
+    /** chips confirmed fine even when the frame timing is borderline */
     private val knownFine = listOf(
-        "mt6789", // Helio G99 — Galaxy A24
-        "t606", "ums9230", // Unisoc T606 — Galaxy A03
-        "sc9863", // Unisoc SC9863A — Galaxy A03 Core
+        "mt6789", // helio g99, galaxy a24
+        "t606", "ums9230", // unisoc t606, galaxy a03
+        "sc9863", // unisoc sc9863a, galaxy a03 core
     )
 
     fun socName(): String {
@@ -101,14 +93,14 @@ object BlurCapability {
         return Build.HARDWARE.ifBlank { Build.MODEL }
     }
 
-    /** More than this share of frames arriving late (over 1.5 refresh intervals) reads as stutter. */
+    /** more than this share of late frames (over 1.5 refresh intervals) reads as stutter */
     private const val SLOW_RATIO_LIMIT = 0.2f
 
-    /** Or the average frame taking this much longer than one refresh interval. */
+    /** or an average frame taking this much longer than one refresh interval */
     private const val AVERAGE_LIMIT = 1.3f
 }
 
-/** Collects frame intervals; fed from a withFrameNanos loop on the Hello page. */
+/** collects frame intervals, fed from a withFrameNanos loop on the hello page */
 internal class FrameProbeRecorder(private val refreshHz: Float) {
     private var last = 0L
     private var started = 0L

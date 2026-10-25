@@ -9,18 +9,10 @@ import com.example.musicfy.db.entities.PlaylistEntity
 import kotlinx.coroutines.flow.first
 import java.time.LocalDateTime
 
-/**
- * What Musicfy remembers about an imported playlist's life on its service: where it lives there,
- * and every song it had the last time it was read. Importing a playlist again and Re-sync both go
- * by this, so reading it again only brings in what the service added since.
- */
+/** what musicfy remembers about an imported playlist on its service: where it lives and every song it had last time, so reading it again only brings in what is new */
 internal class PlaylistSourceRecord(private val database: MusicDatabase) {
 
-    /**
-     * The copy an earlier import made of this playlist: the one from the same place on [source],
-     * or failing that (an import from before that was saved, a Musicfy backup) one with its name.
-     * A copy already tied to a different playlist on [source] isn't this one, whatever its name.
-     */
+    /** the copy an earlier import made of this playlist: same place on source, or else one with its name (old imports, musicfy backups), a copy tied to a different playlist is never it */
     suspend fun existingCopy(source: ImportSource, name: String, origin: PlaylistOrigin?): PlaylistEntity? {
         origin?.remoteId
             ?.let { database.importedPlaylistByRemoteId(source.key, it) }
@@ -35,10 +27,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
             ?.playlist
     }
 
-    /**
-     * The tracks [playlistId] hasn't had from the service before, each once. A playlist imported
-     * before those were saved only has its songs to go by, so they're paired up by title and artist.
-     */
+    /** the tracks playlistId hasn't had from the service before, each once, older playlists only have their songs so those are paired by title and artist */
     suspend fun newTracks(playlistId: String, tracks: List<ImportedTrack>): List<ImportedTrack> {
         val known = database.importedPlaylistTrackKeys(playlistId).toHashSet()
         if (known.isEmpty()) {
@@ -55,7 +44,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
         }
     }
 
-    /** Saves where the playlist lives on [source] and every song it has there now. */
+    /** saves where the playlist lives on source and every song it has there now */
     suspend fun remember(source: ImportSource, playlistId: String, tracks: List<ImportedTrack>, origin: PlaylistOrigin?) {
         // one made here, or from another service, that an import topped up by name: nothing to re-sync with
         if (database.getImportedPlaylist(playlistId)?.source != source.key) return
@@ -65,10 +54,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
         }
     }
 
-    /**
-     * A YouTube playlist saved as a copy from its own page. It never went through an import, so
-     * nothing owned it before; this makes it one Re-sync can read again by [youTubeId].
-     */
+    /** a youtube playlist saved as a copy from its own page, no import owned it so this makes it one re-sync can read again by youTubeId */
     suspend fun rememberYouTubeCopy(playlistId: String, youTubeId: String, songIds: List<String>) {
         val now = LocalDateTime.now()
         database.withTransaction {
@@ -88,11 +74,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
     }
 }
 
-/**
- * What Re-sync knows a service's song by, from one read of the playlist to the next. Exact for
- * YouTube songs; for the other services the cleaned-up title and first artist, which come out the
- * same whether the playlist was read through a link or a signed-in account.
- */
+/** what re-sync knows a service's song by: exact for youtube songs, else cleaned title and first artist, which match whether read through a link or an account */
 internal fun ImportedTrack.trackKey(): String {
     (videoId ?: ytItem?.id)?.let { return youTubeKey(it) }
     val firstArtist = TrackMatcher.splitArtists(artist).firstOrNull().orEmpty()

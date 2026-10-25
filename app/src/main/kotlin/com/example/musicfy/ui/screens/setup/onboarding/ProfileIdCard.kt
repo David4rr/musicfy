@@ -1,8 +1,4 @@
-// ProfileIdCard.kt
-//
-// The profile "ID card" from the mocks: PROFILE USR#…, the photo, the name and the join date, with a
-// darker strip on the right whose "{user}'s CARD" text scrolls downward forever. Dark on the profile
-// page; silver (a brushed-metal gradient with a moving highlight) on the Hello and Done pages.
+// the profile id card from the mocks, dark on the profile page and silver on hello and done
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -67,16 +63,13 @@ import coil3.compose.AsyncImage
 import com.example.musicfy.R
 import kotlinx.coroutines.flow.first
 
-/** Width : height of the card, from the mock (332 x 176). */
+/** width to height of the card, from the mock (332 x 176) */
 internal const val IdCardAspect = 1.89f
 
-/** The name the card shows, and the profile page with it, so the two always say the same thing. */
+/** the name the card shows, shared with the profile page so the two always say the same thing */
 internal fun idCardName(username: String): String = username.trim().ifEmpty { "{username}" }
 
-/**
- * Where the card's photo, name and number are, so the profile page can fly copies of them out of
- * the card and back. Written as the card lays out; read only while drawing, so nothing recomposes.
- */
+/** where the card's photo, name and number are, read only while drawing so the profile page can fly copies without recomposing */
 internal class IdCardAnchors {
     var root: LayoutCoordinates? = null
     var photo: LayoutCoordinates? = null
@@ -98,18 +91,18 @@ internal fun ProfileIdCard(
     modifier: Modifier = Modifier,
     silver: Boolean = false,
     showIdCardOf: Boolean = silver,
-    /** 0..1 across the card; where the silver highlight sits (the Hello page moves it with the tilt). */
+    /** 0..1 across the card, where the silver highlight sits */
     sheen: () -> Float = { 0.5f },
     onPhotoClick: (() -> Unit)? = null,
-    /** Filled in with where the photo, name and number sit, for the profile page's morph. */
+    /** filled in with where the photo, name and number sit, for the profile page's morph */
     anchors: IdCardAnchors? = null,
-    /** Alpha for just the photo, name and number: the morph hides them while their copies fly. */
+    /** alpha for just the photo, name and number, the morph hides them while their copies fly */
     partsAlpha: () -> Float = { 1f },
-    /** False holds the side strip's text still, for while something covers the card. */
+    /** false holds the side strip's text still while something covers the card */
     marqueeRunning: () -> Boolean = { true },
-    /** Shows a tiny pencil after the number and the name, so people see the card can be edited. */
+    /** shows a tiny pencil after the number and the name so people see the card can be edited */
     showEditHint: Boolean = false,
-    /** True while a finger is down on the card; the whole card lights up a little. */
+    /** true while a finger is down on the card, the whole card lights up a little */
     pressed: () -> Boolean = { false },
 ) {
     val name = idCardName(username)
@@ -232,7 +225,7 @@ internal fun ProfileIdCard(
     }
 }
 
-/** A tiny bare pencil, hidden with the other parts while the profile page's copies are flying. */
+/** a tiny bare pencil, hidden with the other parts while the profile page's copies are flying */
 @Composable
 private fun EditHint(tint: Color, size: Dp, alpha: () -> Float) {
     Icon(
@@ -246,7 +239,7 @@ private fun EditHint(tint: Color, size: Dp, alpha: () -> Float) {
     )
 }
 
-/** Tracks where a flying part of the card is, and lets the morph hide it while its copy is out. */
+/** tracks where a flying part of the card is and lets the morph hide it while its copy is out */
 private fun Modifier.flyingPart(
     anchors: IdCardAnchors?,
     alpha: () -> Float,
@@ -256,13 +249,10 @@ private fun Modifier.flyingPart(
     return onPlaced { anchors.track(it) }.graphicsLayer { this.alpha = alpha() }
 }
 
-/** One full pass of the side strip's text. */
+/** one full pass of the side strip's text */
 private const val MarqueePeriodNanos = 5_200_000_000f
 
-/**
- * Vertical text, rotated a quarter turn, sliding downward without end. Drawn, never recomposed.
- * While [running] says no it holds still, and carries on from the same spot afterwards.
- */
+/** vertical text rotated a quarter turn and sliding downward forever, drawn not recomposed, holds still while running is false */
 @Composable
 internal fun MarqueeStrip(
     text: String,
@@ -294,7 +284,7 @@ internal fun MarqueeStrip(
     }
     Canvas(modifier = modifier.background(background)) {
         val step = layout.size.width.toFloat().coerceAtLeast(1f)
-        // rotated 90°: the text's x-axis runs down the strip, so moving it +x scrolls it downward
+        // rotated 90 degrees so the text's x-axis runs down the strip, moving it +x scrolls it downward
         rotate(90f, pivot = Offset.Zero) {
             translate(left = 0f, top = -size.width / 2f - layout.size.height / 2f) {
                 var x = -step + progress * step
@@ -307,7 +297,7 @@ internal fun MarqueeStrip(
     }
 }
 
-/** Brushed silver with a soft diagonal highlight that sits at [sheen] (0..1 across the card). */
+/** brushed silver with a soft diagonal highlight at sheen, 0..1 across the card */
 private fun Modifier.silverSurface(sheen: () -> Float): Modifier = drawWithCache {
     val base = Brush.linearGradient(
         0f to Color(0xFFBFC1C6),

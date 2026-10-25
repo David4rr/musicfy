@@ -1,8 +1,4 @@
-// AudioFxPictures.kt
-//
-// The live pictures on the Audio FX page. Each one draws what its effect does to sound, follows
-// its own settings as they move, and breathes with the music when something plays. They draw on
-// the frame clock only while on screen and uncovered, inside a bounded stage.
+// the live pictures on the audio fx page, each draws what its effect does to sound and only runs on the frame clock while on screen and uncovered
 
 package com.example.musicfy.ui.screens.audiolab
 
@@ -53,7 +49,7 @@ internal class PictureClock {
     var dt = 0f
         private set
 
-    /** once per drawn frame: works out [dt] and keeps the music level current */
+    /** once per drawn frame, works out dt and keeps the music level current */
     fun tick(t: Float) {
         if (t == lastTime) {
             dt = 0f
@@ -78,7 +74,7 @@ internal fun PictureCanvas(draw: DrawScope.(t: Float, clock: PictureClock) -> Un
     }
 }
 
-// ---- Loudness: the music's level, lifted by the boost and flattened under the ceiling ---------
+// ---- loudness: the music's level, lifted by the boost and flattened under the ceiling ---------
 
 private class LevelHistory {
     val values = FloatArray(56)
@@ -150,7 +146,7 @@ fun LoudnessPicture(settings: LoudnessSettings, fx: AudioFxService) {
     }
 }
 
-// ---- Spatial: a head from above, and where the sound reaches it from -------------------------
+// ---- spatial: a head from above, and where the sound reaches it from -------------------------
 
 @Composable
 fun SpatialPicture(settings: SpatialSettings) {
@@ -220,7 +216,7 @@ fun SpatialPicture(settings: SpatialSettings) {
     }
 }
 
-/** a line with dots running along it, from [from] to [to] */
+/** a line with dots running along it, from one point to the other */
 private fun DrawScope.flowLine(from: Offset, to: Offset, color: Color, t: Float, weight: Float) {
     drawLine(color.copy(alpha = color.alpha * 0.35f), from, to, 1.2.dp.toPx() * weight)
     for (k in 0 until 3) {
@@ -229,7 +225,7 @@ private fun DrawScope.flowLine(from: Offset, to: Offset, color: Color, t: Float,
     }
 }
 
-// ---- Dolby Atmos: a dome of speakers over the head, objects moving through it ----------------
+// ---- dolby atmos: a dome of speakers over the head, objects moving through it ----------------
 
 @Composable
 fun AtmosPicture(enabled: Boolean, renderOnHeadphones: Boolean) {
@@ -271,7 +267,7 @@ fun AtmosPicture(enabled: Boolean, renderOnHeadphones: Boolean) {
         // the listener
         drawCircle(Color.White.copy(alpha = 0.9f), 9.dp.toPx(), Offset(c.x, c.y - 4.dp.toPx()), style = Stroke(1.5.dp.toPx()))
 
-        // objects: with Atmos they fly around and above; without, they flatten into stereo
+        // objects: with atmos they fly around and above, without they flatten into stereo
         val colors = listOf(Color(0xFF6BBAF2), Color(0xFFF28BA8), Color(0xFF8FD98B))
         colors.forEachIndexed { k, color ->
             val speed = 0.35f + k * 0.17f
@@ -291,7 +287,7 @@ fun AtmosPicture(enabled: Boolean, renderOnHeadphones: Boolean) {
     }
 }
 
-// ---- Speed & pitch: a record turning at the speed, a wave at the pitch -----------------------
+// ---- speed & pitch: a record turning at the speed, a wave at the pitch -----------------------
 
 private class Spin { var angle = 0f; var phase = 0f }
 
@@ -341,7 +337,7 @@ fun SpeedPicture(settings: PlaybackSettings) {
     }
 }
 
-// ---- Volume curve: the slider's travel against the gain it gives ------------------------------
+// ---- volume curve: the slider's travel against the gain it gives ------------------------------
 
 @Composable
 fun VolumeCurvePicture(settings: VolumeSettings, volume: Float) {

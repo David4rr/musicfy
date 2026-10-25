@@ -1,8 +1,4 @@
-// CardMoments.kt
-//
-// The two "card" pages: Hello (after the profile) and Done (the very end). Every moving part is
-// driven by one frame clock read only in draw/graphicsLayer lambdas, so nothing recomposes while it
-// animates. Hello doubles as the blur benchmark — see BlurCapability.
+// the hello and done card pages, all motion runs off one frame clock read in draw lambdas so nothing recomposes
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
@@ -65,7 +61,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** Both card pages move on to the next step on their own after this long. */
+/** both card pages move on by themselves after this long */
 internal const val CardMomentMillis = 3000L
 
 internal data class CardInfo(
@@ -305,7 +301,7 @@ private fun easeOutBack(t: Float): Float {
     return 1f + c3 * x * x * x + c1 * x * x
 }
 
-/** Silver confetti: one burst from the card, falling with a little flutter. */
+/** silver confetti, one burst from the card falling with a little flutter */
 private class Confetti private constructor(private val pieces: List<Piece>) {
     private class Piece(
         val vx: Float,

@@ -1,18 +1,16 @@
-// TimedLyrics.kt
-
 package com.music.directlyrics
 
 import java.util.Locale
 
-/** One timed word, or piece of a word, in milliseconds from the start of the song. */
+/** one timed word or piece of a word, in milliseconds from the start of the song */
 internal data class TimedWord(val text: String, val startMs: Long, val endMs: Long)
 
-/** One lyrics line. [words] is empty when the source only times whole lines. */
+/** one lyrics line, words is empty when the source only times whole lines */
 internal data class TimedLine(val startMs: Long, val text: String, val words: List<TimedWord> = emptyList())
 
 private val LrcLineRegex = Regex("""^\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?](.*)$""")
 
-/** Standard "[mm:ss.xx]text" lines. Tag lines like [ti:] and [ar:] and anything untimed are dropped. */
+/** standard "[mm:ss.xx]text" lines, tag lines like [ti:] and [ar:] and anything untimed are dropped */
 internal fun parseLrc(lrc: String): List<TimedLine> = lrc.lineSequence().mapNotNull { raw ->
     val match = LrcLineRegex.matchEntire(raw.trim()) ?: return@mapNotNull null
     val (minutes, seconds, fraction, text) = match.destructured
@@ -20,7 +18,7 @@ internal fun parseLrc(lrc: String): List<TimedLine> = lrc.lineSequence().mapNotN
     TimedLine(minutes.toLong() * 60_000 + seconds.toLong() * 1000 + millis, text.trim())
 }.toList()
 
-// "作词 : 方文山", "Lyrics by：Max Martin", "制作人 : 周杰伦": a short label, then a colon.
+// credit lines like "作词 : 方文山", "lyrics by：max martin" or "制作人 : 周杰伦": a short label, then a colon
 private val CreditRegex = Regex("""^[^:：]{1,24}[:：].+$""")
 private const val HeadCreditWindow = 15
 private const val TailCreditWindow = 6
@@ -31,11 +29,7 @@ private fun TimedLine.isCredit(): Boolean {
     return label.split(' ').size <= 4
 }
 
-/**
- * Drops the credits Chinese services put around the lyrics. Near the top, everything up to the
- * last credit goes, which also takes the "Title - Artist" line that comes before them. Near the
- * end, the first credit and everything after it goes.
- */
+/** drops the credits chinese services put around the lyrics: near the top everything up to the last credit goes (taking the "title - artist" line before them), near the end the first credit and all after it */
 internal fun List<TimedLine>.withoutCredits(): List<TimedLine> {
     val body = drop(take(HeadCreditWindow).indexOfLast { it.isCredit() } + 1)
     val tailStart = (body.size - TailCreditWindow).coerceAtLeast(0)
@@ -43,24 +37,19 @@ internal fun List<TimedLine>.withoutCredits(): List<TimedLine> {
     return if (tailCut == -1) body else body.subList(0, tailStart + tailCut)
 }
 
-// "纯音乐，请欣赏" ("instrumental, enjoy") is the one line both Chinese services send for a song
-// with no words.
+// "纯音乐，请欣赏" ("instrumental, enjoy") is the one line both chinese services send for a song with no words
 private const val InstrumentalMarker = "纯音乐"
 
-/** Whether there is anything to sing along to, rather than nothing or an "instrumental" note. */
+/** whether there is anything to sing along to, rather than nothing or an "instrumental" note */
 internal fun List<TimedLine>.hasLyrics(): Boolean {
     val sung = filter { it.text.isNotBlank() }
     return sung.isNotEmpty() && sung.none { InstrumentalMarker in it.text }
 }
 
-// The word line is split on "|" and each word on ":", and it ends at ">", so a word can't carry them.
+// the word line is split on "|" and each word on ":" and ends at ">" so a word can't carry them
 private const val WordSeparators = ":|<>"
 
-/**
- * Lines in the app's lyrics format. A word-timed line is followed by its words as
- * "<word:start:end|...>" in seconds, the way the Paxsenix provider writes them. That keeps each
- * word's end time, so the highlight lasts as long as the word is sung.
- */
+/** lines in the app's lyrics format, a word-timed line is followed by its words as "<word:start:end|...>" in seconds like the paxsenix provider writes them, so the highlight lasts as long as the word is sung */
 internal fun List<TimedLine>.toLrc(): String = buildString {
     this@toLrc.forEach { line ->
         append(stamp(line.startMs)).append(line.text).append('\n')

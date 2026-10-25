@@ -1,5 +1,3 @@
-// CaptureWebView.kt
-
 package com.example.musicfy.ui.screens.settings.importsync
 
 import android.view.ContextThemeWrapper
@@ -62,17 +60,13 @@ import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
-/** The page-side name of [CaptureBridge]; scripts the app runs in the page report through it too. */
+/** the page-side name of CaptureBridge, scripts the app runs in the page report through it too */
 internal const val BRIDGE_NAME = "MusicfyCapture"
 
-/** Headers the web players send with their session: the token itself, and Spotify's client details. */
+/** headers the web players send with their session: the token itself and spotify's client details */
 private val SESSION_HEADERS = setOf("authorization", "media-user-token", "client-token", "app-platform", "spotify-app-version")
 
-/**
- * Wraps fetch and XHR so the headers the web player sends (its own session token) reach the app.
- * Only the header names below are reported, each value once. Spotify's library queries are
- * reported too (name, hash, variables), once per query.
- */
+/** wraps fetch and xhr so the session headers and spotify's library queries the web player sends reach the app */
 private val HOOK_JS = """
 (function() {
   if (window.__musicfyHooked) return;
@@ -188,10 +182,7 @@ private val HOOK_JS = """
 })();
 """.trimIndent()
 
-/**
- * [report] must not share the method's name: Kotlin resolves a call to the member function first,
- * so the method called itself until the stack overflowed and nothing the page sent ever arrived.
- */
+/** the callback must not be named like the method or kotlin calls the method itself and overflows the stack */
 private class CaptureBridge(private val report: (String, String, String) -> Unit) {
     @JavascriptInterface
     fun onHeader(name: String?, value: String?, url: String?) {
@@ -200,7 +191,7 @@ private class CaptureBridge(private val report: (String, String, String) -> Unit
     }
 }
 
-/** The full-screen version, with its own header: Import settings → Sign in and choose. */
+/** the full-screen version, with its own header: import settings → sign in and choose */
 @Composable
 fun CaptureWebView(
     title: String,
@@ -237,12 +228,7 @@ fun CaptureWebView(
     }
 }
 
-/**
- * A service's own sign-in page, without any chrome. Whatever session headers its web player sends
- * are passed to [onHeader]; [onTick] runs on every page load and every couple of seconds, for
- * anything that has to be read out of the page instead. Back walks the page's history, then
- * [onExit].
- */
+/** a service's own sign-in page without chrome, session headers go to onHeader and onTick runs on every load and every couple of seconds */
 @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
 fun CaptureWebContent(
@@ -266,18 +252,14 @@ fun CaptureWebContent(
     val documentStartSupported = remember { WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) }
 
     fun WebView.configure(isPopup: Boolean) {
-        // A WebView with no LayoutParams gets WRAP_CONTENT, and Chromium then lays the page out at
-        // zero height (vh/dvh = 0, the initial containing block 0 tall). Spotify's sign-in page is
-        // `position: absolute; inset: 0`, so it came out 48px tall and the whole form was clipped:
-        // a blank page that had loaded fine.
+        // match_parent params on purpose, with none the page lays out at zero height and spotify's sign-in shows blank (see docs/notes/settings.md)
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.javaScriptCanOpenWindowsAutomatically = true
         settings.setSupportMultipleWindows(true)
         settings.useWideViewPort = true
-        // zooming out to fit the widest element only suits a desktop site; on a phone site one
-        // oversized hidden element shrank the whole page out of sight
+        // zoom-to-fit only suits desktop sites, on a phone site one oversized hidden element shrank the page out of sight
         settings.loadWithOverviewMode = desktopSite
         settings.setSupportZoom(true)
         settings.builtInZoomControls = true
@@ -332,7 +314,7 @@ fun CaptureWebContent(
         }
 
         webChromeClient = object : WebChromeClient() {
-            // Apple's authorize step and "Continue with Google/Apple" open popups that report back to this page
+            // apple's authorize step and continue with google/apple open popups that report back to this page
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
                 // only windows the user asked for: a script opening one on its own would cover the page
                 if (!isUserGesture) {
@@ -457,26 +439,20 @@ private fun isPlayerPage(url: String?, playerOrigins: Set<String>): Boolean =
 
 private const val LOG_TAG = "SignInWeb"
 
-/**
- * WebView's own user agent says "; wv" and "Version/4.0", both of which sign-in pages read as an
- * embedded browser. Without them it's the same Chrome-for-phones string, real version included.
- */
+/** strips the wv and version/4.0 bits from webview's user agent, sign-in pages read them as an embedded browser */
 internal fun chromeUserAgent(webViewAgent: String): String =
     webViewAgent.replace("; wv", "").replace(Regex("""\s?Version/\d+(\.\d+)*"""), "")
 
-/** True once this view shows desktop sites, from the start or after [useDesktopSite]. */
+/** true once this view shows desktop sites, from the start or after useDesktopSite */
 internal fun WebView.isDesktopSite(): Boolean = settings.userAgentString == DESKTOP_USER_AGENT
 
-/** Switches a phone-site view to desktop sites from its next page load on, zoomed out to fit. */
+/** switches a phone-site view to desktop sites from its next page load on, zoomed out to fit */
 internal fun WebView.useDesktopSite() {
     settings.userAgentString = DESKTOP_USER_AGENT
     settings.loadWithOverviewMode = true
 }
 
-/**
- * WebView names the app in an X-Requested-With header on every request, which is how sites spot an
- * embedded browser. Android lets an app opt out; sign-in pages get no app name.
- */
+/** opts out of the x-requested-with header, it is how sites spot an embedded browser */
 @SuppressLint("RequiresFeature")
 internal fun WebView.hideAppIdentity() {
     if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
@@ -484,10 +460,7 @@ internal fun WebView.hideAppIdentity() {
     }
 }
 
-/**
- * Sign-in pages draw their own dark mode. WebView's automatic darkening (and MIUI's forced dark)
- * repainted them on top of it and left light text on light fields.
- */
+/** sign-in pages draw their own dark mode, webview's automatic darkening (and miui's forced dark) leaves light text on light fields */
 @SuppressLint("RequiresFeature")
 internal fun WebView.disableForcedDarkening() {
     if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -496,22 +469,16 @@ internal fun WebView.disableForcedDarkening() {
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) isForceDarkAllowed = false
 }
 
-/**
- * The context sign-in pages are shown in: the app's, with a light theme. On Android 13+ a WebView
- * takes `prefers-color-scheme` from its context's theme, and Musicfy's is dark. Apple Music then
- * went dark around its sign-in frame, which has no dark mode and a see-through background, so the
- * frame's dark text sat on a dark page - only the code boxes and links showed. Spotify and Tidal
- * draw their own dark pages either way. Popups are made from this view's context, so they get it too.
- */
+/** the app's context with a light theme, a dark one turns apple music's sign-in frame into dark text on a dark page (see docs/notes/settings.md) */
 private fun lightThemed(context: Context): Context =
     ContextThemeWrapper(context, android.R.style.Theme_DeviceDefault_Light_NoActionBar)
 
-/** Lets Compose detach the view first; destroying an attached WebView logs errors. */
+/** lets compose detach the view first, destroying an attached webview logs errors */
 private fun destroyLater(webView: WebView) {
     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ webView.destroy() }, 500)
 }
 
-/** Signs this app's web views out of one service, so the next sign-in can use another account. */
+/** signs this app's web views out of one service, so the next sign-in can use another account */
 fun clearWebSession(origins: List<String>) {
     val cookies = CookieManager.getInstance()
     origins.forEach { origin ->
