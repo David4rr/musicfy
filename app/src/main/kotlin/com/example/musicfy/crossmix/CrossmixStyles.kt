@@ -4,7 +4,9 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.pow
+import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** every crossmix renderer knob at one moment (defaults are the untouched track), a style fills it from the beat position alone so it always sounds the same */
 class FxParams {
@@ -16,6 +18,8 @@ class FxParams {
     var lowBand = 1f
     var midBand = 1f
     var highBand = 1f
+    /** 0 the bass is there, 1 it's gone behind a steep cut at 200 hz: the side that doesn't own the low end */
+    var bassCut = 0f
     var echoSend = 0f
     var echoBeats = 0.75f
     var echoFeedback = 0.45f
@@ -48,7 +52,7 @@ class FxParams {
 
     fun reset() {
         gain = 1f; lowCutHz = 0f; highCutHz = OpenHz; resonance = 0.707f
-        lowBand = 1f; midBand = 1f; highBand = 1f
+        lowBand = 1f; midBand = 1f; highBand = 1f; bassCut = 0f
         echoSend = 0f; echoBeats = 0.75f; echoFeedback = 0.45f; echoTone = 0.6f; echoPingPong = false
         reverbSend = 0f; reverbSize = 0.84f; reverbFreeze = 0f
         gateDepth = 0f; gateDivision = 4f; gateDuty = 0.5f
@@ -68,6 +72,9 @@ class FxParams {
 /** which side of the transition a renderer is playing */
 enum class CrossmixRole { Outgoing, Incoming }
 
+/** when the planner may pick a style by itself: every day, only into a sharp rise or fall in energy, or never (they stay for testing by hand) */
+enum class StyleUse { Everyday, Lift, Fall, Flavour }
+
 /** the transitions crossmix can play; needsBeatMatch ones overlap on the beat, entersAtEnd ones bring the next song in after the outgoing one is gone (a drop) */
 enum class CrossmixStyle(
     val label: String,
@@ -77,71 +84,71 @@ enum class CrossmixStyle(
     val lengths: IntArray,
     /** beats the outgoing side keeps ringing after the hand-over (echo and reverb tails) */
     val tailBeats: Int = 0,
+    val use: StyleUse = StyleUse.Flavour,
 ) {
-    SilkBlend("Silk blend", false, false, intArrayOf(16, 24, 32)),
-    BassSwap("Bass swap", true, false, intArrayOf(32, 48, 64)),
-    FilterSweep("Filter sweep", false, false, intArrayOf(16, 24, 32)),
-    HighPassLift("High-pass lift", false, true, intArrayOf(8, 16)),
-    EchoOut("Echo out", false, true, intArrayOf(4, 8), tailBeats = 12),
+    SilkBlend("Silk blend", false, false, intArrayOf(8, 16), use = StyleUse.Everyday),
+    BassSwap("Bass swap", true, false, intArrayOf(8, 16, 32), use = StyleUse.Everyday),
+    FilterSweep("Filter sweep", false, false, intArrayOf(8, 16), use = StyleUse.Everyday),
+    HighPassLift("High-pass lift", false, true, intArrayOf(8, 16), use = StyleUse.Lift),
+    EchoOut("Echo out", false, true, intArrayOf(4, 8), tailBeats = 12, use = StyleUse.Everyday),
     DubThrow("Dub throw", false, true, intArrayOf(8), tailBeats = 16),
     ReverbWash("Reverb wash", false, false, intArrayOf(16, 24), tailBeats = 16),
-    Backspin("Backspin", false, true, intArrayOf(4, 8)),
+    Backspin("Backspin", false, true, intArrayOf(4, 8), use = StyleUse.Lift),
     RewindWash("Rewind wash", false, true, intArrayOf(8), tailBeats = 12),
-    TapeStop("Tape stop", false, true, intArrayOf(4, 8)),
-    PowerDown("Power down", false, true, intArrayOf(8), tailBeats = 8),
-    LoopRoll("Loop roll", false, true, intArrayOf(8, 16)),
+    TapeStop("Tape stop", false, true, intArrayOf(4, 8), use = StyleUse.Fall),
+    PowerDown("Power down", false, true, intArrayOf(8), tailBeats = 8, use = StyleUse.Fall),
+    LoopRoll("Loop roll", false, true, intArrayOf(8, 16), use = StyleUse.Lift),
     StutterGate("Stutter gate", true, false, intArrayOf(16, 32)),
-    RiserBuild("Riser build", false, true, intArrayOf(16, 32), tailBeats = 4),
-    Downlifter("Downlifter", false, false, intArrayOf(16, 24), tailBeats = 8),
+    RiserBuild("Riser build", false, true, intArrayOf(16, 32), tailBeats = 4, use = StyleUse.Lift),
+    Downlifter("Downlifter", false, false, intArrayOf(8, 16), tailBeats = 8, use = StyleUse.Fall),
     PhaserGlide("Phaser glide", false, false, intArrayOf(16, 32)),
     LofiMelt("Lo-fi melt", false, false, intArrayOf(16, 24)),
     SpatialOrbit("Spatial orbit", false, false, intArrayOf(16, 32), tailBeats = 8),
     DopplerPass("Doppler pass", false, false, intArrayOf(8, 16)),
-    VocalHandoff("Vocal hand-off", false, true, intArrayOf(4, 8), tailBeats = 8),
-    DropCut("Drop cut", true, true, intArrayOf(8, 16)),
+    VocalHandoff("Vocal hand-off", false, true, intArrayOf(4, 8), tailBeats = 8, use = StyleUse.Everyday),
+    DropCut("Drop cut", true, true, intArrayOf(8, 16), use = StyleUse.Everyday),
     GateFade("Gate fade", true, false, intArrayOf(16, 32)),
-    HarmonicGlide("Harmonic glide", true, false, intArrayOf(32, 48, 64)),
+    HarmonicGlide("Harmonic glide", true, false, intArrayOf(16, 32), use = StyleUse.Everyday),
     BreakdownBridge("Breakdown bridge", false, false, intArrayOf(16, 24), tailBeats = 4),
-    ThunderDrop("Thunder drop", false, true, intArrayOf(8, 16), tailBeats = 12),
-    FarAway("Fade to far", false, false, intArrayOf(16, 24, 32), tailBeats = 8),
-    Dampen("Dampen", false, false, intArrayOf(8, 16, 24), tailBeats = 6);
+    ThunderDrop("Thunder drop", false, true, intArrayOf(8, 16), tailBeats = 12, use = StyleUse.Lift),
+    FarAway("Fade to far", false, false, intArrayOf(8, 16), tailBeats = 8, use = StyleUse.Everyday),
+    Dampen("Dampen", false, false, intArrayOf(8, 16), tailBeats = 6, use = StyleUse.Everyday);
 
-    /** fills out for one side at a transition beat; length is where the outgoing song has handed over, variation (0..3) picks close variants */
-    fun evaluate(role: CrossmixRole, beat: Float, length: Float, variation: Int, out: FxParams) {
+    /** the beat the low end changes hands and the next song's landing is heard: the end for a drop, otherwise up to two bars before it */
+    fun swapAt(length: Int): Int = if (entersAtEnd) length else length - min(8, length / 2)
+
+    /** fills out for one side at a transition beat; length is where the outgoing song has handed over, swap where the bass changes hands, variation (0..3) picks close variants */
+    fun evaluate(role: CrossmixRole, beat: Float, length: Float, swap: Float, variation: Int, out: FxParams) {
         out.reset()
         val p = (beat / length).coerceIn(0f, 1f)
+        val swapShare = (swap / length).coerceIn(0.1f, 1f)
         val outgoing = role == CrossmixRole.Outgoing
         when (this) {
             SilkBlend -> if (outgoing) {
-                out.gain = fadeOut(p)
-                out.highCutHz = sweepDown(ramp(p, 0.45f, 1f), OpenHz, 5_500f)
+                // the bass hand-off: whole until the bass goes, then it darkens and falls away
+                out.gain = if (beat <= swap) 1f else fadeOut(ramp(beat, swap, length))
+                out.highCutHz = sweepDown(ramp(beat, swap, length).pow(0.8f), OpenHz, 1_600f)
             } else {
-                out.gain = fadeIn(p)
-                out.lowCutHz = sweepDown(ramp(p, 0f, 0.6f), 320f, 0f)
+                out.gain = fadeIn(ramp(beat, 0f, swap))
+                out.lowCutHz = entryHighPass(p, 900f, 0.8f * swapShare)
             }
 
-            BassSwap -> {
-                // the classic three-band mix: the newcomer's bass waits for the phrase change
-                val swap = length / 2f
-                val swapMix = ramp(beat, swap - 0.5f, swap + 0.5f)
-                if (outgoing) {
-                    out.lowBand = 1f - swapMix
-                    out.highBand = 1f - 0.35f * ramp(p, 0.5f, 1f)
-                    out.gain = fadeOut(ramp(p, 0.75f, 1f))
-                } else {
-                    out.gain = fadeIn(ramp(p, 0f, 0.25f))
-                    out.lowBand = swapMix
-                    out.midBand = 0.55f + 0.45f * ramp(p, 0.25f, 0.5f)
-                }
+            BassSwap -> if (outgoing) {
+                // both faders up until the swap, then this one is pulled; only its air goes before that
+                out.gain = if (beat <= swap) 1f else fadeOut(ramp(beat, swap, length))
+                out.highCutHz = sweepDown(ramp(p, 0.3f, 1f), OpenHz, 2_200f)
+            } else {
+                out.gain = fadeIn(ramp(beat, 0f, swap))
+                out.lowCutHz = entryHighPass(p, 520f, 0.9f * swapShare)
             }
 
             FilterSweep -> if (outgoing) {
-                out.highCutHz = sweepDown(smooth(p), OpenHz, 260f)
-                out.resonance = 0.707f + 0.55f * sin(PI.toFloat() * p)
-                out.gain = fadeOut(ramp(p, 0.7f, 1f))
+                // front-loaded, so its top is gone early and it settles on a low bed rather than crawling down
+                out.highCutHz = sweepDown(p.pow(0.6f), OpenHz, 300f)
+                out.resonance = 0.707f + 0.15f * sin(PI.toFloat() * p)
+                out.gain = fadeOut(ramp(p, 0.6f, 1f))
             } else {
-                out.lowCutHz = sweepDown(smooth(p), 1_400f, 0f)
-                out.resonance = 0.707f + 0.35f * sin(PI.toFloat() * p)
+                out.lowCutHz = entryHighPass(p, 1_200f, 0.6f)
                 out.gain = fadeIn(ramp(p, 0f, 0.5f))
             }
 
@@ -155,11 +162,12 @@ enum class CrossmixStyle(
             }
 
             EchoOut -> if (outgoing) {
-                out.echoBeats = if (variation % 2 == 0) 0.75f else 0.5f
-                out.echoSend = ramp(beat, length - 4f, length - 0.5f) * cutAt(beat, length + 0.01f).coerceAtLeast(0f)
-                out.echoFeedback = 0.5f + 0.18f * ramp(beat, length - 4f, length)
+                // the last beat repeats on the beat, so the echoes sound like the song trailing off; it stays open, an echo of a muffled song is only mud
+                out.echoBeats = 1f
+                out.echoSend = ramp(beat, length - 1f, length - 0.05f) * cutAt(beat, length + 0.01f).coerceAtLeast(0f)
+                out.echoFeedback = 0.45f
                 out.echoTone = 0.55f
-                out.highCutHz = sweepDown(ramp(beat, length - 2f, length), OpenHz, 7_000f)
+                out.highCutHz = sweepDown(ramp(beat, length - 1f, length), OpenHz, 9_000f)
                 out.gain = cutAt(beat, length)
             } else {
                 out.gain = entry(beat, length, 0.5f)
@@ -259,7 +267,6 @@ enum class CrossmixStyle(
                 out.gain = fadeOut(ramp(p, 0.75f, 1f))
             } else {
                 out.gain = fadeIn(ramp(p, 0.35f, 0.85f))
-                out.lowBand = ramp(p, 0.75f, 0.8f)
             }
 
             RiserBuild -> if (outgoing) {
@@ -353,18 +360,17 @@ enum class CrossmixStyle(
                 out.gain = fadeOut(ramp(p, 0.6f, 1f))
             } else {
                 out.gain = fadeIn(ramp(p, 0f, 0.6f))
-                out.lowBand = ramp(beat, length / 2f - 0.5f, length / 2f + 0.5f)
             }
 
             HarmonicGlide -> if (outgoing) {
+                // two songs in keys that sit together: the mids cross over slowly, the bass on the swap
                 out.midBand = 1f - 0.4f * ramp(p, 0.3f, 0.7f)
                 out.highCutHz = sweepDown(ramp(p, 0.4f, 1f), OpenHz, 8_000f)
-                out.lowBand = 1f - ramp(p, 0.55f, 0.65f)
-                out.gain = fadeOut(ramp(p, 0.5f, 1f))
+                out.gain = if (beat <= swap) 1f else fadeOut(ramp(beat, swap, length))
             } else {
                 out.midBand = 0.5f + 0.5f * ramp(p, 0.3f, 0.7f)
-                out.lowBand = ramp(p, 0.55f, 0.65f)
-                out.gain = fadeIn(ramp(p, 0f, 0.5f))
+                out.gain = fadeIn(ramp(beat, 0f, swap))
+                out.lowCutHz = entryHighPass(p, 320f, 0.8f * swapShare)
             }
 
             BreakdownBridge -> if (outgoing) {
@@ -378,16 +384,13 @@ enum class CrossmixStyle(
                 out.gain = fadeIn(ramp(p, 0.15f, 0.55f))
             }
 
-            FarAway -> {
-                // drifts off to one side getting smaller and further away, while the next arrives from far off on the other and comes close
-                val side = if (variation % 2 == 0) -1f else 1f
-                if (outgoing) {
-                    out.recede(smooth(ramp(p, 0f, 0.8f)), side)
-                    out.gain *= fadeOut(ramp(p, 0.55f, 1f))
-                } else {
-                    out.gain = fadeIn(ramp(p, 0f, 0.3f))
-                    out.recede(1f - smooth(ramp(p, 0.2f, 0.95f)), -side)
-                }
+            FarAway -> if (outgoing) {
+                // drifts off to one side getting smaller and further away, while the next one arrives clear in front
+                out.recede(smooth(ramp(p, 0f, 0.8f)), if (variation % 2 == 0) -1f else 1f)
+                out.gain *= fadeOut(ramp(p, 0.55f, 1f))
+            } else {
+                out.gain = fadeIn(ramp(p, 0f, 0.3f))
+                out.lowCutHz = entryHighPass(p, 700f, 0.5f)
             }
 
             Dampen -> if (outgoing) {
@@ -396,7 +399,7 @@ enum class CrossmixStyle(
                 out.gain *= fadeOut(ramp(p, 0.4f, 1f))
             } else {
                 out.gain = fadeIn(ramp(p, 0f, 0.3f))
-                out.recede(0.45f * (1f - smooth(ramp(p, 0f, 0.5f))), 0f, room = 0.4f)
+                out.lowCutHz = entryHighPass(p, 500f, 0.4f)
             }
 
             ThunderDrop -> if (outgoing) {
@@ -410,6 +413,11 @@ enum class CrossmixStyle(
                 out.gain = entry(beat, length, 0.03f)
                 out.lowBand = 1f + 0.25f * (1f - ramp(beat, length, length + 1f))
             }
+        }
+        // only one kick at a time: the low end changes hands over half a beat that ends on the swap, where the next song lands
+        if (!entersAtEnd) {
+            val handed = ramp(beat, swap - 0.5f, swap)
+            out.bassCut = if (outgoing) handed else 1f - handed
         }
         if (outgoing) {
             // a beat after the hand-over nothing new goes into the echoes and room, only the tails already there carry on and die away
@@ -426,17 +434,32 @@ enum class CrossmixStyle(
         }
     }
 
-    /** for a blend where two songs would sing over each other: the outgoing voice is dampened and drawn away as the next comes in from a little way off, call it after evaluate */
-    fun yieldVocals(role: CrossmixRole, beat: Float, length: Float, variation: Int, out: FxParams) {
+    /** for a blend where two songs would sing over each other, as far as amount (0..1) says they do: the voices get bands of their own, the outgoing one darkening early while the next keeps its body out a little longer; call it after evaluate */
+    fun yieldVocals(role: CrossmixRole, beat: Float, length: Float, swap: Float, amount: Float, out: FxParams) {
+        val a = amount.coerceIn(0f, 1f)
+        if (a <= 0f) return
         val p = (beat / length).coerceIn(0f, 1f)
-        val side = if (variation % 2 == 0) -1f else 1f
         if (role == CrossmixRole.Outgoing) {
-            out.recede(0.8f * smooth(ramp(p, 0.05f, 0.5f)), side, room = 0.7f)
-            out.reverbSend *= cutAt(beat, length + 1f)
+            out.highCutHz = minOf(out.highCutHz, sweepDown(a * smooth(ramp(p, 0.05f, 0.5f)), OpenHz, 1_600f))
+            out.gain *= 1f - 0.25f * a * smooth(ramp(p, 0.1f, 0.6f))
         } else if (beat >= 0f) {
-            out.recede(0.5f * (1f - smooth(ramp(p, 0f, 0.6f))), -side, room = 0.5f)
+            val openBy = (swap / length).coerceIn(0.1f, 1f) * (0.8f + 0.2f * a)
+            out.lowCutHz = max(out.lowCutHz, entryHighPass(p, 700f + 1_700f * a, openBy))
         }
     }
+}
+
+/** the next song's body lifted out while it comes in and gone by openBy: hats and air only at first, the song whole well before it's alone; held high, then let go quickly */
+internal fun entryHighPass(p: Float, topHz: Float, openBy: Float): Float {
+    val remaining = 1f - ramp(p, 0f, openBy)
+    if (remaining <= 0f) return 0f
+    return 20f * (topHz / 20f).pow(remaining.pow(0.35f))
+}
+
+/** what each song's level is multiplied by while both play: two loud songs at once would add up past full scale, so together they're brought down to the loudness of one */
+fun headroom(own: Float, other: Float): Float {
+    val power = own * own + other * other
+    return if (power > 1f) 1f / sqrt(power) else 1f
 }
 
 fun FxParams.recede(distance: Float, side: Float, room: Float = 1f) {

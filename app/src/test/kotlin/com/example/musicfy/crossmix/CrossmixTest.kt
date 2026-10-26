@@ -12,6 +12,7 @@ import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -71,11 +72,13 @@ class CrossmixTest {
         assertTrue("confidence ${analysis.bpmConfidence}", analysis.isBeatReliable)
         val gaps = analysis.beatsMs.toList().zipWithNext { a, b -> (b - a).toDouble() }.sorted()
         assertEquals(60_000.0 / 128, gaps[gaps.size / 2], 6.0)
-        // the bar starts on an accented kick: 250 ms + a multiple of four beats
-        val bar = analysis.beatsMs[analysis.downbeatIndex]
-        val beats = (bar - 250.0) / (60_000.0 / 128)
-        val phase = ((beats % 4) + 4) % 4
-        assertTrue("downbeat phase $phase", phase < 0.2 || phase > 3.8)
+        // every bar starts on an accented kick: 250 ms + a multiple of four beats
+        assertTrue(analysis.barStartsMs().size > 40)
+        for (bar in analysis.barStartsMs()) {
+            val beats = (bar - 250.0) / (60_000.0 / 128)
+            val phase = ((beats % 4) + 4) % 4
+            assertTrue("bar at $bar ms, phase $phase", phase < 0.2 || phase > 3.8)
+        }
         // the fitted local grid lands on the kicks within a few ms
         val grid = analysis.localGrid(60_000L)!!
         val snapped = grid.snap(60_000L)
@@ -93,6 +96,120 @@ class CrossmixTest {
     fun `fast tempos fold into the counted range`() {
         val bpm = analyze(synthTrack(174.0, 80)).bpm!!.toDouble()
         assertTrue("bpm $bpm", abs(bpm - 174.0) < 1.5 || abs(bpm - 87.0) < 1.0)
+    }
+
+    /** a played song and where its bars and sections really start */
+    private class Band(val samples: FloatArray, val barsMs: List<Double>, val sectionBars: List<Int>)
+
+    private val chords = arrayOf(
+        doubleArrayOf(220.0, 261.6, 329.6), doubleArrayOf(174.6, 220.0, 261.6),
+        doubleArrayOf(261.6, 329.6, 392.0), doubleArrayOf(196.0, 246.9, 293.7),
+    )
+    private val loudChords = arrayOf(
+        doubleArrayOf(293.7, 349.2, 440.0), doubleArrayOf(233.1, 293.7, 349.2),
+        doubleArrayOf(329.6, 415.3, 493.9), doubleArrayOf(261.6, 329.6, 392.0),
+    )
+
+    /** a song marked the way real ones are: every kick equally hard, chords changing on the one, maybe a bar cut to two beats and quiet and loud sections */
+    private fun bandTrack(
+        bpm: Double,
+        seconds: Int,
+        backbeat: Boolean,
+        chordBars: Int = 1,
+        shortBar: Int = -1,
+        sectionEvery: Int = 0,
+        sectionFrom: Int = 0,
+    ): Band {
+        val rate = StreamingTrackAnalyzer.SampleRate
+        val out = FloatArray(rate * seconds)
+        val beat = 60.0 / bpm
+        val random = Random(3)
+        fun add(atSeconds: Double, lengthSeconds: Double, sample: (Int) -> Float) {
+            val start = (atSeconds * rate).toInt()
+            for (i in 0 until (lengthSeconds * rate).toInt()) {
+                val n = start + i
+                if (n in out.indices) out[n] += sample(i)
+            }
+        }
+        val bars = ArrayList<Double>()
+        val sections = ArrayList<Int>()
+        var t = 0.25
+        var bar = 0
+        while (t < seconds - 1) {
+            bars += t * 1_000.0
+            if (sectionEvery > 0 && bar >= sectionFrom && (bar - sectionFrom) % sectionEvery == 0) sections += bar
+            // the intro counts as a quiet section, then loud and quiet take turns
+            val section = if (sectionEvery == 0) 1 else if (bar < sectionFrom) 0 else 1 + (bar - sectionFrom) / sectionEvery
+            val loud = section % 2 == 1
+            val level = if (loud) 1f else 0.45f
+            val beatsInBar = if (bar == shortBar) 2 else 4
+            val chord = (if (loud && sectionEvery > 0) loudChords else chords)[(bar / chordBars) % 4]
+            add(t, beatsInBar * beat) { i ->
+                val swell = min(1f, i / (0.03f * rate)) * (0.7f + 0.3f * exp(-i / (0.4f * rate)))
+                var tone = 0.0
+                for (f in chord) tone += sin(2 * PI * f * i / rate) + 0.3 * sin(4 * PI * f * i / rate)
+                0.035f * swell * tone.toFloat() * (if (loud) 1.3f else 1f)
+            }
+            for (p in 0 until beatsInBar) {
+                val at = t + p * beat + random.nextDouble(-0.004, 0.004)
+                if (!backbeat || p % 2 == 0) add(at, 0.12) { i ->
+                    level * 0.8f * exp(-i / (0.03f * rate)) * sin(2 * PI * (55.0 + 60.0 * exp(-i / (0.01 * rate))) * i / rate).toFloat()
+                }
+                // a snare (or clap) on two and four
+                if (p % 2 == 1) add(at, 0.12) { i ->
+                    level * (0.45f * exp(-i / (0.035f * rate)) * (random.nextFloat() * 2f - 1f) +
+                        0.2f * exp(-i / (0.02f * rate)) * sin(2 * PI * 185.0 * i / rate).toFloat())
+                }
+                add(at + beat / 2, 0.03) { i -> level * 0.12f * exp(-i / (0.006f * rate)) * (random.nextFloat() * 2f - 1f) }
+            }
+            t += beatsInBar * beat
+            bar++
+        }
+        return Band(out, bars, sections)
+    }
+
+    /** every bar the analyser found between fromMs and toMs starts on a real one, and it found nearly all of them */
+    private fun assertBarsOnTheOne(band: Band, analysis: TrackAnalysis, bpm: Double, fromMs: Long, toMs: Long) {
+        val found = analysis.barStartsMs().filter { it in fromMs..toMs }
+        val expected = ((toMs - fromMs) / (4 * 60_000.0 / bpm)).toInt() - 2
+        assertTrue("found ${found.size} bars, expected $expected", found.size >= expected)
+        for (bar in found) assertTrue("a bar starts at $bar ms, off the one", band.barsMs.any { abs(it - bar) < 60.0 })
+    }
+
+    @Test
+    fun `the one comes from the chords and the backbeat, at the start and the end`() {
+        // kick on one and three, snare on two and four: the old loudest-kick guess put the bar on beat three
+        val backbeat = bandTrack(96.0, 180, backbeat = true, chordBars = 2)
+        val backbeatAnalysis = analyze(backbeat.samples)
+        assertBarsOnTheOne(backbeat, backbeatAnalysis, 96.0, 5_000L, 40_000L)
+        assertBarsOnTheOne(backbeat, backbeatAnalysis, 96.0, 136_000L, 176_000L)
+        // a kick on every beat with a clap on two and four: the old guess put it on beat four
+        val floor = bandTrack(124.0, 180, backbeat = false, chordBars = 2)
+        val floorAnalysis = analyze(floor.samples)
+        assertBarsOnTheOne(floor, floorAnalysis, 124.0, 5_000L, 40_000L)
+        assertBarsOnTheOne(floor, floorAnalysis, 124.0, 136_000L, 176_000L)
+    }
+
+    @Test
+    fun `a bar cut to two beats moves the count along with it`() {
+        val band = bandTrack(100.0, 180, backbeat = true, shortBar = 30)
+        assertBarsOnTheOne(band, analyze(band.samples), 100.0, 136_000L, 176_000L)
+    }
+
+    @Test
+    fun `phrases are counted from where the sections change, not from the first bar`() {
+        // three bars of intro: counting eight bars from the first one would put every phrase three bars late
+        val band = bandTrack(104.0, 200, backbeat = true, chordBars = 2, sectionEvery = 8, sectionFrom = 3)
+        val analysis = analyze(band.samples)
+        val bars = analysis.barStartsMs()
+        for (section in band.sectionBars) {
+            val index = bars.indexOfFirst { abs(it - band.barsMs[section]) < 60.0 }
+            assertTrue("no bar found at section bar $section", index >= 0)
+            assertTrue("section bar $section not found as one", index in analysis.sectionBars)
+            assertEquals(8, analysis.phraseLevel(index))
+            assertEquals(2, analysis.phraseLevel(index + 2))
+            assertEquals(4, analysis.phraseLevel(index + 4))
+        }
     }
 
     // -- planning ---------------------------------------------------------------------------

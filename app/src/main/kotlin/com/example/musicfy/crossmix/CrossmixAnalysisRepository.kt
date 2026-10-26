@@ -131,7 +131,8 @@ class CrossmixAnalysisRepository(
                 bpm = input.readFloat().takeUnless { it.isNaN() },
                 bpmConfidence = input.readFloat(),
                 beatsMs = input.readLongArray(),
-                downbeatIndex = input.readInt(),
+                barBeats = input.readIntArray(),
+                sectionBars = input.readIntArray(),
                 key = input.readUTF().ifBlank { null },
                 keyConfidence = input.readFloat(),
                 leadingSilenceEndMs = input.readLong(),
@@ -147,7 +148,7 @@ class CrossmixAnalysisRepository(
                     minor = input.readBoolean(),
                 ),
                 vocal = input.readFloatArray(),
-            )
+            ).takeIf { analysis -> analysis.barBeats.all { it in analysis.beatsMs.indices } }
         }
     }.getOrNull()
 
@@ -161,7 +162,8 @@ class CrossmixAnalysisRepository(
             out.writeFloat(analysis.bpm ?: Float.NaN)
             out.writeFloat(analysis.bpmConfidence)
             out.writeLongArray(analysis.beatsMs)
-            out.writeInt(analysis.downbeatIndex)
+            out.writeIntArray(analysis.barBeats)
+            out.writeIntArray(analysis.sectionBars)
             out.writeUTF(analysis.key.orEmpty())
             out.writeFloat(analysis.keyConfidence)
             out.writeLong(analysis.leadingSilenceEndMs)
@@ -187,6 +189,7 @@ class CrossmixAnalysisRepository(
 
     private fun DataInputStream.readLongArray(): LongArray = LongArray(readInt().coerceIn(0, MaxCachedArray)) { readLong() }
     private fun DataInputStream.readFloatArray(): FloatArray = FloatArray(readInt().coerceIn(0, MaxCachedArray)) { readFloat() }
+    private fun DataInputStream.readIntArray(): IntArray = IntArray(readInt().coerceIn(0, MaxCachedArray)) { readInt() }
 
     private fun DataOutputStream.writeLongArray(values: LongArray) {
         writeInt(values.size)
@@ -198,9 +201,14 @@ class CrossmixAnalysisRepository(
         values.forEach(::writeFloat)
     }
 
+    private fun DataOutputStream.writeIntArray(values: IntArray) {
+        writeInt(values.size)
+        values.forEach(::writeInt)
+    }
+
     private companion object {
-        // 3: analyses cut short by a one-chunk stream were stored as whole ones. 4: the voice curve
-        const val CacheVersion = 4
+        // 3: analyses cut short by a one-chunk stream were stored as whole ones. 4: the voice curve. 5: bars from chords and drums, and section starts
+        const val CacheVersion = 5
         const val MaxCachedArray = 200_000
         /** the next song: two minutes of possible entry points plus room for the blend after one */
         const val HeadMs = 150_000L

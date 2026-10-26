@@ -6,7 +6,7 @@
 What to expect in the next version & is it done 
 
 - New ipod like styles +
-- re-vamped profile +
+- Crossfade is not working with reverb
 - Enchantments [#89](https://github.com/realidkroo/musicfy/issues/89) Searcb bar on downloads folder - exist on main page though 
 - Storage usage +
 - Lyrics share +
@@ -18,16 +18,17 @@ x- Lyrics customizer +
 - Playlist options refining +
 - Playlist transition +
 - Playlust descriptions +
-- Playlist reordering +
+- Playlist reordering + 78
 - AND BUGS FIXING = 
 
 
 ## Done
 - bottom bar sould not using haze for blur, theres too much artiffact
+- re-vamped profile +
 - Gesture custom +
 - Arabic and other characters lyrics problem
 - nightly builds support [x]
-- Merged pull request of android 7 supports wi=hile ficing its problem
+- Merged pull request of android 7 supports while ficing its problem
 - Lyrics offset with automatic one +
 - Issue [#79](https://github.com/realidkroo/musicfy/issues/79)
 - Bottom section fixes

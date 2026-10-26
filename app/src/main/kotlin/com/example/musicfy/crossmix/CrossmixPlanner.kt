@@ -112,7 +112,7 @@ object CrossmixPlanner {
                 for (end in ends) {
                     val start = (end - lengthMs).toLong()
                     if (start < windowStart) continue
-                    val exitScore = exitScore(out, outGrid, end, naturalEnd, outLines, style)
+                    val exitScore = exitScore(out, bars, outGrid, end, naturalEnd, outLines, style)
                     val cue = pickCue(style, out, inc, end, length, outGrid.periodMs, tempo, outVoice, inVoice)
                     // overlapping styles lock the beat when tempos allow, hand-over styles only need the next downbeat on the outgoing one's
                     val match = if (tempo != null && (style.needsBeatMatch || !style.entersAtEnd)) {
@@ -332,19 +332,18 @@ object CrossmixPlanner {
     /** where the outgoing song lets go: a phrase boundary, after a sung line, as late as sensible */
     private fun exitScore(
         out: TrackAnalysis,
+        bars: LongArray,
         grid: LocalGrid,
         endMs: Long,
         naturalEnd: Long,
         lines: List<Line>,
         style: CrossmixStyle,
     ): Float {
-        val bars = out.barStartsMs()
         val barIndex = bars.indexOfFirst { abs(it - endMs) < grid.periodMs / 3 }
-        val phrase = when {
-            barIndex < 0 -> 0f
-            barIndex % 8 == 0 -> 1f
-            barIndex % 4 == 0 -> 0.6f
-            barIndex % 2 == 0 -> 0.25f
+        val phrase = if (barIndex < 0) 0f else when (out.phraseLevel(barIndex)) {
+            8 -> 1f
+            4 -> 0.6f
+            2 -> 0.25f
             else -> 0f
         }
         val skipped = (naturalEnd - endMs).coerceAtLeast(0L) / 1_000f
@@ -390,9 +389,11 @@ object CrossmixPlanner {
             val phrase = when {
                 cue == start -> 0.7f
                 barIndex < 0 -> 0f
-                barIndex % 8 == 0 -> 1f
-                barIndex % 4 == 0 -> 0.5f
-                else -> 0.1f
+                else -> when (inc.phraseLevel(barIndex)) {
+                    8 -> 1f
+                    4 -> 0.5f
+                    else -> 0.1f
+                }
             }
             val before = inc.energyAround(cue - 3_000L, 4_000L)
             val after = inc.energyAround(cue + 3_000L, 4_000L)
