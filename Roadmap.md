@@ -12,7 +12,7 @@ What to expect in the next version & is it done
 - Lyrics share +
 - Better crossmix 
 - Device output +
-x- Lyrics customizer +
+x - Lyrics customizer +
 - LastFM integration 
 - Voice and music recognition   o
 - Playlist options refining +
