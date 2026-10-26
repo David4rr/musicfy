@@ -113,7 +113,7 @@ private const val BlurQuantStepPx = 0.5f
 private val BlurEffectCache: Array<androidx.compose.ui.graphics.RenderEffect?> =
     arrayOfNulls((BlurStageRadii.max() / BlurQuantStepPx).toInt() + 2)
 
-private fun blurEffectForRadius(radius: Float): androidx.compose.ui.graphics.RenderEffect? {
+internal fun blurEffectForRadius(radius: Float): androidx.compose.ui.graphics.RenderEffect? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || radius <= 0.05f) return null
     val step = (radius / BlurQuantStepPx).roundToInt().coerceIn(1, BlurEffectCache.lastIndex)
     BlurEffectCache[step]?.let { return it }
@@ -755,7 +755,7 @@ private fun androidx.compose.ui.text.TextStyle.withLetterMotionFeatures(letterMo
  * every side. Use as `layerBleed(b).graphicsLayer { ... }.padding(b)`: the layer grows, the content
  * inside it lands where it would have been anyway, and nothing around it moves.
  */
-private fun Modifier.layerBleed(bleed: androidx.compose.ui.unit.Dp): Modifier =
+internal fun Modifier.layerBleed(bleed: androidx.compose.ui.unit.Dp): Modifier =
     layout { measurable, constraints ->
         val px = bleed.roundToPx()
         val placeable = measurable.measure(constraints.offset(px * 2, px * 2))

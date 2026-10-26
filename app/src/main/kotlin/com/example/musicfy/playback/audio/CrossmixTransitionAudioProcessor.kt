@@ -7,6 +7,7 @@ import com.example.musicfy.crossmix.CrossmixRole
 import com.example.musicfy.crossmix.CrossmixStyle
 import com.example.musicfy.crossmix.FxParams
 import com.example.musicfy.crossmix.evaluate
+import com.example.musicfy.crossmix.headroom
 import com.example.musicfy.constants.TransportEffect
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -16,6 +17,7 @@ import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -58,8 +60,10 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
          */
         val calibrationMs: Double,
         val calibrationNanos: Long,
-        /** the two songs would sing over each other: the outgoing voice is dampened and drawn away */
-        val yieldVocals: Boolean = false,
+        /** 0..1 how much the two songs would sing over each other, and so how far their voices get bands of their own */
+        val yieldAmount: Float = 0f,
+        /** the beat the bass changes hands and the next song lands */
+        val swapBeat: Float = lengthBeats,
         // a pause, play or skip fade instead of a song-to-song style: beat runs 0..lengthBeats across transportLengthMs
         val transport: TransportEffect? = null,
         val transportLengthMs: Float = 0f,
@@ -95,6 +99,8 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
     private var clockCorrectionMs = 0.0
 
     private val params = FxParams()
+    // the other side of the same transition, worked out from the same beat, so both can share the headroom without talking
+    private val otherParams = FxParams()
     private val dsp = Dsp()
 
     /** start a transition on this side. allocation happens here, off the audio thread */
@@ -267,6 +273,12 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         private val lowPassL = Svf(); private val lowPassR = Svf()
         private val bandLowL = Svf(); private val bandLowR = Svf()
         private val bandHighL = Svf(); private val bandHighR = Svf()
+        // two stages make the bass cut a steep 24 db per octave, so the kick the swap hands away is really gone
+        private val bassCutL1 = Svf(); private val bassCutL2 = Svf()
+        private val bassCutR1 = Svf(); private val bassCutR2 = Svf()
+        private var bassCutOn = false
+        // how far the cut is in the signal path, faded over 30 ms both ways: dropping a filter out in one step clicks in the bass
+        private var bassCutMix = 0f
         private val noiseFilter = Svf()
 
         private var flangerL = FloatArray(0)
@@ -336,6 +348,9 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
             echoToneL = 0f; echoToneR = 0f; echoLowL = 0f; echoLowR = 0f
             reverb.clear()
             for (f in arrayOf(highPassL, highPassR, lowPassL, lowPassR, bandLowL, bandLowR, bandHighL, bandHighR, noiseFilter)) f.clear()
+            for (f in arrayOf(bassCutL1, bassCutL2, bassCutR1, bassCutR2)) f.clear()
+            bassCutOn = false
+            bassCutMix = 0f
             flangerL.fill(0f); flangerR.fill(0f)
             flangerCursor = 0
             deckMode = FxParams.Deck.Live
@@ -368,8 +383,14 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                     if (move != null) {
                         move.evaluate(s.role, beat / s.lengthBeats, s.transportLengthMs, params)
                     } else {
-                        s.style.evaluate(s.role, beat, s.lengthBeats, s.variation, params)
-                        if (s.yieldVocals) s.style.yieldVocals(s.role, beat, s.lengthBeats, s.variation, params)
+                        s.style.evaluate(s.role, beat, s.lengthBeats, s.swapBeat, s.variation, params)
+                        val other = if (s.role == CrossmixRole.Outgoing) CrossmixRole.Incoming else CrossmixRole.Outgoing
+                        s.style.evaluate(other, beat, s.lengthBeats, s.swapBeat, s.variation, otherParams)
+                        if (s.yieldAmount > 0f) {
+                            s.style.yieldVocals(s.role, beat, s.lengthBeats, s.swapBeat, s.yieldAmount, params)
+                            s.style.yieldVocals(other, beat, s.lengthBeats, s.swapBeat, s.yieldAmount, otherParams)
+                        }
+                        params.gain *= headroom(params.gain, otherParams.gain)
                     }
                     currentBeat = beat
                     if (beat >= -0.5f) scriptHeard = true
@@ -439,6 +460,15 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
             if (isolate) {
                 bandLowL.set(220f, 0.6f, sr); bandLowR.copyCoefficients(bandLowL)
                 bandHighL.set(2_600f, 0.6f, sr); bandHighR.copyCoefficients(bandHighL)
+            }
+            // the bass cut fades into the path when it's wanted and back out once it's done, never switched in one step
+            val bassCutWanted = params.bassCut > 0.001f
+            if (bassCutWanted) bassCutOn = true
+            val bassCutStep = 1f / (0.03f * sr)
+            if (bassCutOn) {
+                val hz = BassCutFromHz * (BassCutToHz / BassCutFromHz).pow(params.bassCut.coerceIn(0f, 1f))
+                bassCutL1.set(hz, ButterworthQ1, sr); bassCutR1.copyCoefficients(bassCutL1)
+                bassCutL2.set(hz, ButterworthQ2, sr); bassCutR2.copyCoefficients(bassCutL2)
             }
             val noiseOn = noiseT > 0f || noiseLevel > 0.0001f
             if (noiseOn) noiseFilter.set(params.noiseHz, 1.6f, sr)
@@ -528,6 +558,11 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                 }
                 if (hpOn) { l = highPassL.highPass(l); r = highPassR.highPass(r) }
                 if (lpOn) { l = lowPassL.lowPass(l); r = lowPassR.lowPass(r) }
+                if (bassCutOn) {
+                    bassCutMix = if (bassCutWanted) min(1f, bassCutMix + bassCutStep) else max(0f, bassCutMix - bassCutStep)
+                    val cutL = bassCutL2.highPass(bassCutL1.highPass(l)); val cutR = bassCutR2.highPass(bassCutR1.highPass(r))
+                    l += (cutL - l) * bassCutMix; r += (cutR - r) * bassCutMix
+                }
 
                 if (flangerMix > 0.001f) {
                     flangerPhase += params.flangerRateHz / sr
@@ -621,6 +656,11 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
                 if (mixL.isNaN() || mixR.isNaN()) { mixL = 0f; mixR = 0f; clearState() }
                 output.putShort((mixL * 32_767f).roundToInt().coerceIn(-32_768, 32_767).toShort())
                 if (channelCount == 2) output.putShort((mixR * 32_767f).roundToInt().coerceIn(-32_768, 32_767).toShort())
+            }
+            // faded all the way out: off, and fresh for the next time it's wanted
+            if (bassCutOn && !bassCutWanted && bassCutMix <= 0f) {
+                bassCutOn = false
+                for (f in arrayOf(bassCutL1, bassCutL2, bassCutR1, bassCutR2)) f.clear()
             }
         }
 
@@ -805,6 +845,12 @@ class CrossmixTransitionAudioProcessor : AudioProcessor {
         const val MaxEchoSeconds = 2.5f
         const val MaxDelayMs = 450.0
         const val Knee = 0.89f
+        // the bass cut rides from out of the way (20 hz) to where the kick and bass line end (200 hz)
+        const val BassCutFromHz = 20f
+        const val BassCutToHz = 200f
+        // the two quality factors of a fourth-order butterworth
+        const val ButterworthQ1 = 0.5412f
+        const val ButterworthQ2 = 1.3066f
         const val Denormal = 1e-20f
         val Sqrt2 = sqrt(2f)
     }

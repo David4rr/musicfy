@@ -442,9 +442,13 @@ enum class CrossmixStyle(
         if (role == CrossmixRole.Outgoing) {
             out.highCutHz = minOf(out.highCutHz, sweepDown(a * smooth(ramp(p, 0.05f, 0.5f)), OpenHz, 1_600f))
             out.gain *= 1f - 0.25f * a * smooth(ramp(p, 0.1f, 0.6f))
+            // after the swap its voice is gone in half the time the fader would take
+            out.gain *= 1f - a * smooth(ramp(beat, swap, swap + (length - swap) * 0.5f))
         } else if (beat >= 0f) {
-            val openBy = (swap / length).coerceIn(0.1f, 1f) * (0.8f + 0.2f * a)
-            out.lowCutHz = max(out.lowCutHz, entryHighPass(p, 700f + 1_700f * a, openBy))
+            // the next voice is kept to its air until close to the swap, then let in quickly
+            val openBy = (swap / length).coerceIn(0.1f, 1f)
+            val top = 700f + 1_700f * a
+            out.lowCutHz = max(out.lowCutHz, sweepDown(ramp(p, openBy * (0.3f + 0.4f * a), openBy), top, 0f))
         }
     }
 }

@@ -15,12 +15,15 @@ import com.example.musicfy.crossmix.CrossmixStyle
 import com.example.musicfy.crossmix.CrossmixTrackInput
 import com.example.musicfy.playback.audio.CrossmixTransitionAudioProcessor
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
@@ -45,8 +48,8 @@ class CrossmixDirector(
     interface Host {
         val currentPlayer: ExoPlayer
         fun processorFor(player: Player): CrossmixTransitionAudioProcessor?
-        /** a new player holding the queue, at [index] / [positionMs], paused, at the matched speed, not yet prepared */
-        fun createIncoming(index: Int, positionMs: Long, speedRatio: Float): ExoPlayer
+        /** a new player holding the queue, at [index] / [positionMs], paused, at [parameters], not yet prepared */
+        fun createIncoming(index: Int, positionMs: Long, parameters: PlaybackParameters): ExoPlayer
         /** [incoming] becomes the session's player; [outgoing] plays on as the fading side */
         fun promote(incoming: ExoPlayer, outgoing: ExoPlayer)
         /** the outgoing side has finished: let its player go */
@@ -79,6 +82,13 @@ class CrossmixDirector(
 
     // how long play() takes to be heard, learnt from each transition's first beat-lock reading
     private var startLatencyMs = 70.0
+
+    /** the outgoing song brought up to a faster next song's tempo, and the speed it goes back to if the mix is called off */
+    private class SpeedRamp(val player: ExoPlayer, val base: PlaybackParameters) {
+        var lastSet = base.speed
+    }
+
+    private var speedRamp: SpeedRamp? = null
 
     val isTransitioning: Boolean get() = running != null
 
@@ -182,6 +192,7 @@ class CrossmixDirector(
         planningJob?.cancel()
         planningJob = null
         planningKey = null
+        restoreSpeed()
         armed?.let { incoming ->
             host.processorFor(incoming)?.clear()
             host.discard(incoming)
@@ -230,10 +241,15 @@ class CrossmixDirector(
 
         val outText = outLyrics.await()
         val inText = inLyrics.await()
-        val plan = CrossmixPlanner.plan(
-            outgoing = CrossmixTrackInput(item.mediaId, durationMs, outAnalysis, outText),
-            incoming = CrossmixTrackInput(next.mediaId, 0L, inAnalysis, inText),
-        )
+        // a few thousand candidate mixes are scored, so off the main thread
+        val plan = withContext(Dispatchers.Default) {
+            CrossmixPlanner.plan(
+                outgoing = CrossmixTrackInput(item.mediaId, durationMs, outAnalysis, outText),
+                incoming = CrossmixTrackInput(next.mediaId, 0L, inAnalysis, inText),
+            )
+        }
+        // the listener's own speed and pitch, read before this song is touched
+        val base = host.baseParameters()
         android.util.Log.i(
             Tag,
             "voices from: this ${voiceSource(outText, outAnalysis)}, next ${voiceSource(inText, inAnalysis)}",
@@ -241,23 +257,25 @@ class CrossmixDirector(
         report(
             "${plan.style.label} at ${clock(plan.outStartMs.toDouble())}" +
                 (if (plan.beatMatched) ", beat-matched" else "") +
-                (if (plan.yieldVocals) ", voices kept apart" else "") +
-                (if (plan.inCueMs > 1_000) ", into the next at ${clock(plan.inCueMs.toDouble())}" else "")
+                (if (plan.yieldAmount > 0f) ", voices kept apart" else "") +
+                (if (plan.inCueMs > 1_000) ", landing on ${clock(plan.inCueMs.toDouble())} of the next" else "")
         )
         android.util.Log.i(
             Tag,
-            "plan: %s %d beats from %d ms, beat %.1f ms, cue %d ms at beat %.1f, start beat %.1f, speed %.4f".format(
-                plan.style.name, plan.lengthBeats, plan.outStartMs, plan.outBeatMs, plan.inCueMs,
-                plan.entryBeat, plan.inStartBeat, plan.inSpeed,
+            "plan: %s %d beats from %d ms, swap on beat %d, beat %.1f ms, lands at %d ms, start beat %.1f, speed in %.4f out %.4f, yield %.2f".format(
+                plan.style.name, plan.lengthBeats, plan.outStartMs, plan.swapBeat, plan.outBeatMs, plan.inCueMs,
+                plan.inStartBeat, plan.inSpeed, plan.outSpeed, plan.yieldAmount,
             ),
         )
 
         // the earliest moment either side does anything: the outgoing effects start at beat 0, the
         // next player may start a little before that on a silent run-up
         val firstMoveMs = plan.outMediaAt(min(plan.inStartBeat, 0f))
+        // a faster next song: this one comes up to its tempo over a few beats, before the next one is even prepared
+        val rampMs = if (plan.outSpeed > 1.0005f) ceil((plan.outSpeed - 1f) / RampStep) * plan.outBeatMs else 0.0
         if (testJump) {
             if (!stillCurrent(outgoing, item)) return
-            val target = (firstMoveMs - ArmLeadMs - TestRunUpMs).toLong().coerceAtLeast(0L)
+            val target = (firstMoveMs - ArmLeadMs - rampMs - TestRunUpMs).toLong().coerceAtLeast(0L)
             selfSeeking = true
             try {
                 outgoing.seekTo(target)
@@ -271,6 +289,58 @@ class CrossmixDirector(
             report("Too close to the end to mix this one")
             return
         }
+        try {
+            if (rampMs > 0.0) {
+                if (!waitForOutgoing(outgoing, item, firstMoveMs - ArmLeadMs - rampMs)) return
+                host.crossmixBlocker()?.let { report(it); return }
+                report("Bringing this song up to the next one's tempo…")
+                if (!rampOutgoing(outgoing, item, plan, base, firstMoveMs - ArmLeadMs)) return
+            }
+            prepareAndStart(outgoing, item, nextIndex, plan, base, firstMoveMs)
+        } finally {
+            // called off at any point before the mix took this song over: it plays on at the listener's own speed
+            if (running?.outgoing !== outgoing) restoreSpeed()
+        }
+    }
+
+    /** brings the outgoing song up to the faster next one's tempo in steps too small to hear, a beat apart, finishing by untilMs */
+    private suspend fun rampOutgoing(outgoing: ExoPlayer, item: MediaItem, plan: CrossmixPlan, base: PlaybackParameters, untilMs: Double): Boolean {
+        val ramp = SpeedRamp(outgoing, base).also { speedRamp = it }
+        val target = base.speed * plan.outSpeed
+        val beatsLeft = ((untilMs - outgoing.currentPosition) / plan.outBeatMs).toInt()
+        val steps = min(ceil((plan.outSpeed - 1f) / RampStep).toInt(), beatsLeft).coerceAtLeast(1)
+        for (index in 0 until steps) {
+            if (!stillCurrent(outgoing, item)) return false
+            // the listener changed the speed themselves: theirs wins and this mix is off
+            if (abs(outgoing.playbackParameters.speed - ramp.lastSet) > 0.0005f) {
+                speedRamp = null
+                return false
+            }
+            val speed = if (index == steps - 1) target else base.speed + (target - base.speed) * (index + 1) / steps
+            outgoing.playbackParameters = PlaybackParameters(speed, base.pitch)
+            ramp.lastSet = speed
+            if (index < steps - 1 && !waitForOutgoing(outgoing, item, outgoing.currentPosition + plan.outBeatMs)) return false
+        }
+        return true
+    }
+
+    /** a sped-up outgoing song back to the listener's own speed, unless they've chosen another since */
+    private fun restoreSpeed() {
+        val ramp = speedRamp ?: return
+        speedRamp = null
+        runCatching {
+            if (abs(ramp.player.playbackParameters.speed - ramp.lastSet) < 0.0005f) ramp.player.playbackParameters = ramp.base
+        }
+    }
+
+    private suspend fun prepareAndStart(
+        outgoing: ExoPlayer,
+        item: MediaItem,
+        nextIndex: Int,
+        plan: CrossmixPlan,
+        base: PlaybackParameters,
+        firstMoveMs: Double,
+    ) {
         if (!waitForOutgoing(outgoing, item, firstMoveMs - ArmLeadMs)) return
         host.crossmixBlocker()?.let { report(it); return }
         if (outgoing.currentPosition > firstMoveMs - MinArmLeadMs) {
@@ -284,16 +354,16 @@ class CrossmixDirector(
             report("This song's audio (${outProcessor?.format ?: "no renderer"}) can't be mixed: played through")
             return
         }
-        val base = host.baseParameters()
 
         // the incoming side starts on a delay with room to move both ways, plus room for any drift
         // the delay will have to absorb when the tempos are a hair apart but not stretched
-        val overlapWallMs = (plan.lengthBeats + 8) * plan.outBeatMs / base.speed
+        val overlapMediaMs = (plan.lengthBeats + 8) * plan.outBeatMs
         val inRate = plan.inMediaPerBeat / plan.outBeatMs
-        val drift = (inRate - plan.inSpeed) * overlapWallMs
+        val drift = (inRate - plan.inSpeed / plan.outSpeed) * overlapMediaMs
         val initialDelayMs = (BaseDelayMs + max(0.0, drift)).coerceAtMost(400.0)
 
-        val incoming = runCatching { host.createIncoming(nextIndex, plan.inStartMs, plan.inSpeed) }.getOrNull()
+        val parameters = PlaybackParameters((base.speed * plan.inSpeed).coerceIn(0.25f, 4f), base.pitch)
+        val incoming = runCatching { host.createIncoming(nextIndex, plan.inStartMs, parameters) }.getOrNull()
         if (incoming == null) {
             report("Couldn't open a player for the next song: played through")
             return
@@ -341,8 +411,9 @@ class CrossmixDirector(
 
         outProcessor.arm(script(plan, CrossmixRole.Outgoing, outgoing.currentPosition.toDouble(), System.nanoTime()))
 
-        // start the next player early by its start latency and by the delay it begins with
-        val playAt = plan.outMediaAt(plan.inStartBeat) - initialDelayMs / plan.inSpeed - startLatencyMs * base.speed
+        // start the next player early by its start latency and by the delay it begins with, both counted on this song's clock
+        val playAt = plan.outMediaAt(plan.inStartBeat) - initialDelayMs * plan.outSpeed / plan.inSpeed -
+            startLatencyMs * base.speed * plan.outSpeed
         if (!waitForOutgoing(outgoing, item, playAt, precise = true)) {
             // the song changed in the last moment: put everything back
             outProcessor.clear()
@@ -352,6 +423,8 @@ class CrossmixDirector(
         armed = null
         val session = Running(plan, outgoing, incoming, outProcessor, inProcessor, base)
         running = session
+        // the mix owns the outgoing song now: it goes when the mix is over, at whatever speed it had
+        speedRamp = null
         planningJob = null
         planningKey = null
 
@@ -515,7 +588,8 @@ class CrossmixDirector(
             endBeat = if (role == CrossmixRole.Outgoing) plan.lengthBeats + plan.style.tailBeats + 2f else plan.inSettledBeat,
             calibrationMs = calibrationMs,
             calibrationNanos = calibrationNanos,
-            yieldVocals = plan.yieldVocals,
+            yieldAmount = plan.yieldAmount,
+            swapBeat = plan.swapBeat.toFloat(),
         )
 
     private fun stillCurrent(player: ExoPlayer, item: MediaItem): Boolean =
@@ -558,6 +632,8 @@ class CrossmixDirector(
         const val BaseDelayMs = 40.0
         const val LockIntervalMs = 120L
         const val SpeedStep = 0.004f
+        /** how much the outgoing song speeds up per beat on its way to a faster next song */
+        const val RampStep = 0.005f
         /** this little silence at a track boundary or less: the two run into each other */
         const val SeamlessMs = 400L
         /** the test jump lands this long before the next song is prepared */

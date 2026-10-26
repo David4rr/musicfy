@@ -63,6 +63,16 @@ data class TrackAnalysis(
 
     fun bassAround(ms: Long, windowMs: Long = 4_000L): Float = averageOver(bass, ms, windowMs)
 
+    /** seconds of real music between two points: a fading tail or silence costs nothing when a mix leaves it unplayed */
+    fun audibleSeconds(fromMs: Long, toMs: Long): Float {
+        if (toMs <= fromMs || energy.isEmpty()) return 0f
+        val from = (fromMs / 1_000L).toInt().coerceIn(0, energy.size)
+        val to = (toMs / 1_000L).toInt().coerceIn(from, energy.size)
+        var seconds = 0
+        for (s in from until to) if (energy[s] >= AudibleEnergy) seconds++
+        return seconds.toFloat()
+    }
+
     /** beat grid near ms, least squares over nearby beats: far steadier than any one detected beat, so two tracks lock without flamming */
     fun localGrid(ms: Long, span: Int = 12): LocalGrid? {
         if (beatsMs.size < 4) return null
@@ -93,6 +103,9 @@ data class TrackAnalysis(
         return sum / (to - from + 1)
     }
 }
+
+// loudness above which a second counts as music: about 16 db under the song's loudest, on the 24 db scale of energy
+private const val AudibleEnergy = 0.35f
 
 /** a stretch of steady beats: beat n of the stretch falls at firstBeatMs + n * periodMs */
 data class LocalGrid(val firstBeatMs: Double, val periodMs: Double, val firstIndex: Int) {

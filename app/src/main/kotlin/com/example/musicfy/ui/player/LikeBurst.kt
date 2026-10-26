@@ -42,12 +42,11 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.example.musicfy.R
 import kotlinx.coroutines.CoroutineScope
@@ -481,19 +480,19 @@ fun LikedLabel(
         },
     ) {
         if (likeShown > 0.001f) NoteText("Added to Library and Liked Songs", likeShown)
-        if (mixShown > 0.001f) NoteText("Mixxing…", mixShown)
+        if (mixShown > 0.001f) MixingNote("Mixxing…", mixShown, active = { sheetProgressProvider() > 0.9f })
     }
 }
 
 @Composable
 private fun NoteText(text: String, shown: Float) {
+    val density = LocalDensity.current
+    // the same faint halo as the mixing note, so it reads over a bright cover too
+    val style = remember(density) { NoteTextStyle.copy(shadow = noteShadow(density)) }
     Text(
         text = text,
-        fontSize = 11.sp,
-        lineHeight = 13.sp,
-        fontWeight = FontWeight.Medium,
-        // Quieter than the artist line (white at 0.7).
-        color = Color.White.copy(alpha = 0.45f),
+        style = style,
+        color = NoteColor,
         maxLines = 1,
         softWrap = false,
         modifier = Modifier.graphicsLayer { alpha = shown },

@@ -4386,17 +4386,16 @@ class MusicService :
 
         override fun processorFor(player: Player): CrossmixTransitionAudioProcessor? = playerCrossmixProcessors[player]
 
-        override fun createIncoming(index: Int, positionMs: Long, speedRatio: Float): ExoPlayer {
+        override fun createIncoming(index: Int, positionMs: Long, parameters: PlaybackParameters): ExoPlayer {
             val incoming = createExoPlayer(publish = false)
             val items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
             incoming.setMediaItems(items)
             copyPlayOrder(from = player, to = incoming)
             incoming.repeatMode = player.repeatMode
             incoming.shuffleModeEnabled = player.shuffleModeEnabled
-            val base = player.playbackParameters
             // the tempo is set before anything plays: changing it later drains and resets the
             // audio chain, which would cut into the transition
-            incoming.playbackParameters = PlaybackParameters((base.speed * speedRatio).coerceIn(0.25f, 4f), base.pitch)
+            incoming.playbackParameters = parameters
             incoming.volume = if (isMuted.value) 0f else playerVolume.value
             incoming.seekTo(index, positionMs)
             incoming.playWhenReady = false

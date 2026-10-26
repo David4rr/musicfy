@@ -229,7 +229,10 @@ class CrossmixTest {
                 assertTrue("${plan.style} starts ${plan.outStartMs}", plan.outStartMs >= 200_000L - CrossmixPlanner.MaxLeadMs)
                 assertTrue("${plan.style} hands over too late", plan.outMediaAt(plan.lengthBeats.toFloat()) <= 200_000.0)
                 assertTrue("cue ${plan.inCueMs}", plan.inCueMs in 0..CrossmixPlanner.MaxEntryMs)
-                assertTrue("speed ${plan.inSpeed}", plan.inSpeed in 0.94f..1.06f)
+                // the slower song is sped up, by 10% at most, and nothing is ever slowed down
+                assertTrue("speed in ${plan.inSpeed}", plan.inSpeed in 1f..1.1f)
+                assertTrue("speed out ${plan.outSpeed}", plan.outSpeed in 1f..1.1f)
+                assertFalse("both sped up", plan.inSpeed > 1f && plan.outSpeed > 1f)
                 assertTrue("starts before the song", plan.inStartMs >= 0L)
             }
         }
@@ -245,6 +248,7 @@ class CrossmixTest {
             assertFalse(plan.style.label, plan.style.needsBeatMatch)
             assertFalse(plan.beatMatched)
             assertEquals(1f, plan.inSpeed)
+            assertEquals(1f, plan.outSpeed)
         }
     }
 
@@ -323,7 +327,7 @@ class CrossmixTest {
             CrossmixTrackInput("sing-out", 200_000L, outgoingTrack, lrc(0L, 200_000L)),
             CrossmixTrackInput("sing-in", 0L, nearTempoTrack, lrc(0L, 150_000L)),
         )
-        val dealtWith = plan.yieldVocals || plan.style.entersAtEnd ||
+        val dealtWith = plan.yieldAmount > 0f || plan.style.entersAtEnd ||
             plan.style == CrossmixStyle.FarAway || plan.style == CrossmixStyle.Dampen
         assertTrue("${plan.style.label} lays one voice straight over the other", dealtWith)
     }
@@ -333,58 +337,155 @@ class CrossmixTest {
         val p = FxParams()
         for (style in CrossmixStyle.entries) for (length in style.lengths) for (variation in 0 until 2) {
             val name = "${style.label} $length/$variation"
-            style.evaluate(CrossmixRole.Outgoing, -2f, length.toFloat(), variation, p)
-            style.yieldVocals(CrossmixRole.Outgoing, -2f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Outgoing, -2f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Outgoing, -2f, length.toFloat(), style.swapAt(length).toFloat(), 1f, p)
             assertEquals("$name out gain before", 1f, p.gain, 1e-4f)
             assertTrue("$name out space before", p.pan == 0f && p.width == 1f && p.reverbSend == 0f && p.highCutHz >= 19_000f)
 
-            style.evaluate(CrossmixRole.Incoming, -0.25f, length.toFloat(), variation, p)
-            style.yieldVocals(CrossmixRole.Incoming, -0.25f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Incoming, -0.25f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Incoming, -0.25f, length.toFloat(), style.swapAt(length).toFloat(), 1f, p)
             assertEquals("$name in before entry", 0f, p.gain, 0f)
             assertEquals("$name in room before entry", 0f, p.reverbSend, 0f)
 
-            style.evaluate(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), variation, p)
-            style.yieldVocals(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), style.swapAt(length).toFloat(), 1f, p)
             assertTrue("$name out gain after", p.gain < 1e-3f)
             assertEquals("$name out still feeding the room", 0f, p.reverbSend, 0f)
 
-            style.evaluate(CrossmixRole.Incoming, length + 8f, length.toFloat(), variation, p)
-            style.yieldVocals(CrossmixRole.Incoming, length + 8f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Incoming, length + 8f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
+            style.yieldVocals(CrossmixRole.Incoming, length + 8f, length.toFloat(), style.swapAt(length).toFloat(), 1f, p)
             assertEquals("$name in gain after", 1f, p.gain, 1e-3f)
             assertTrue("$name in space after", abs(p.pan) < 1e-3f && abs(p.width - 1f) < 1e-3f && p.highCutHz >= 19_000f)
+        }
+    }
+
+    @Test
+    fun `the next song's drop lands on the hand-over`() {
+        // eight quiet bars, then the whole band comes in: that bar is what the mix should land on
+        val outgoing = bandTrack(124.0, 200, backbeat = true, sectionEvery = 8)
+        val incoming = bandTrack(126.0, 160, backbeat = true, sectionEvery = 8, sectionFrom = 8)
+        val plan = CrossmixPlanner.plan(
+            CrossmixTrackInput("out", 200_000L, analyze(outgoing.samples), null),
+            CrossmixTrackInput("in", 0L, analyze(incoming.samples, complete = false), null),
+        )
+        assertTrue("${plan.style.label} isn't a blend", !plan.style.entersAtEnd && plan.beatMatched)
+        val drop = incoming.barsMs[8]
+        assertEquals("lands at ${plan.inMediaAt(plan.swapBeat.toFloat())}", drop, plan.inMediaAt(plan.swapBeat.toFloat()), 80.0)
+        // and it starts at least a bar before, so its intro runs under this one
+        assertTrue(plan.inMediaAt(0f) <= drop - 4 * plan.inMediaPerBeat + 1.0)
+    }
+
+    @Test
+    fun `the slower song is the one sped up, nothing is slowed down`() {
+        val slow = analyze(synthTrack(120.0, 200))
+        val fast = analyze(synthTrack(128.0, 200))
+        // a faster next song: this one comes up to its tempo, the next plays as it is
+        val intoFaster = CrossmixPlanner.plan(
+            CrossmixTrackInput("slow", 200_000L, slow, null),
+            CrossmixTrackInput("fast", 0L, fast, null),
+        )
+        assertTrue(intoFaster.beatMatched)
+        assertEquals(128.0 / 120.0, intoFaster.outSpeed.toDouble(), 0.01)
+        assertEquals(1f, intoFaster.inSpeed)
+        // a slower next song is sped up itself
+        val intoSlower = CrossmixPlanner.plan(
+            CrossmixTrackInput("fast", 200_000L, fast, null),
+            CrossmixTrackInput("slow", 0L, slow, null),
+        )
+        assertTrue(intoSlower.beatMatched)
+        assertEquals(128.0 / 120.0, intoSlower.inSpeed.toDouble(), 0.01)
+        assertEquals(1f, intoSlower.outSpeed)
+    }
+
+    @Test
+    fun `everyday picks only, and blends stay short`() {
+        val pairs = listOf(
+            outgoingTrack to nearTempoTrack,
+            outgoingTrack to farTempoTrack,
+            analyze(synthTrack(100.0, 200)) to nearTempoTrack,
+        )
+        for ((out, inc) in pairs) {
+            val plan = CrossmixPlanner.plan(CrossmixTrackInput("o", 200_000L, out, null), CrossmixTrackInput("i", 0L, inc, null))
+            assertTrue("${plan.style.label} is a flavour style", plan.style.use != StyleUse.Flavour)
+            if (!plan.style.entersAtEnd) {
+                val seconds = plan.lengthBeats * plan.outBeatMs / 1_000.0
+                assertTrue("${plan.style.label} blends for $seconds s", seconds <= if (plan.beatMatched) 16.0 else 8.5)
+            }
         }
     }
 
     // -- styles: every transition must start and end clean ----------------------------------
 
     @Test
+    fun `the bass belongs to one song at a time and changes hands on the swap`() {
+        val out = FxParams()
+        val inc = FxParams()
+        for (style in CrossmixStyle.entries) {
+            if (style.entersAtEnd) continue
+            for (length in style.lengths) {
+                val swap = style.swapAt(length).toFloat()
+                var beat = 0f
+                while (beat <= length) {
+                    style.evaluate(CrossmixRole.Outgoing, beat, length.toFloat(), swap, 0, out)
+                    style.evaluate(CrossmixRole.Incoming, beat, length.toFloat(), swap, 0, inc)
+                    val name = "${style.label} $length at $beat"
+                    assertEquals(name, 1f, out.bassCut + inc.bassCut, 1e-4f)
+                    if (beat <= swap - 0.5f) assertEquals(name, 0f, out.bassCut, 0f)
+                    if (beat >= swap) assertEquals(name, 1f, out.bassCut, 0f)
+                    beat += 0.25f
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `two songs playing together never add up past the loudness of one`() {
+        val out = FxParams()
+        val inc = FxParams()
+        for (style in CrossmixStyle.entries) for (length in style.lengths) for (amount in floatArrayOf(0f, 1f)) {
+            val swap = style.swapAt(length).toFloat()
+            var beat = -1f
+            while (beat <= length + 4f) {
+                style.evaluate(CrossmixRole.Outgoing, beat, length.toFloat(), swap, 0, out)
+                style.evaluate(CrossmixRole.Incoming, beat, length.toFloat(), swap, 0, inc)
+                style.yieldVocals(CrossmixRole.Outgoing, beat, length.toFloat(), swap, amount, out)
+                style.yieldVocals(CrossmixRole.Incoming, beat, length.toFloat(), swap, amount, inc)
+                val trim = headroom(out.gain, inc.gain)
+                val power = (out.gain * trim).let { it * it } + (inc.gain * trim).let { it * it }
+                assertTrue("${style.label} $length at $beat: power $power", power <= 1.0001f)
+                beat += 0.25f
+            }
+        }
+    }
+
+    @Test
     fun `every style leaves both songs untouched outside the transition`() {
         val p = FxParams()
         for (style in CrossmixStyle.entries) for (length in style.lengths) for (variation in 0 until 4) {
             val name = "${style.label} $length/$variation"
-            style.evaluate(CrossmixRole.Outgoing, -2f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Outgoing, -2f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
             assertEquals("$name out gain before", 1f, p.gain, 1e-4f)
             assertTrue("$name out filtered before", p.lowCutHz <= 21f && p.highCutHz >= 19_000f)
             assertTrue("$name out effects before", p.echoSend == 0f && p.reverbSend == 0f && p.noiseLevel == 0f)
             assertTrue("$name out shaping before", p.gateDepth == 0f && p.crush == 0f && p.flangerMix == 0f)
             assertTrue("$name out space before", p.pan == 0f && p.width == 1f && p.orbit == 0f)
-            assertTrue("$name out bands before", p.lowBand == 1f && p.midBand == 1f && p.highBand == 1f)
+            assertTrue("$name out bands before", p.lowBand == 1f && p.midBand == 1f && p.highBand == 1f && p.bassCut == 0f)
             assertEquals("$name out deck before", FxParams.Deck.Live, p.deck)
 
-            style.evaluate(CrossmixRole.Incoming, -0.25f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Incoming, -0.25f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
             assertEquals("$name in before entry", 0f, p.gain, 0f)
 
-            style.evaluate(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Outgoing, length + style.tailBeats + 1f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
             assertTrue("$name out gain after ${p.gain}", p.gain < 1e-3f)
             assertTrue("$name out still feeding effects", p.echoSend == 0f && p.reverbSend == 0f && p.noiseLevel < 1e-4f)
 
-            style.evaluate(CrossmixRole.Incoming, length + 8f, length.toFloat(), variation, p)
+            style.evaluate(CrossmixRole.Incoming, length + 8f, length.toFloat(), style.swapAt(length).toFloat(), variation, p)
             assertEquals("$name in gain after", 1f, p.gain, 1e-3f)
             assertTrue("$name in filtered after (${p.lowCutHz}, ${p.highCutHz})", p.lowCutHz <= 21f && p.highCutHz >= 19_000f)
             assertTrue("$name in effects after", p.echoSend == 0f && p.reverbSend < 1e-3f && p.noiseLevel == 0f)
             assertTrue("$name in shaping after", p.gateDepth < 1e-3f && p.crush < 1e-3f && p.flangerMix < 1e-3f)
             assertTrue("$name in space after", abs(p.pan) < 1e-3f && abs(p.width - 1f) < 1e-3f)
-            assertTrue("$name in bands after", abs(p.lowBand - 1f) < 1e-3f && abs(p.midBand - 1f) < 1e-3f && abs(p.highBand - 1f) < 1e-3f)
+            assertTrue("$name in bands after", abs(p.lowBand - 1f) < 1e-3f && abs(p.midBand - 1f) < 1e-3f && abs(p.highBand - 1f) < 1e-3f && p.bassCut < 1e-3f)
             assertEquals("$name in deck after", FxParams.Deck.Live, p.deck)
         }
     }
@@ -393,7 +494,7 @@ class CrossmixTest {
 
     private class Rendered(val input: FloatArray, val output: FloatArray)
 
-    private fun render(style: CrossmixStyle, role: CrossmixRole, length: Int, seconds: Double): Rendered {
+    private fun render(style: CrossmixStyle, role: CrossmixRole, length: Int, seconds: Double, hz: Double = 440.0): Rendered {
         val rate = 44_100
         val processor = CrossmixTransitionAudioProcessor()
         processor.configure(AudioProcessor.AudioFormat(rate, 2, C.ENCODING_PCM_16BIT))
@@ -405,6 +506,7 @@ class CrossmixTest {
                 style = style,
                 variation = 1,
                 lengthBeats = length.toFloat(),
+                swapBeat = style.swapAt(length).toFloat(),
                 anchorMs = 2_000.0,
                 mediaPerBeatMs = beatMs,
                 musicalBeatMs = beatMs,
@@ -422,7 +524,7 @@ class CrossmixTest {
             val count = minOf(block, frames - frame)
             val buffer = ByteBuffer.allocateDirect(count * 4).order(ByteOrder.nativeOrder())
             for (i in 0 until count) {
-                val v = (0.5 * sin(2 * PI * 440.0 * (frame + i) / rate)).toFloat()
+                val v = (0.5 * sin(2 * PI * hz * (frame + i) / rate)).toFloat()
                 input[frame + i] = v
                 val s = (v * 32_767).toInt().toShort()
                 buffer.putShort(s); buffer.putShort(s)
@@ -475,5 +577,24 @@ class CrossmixTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `the swap really takes the bass away from one song and gives it to the other`() {
+        // a 60 hz bass note through a 16 beat bass swap: beats of 500 ms from 2 s, so the swap (beat 8) is at 6 s
+        fun level(r: Rendered, fromS: Double, toS: Double): Double {
+            val from = (fromS * 44_100).toInt()
+            val to = (toS * 44_100).toInt()
+            return kotlin.math.sqrt((from until to).sumOf { (r.output[it] * r.output[it]).toDouble() } / (to - from))
+        }
+        val out = render(CrossmixStyle.BassSwap, CrossmixRole.Outgoing, 16, 9.0, hz = 60.0)
+        val inc = render(CrossmixStyle.BassSwap, CrossmixRole.Incoming, 16, 9.0, hz = 60.0)
+        val before = 4.5 to 5.5
+        val after = 6.2 to 6.8
+        // both are up around the swap, so each sits about 3 db down for headroom: a 0.5 sine is 0.35 rms on its own
+        assertTrue("outgoing bass before the swap", level(out, before.first, before.second) > 0.2)
+        assertTrue("outgoing bass after the swap", level(out, after.first, after.second) < 0.02)
+        assertTrue("incoming bass before the swap", level(inc, before.first, before.second) < 0.02)
+        assertTrue("incoming bass after the swap", level(inc, after.first, after.second) > 0.2)
     }
 }
