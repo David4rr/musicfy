@@ -33,6 +33,8 @@ captures/
 # Tool & AI Caches
 .claude/
 CLAUDE.md
+.agents/
+AGENTS.md
 .kotlin/
 assetscon/
 apk-generated/
