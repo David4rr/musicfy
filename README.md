@@ -3,7 +3,9 @@
 
 > [!WARNING]
 > Were rebranding Musicfy into Mochy (music). when 8.1.2 released, please go ahead and install that. this repo will be renamed to Mochy in a short timee
-> Updating timeline - Musicfy repo rebranded into Mochy-music -> a dummy repo named musicfy will created as a bridge for the updater to update into mochy. so 8.1.1 (musicfy) -> 8.1.2 (mochy with same github package fetching as before) -> 8.1.2 to next version will no longer have any links to musicfy.
+
+> [!Updating timeline] 
+> Musicfy repo rebranded into Mochy-music -> a dummy repo named musicfy will created as a bridge for the updater to update into mochy. so 8.1.1 (musicfy) -> 8.1.2 (mochy with same github package fetching as before) -> 8.1.2 to next version will no longer have any links to musicfy.
 
 ---
 <div align="center">
