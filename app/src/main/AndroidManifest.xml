@@ -43,6 +43,9 @@
         <intent>
             <action android:name="com.example.musicfy.SOURCE_MODULE" />
         </intent>
+        <!-- the move page checks whether mochy is installed yet, android 11+ hides other apps without this -->
+        <package android:name="com.mochyy.mochymusic" />
+        <package android:name="com.mochyy.mochymusic.debug" />
     </queries>
     <application
         android:name=".App"

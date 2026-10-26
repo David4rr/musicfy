@@ -27,8 +27,8 @@ extensions.configure<ApplicationExtension> {
         applicationId = "com.example.musicfy"
         minSdk = 24
         targetSdk = 36
-        versionCode = 71
-        versionName = "8.1.1 build#1180"
+        versionCode = 72
+        versionName = "8.1.2 build#1181"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

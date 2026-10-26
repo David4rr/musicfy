@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.musicfy.R
+import com.example.musicfy.ui.screens.update.showMoveToMochySheet
 import com.example.musicfy.scrobble.ScrobbleSite
 import com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute
 import com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute
@@ -411,6 +412,14 @@ fun MusicfySettingsScreen(navController: NavController) {
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // first in the list, so the way out is easy to find after the launch prompt was closed
+                        val menuState = com.example.musicfy.ui.component.LocalMenuState.current
+                        CategoryBubble(
+                            title = "Move to Mochy Music",
+                            iconRes = R.drawable.ic_mochy_mark,
+                            onClick = { menuState.showMoveToMochySheet() }
+                        )
+
                         CategoryBubble(
                             title = "General",
                             iconRes = R.drawable.settings,

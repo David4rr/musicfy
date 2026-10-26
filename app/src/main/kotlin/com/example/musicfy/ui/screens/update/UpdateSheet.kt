@@ -229,7 +229,8 @@ private fun ColumnScope.UpdateSheetContent(
             Spacer(Modifier.height(16.dp))
             UpdateStatusCard(
                 state = state,
-                onUpdate = { popup.showUpdateDetailSheet(it) },
+                // the newer release is mochy, a different app, so it goes through the move page instead of installing over nothing
+                onUpdate = { popup.showMoveToMochySheet() },
                 onRetry = checkAgain,
             )
 

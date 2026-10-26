@@ -1246,7 +1246,8 @@ class MainActivity : ComponentActivity() {
                     // action feedback ("Added to Queue", "Undo"...) drops in over the sheets too
                     com.example.musicfy.ui.component.TopToastHost()
 
-                    HomeUpdatePrompt(currentRoute = currentRoute)
+                    // this is the last musicfy, so home asks people to move to mochy instead of offering updates
+                    com.example.musicfy.ui.screens.update.HomeMoveToMochyPrompt(currentRoute = currentRoute)
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
@@ -1505,36 +1506,6 @@ private object AppContentNeverObscured : androidx.compose.runtime.State<Boolean>
 
 val LocalHideAppChrome = staticCompositionLocalOf { mutableStateOf(false) }
 
-private const val UpdateSnoozeWindowMillis = 24L * 60L * 60L * 1000L
-
-@Composable
-private fun HomeUpdatePrompt(currentRoute: String?) {
-    if (currentRoute != Screens.Home.route) return
-
-    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
-    val (snoozedAt, setSnoozedAt) = rememberPreference(
-        com.example.musicfy.constants.UpdatePromptSnoozedAtKey,
-        defaultValue = 0L,
-    )
-    val (userName) = rememberPreference(com.example.musicfy.constants.UsernameKey, "")
-
-    var dismissed by rememberSaveable { mutableStateOf(false) }
-
-    val release = (updateState as? com.example.musicfy.core.updater.UpdateState.Available)?.release
-    val snoozeExpired = System.currentTimeMillis() - snoozedAt > UpdateSnoozeWindowMillis
-
-    if (release != null && snoozeExpired && !dismissed) {
-        com.example.musicfy.ui.screens.update.UpdatePromptSheet(
-            release = release,
-            userName = userName,
-            onSnooze = {
-                setSnoozedAt(System.currentTimeMillis())
-                dismissed = true
-            },
-            onDismiss = { dismissed = true },
-        )
-    }
-}
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }

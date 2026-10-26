@@ -13,7 +13,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 const val GithubOwner = "realidkroo"
-const val GithubRepo = "musicfy"
+// musicfy moved to mochy, so the updater, the about links and the dev space all look there now
+const val GithubRepo = "Mochy-Music"
 
 const val GithubProfileUrl = "https://github.com/$GithubOwner"
 const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
