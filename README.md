@@ -1,11 +1,13 @@
 <div align="center">
+<img width="1799" height="775" alt="bye" src="https://github.com/user-attachments/assets/2f1c44cf-b060-49b9-a7d8-fc277e663392" />
 
 # Musicfy is now Mochy Music
 
-Same app, same dev, new name. Everything lives at **[realidkroo/Mochy-Music](https://github.com/realidkroo/Mochy-Music)** now.
+**[realidkroo/Mochy-Music](https://github.com/realidkroo/Mochy-Music)**
 
 <a href="https://github.com/realidkroo/Mochy-Music/releases/latest">
   <img src="https://shieldcn.dev/github/release/realidkroo/Mochy-Music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=cba6f7" alt="Mochy release">
+
 </a>
 
 </div>
