@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -31,30 +35,32 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.constants.CrossfadeDurationKey
-import com.example.musicfy.constants.CrossfadeEnabledKey
-import com.example.musicfy.constants.CrossfadeGaplessKey
-import com.example.musicfy.constants.CrossmixMode
-import com.example.musicfy.constants.CrossmixModeKey
-import com.example.musicfy.constants.CrossmixTestToolsKey
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.audiolab.LabCard
-import com.example.musicfy.ui.screens.audiolab.LabCollapsible
-import com.example.musicfy.ui.screens.audiolab.LabColors
-import com.example.musicfy.ui.screens.audiolab.LabSlider
-import com.example.musicfy.ui.screens.audiolab.LabStage
-import com.example.musicfy.ui.screens.audiolab.LabToggleRow
-import com.example.musicfy.ui.screens.audiolab.LevelFollower
-import com.example.musicfy.ui.screens.audiolab.ListenToAudio
-import com.example.musicfy.ui.screens.audiolab.rememberLabTime
-import com.example.musicfy.ui.screens.audiolab.rememberOnScreen
-import com.example.musicfy.ui.screens.audiolab.rememberPicturesHeld
-import com.example.musicfy.ui.screens.audiolab.trackOnScreen
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.CrossfadeDurationKey
+import com.mochyy.mochymusic.constants.CrossfadeEnabledKey
+import com.mochyy.mochymusic.constants.CrossfadeGaplessKey
+import com.mochyy.mochymusic.constants.CrossmixAvailable
+import com.mochyy.mochymusic.constants.CrossmixMode
+import com.mochyy.mochymusic.constants.CrossmixModeKey
+import com.mochyy.mochymusic.constants.CrossmixTestToolsKey
+import com.mochyy.mochymusic.constants.playable
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCard
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCollapsible
+import com.mochyy.mochymusic.ui.screens.audiolab.LabColors
+import com.mochyy.mochymusic.ui.screens.audiolab.LabSlider
+import com.mochyy.mochymusic.ui.screens.audiolab.LabStage
+import com.mochyy.mochymusic.ui.screens.audiolab.LabToggleRow
+import com.mochyy.mochymusic.ui.screens.audiolab.LevelFollower
+import com.mochyy.mochymusic.ui.screens.audiolab.ListenToAudio
+import com.mochyy.mochymusic.ui.screens.audiolab.rememberLabTime
+import com.mochyy.mochymusic.ui.screens.audiolab.rememberOnScreen
+import com.mochyy.mochymusic.ui.screens.audiolab.rememberPicturesHeld
+import com.mochyy.mochymusic.ui.screens.audiolab.trackOnScreen
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -84,11 +90,11 @@ fun CrossmixSettingsScreen(navController: NavController) {
     )
     val (testTools, _) = rememberPreference(CrossmixTestToolsKey, defaultValue = false)
 
-    // people upgrading from the old crossfade switch land on the equivalent manual mode
+    // people upgrading from the old crossfade switch land on the equivalent manual mode, and a saved crossmix shows what really plays
     val selectedMode = if (storedMode == CrossmixMode.OFF && crossfadeEnabled) {
         CrossmixMode.MANUAL_CROSSFADE
     } else {
-        storedMode
+        storedMode.playable()
     }
 
     fun selectMode(mode: CrossmixMode) {
@@ -175,15 +181,28 @@ fun CrossmixSettingsScreen(navController: NavController) {
         Spacer(Modifier.height(12.dp))
 
         LabCard(padding = 14.dp) {
-            LabStage(height = 124.dp) {
-                TransitionPicture(TransitionStyle.CrossMix, overlap = 0.42f, active = selectedMode == CrossmixMode.CROSSMIX)
+            Box {
+                // while it's in progress the picture keeps playing its glow, just dimmed, so it still shows what's coming
+                LabStage(height = 124.dp, modifier = Modifier.graphicsLayer { alpha = if (CrossmixAvailable) 1f else 0.55f }) {
+                    TransitionPicture(
+                        TransitionStyle.CrossMix,
+                        overlap = 0.42f,
+                        active = selectedMode == CrossmixMode.CROSSMIX || !CrossmixAvailable,
+                    )
+                }
+                if (!CrossmixAvailable) InProgressTag(Modifier.align(Alignment.TopEnd).padding(10.dp))
             }
             Spacer(Modifier.height(10.dp))
             LabToggleRow(
                 title = "CrossMix",
-                subtitle = "DJ-style: reads each song's tempo, beats, key, energy and where its voice is, then picks the one of 27 transitions that fits, so two voices never sing over each other",
+                subtitle = if (CrossmixAvailable) {
+                    "DJ-style: reads each song's tempo, beats, key, energy and where its voice is, then picks the one of 27 transitions that fits, so two voices never sing over each other"
+                } else {
+                    "Still being tuned, so it can't be turned on yet. DJ-style mixes that read each song's tempo, beats, key and voice"
+                },
                 checked = selectedMode == CrossmixMode.CROSSMIX,
                 onCheckedChange = { toggle(CrossmixMode.CROSSMIX, it) },
+                enabled = CrossmixAvailable,
             )
             LabCollapsible(crossmixTools.any { it.isVisible }) {
                 Spacer(Modifier.height(8.dp))
@@ -310,4 +329,20 @@ private fun TransitionPicture(style: TransitionStyle, overlap: Float, active: Bo
 private fun DrawScope.drawPlayhead(x: Float, cy: Float, reach: Float, alpha: Float) {
     drawLine(Color.White.copy(alpha = 0.7f * alpha), Offset(x, cy - reach), Offset(x, cy + reach), 1.dp.toPx())
     drawCircle(Color.White.copy(alpha = alpha), 2.5.dp.toPx(), Offset(x, cy - reach))
+}
+
+// the little pill on a card whose feature isn't ready yet
+@Composable
+private fun InProgressTag(modifier: Modifier = Modifier) {
+    Text(
+        "In progress",
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
+        color = Color.White,
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.16f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
 }

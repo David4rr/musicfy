@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.net.Uri
 import android.webkit.CookieManager
@@ -33,21 +33,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.rememberAsyncImagePainter
-import com.example.musicfy.R
-import com.example.musicfy.constants.YtmSyncKey
-import com.example.musicfy.importer.ResyncStart
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.menu.ResyncLinkDialog
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.importer.account.AccountImportState
-import com.example.musicfy.viewmodels.AccountImportViewModel
-import com.example.musicfy.viewmodels.ImportSyncViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.YtmSyncKey
+import com.mochyy.mochymusic.importer.ResyncStart
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.account.WEB_PLAYER_QUERY_HEADER
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.menu.ResyncLinkDialog
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.importer.account.AccountImportState
+import com.mochyy.mochymusic.viewmodels.AccountImportViewModel
+import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
 import timber.log.Timber
 
 const val AccountImportRoutePattern = "account_import/{service}?resync={resync}&then={then}"
@@ -79,12 +79,12 @@ internal const val ApplePageProbeJs = """
 internal const val AppleAutoSignInJs = """
 (function() {
   try {
-    if (window.__musicfySignInPressed) return 'pressed';
+    if (window.__mochySignInPressed) return 'pressed';
     var m = window.MusicKit && MusicKit.getInstance && MusicKit.getInstance();
     if (m && m.isAuthorized) return 'authorized';
     var button = document.querySelector('[data-testid="sign-in-button"]');
     if (!button) return 'waiting';
-    window.__musicfySignInPressed = true;
+    window.__mochySignInPressed = true;
     button.click();
     return 'pressed';
   } catch (e) { return 'error'; }
@@ -101,9 +101,9 @@ private const val SpotifySignedInCookie = "sp_dc"
 private val SpotifyFindQueriesJs = """
 (function() {
   try {
-    if (window.__musicfyQueriesFound) return 'done';
-    if (window.__musicfyFinding) return 'finding';
-    var scanned = window.__musicfyScanned = window.__musicfyScanned || {};
+    if (window.__mochyQueriesFound) return 'done';
+    if (window.__mochyFinding) return 'finding';
+    var scanned = window.__mochyScanned = window.__mochyScanned || {};
     var sources = [];
     [].forEach.call(document.scripts, function(s) { if (s.src) sources.push(s.src); });
     (performance.getEntriesByType('resource') || []).forEach(function(e) { sources.push(e.name); });
@@ -111,7 +111,7 @@ private val SpotifyFindQueriesJs = """
       return /spotifycdn\.com\/cdn\/build\/web-player\/.*\.js/.test(src) && !scanned[src] && sources.indexOf(src) === i;
     });
     if (!sources.length) return 'waiting';
-    window.__musicfyFinding = true;
+    window.__mochyFinding = true;
     var found = {};
     Promise.all(sources.map(function(src) {
       scanned[src] = true;
@@ -125,8 +125,8 @@ private val SpotifyFindQueriesJs = """
         var query = { name: name, hash: found[name], url: 'https://api-partner.spotify.com/pathfinder/v2/query', post: true, guessed: true };
         window.$BRIDGE_NAME.onHeader('$WEB_PLAYER_QUERY_HEADER', JSON.stringify(query), location.href);
       });
-      if (found.fetchLibraryTracks) window.__musicfyQueriesFound = true;
-      window.__musicfyFinding = false;
+      if (found.fetchLibraryTracks) window.__mochyQueriesFound = true;
+      window.__mochyFinding = false;
     });
     return 'finding';
   } catch (e) { return 'error'; }
@@ -216,9 +216,9 @@ fun AccountImportScreen(
         AccountImportState.SigningIn -> CaptureWebView(
             title = "Sign in to ${service.label}",
             subtitle = if (viewModel.isResync) {
-                "On ${service.label}'s own page. Musicfy only reads the playlist you're re-syncing"
+                "On ${service.label}'s own page. Mochy only reads the playlist you're re-syncing"
             } else {
-                "On ${service.label}'s own page. Musicfy only reads your playlists"
+                "On ${service.label}'s own page. Mochy only reads your playlists"
             },
             startUrl = service.loginUrl.orEmpty(),
             playerOrigins = service.playerOrigins,

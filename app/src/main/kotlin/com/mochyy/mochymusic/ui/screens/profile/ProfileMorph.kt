@@ -1,6 +1,6 @@
 // ProfileMorph.kt
 //
-// The profile page opening out of the ID card on the Musicfy page. The Musicfy page zooms towards
+// The profile page opening out of the ID card on the Mochy page. The Mochy page zooms towards
 // you and fades while the profile page's dotted black comes up behind it, and copies of the card's
 // photo, name and card number fly to the spots the profile page keeps for them. When they land the
 // page's own ones take over and the rest of the page rises in, one row after another. Back plays it
@@ -9,7 +9,7 @@
 // Everything is measured live from the real layouts on both ends, so a scrolled page, a long name
 // or a tilted card still lines up on the first and last frame.
 
-package com.example.musicfy.ui.screens.profile
+package com.mochyy.mochymusic.ui.screens.profile
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -59,13 +59,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.example.musicfy.ui.component.HomeContentInset
-import com.example.musicfy.ui.screens.recap.Emphasized
-import com.example.musicfy.ui.screens.recap.lerpF
-import com.example.musicfy.ui.screens.recap.recapDots
-import com.example.musicfy.ui.screens.setup.onboarding.IdCardAnchors
-import com.example.musicfy.ui.screens.setup.onboarding.idCardName
-import com.example.musicfy.viewmodels.UserProfileViewModel
+import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.ui.screens.recap.Emphasized
+import com.mochyy.mochymusic.ui.screens.recap.lerpF
+import com.mochyy.mochymusic.ui.screens.recap.recapDots
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAnchors
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.idCardName
+import com.mochyy.mochymusic.viewmodels.UserProfileViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -75,7 +75,7 @@ import kotlin.math.pow
 
 internal enum class ProfilePhase { Closed, Preparing, Opening, Open, Closing }
 
-/** How much the Musicfy page grows as it fades away behind the profile page. */
+/** How much the Mochy page grows as it fades away behind the profile page. */
 private const val PageZoom = 0.14f
 
 /** The longest the page may take to lay out before the flight starts anyway. */
@@ -95,7 +95,7 @@ internal class ProfileMorphState(private val scope: CoroutineScope, startOpen: B
 
     private val start = if (startOpen) 1f else 0f
 
-    /** The Musicfy page zooming and fading out: 0 = untouched, 1 = gone. */
+    /** The Mochy page zooming and fading out: 0 = untouched, 1 = gone. */
     val pageOut = Animatable(start)
 
     /** The profile page's black and dots coming up behind everything. */
@@ -125,10 +125,10 @@ internal class ProfileMorphState(private val scope: CoroutineScope, startOpen: B
     /** The card's photo, name and number: where the copies take off from. */
     val card = IdCardAnchors()
 
-    /** The card's slot on the Musicfy page, outside its tilt. */
+    /** The card's slot on the Mochy page, outside its tilt. */
     var cardSlot: LayoutCoordinates? = null
 
-    /** The Musicfy page's own space, inside its zoom. */
+    /** The Mochy page's own space, inside its zoom. */
     var pageRoot: LayoutCoordinates? = null
 
     /** The profile page's photo, name and number: where the copies land. Its root is the overlay. */
@@ -147,7 +147,7 @@ internal class ProfileMorphState(private val scope: CoroutineScope, startOpen: B
     val coversCard: Boolean get() = phase == ProfilePhase.Opening || phase == ProfilePhase.Open || phase == ProfilePhase.Closing
 
     /**
-     * The Musicfy page is leaving or out of sight, so it can stop animating. It starts again as the
+     * The Mochy page is leaving or out of sight, so it can stop animating. It starts again as the
      * page comes back, while it's still invisible, so nothing visibly jumps.
      */
     val holdsPage: Boolean get() = phase == ProfilePhase.Opening || phase == ProfilePhase.Open
@@ -214,11 +214,11 @@ internal class ProfileMorphState(private val scope: CoroutineScope, startOpen: B
         card.isReady && target.isReady && cardSlot?.isAttached == true && pageRoot?.isAttached == true &&
             flyingNameLayout != null && flyingNumberLayout != null && flyingPhotoReady
 
-    // ---- where things are, in the overlay's space (the same as the Musicfy page's, unzoomed) ----
+    // ---- where things are, in the overlay's space (the same as the Mochy page's, unzoomed) ----
 
     val pageScale: Float get() = 1f + PageZoom * pageOut.value
 
-    /** The card's middle, which is what the Musicfy page zooms around. */
+    /** The card's middle, which is what the Mochy page zooms around. */
     fun zoomPivot(): Offset? {
         val slot = cardSlot?.takeIf { it.isAttached } ?: return null
         val page = pageRoot?.takeIf { it.isAttached } ?: return null
@@ -266,7 +266,7 @@ internal fun rememberProfileMorphState(): ProfileMorphState {
 }
 
 /**
- * The Musicfy page's half of the morph: it grows around the card and fades as the profile page
+ * The Mochy page's half of the morph: it grows around the card and fades as the profile page
  * comes up. Goes on the page's root, outside everything it should carry along.
  */
 internal fun Modifier.zoomsAwayFor(state: ProfileMorphState): Modifier = graphicsLayer {
@@ -291,7 +291,7 @@ internal fun Modifier.reveal(state: ProfileMorphState, row: Int, order: Int = 0)
 }
 
 /**
- * The profile page and its flight, drawn over the Musicfy page. Nothing at all while it's closed,
+ * The profile page and its flight, drawn over the Mochy page. Nothing at all while it's closed,
  * apart from keeping the page's lists loaded so it can open straight away.
  */
 @Composable
@@ -313,7 +313,7 @@ internal fun ProfileMorphHost(
         modifier = Modifier
             .fillMaxSize()
             .onPlaced { state.target.root = it }
-            // the overlay takes every touch, so nothing reaches the Musicfy page underneath
+            // the overlay takes every touch, so nothing reaches the Mochy page underneath
             .pointerInput(Unit) {},
     ) {
         val name = idCardName(username)
@@ -331,7 +331,7 @@ private fun ProfileBackHandler(state: ProfileMorphState) {
     BackHandler(enabled = state.phase == ProfilePhase.Opening || state.phase == ProfilePhase.Open) { state.close() }
 }
 
-/** Black, then the dots a beat behind it, so the Musicfy page's own dots never sit on top of these. */
+/** Black, then the dots a beat behind it, so the Mochy page's own dots never sit on top of these. */
 @Composable
 private fun ProfileBackdrop(state: ProfileMorphState) {
     Box(

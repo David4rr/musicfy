@@ -1,18 +1,18 @@
 // LocalSearchViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.LocalItem
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.LocalItem
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi

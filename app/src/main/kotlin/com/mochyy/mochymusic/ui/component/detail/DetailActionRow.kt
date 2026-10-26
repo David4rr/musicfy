@@ -1,6 +1,6 @@
 // DetailActionRow.kt
 
-package com.example.musicfy.ui.component.detail
+package com.mochyy.mochymusic.ui.component.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -24,7 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 
 sealed class DetailSecondaryAction {
 

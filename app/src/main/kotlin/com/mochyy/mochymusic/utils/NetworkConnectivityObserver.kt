@@ -1,6 +1,6 @@
 // NetworkConnectivityObserver.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

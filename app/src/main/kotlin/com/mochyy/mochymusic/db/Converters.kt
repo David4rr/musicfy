@@ -1,4 +1,4 @@
-package com.example.musicfy.db
+package com.mochyy.mochymusic.db
 
 import androidx.room.TypeConverter
 import java.time.Instant

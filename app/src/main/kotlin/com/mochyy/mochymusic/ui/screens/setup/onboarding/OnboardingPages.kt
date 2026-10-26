@@ -1,10 +1,10 @@
 // every page after the welcome screen as stateless composables, OnboardingFlow picks the page and wires the view model
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
-import com.example.musicfy.ui.component.rememberDeviceTilt
+import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 import androidx.compose.ui.unit.em
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.remember
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.glassRoot
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,11 +62,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.importer.account.AccountImportState
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.importer.account.RemotePlaylist
-import com.example.musicfy.viewmodels.YouTubeSyncChoices
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.account.AccountImportState
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.account.RemotePlaylist
+import com.mochyy.mochymusic.importer.transfer.TransferManifest
+import com.mochyy.mochymusic.viewmodels.TransferStep
+import com.mochyy.mochymusic.viewmodels.YouTubeSyncChoices
 import com.music.innertube.models.ArtistItem
 
 private const val GoBack = "hell nah, go back"
@@ -92,7 +94,13 @@ internal fun ImportAskPage(onYes: () -> Unit, onSkip: () -> Unit) {
 // ---- 2. which kind ----
 
 @Composable
-internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: () -> Unit, backupError: String?) {
+internal fun ImportModePage(
+    onPreviousData: () -> Unit,
+    onImport: () -> Unit,
+    onBackup: () -> Unit,
+    onBack: () -> Unit,
+    backupError: String?,
+) {
     OnboardingPage(
         badge = { PageBadge(painterResource(R.drawable.download)) },
         title = "Importing music",
@@ -100,6 +108,12 @@ internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: 
         footer = { OnbButton(GoBack, onClick = onBack, style = OnbButtonStyle.Secondary) },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OnbChoiceCard(
+                icon = painterResource(R.drawable.restore),
+                title = "Import previous data",
+                description = "the .zip you exported from your old app, with your library, history, downloads and settings",
+                onClick = onPreviousData,
+            )
             OnbChoiceCard(
                 icon = painterResource(R.drawable.playlist_add),
                 title = "Import",
@@ -109,7 +123,7 @@ internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: 
             OnbChoiceCard(
                 icon = painterResource(R.drawable.backup),
                 title = "Import from backup",
-                description = "if you by any chance have a Musicfy backup",
+                description = "if you by any chance have a Mochy backup",
                 onClick = onBackup,
             )
             if (backupError != null) {
@@ -118,6 +132,44 @@ internal fun ImportModePage(onImport: () -> Unit, onBackup: () -> Unit, onBack: 
         }
     }
 }
+
+// ---- 2b. bringing previous data over ----
+
+@Composable
+internal fun RestoringPage(step: TransferStep, manifest: TransferManifest?) {
+    val done = step is TransferStep.Done
+    val progress = if (done) 1f else (step as? TransferStep.Working)?.progress ?: 0f
+    OnboardingPage(
+        badge = { PageBadge(painterResource(if (done) R.drawable.check else R.drawable.restore)) },
+        title = if (done) "All set!" else "Bringing your music over",
+        subtitle = when {
+            done -> "Mochy restarts once to finish. See you in a sec!"
+            manifest != null -> "${countOf(manifest.songs, "song")}, ${countOf(manifest.playlists, "playlist")} and " +
+                "${countOf(manifest.plays, "play")} from your old app."
+            else -> "Reading your export…"
+        },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LinearProgressIndicator(
+                progress = { progress },
+                color = Color.White,
+                trackColor = Onb.Card,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(CircleShape),
+            )
+            Text(
+                if (done) "Restarting…" else "${(progress * 100).toInt()}% · keep Mochy open, it restarts by itself when it's done",
+                color = Onb.Subtitle,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+private fun countOf(count: Int, thing: String): String = "%,d %s".format(count, if (count == 1) thing else "${thing}s")
 
 // ---- 3. provider ----
 
@@ -357,7 +409,7 @@ internal fun SyncOptionsPage(
     OnboardingPage(
         badge = { ProviderSquircle(AccountService.YOUTUBE_MUSIC, size = 40.dp) },
         title = "Also keep in sync?",
-        subtitle = "YouTube Music can stay in step with Musicfy: your playlists, likes and history, both ways.",
+        subtitle = "YouTube Music can stay in step with Mochy: your playlists, likes and history, both ways.",
         footer = {
             if (reading != null) {
                 Text(
@@ -378,7 +430,7 @@ internal fun SyncOptionsPage(
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OnbToggleCard(
                 title = "Sync library on launch",
-                description = "Likes, library and the playlists you picked, each time Musicfy opens",
+                description = "Likes, library and the playlists you picked, each time Mochy opens",
                 checked = choices.syncOnLaunch,
                 onCheckedChange = { onChange(choices.copy(syncOnLaunch = it)) },
             )
@@ -396,7 +448,7 @@ internal fun SyncOptionsPage(
             )
             OnbToggleCard(
                 title = "Bring YouTube history here",
-                description = "Plays from your other devices join Musicfy's history",
+                description = "Plays from your other devices join Mochy's history",
                 checked = choices.copyHistory,
                 onCheckedChange = { onChange(choices.copy(copyHistory = it)) },
             )
@@ -421,7 +473,7 @@ internal fun ProfilePage(
         title = "Let's create your profile!",
         footer = {
             Text(
-                "Musicfy will never store your data online!",
+                "Mochy will never store your data online!",
                 color = Onb.Faint,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,

@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

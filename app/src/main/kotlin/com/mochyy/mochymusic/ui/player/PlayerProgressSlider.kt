@@ -1,6 +1,6 @@
 // PlayerProgressSlider.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
@@ -56,10 +56,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.PlayerHorizontalPadding
-import com.example.musicfy.ui.component.SeekBarExpandSpring
-import com.example.musicfy.utils.makeTimeString
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.ui.component.SeekBarExpandSpring
+import com.mochyy.mochymusic.utils.makeTimeString
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
@@ -83,9 +83,9 @@ fun PlayerProgressSlider(
     endTimeModifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val endTimestamp by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.PlayerEndTimestampKey,
-        com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
+    val endTimestamp by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.PlayerEndTimestampKey,
+        com.mochyy.mochymusic.constants.PlayerEndTimestamp.END_TIME,
     )
     val progressFlow = playerConnection.uiState.progressState
     // only the bar and the time texts read the position, so a tick redraws them and not the whole slider
@@ -130,18 +130,18 @@ fun PlayerProgressSlider(
     }
     val transport = playerConnection.uiState.transportState.collectAsState()
     val transportState = transport.value
-    val seekBarStyle by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.SeekBarStyleKey,
-        com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
+    val seekBarStyle by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.SeekBarStyleKey,
+        com.mochyy.mochymusic.ui.component.SeekBarStyle.DEFAULT,
     )
 
     // The Material 3 bars follow the artwork palette; the plain and default bars stay white so
     // they keep working over any cover.
-    val artworkColor = com.example.musicfy.LocalArtworkColor.current
-    val isM3Bar = seekBarStyle == com.example.musicfy.ui.component.SeekBarStyle.M3_EXPRESSIVE ||
-        seekBarStyle == com.example.musicfy.ui.component.SeekBarStyle.M3_EXPRESSIVE_LINE
+    val artworkColor = com.mochyy.mochymusic.LocalArtworkColor.current
+    val isM3Bar = seekBarStyle == com.mochyy.mochymusic.ui.component.SeekBarStyle.M3_EXPRESSIVE ||
+        seekBarStyle == com.mochyy.mochymusic.ui.component.SeekBarStyle.M3_EXPRESSIVE_LINE
     val barActiveColor = if (isM3Bar) {
-        com.example.musicfy.ui.theme.ArtworkPalette.from(artworkColor).accent
+        com.mochyy.mochymusic.ui.theme.ArtworkPalette.from(artworkColor).accent
     } else {
         Color.White
     }
@@ -166,7 +166,7 @@ fun PlayerProgressSlider(
         derivedStateOf {
             when {
                 !durationKnown || showLoading -> ""
-                endTimestamp == com.example.musicfy.constants.PlayerEndTimestamp.TIME_LEFT ->
+                endTimestamp == com.mochyy.mochymusic.constants.PlayerEndTimestamp.TIME_LEFT ->
                     "-" + makeTimeString((progress.value.duration - (sliderPosition ?: pendingSeek ?: progress.value.position)).coerceAtLeast(0L))
                 else -> makeTimeString(progress.value.duration)
             }
@@ -209,7 +209,7 @@ fun PlayerProgressSlider(
             interactionSource = trackInteractionSource,
             thumb = { Spacer(modifier = Modifier.size(0.dp)) },
             track = {
-                com.example.musicfy.ui.component.SeekBarTrack(
+                com.mochyy.mochymusic.ui.component.SeekBarTrack(
                     style = seekBarStyle,
                     fractionProvider = { fill.fraction },
                     activeColor = barActiveColor,

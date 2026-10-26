@@ -4,7 +4,7 @@
 // LibraryImportFlow.kt) - and turns into a progress bar while an import runs - and the import
 // sources' icons, for their category cards.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
@@ -49,15 +49,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.importer.ImportProgress
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.account.AccountService
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.ImportProgress
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.account.AccountService
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.screens.setup.onboarding.ProviderSquircle
-import com.example.musicfy.ui.screens.setup.onboarding.SquircleShape
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderSquircle
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.SquircleShape
 import kotlin.math.ceil
 
 /** The services the banner flows past - the ones an account can be imported from. */

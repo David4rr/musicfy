@@ -5,7 +5,7 @@
 // thread, and drawn stretched as one mesh whose vertex colours do the fade: no live blur and no
 // offscreen layer, on every Android version.
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +26,7 @@ import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.size.Size as CoilSize
 import coil3.toBitmap
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.max
 import kotlin.math.roundToInt
 

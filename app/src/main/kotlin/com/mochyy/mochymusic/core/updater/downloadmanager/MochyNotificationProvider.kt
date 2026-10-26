@@ -1,4 +1,4 @@
-package com.example.musicfy.core.updater.downloadmanager
+package com.mochyy.mochymusic.core.updater.downloadmanager
 
 import android.app.Notification
 import android.content.Context
@@ -13,11 +13,11 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import java.util.Locale
 
 @OptIn(UnstableApi::class)
-class MusicfyNotificationProvider(
+class MochyNotificationProvider(
     private val context: Context,
     notificationIdProvider: DefaultMediaNotificationProvider.NotificationIdProvider,
     channelId: String,
@@ -31,7 +31,7 @@ class MusicfyNotificationProvider(
         channelNameResourceId
     )
 
-    fun setSmallIcon(iconResId: Int): MusicfyNotificationProvider {
+    fun setSmallIcon(iconResId: Int): MochyNotificationProvider {
         defaultProvider.setSmallIcon(iconResId)
         return this
     }
@@ -76,7 +76,7 @@ class MusicfyNotificationProvider(
 
             builder.setColorized(false)
 
-            builder.setSmallIcon(R.drawable.musicfy_notification)
+            builder.setSmallIcon(R.drawable.mochy_notification)
 
             setRequestPromotedOngoingSafely(builder, true)
 

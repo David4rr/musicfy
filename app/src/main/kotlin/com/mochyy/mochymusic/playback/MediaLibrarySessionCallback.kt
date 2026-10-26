@@ -1,6 +1,6 @@
 // MediaLibrarySessionCallback.kt
 
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import android.content.ContentResolver
 import android.content.Context
@@ -31,20 +31,20 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
-import com.example.musicfy.R
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.constants.MediaSessionConstants
-import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.extensions.toggleRepeatMode
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.MediaSessionConstants
+import com.mochyy.mochymusic.constants.SongSortType
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.extensions.toggleRepeatMode
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
+import com.mochyy.mochymusic.utils.reportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -790,7 +790,7 @@ constructor(
         singleItemStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_CATEGORY_LIST_ITEM,
     )
 
-    private fun com.example.musicfy.db.entities.Playlist.toBrowsableMediaItem() = browsableMediaItem(
+    private fun com.mochyy.mochymusic.db.entities.Playlist.toBrowsableMediaItem() = browsableMediaItem(
         "${MusicService.PLAYLIST}/$id",
         playlist.name,
         context.resources.getQuantityString(

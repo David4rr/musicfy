@@ -1,10 +1,10 @@
 // ImportedVersions.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.models.toMediaMetadata
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.models.toMediaMetadata
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

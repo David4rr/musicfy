@@ -3,7 +3,7 @@
 // The page frame every Library screen shares (collapsing title, search pill, the list below) and
 // the search that runs inside it.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,22 +21,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.ui.screens.search.SearchField
-import com.example.musicfy.ui.screens.search.SearchGlassTopBar
-import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
-import com.example.musicfy.ui.screens.search.searchTopBarHeight
-import com.example.musicfy.viewmodels.ShelfAlbum
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.ui.screens.search.SearchField
+import com.mochyy.mochymusic.ui.screens.search.SearchGlassTopBar
+import com.mochyy.mochymusic.ui.screens.search.SearchHorizontalPadding
+import com.mochyy.mochymusic.ui.screens.search.searchTopBarHeight
+import com.mochyy.mochymusic.viewmodels.ShelfAlbum
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist as InnertubeArtist
 import com.music.innertube.models.ArtistItem
@@ -151,7 +151,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
             round = item is ArtistItem,
             songId = (item as? SongItem)?.id,
             // albums and playlists open growing out of their cover, as from Home
-            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+            sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
         )
     }
 }
@@ -164,7 +164,7 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
 internal fun openLibraryItem(
     item: YTItem,
     navController: NavController,
-    playerConnection: com.example.musicfy.playback.PlayerConnection?,
+    playerConnection: com.mochyy.mochymusic.playback.PlayerConnection?,
     librarySongs: List<Song> = emptyList(),
 ) {
     when (item) {

@@ -1,8 +1,8 @@
 // CanvasArtworkUtils.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
-import com.example.musicfy.canvas.CanvasArtwork
+import com.mochyy.mochymusic.canvas.CanvasArtwork
 
 object CanvasArtworkPlaybackCache {
     private const val defaultMaxSize = 256

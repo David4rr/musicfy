@@ -1,6 +1,6 @@
 // SpinningArtwork.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,7 +10,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -269,7 +269,7 @@ internal class SpinningArtwork(
                 json.parseToJsonElement(reply).jsonObject["files"]?.jsonArray?.firstOrNull()
                     ?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull.orEmpty()
             },
-            // catbox keeps files for good; the 30 days only bounds how long Musicfy reuses one
+            // catbox keeps files for good; the 30 days only bounds how long Mochy reuses one
             Host("catbox.moe", keepsMs = 30 * 24 * HourMs) { gif ->
                 post("https://catbox.moe/user/api.php", "fileToUpload", gif, "reqtype" to "fileupload")
             },
@@ -285,7 +285,7 @@ internal class SpinningArtwork(
         private fun post(url: String, fileField: String, gif: ByteArray, vararg fields: Pair<String, String>): String {
             val body = MultipartBody.Builder().setType(MultipartBody.FORM).apply {
                 fields.forEach { (name, value) -> addFormDataPart(name, value) }
-                addFormDataPart(fileField, "musicfy.gif", gif.toRequestBody("image/gif".toMediaType()))
+                addFormDataPart(fileField, "mochy.gif", gif.toRequestBody("image/gif".toMediaType()))
             }.build()
             val request = Request.Builder().url(url).post(body).build()
             return DiscordHttp.client.newCall(request).execute().use { response ->

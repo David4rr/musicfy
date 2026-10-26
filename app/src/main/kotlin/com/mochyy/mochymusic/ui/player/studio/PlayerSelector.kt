@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -57,10 +57,10 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerStyle
-import com.example.musicfy.ui.player.styles.AlternatePlayerStyle
-import com.example.musicfy.ui.player.styles.StyleActions
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerStyle
+import com.mochyy.mochymusic.ui.player.styles.AlternatePlayerStyle
+import com.mochyy.mochymusic.ui.player.styles.StyleActions
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

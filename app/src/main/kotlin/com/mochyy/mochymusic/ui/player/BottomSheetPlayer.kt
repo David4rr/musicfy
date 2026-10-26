@@ -1,6 +1,6 @@
 // BottomSheetPlayer.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.media3.common.Player
-import com.example.musicfy.constants.PlayerHorizontalPadding
-import com.example.musicfy.extensions.toggleRepeatMode
-import com.example.musicfy.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.extensions.toggleRepeatMode
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -48,7 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.example.musicfy.ui.player.studio.playHoldRamp
+import com.mochyy.mochymusic.ui.player.studio.playHoldRamp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.zIndex
@@ -71,43 +71,43 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.joinAll
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerBackgroundStyle
-import com.example.musicfy.constants.PlayerBackgroundStyleKey
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.DefaultPlayerCoverStyle
-import com.example.musicfy.constants.PlayerCoverStyleKey
-import com.example.musicfy.constants.PlayerStyle
-import com.example.musicfy.constants.ShowPlayerBottomCardKey
-import com.example.musicfy.constants.PlayerBottomBarStyle
-import com.example.musicfy.constants.PlayerBottomBarStyleKey
-import com.example.musicfy.constants.InfiniteQueueKey
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyleKey
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.DefaultPlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerCoverStyleKey
+import com.mochyy.mochymusic.constants.PlayerStyle
+import com.mochyy.mochymusic.constants.ShowPlayerBottomCardKey
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyle
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyleKey
+import com.mochyy.mochymusic.constants.InfiniteQueueKey
 import androidx.activity.compose.BackHandler
-import com.example.musicfy.ui.component.BottomSheet
-import com.example.musicfy.ui.component.BottomSheetState
-import com.example.musicfy.ui.component.ExpandedSwipe
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.player.studio.EditTiles
-import com.example.musicfy.ui.player.studio.PlayerSelectorOverlay
-import com.example.musicfy.ui.player.studio.StudioEditOverlay
-import com.example.musicfy.ui.player.studio.StudioSheets
-import com.example.musicfy.ui.player.studio.StudioStage
-import com.example.musicfy.ui.player.studio.studioAnchor
-import com.example.musicfy.ui.player.studio.studioCaptureSource
-import com.example.musicfy.ui.player.studio.studioBarLayer
-import com.example.musicfy.ui.player.studio.LiftedPart
-import com.example.musicfy.ui.player.studio.StudioCameraEffect
-import com.example.musicfy.ui.player.studio.StudioPieces
-import com.example.musicfy.ui.player.studio.studioCoverLayer
-import com.example.musicfy.ui.player.studio.studioMiddleLayer
-import com.example.musicfy.ui.player.studio.studioSheetLayer
-import com.example.musicfy.ui.player.studio.studioTransportLayer
-import com.example.musicfy.ui.player.studio.studioPiece
-import com.example.musicfy.ui.player.studio.holdAnywhere
-import com.example.musicfy.ui.player.menu.PlayerActionMenu
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.ui.component.BottomSheet
+import com.mochyy.mochymusic.ui.component.BottomSheetState
+import com.mochyy.mochymusic.ui.component.ExpandedSwipe
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.player.studio.EditTiles
+import com.mochyy.mochymusic.ui.player.studio.PlayerSelectorOverlay
+import com.mochyy.mochymusic.ui.player.studio.StudioEditOverlay
+import com.mochyy.mochymusic.ui.player.studio.StudioSheets
+import com.mochyy.mochymusic.ui.player.studio.StudioStage
+import com.mochyy.mochymusic.ui.player.studio.studioAnchor
+import com.mochyy.mochymusic.ui.player.studio.studioCaptureSource
+import com.mochyy.mochymusic.ui.player.studio.studioBarLayer
+import com.mochyy.mochymusic.ui.player.studio.LiftedPart
+import com.mochyy.mochymusic.ui.player.studio.StudioCameraEffect
+import com.mochyy.mochymusic.ui.player.studio.StudioPieces
+import com.mochyy.mochymusic.ui.player.studio.studioCoverLayer
+import com.mochyy.mochymusic.ui.player.studio.studioMiddleLayer
+import com.mochyy.mochymusic.ui.player.studio.studioSheetLayer
+import com.mochyy.mochymusic.ui.player.studio.studioTransportLayer
+import com.mochyy.mochymusic.ui.player.studio.studioPiece
+import com.mochyy.mochymusic.ui.player.studio.holdAnywhere
+import com.mochyy.mochymusic.ui.player.menu.PlayerActionMenu
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -255,15 +255,15 @@ private fun PlayerSheet(
     val (showPlayerBottomCard) = rememberPreference(ShowPlayerBottomCardKey, defaultValue = true)
 
     // the player studio: the selector the player shrinks into, and the flagship's in-place editor
-    val studio = com.example.musicfy.ui.player.studio.rememberPlayerStudioState()
-    val studioAnchors = remember { com.example.musicfy.ui.player.studio.StudioAnchors() }
-    val studioParts = com.example.musicfy.ui.player.studio.rememberStudioParts(studio, studioAnchors)
-    val menuLayout = com.example.musicfy.ui.player.studio.rememberPlayerMenuLayout()
+    val studio = com.mochyy.mochymusic.ui.player.studio.rememberPlayerStudioState()
+    val studioAnchors = remember { com.mochyy.mochymusic.ui.player.studio.StudioAnchors() }
+    val studioParts = com.mochyy.mochymusic.ui.player.studio.rememberStudioParts(studio, studioAnchors)
+    val menuLayout = com.mochyy.mochymusic.ui.player.studio.rememberPlayerMenuLayout()
     val studioFrame = androidx.compose.ui.graphics.rememberGraphicsLayer()
-    val studioCapture = remember(studioFrame) { com.example.musicfy.ui.player.studio.StudioCapture(studioFrame) }
+    val studioCapture = remember(studioFrame) { com.mochyy.mochymusic.ui.player.studio.StudioCapture(studioFrame) }
     // the pieces the editor lifts off the player while a part is edited (the middle part's, or the
     // transport and the bottom bar), so it moves the player's own drawing of each
-    val studioPieces = com.example.musicfy.ui.player.studio.rememberStudioPieces()
+    val studioPieces = com.mochyy.mochymusic.ui.player.studio.rememberStudioPieces()
     // where the editor's hold put the controls (and so how big the cover is) and how tall the card is
     val layoutTweaks = rememberPlayerLayoutTweaks()
     androidx.compose.runtime.SideEffect {
@@ -297,8 +297,8 @@ private fun PlayerSheet(
 
     var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
     val (savedPlayerStyle, savePlayerStyle) = rememberEnumPreference(
-        com.example.musicfy.constants.PlayerStyleKey,
-        com.example.musicfy.constants.PlayerStyle.DEFAULT,
+        com.mochyy.mochymusic.constants.PlayerStyleKey,
+        com.mochyy.mochymusic.constants.PlayerStyle.DEFAULT,
     )
     // A style picked in the studio shows at once. The saved one only comes back after the
     // settings file is written, which landed in the middle of the player growing back out of its
@@ -313,7 +313,7 @@ private fun PlayerSheet(
         savePlayerStyle(style)
     }
     // the Turntable is the flagship around a record player, whatever cover the flagship is set to
-    val isTurntable = playerStyle == com.example.musicfy.constants.PlayerStyle.TURNTABLE
+    val isTurntable = playerStyle == com.mochyy.mochymusic.constants.PlayerStyle.TURNTABLE
     val shownCoverStyle = if (isTurntable) PlayerCoverStyle.TURNTABLE else coverStyle
     val controlsDrawShift = if (shownCoverStyle == PlayerCoverStyle.EDGE_TO_EDGE) ControlsDrawShift else 0.dp
     var backgroundStyle by rememberEnumPreference(
@@ -321,9 +321,9 @@ private fun PlayerSheet(
         PlayerBackgroundStyle.COVER_GRADIENT,
     )
     // a style stored by the ones these replaced lands on its successor
-    val (storedPlayerStyle, onStoredPlayerStyle) = rememberPreference(com.example.musicfy.constants.PlayerStyleKey, "")
+    val (storedPlayerStyle, onStoredPlayerStyle) = rememberPreference(com.mochyy.mochymusic.constants.PlayerStyleKey, "")
     LaunchedEffect(storedPlayerStyle) {
-        com.example.musicfy.constants.PlayerStyle.fromStored(storedPlayerStyle)?.let { onStoredPlayerStyle(it.name) }
+        com.mochyy.mochymusic.constants.PlayerStyle.fromStored(storedPlayerStyle)?.let { onStoredPlayerStyle(it.name) }
     }
 
     // plain fields, not state: they are written every frame of the slide but only read when a swipe starts
@@ -333,7 +333,7 @@ private fun PlayerSheet(
     LaunchedEffect(studioEngaged) {
         if (studioEngaged) transition.close()
     }
-    val playerStyles = remember { com.example.musicfy.constants.PlayerStyle.entries.toList() }
+    val playerStyles = remember { com.mochyy.mochymusic.constants.PlayerStyle.entries.toList() }
     val currentPlayerStyleForStudio by androidx.compose.runtime.rememberUpdatedState(playerStyle)
     val openStudio: () -> Unit = remember(studio) {
         {
@@ -351,7 +351,7 @@ private fun PlayerSheet(
             if (!studio.engaged && pending?.isActive != true) {
                 studioContext.playHoldRamp()
                 pending = studioScope.launch {
-                    kotlinx.coroutines.delay(com.example.musicfy.ui.player.studio.HoldRampMs)
+                    kotlinx.coroutines.delay(com.mochyy.mochymusic.ui.player.studio.HoldRampMs)
                     openStudio()
                 }
             }
@@ -373,7 +373,7 @@ private fun PlayerSheet(
     // that page fully up: the style under it stops drawing
     var styleCovered by remember { mutableStateOf(false) }
     val styleActions = remember(openStudio) {
-        com.example.musicfy.ui.player.styles.StyleActions(
+        com.mochyy.mochymusic.ui.player.styles.StyleActions(
             onOtherMenu = {
                 // the styles that perform the lyrics get the lyrics tools too: provider, translation
                 menuFromLyrics = currentPlayerStyleForStudio == PlayerStyle.POSTER ||
@@ -502,7 +502,7 @@ private fun PlayerSheet(
     // the like and the page is growing out of (or back into) the card. Switching over from the
     // queue it opens out from behind the chevron like the page's other buttons.
     fun likeMovesToLyrics(): Boolean =
-        menuLayout.side == com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE &&
+        menuLayout.side == com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE &&
             transition.isCardMorph(PlayerPage.LYRICS)
 
     // Each page's own content. Opened from the player it is the header's progress (one motion);
@@ -685,7 +685,7 @@ private fun PlayerSheet(
         val miniSwipe = remember(songCarousel, density) {
             val flingPx = with(density) { MiniSwipeFling.toPx() }
             songCarousel?.let { row ->
-                object : com.example.musicfy.ui.component.CollapsedSwipe {
+                object : com.mochyy.mochymusic.ui.component.CollapsedSwipe {
                     private var hasPrevious = false
                     private var hasNext = false
 
@@ -708,36 +708,36 @@ private fun PlayerSheet(
 
         // what the round buttons do: the side button by the chevron and the chevron's menu, each
         // set to one of these in the editor
-        val menuExtras = com.example.musicfy.ui.player.studio.rememberPlayerMenuExtras(
+        val menuExtras = com.mochyy.mochymusic.ui.player.studio.rememberPlayerMenuExtras(
             playerConnection = playerConnection,
             openLyrics = { if (transition.page != PlayerPage.LYRICS) transition.open(PlayerPage.LYRICS) },
         )
-        fun menuActionActive(action: com.example.musicfy.ui.player.studio.PlayerMenuAction): Boolean = when (action) {
-            com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE -> trackInfo.liked
-            com.example.musicfy.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> playerConnection.service.sleepTimer.isActive
-            com.example.musicfy.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo
-            com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT -> transportState.repeatMode != Player.REPEAT_MODE_OFF
-            com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE -> transportState.shuffleModeEnabled
+        fun menuActionActive(action: com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction): Boolean = when (action) {
+            com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE -> trackInfo.liked
+            com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> playerConnection.service.sleepTimer.isActive
+            com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo
+            com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.REPEAT -> transportState.repeatMode != Player.REPEAT_MODE_OFF
+            com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SHUFFLE -> transportState.shuffleModeEnabled
             else -> menuExtras.isActive(action)
         }
-        val onMenuAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit = { action ->
+        val onMenuAction: (com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction) -> Unit = { action ->
             when (action) {
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE ->
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE ->
                     likeBurst.likeFromButton(LikeSlot.PLAYER, trackInfo.liked, playerConnection::toggleLike)
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.OTHER_MENU -> {
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.OTHER_MENU -> {
                     // The lyrics tools are in this menu now (no button in the lyrics header).
                     menuFromLyrics = showLyrics
                     showActionMenu = true
                 }
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> showSleepTimer = true
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo = !seeVideo
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT -> playerConnection.player.toggleRepeatMode()
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE ->
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SLEEP_TIMER -> showSleepTimer = true
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SEE_VIDEO -> seeVideo = !seeVideo
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.REPEAT -> playerConnection.player.toggleRepeatMode()
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SHUFFLE ->
                     playerConnection.player.shuffleModeEnabled = !playerConnection.player.shuffleModeEnabled
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.LYRICS -> transition.open(PlayerPage.LYRICS)
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.QUEUE -> transition.open(PlayerPage.QUEUE)
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.SPEED -> showPlaybackSpeed = true
-                com.example.musicfy.ui.player.studio.PlayerMenuAction.OUTPUT -> showDeviceOutput = true
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LYRICS -> transition.open(PlayerPage.LYRICS)
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.QUEUE -> transition.open(PlayerPage.QUEUE)
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SPEED -> showPlaybackSpeed = true
+                com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.OUTPUT -> showDeviceOutput = true
                 else -> menuExtras.run(action)
             }
         }
@@ -880,9 +880,9 @@ private fun PlayerSheet(
                         },
                 ) {
                     androidx.compose.runtime.CompositionLocalProvider(
-                        com.example.musicfy.ui.player.styles.LocalStyleInteractive provides styleInteractive,
+                        com.mochyy.mochymusic.ui.player.styles.LocalStyleInteractive provides styleInteractive,
                     ) {
-                        com.example.musicfy.ui.player.styles.AlternatePlayerStyle(
+                        com.mochyy.mochymusic.ui.player.styles.AlternatePlayerStyle(
                             style = playerStyle,
                             actions = styleActions,
                             // under a lyrics page that fills the screen it needn't be drawn
@@ -894,7 +894,7 @@ private fun PlayerSheet(
                 }
                 // closed with the player, so it isn't still up the next time it opens
                 LaunchedEffect(styleOpen) { if (!styleOpen) styleLyricsOpen = false }
-                com.example.musicfy.ui.player.styles.StyleLyricsPage(
+                com.mochyy.mochymusic.ui.player.styles.StyleLyricsPage(
                     open = styleLyricsOpen && styleOpen,
                     onClose = { styleLyricsOpen = false },
                     screenHeight = screenHeight,
@@ -1143,8 +1143,8 @@ private fun PlayerSheet(
                             // measured only on the plain player: in the editor they're moving with it
                             onSidePlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.sideButton, it) },
                             onChevronPlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.chevron, it) },
-                            sideModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.SIDE),
-                            chevronModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.CHEVRON),
+                            sideModifier = Modifier.studioPiece(studioPieces, com.mochyy.mochymusic.ui.player.studio.StudioPieces.SIDE),
+                            chevronModifier = Modifier.studioPiece(studioPieces, com.mochyy.mochymusic.ui.player.studio.StudioPieces.CHEVRON),
                             onSongInfoClick = { if (!studioEngaged) showSongDetails = true },
                             // the header's title is this one moving, so it hides as that takes over
                             // (or fades, with no measured spot for the header's to start from)
@@ -1340,8 +1340,8 @@ private fun PlayerSheet(
                             active = sheetShowing,
                             onSeekBarPlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.seekBar, it) },
                             onEndTimePlaced = { if (!studio.editing) studioAnchors.capture(studioAnchors.endTime, it) },
-                            seekBarModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.SEEK_BAR),
-                            endTimeModifier = Modifier.studioPiece(studioPieces, com.example.musicfy.ui.player.studio.StudioPieces.END_TIME),
+                            seekBarModifier = Modifier.studioPiece(studioPieces, com.mochyy.mochymusic.ui.player.studio.StudioPieces.SEEK_BAR),
+                            endTimeModifier = Modifier.studioPiece(studioPieces, com.mochyy.mochymusic.ui.player.studio.StudioPieces.END_TIME),
                         )
                     }
                 }
@@ -1402,8 +1402,8 @@ private fun PlayerSheet(
             // four set in the editor (unless one of those is already there)
             slots = if (isTurntable) {
                 listOf(
-                    com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE,
-                    com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT,
+                    com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SHUFFLE,
+                    com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.REPEAT,
                 ).filterNot { it in menuLayout.slots } + menuLayout.slots
             } else {
                 menuLayout.slots
@@ -1432,7 +1432,7 @@ private fun PlayerSheet(
         PageBackHandler(state, pageOpen = showQueue || showLyrics) { transition.close() }
 
         if (showSleepTimer) {
-            com.example.musicfy.ui.player.menu.SleepTimerSheet(
+            com.mochyy.mochymusic.ui.player.menu.SleepTimerSheet(
                 onDismiss = { showSleepTimer = false }
             )
         }
@@ -1440,7 +1440,7 @@ private fun PlayerSheet(
         if (showSongDetails) {
             // Opening an artist or the album leaves the player: it closes on its way to the page,
             // the way the song menus' "view artist" does
-            com.example.musicfy.ui.player.menu.SongDetailsSheet(
+            com.mochyy.mochymusic.ui.player.menu.SongDetailsSheet(
                 onDismiss = { showSongDetails = false },
                 onOpenArtist = { artistId ->
                     showSongDetails = false
@@ -1473,14 +1473,14 @@ private fun PlayerSheet(
         }
 
         if (showPlaybackSpeed) {
-            com.example.musicfy.ui.player.menu.PlaybackSpeedSheet(onDismiss = { showPlaybackSpeed = false })
+            com.mochyy.mochymusic.ui.player.menu.PlaybackSpeedSheet(onDismiss = { showPlaybackSpeed = false })
         }
         if (showDeviceOutput) {
-            com.example.musicfy.ui.player.menu.DeviceOutputSheet(onDismiss = { showDeviceOutput = false })
+            com.mochyy.mochymusic.ui.player.menu.DeviceOutputSheet(onDismiss = { showDeviceOutput = false })
         }
         // opened by "Switch" at the end of the lyrics page
         if (showLyricsSource) {
-            com.example.musicfy.ui.player.menu.LyricsProviderSheet(onDismiss = { showLyricsSource = false })
+            com.mochyy.mochymusic.ui.player.menu.LyricsProviderSheet(onDismiss = { showLyricsSource = false })
         }
 
         // the player studio, over the player: the selector, the editor's header and editors, its sheets
@@ -1499,14 +1499,14 @@ private fun PlayerSheet(
                     val restyled = playerStyle != PlayerStyle.POSTER
                     if (restyled) onPlayerStyleChange(PlayerStyle.POSTER)
                     studio.settleOn(focused, restyled) {
-                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.POSTER)
+                        studio.openSheet(com.mochyy.mochymusic.ui.player.studio.StudioSheet.POSTER)
                     }
                 } else if (playerStyles.getOrNull(focused) == PlayerStyle.TURNTABLE) {
                     // its one edit is the disc label: back to the player, with the label's sheet
                     val restyled = playerStyle != PlayerStyle.TURNTABLE
                     if (restyled) onPlayerStyleChange(PlayerStyle.TURNTABLE)
                     studio.settleOn(focused, restyled) {
-                        studio.openSheet(com.example.musicfy.ui.player.studio.StudioSheet.DISC_LABEL)
+                        studio.openSheet(com.mochyy.mochymusic.ui.player.studio.StudioSheet.DISC_LABEL)
                     }
                 } else {
                     val index = playerStyles.indexOf(PlayerStyle.DEFAULT)
@@ -1518,10 +1518,10 @@ private fun PlayerSheet(
         )
         // the Poster's sheet, over the poster itself
         if (playerStyle == PlayerStyle.POSTER) {
-            com.example.musicfy.ui.player.studio.StyleSheets(studio)
+            com.mochyy.mochymusic.ui.player.studio.StyleSheets(studio)
         }
         if (playerStyle.flagshipFamily) {
-            val (showBigDiscStyles) = rememberPreference(com.example.musicfy.constants.ShowBigDiscStylesKey, defaultValue = false)
+            val (showBigDiscStyles) = rememberPreference(com.mochyy.mochymusic.constants.ShowBigDiscStylesKey, defaultValue = false)
             val coverStyles = remember(showBigDiscStyles, coverStyle) {
                 PlayerCoverStyle.entries.filter { style ->
                     style != PlayerCoverStyle.TURNTABLE
@@ -1531,18 +1531,18 @@ private fun PlayerSheet(
             }
             val backgroundStyles = remember { PlayerBackgroundStyle.entries.toList() }
             var seekBarStyle by rememberEnumPreference(
-                com.example.musicfy.constants.SeekBarStyleKey,
-                com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
+                com.mochyy.mochymusic.constants.SeekBarStyleKey,
+                com.mochyy.mochymusic.ui.component.SeekBarStyle.DEFAULT,
             )
             var buttonStyle by rememberEnumPreference(
-                com.example.musicfy.constants.ButtonStyleKey,
-                com.example.musicfy.ui.component.ButtonStyle.DEFAULT,
+                com.mochyy.mochymusic.constants.ButtonStyleKey,
+                com.mochyy.mochymusic.ui.component.ButtonStyle.DEFAULT,
             )
             val endTimestamp by rememberEnumPreference(
-                com.example.musicfy.constants.PlayerEndTimestampKey,
-                com.example.musicfy.constants.PlayerEndTimestamp.END_TIME,
+                com.mochyy.mochymusic.constants.PlayerEndTimestampKey,
+                com.mochyy.mochymusic.constants.PlayerEndTimestamp.END_TIME,
             )
-            val artworkPalette = com.example.musicfy.ui.theme.ArtworkPalette.from(com.example.musicfy.LocalArtworkColor.current)
+            val artworkPalette = com.mochyy.mochymusic.ui.theme.ArtworkPalette.from(com.mochyy.mochymusic.LocalArtworkColor.current)
             if (playerStyle == PlayerStyle.DEFAULT) StudioEditOverlay(
                 parts = studioParts,
                 glassState = morphingGlassState,
@@ -1569,7 +1569,7 @@ private fun PlayerSheet(
                 seekBarStyle = seekBarStyle,
                 onSeekBarStyle = { seekBarStyle = it },
                 menuLayout = menuLayout,
-                transportColors = com.example.musicfy.ui.component.TransportColors(
+                transportColors = com.mochyy.mochymusic.ui.component.TransportColors(
                     accent = artworkPalette.accent,
                     onAccent = artworkPalette.onAccent,
                     container = artworkPalette.container,
@@ -1624,9 +1624,9 @@ private fun ExpandMenuOverlay(
     visible: Boolean,
     onDismiss: () -> Unit,
     /** the actions, top to bottom: the four set in the editor, and any the style adds */
-    slots: List<com.example.musicfy.ui.player.studio.PlayerMenuAction>,
-    isActive: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Boolean,
-    onAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit,
+    slots: List<com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction>,
+    isActive: (com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction) -> Boolean,
+    onAction: (com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction) -> Unit,
     repeatMode: Int,
     getChevronRect: () -> androidx.compose.ui.geometry.Rect?,
     screenWidth: androidx.compose.ui.unit.Dp,
@@ -1826,15 +1826,15 @@ private fun ExpandMenuOverlay(
                                 tint = iconTint,
                                 containerColor = containerColor,
                                 hasShadow = false,
-                                badgeText = if (action == com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT &&
+                                badgeText = if (action == com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.REPEAT &&
                                     repeatMode == Player.REPEAT_MODE_ONE
                                 ) "1" else null,
                                 onClick = {
                                     when (action) {
                                         // toggles that stay open, so the change shows on the button
-                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.REPEAT,
-                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.SHUFFLE,
-                                        com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE -> onAction(action)
+                                        com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.REPEAT,
+                                        com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.SHUFFLE,
+                                        com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE -> onAction(action)
                                         else -> { onDismiss(); onAction(action) }
                                     }
                                 }

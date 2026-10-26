@@ -5,7 +5,7 @@
 // fly out of the lyrics and land in the picker while the sheet rises - the sheets clip whatever
 // is inside them, and the flight (ShareFlight.kt) sits above them in the same window.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -23,8 +23,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import com.example.musicfy.ui.component.PopupSheetHost
-import com.example.musicfy.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.PopupSheetHost
+import com.mochyy.mochymusic.ui.component.PopupSheetState
 import kotlinx.coroutines.flow.first
 
 @Composable

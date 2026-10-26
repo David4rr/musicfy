@@ -1,13 +1,13 @@
 // LocalAlbumRadio.kt
 
-package com.example.musicfy.playback.queues
+package com.mochyy.mochymusic.playback.queues
 
 import androidx.media3.common.MediaItem
 import com.music.innertube.YouTube
 import com.music.innertube.models.WatchEndpoint
-import com.example.musicfy.db.entities.AlbumWithSongs
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.MediaMetadata
+import com.mochyy.mochymusic.db.entities.AlbumWithSongs
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.MediaMetadata
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 

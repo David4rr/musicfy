@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.Shader
 import android.os.Build

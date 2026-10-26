@@ -1,6 +1,6 @@
 // ModifierExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.Modifier

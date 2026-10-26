@@ -1,6 +1,6 @@
 // UtilExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
 fun <T> tryOrNull(block: () -> T): T? =
     try {

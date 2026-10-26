@@ -1,6 +1,6 @@
 // OnlinePlaylistViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
@@ -11,11 +11,11 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterVideoSongs
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
+import com.mochyy.mochymusic.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

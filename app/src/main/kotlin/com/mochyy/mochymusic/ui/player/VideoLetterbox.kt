@@ -1,6 +1,6 @@
 // VideoLetterbox.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import kotlin.math.abs
 import kotlin.math.max

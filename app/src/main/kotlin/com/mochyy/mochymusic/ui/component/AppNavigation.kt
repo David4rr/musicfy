@@ -1,6 +1,6 @@
 // AppNavigation.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,7 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.example.musicfy.ui.screens.Screens
+import com.mochyy.mochymusic.ui.screens.Screens
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,7 +54,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.size
-import com.example.musicfy.LocalGlassState
+import com.mochyy.mochymusic.LocalGlassState
 
 @Immutable
 private data class NavItemState(
@@ -123,7 +123,7 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "library/" to "library",
     "cipher_settings" to "settings",
     "playback_diagnostics" to "settings",
-    "musicfy_settings" to "settings",
+    "mochy_settings" to "settings",
     "general_settings" to "settings",
     "appearance_settings" to "settings",
     "playback_settings" to "settings",

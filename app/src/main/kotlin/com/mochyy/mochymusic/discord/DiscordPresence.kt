@@ -1,11 +1,11 @@
 // DiscordPresence.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import com.example.musicfy.utils.OfflineMode
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.utils.OfflineMode
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

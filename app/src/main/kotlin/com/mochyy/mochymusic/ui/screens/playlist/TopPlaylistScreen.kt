@@ -1,6 +1,6 @@
 // TopPlaylistScreen.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Spacer
@@ -41,33 +41,33 @@ import androidx.compose.ui.util.fastForEachReversed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.MyTopFilter
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistSortControl
-import com.example.musicfy.ui.component.detail.PlaylistTrackBones
-import com.example.musicfy.ui.component.detail.PlaylistModeBar
-import com.example.musicfy.ui.component.detail.PlaylistSelectTick
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.detail.featuredArtistsOf
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.SelectionSongMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.menu.TopPlaylistMenu
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.viewmodels.TopPlaylistViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.MyTopFilter
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSortControl
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackBones
+import com.mochyy.mochymusic.ui.component.detail.PlaylistModeBar
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.detail.featuredArtistsOf
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.SelectionSongMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.menu.TopPlaylistMenu
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.viewmodels.TopPlaylistViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,7 +169,7 @@ fun TopPlaylistScreen(
         searchPlaceholder = "Search your top songs",
         onBackClick = { navController.navigateUp() },
         onBackLongClick = { navController.backToMain() },
-        creator = "musicfy",
+        creator = "mochy",
         onMoreClick = {
             menuState.show {
                 TopPlaylistMenu(

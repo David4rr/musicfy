@@ -1,6 +1,6 @@
 // PlayerBackgroundStyles.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -32,8 +32,8 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.constants.PlayerBackgroundStyle
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -135,7 +135,7 @@ private fun AppleMusicBackground(thumbnailUrl: String?, modifier: Modifier = Mod
                         .resizeBitmapArea(100 * 100)
                         .generate()
                 }
-                palette = com.example.musicfy.ui.theme.PlayerColorExtractor.extractAppleMusicColors(
+                palette = com.mochyy.mochymusic.ui.theme.PlayerColorExtractor.extractAppleMusicColors(
                     palette = generated,
                     fallbackColor = fallbackColorInt,
                 )

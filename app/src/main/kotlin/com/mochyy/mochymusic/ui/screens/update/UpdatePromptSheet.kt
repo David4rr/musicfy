@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.update
+package com.mochyy.mochymusic.ui.screens.update
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,14 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.R
-import com.example.musicfy.core.updater.GithubRelease
-import com.example.musicfy.core.updater.downloadApk
-import com.example.musicfy.core.updater.formatBytes
-import com.example.musicfy.core.updater.installApk
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.player.menu.MenuSheetSurface
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.updater.GithubRelease
+import com.mochyy.mochymusic.core.updater.downloadApk
+import com.mochyy.mochymusic.core.updater.formatBytes
+import com.mochyy.mochymusic.core.updater.installApk
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuSheetSurface
 import kotlinx.coroutines.launch
 
 private val CardSurface = MenuRowSurface
@@ -70,7 +70,7 @@ fun UpdatePromptSheet(
     val progress = remember { mutableFloatStateOf(0f) }
 
     var readyToInstall by remember(release.apkName) {
-        mutableStateOf(com.example.musicfy.core.updater.isDownloaded(context, release))
+        mutableStateOf(com.mochyy.mochymusic.core.updater.isDownloaded(context, release))
     }
 
     var needsPermission by remember { mutableStateOf(false) }
@@ -81,7 +81,7 @@ fun UpdatePromptSheet(
         } else {
             needsPermission = true
             readyToInstall = true
-            error = "Allow \"Install unknown apps\" for musicfy, then tap Install here again."
+            error = "Allow \"Install unknown apps\" for mochy, then tap Install here again."
         }
     }
 
@@ -111,7 +111,7 @@ fun UpdatePromptSheet(
                     .background(CardSurface)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
+                    painter = painterResource(R.drawable.ic_mochy_mark),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(52.dp),
@@ -175,7 +175,7 @@ fun UpdatePromptSheet(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = release.apkName ?: "musicfy.apk",
+                        text = release.apkName ?: "mochy.apk",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -217,8 +217,8 @@ fun UpdatePromptSheet(
                 dimmed = release.apkUrl == null,
                 onClick = {
                     error = null
-                    val existing = com.example.musicfy.core.updater.apkFileFor(context, release)
-                    if (com.example.musicfy.core.updater.isDownloaded(context, release)) {
+                    val existing = com.mochyy.mochymusic.core.updater.apkFileFor(context, release)
+                    if (com.mochyy.mochymusic.core.updater.isDownloaded(context, release)) {
 
                         startInstall(existing)
                     } else {

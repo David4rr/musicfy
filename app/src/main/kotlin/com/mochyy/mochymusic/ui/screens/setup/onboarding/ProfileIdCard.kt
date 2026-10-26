@@ -1,8 +1,8 @@
 // the profile id card from the mocks, dark on the profile page and silver on hello and done
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import kotlinx.coroutines.flow.first
 
 /** width to height of the card, from the mock (332 x 176) */

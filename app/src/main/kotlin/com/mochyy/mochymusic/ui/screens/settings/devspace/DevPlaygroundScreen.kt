@@ -1,6 +1,6 @@
 // the developer playground page: what the repo did since this build, its issues, and the experimental settings
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,10 +16,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.settings.CategoryBubble
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.settings.CategoryBubble
 
 const val DevPlaygroundRoute = "developer_playground"
 

@@ -1,19 +1,19 @@
 // ScrobbleSite.kt
 
-package com.example.musicfy.scrobble
+package com.mochyy.mochymusic.scrobble
 
 import androidx.datastore.preferences.core.Preferences
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.constants.EnableLastFMScrobblingKey
-import com.example.musicfy.constants.EnableLibreFmScrobblingKey
-import com.example.musicfy.constants.LastFMSessionKey
-import com.example.musicfy.constants.LastFMUsernameKey
-import com.example.musicfy.constants.LibreFmSessionKey
-import com.example.musicfy.constants.LibreFmUsernameKey
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.constants.EnableLastFMScrobblingKey
+import com.mochyy.mochymusic.constants.EnableLibreFmScrobblingKey
+import com.mochyy.mochymusic.constants.LastFMSessionKey
+import com.mochyy.mochymusic.constants.LastFMUsernameKey
+import com.mochyy.mochymusic.constants.LibreFmSessionKey
+import com.mochyy.mochymusic.constants.LibreFmUsernameKey
 import com.music.lastfm.Audioscrobbler
 
 /**
- * The services Musicfy scrobbles to. Both speak Last.fm's API, so one client serves both. Their
+ * The services Mochy scrobbles to. Both speak Last.fm's API, so one client serves both. Their
  * API keys come from local.properties (or CI secrets) at build time and never sit in the source.
  */
 enum class ScrobbleSite(

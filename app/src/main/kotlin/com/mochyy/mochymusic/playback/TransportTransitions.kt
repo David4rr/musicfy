@@ -1,12 +1,12 @@
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.musicfy.constants.TransportEffect
-import com.example.musicfy.crossmix.CrossmixRole
-import com.example.musicfy.crossmix.CrossmixStyle
-import com.example.musicfy.playback.audio.CrossmixTransitionAudioProcessor
+import com.mochyy.mochymusic.constants.TransportEffect
+import com.mochyy.mochymusic.crossmix.CrossmixRole
+import com.mochyy.mochymusic.crossmix.CrossmixStyle
+import com.mochyy.mochymusic.playback.audio.CrossmixTransitionAudioProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.update
+package com.mochyy.mochymusic.ui.screens.update
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -70,23 +70,23 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.R
-import com.example.musicfy.core.updater.GithubRelease
-import com.example.musicfy.core.updater.UpdateState
-import com.example.musicfy.core.updater.apkFileFor
-import com.example.musicfy.core.updater.downloadApk
-import com.example.musicfy.core.updater.formatBytes
-import com.example.musicfy.core.updater.getLatestRelease
-import com.example.musicfy.core.updater.getPreviousRelease
-import com.example.musicfy.core.updater.installApk
-import com.example.musicfy.core.updater.isDownloaded
-import com.example.musicfy.core.updater.isNewerThanInstalled
-import com.example.musicfy.core.updater.parseFullVersion
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.player.menu.MenuSurface
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.updater.GithubRelease
+import com.mochyy.mochymusic.core.updater.UpdateState
+import com.mochyy.mochymusic.core.updater.apkFileFor
+import com.mochyy.mochymusic.core.updater.downloadApk
+import com.mochyy.mochymusic.core.updater.formatBytes
+import com.mochyy.mochymusic.core.updater.getLatestRelease
+import com.mochyy.mochymusic.core.updater.getPreviousRelease
+import com.mochyy.mochymusic.core.updater.installApk
+import com.mochyy.mochymusic.core.updater.isDownloaded
+import com.mochyy.mochymusic.core.updater.isNewerThanInstalled
+import com.mochyy.mochymusic.core.updater.parseFullVersion
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuSurface
 import kotlinx.coroutines.launch
 
 @Composable
@@ -184,7 +184,7 @@ private fun ColumnScope.UpdateSheetContent(
     Box(Modifier.fillMaxWidth()) {
         // centred just inside the sheet's top-right corner so its edge cuts the ring off, no size of its own so it never pushes content around
         VersionRing(
-            text = "MUSICFY $installed",
+            text = "MOCHY $installed",
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .layout { measurable, constraints ->
@@ -205,7 +205,7 @@ private fun ColumnScope.UpdateSheetContent(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
+                    painter = painterResource(R.drawable.ic_mochy_mark),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(38.dp),
@@ -213,7 +213,7 @@ private fun ColumnScope.UpdateSheetContent(
             }
 
             Spacer(Modifier.height(14.dp))
-            Text("Musicfy", fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
+            Text("Mochy", fontSize = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     installed,
@@ -485,7 +485,7 @@ private fun ColumnScope.UpdateDetailContent(
 
     val startInstall: (java.io.File) -> Unit = { file ->
         if (!installApk(context, file)) {
-            error = "Allow \"Install unknown apps\" for musicfy, then tap Install here again."
+            error = "Allow \"Install unknown apps\" for mochy, then tap Install here again."
         }
     }
 
@@ -510,7 +510,7 @@ private fun ColumnScope.UpdateDetailContent(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Icon(
-            painter = painterResource(R.drawable.ic_musicfy_mark),
+            painter = painterResource(R.drawable.ic_mochy_mark),
             contentDescription = null,
             modifier = Modifier.size(22.dp),
         )
@@ -565,7 +565,7 @@ private fun ColumnScope.UpdateDetailContent(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = release.apkName ?: "musicfy.apk",
+                text = release.apkName ?: "mochy.apk",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -693,7 +693,7 @@ internal fun AppIconImage(modifier: Modifier = Modifier) {
             modifier = modifier.background(MenuSurface),
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_musicfy_mark),
+                painter = painterResource(R.drawable.ic_mochy_mark),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(0.6f),
             )

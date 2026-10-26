@@ -1,16 +1,16 @@
-// MusicfyCsvExporter.kt
+// MochyCsvExporter.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.db.entities.Song
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.entities.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-/** liked songs and library playlists as a csv musicfy imports back exactly (rows carry the youtube id) and other tools can read (tunemymusic column names) */
-object MusicfyCsvExporter {
+/** liked songs and library playlists as a csv mochy imports back exactly (rows carry the youtube id) and other tools can read (tunemymusic column names) */
+object MochyCsvExporter {
 
     data class Summary(val likedSongs: Int, val playlists: Int, val playlistSongs: Int)
 
@@ -40,7 +40,7 @@ object MusicfyCsvExporter {
             }
         }
 
-        writeMusicfyCsv(rows) to Summary(liked.size, playlists.size, playlistSongs)
+        writeMochyCsv(rows) to Summary(liked.size, playlists.size, playlistSongs)
     }
 
     private fun Song.toRow(playlistName: String?) = CsvExportRow(

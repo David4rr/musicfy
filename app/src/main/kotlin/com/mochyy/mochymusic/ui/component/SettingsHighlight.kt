@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

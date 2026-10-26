@@ -1,6 +1,6 @@
 // ArtistSongsScreen.kt
 
-package com.example.musicfy.ui.screens.artist
+package com.mochyy.mochymusic.ui.screens.artist
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -22,32 +22,32 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.ArtistSongSortDescendingKey
-import com.example.musicfy.constants.ArtistSongSortType
-import com.example.musicfy.constants.ArtistSongSortTypeKey
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.detail.CreatorUi
-import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistHeader
-import com.example.musicfy.ui.component.detail.PlaylistSortControl
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.ArtistSongsViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ArtistSongSortDescendingKey
+import com.mochyy.mochymusic.constants.ArtistSongSortType
+import com.mochyy.mochymusic.constants.ArtistSongSortTypeKey
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.detail.CreatorUi
+import com.mochyy.mochymusic.ui.component.detail.PlaylistDetailScaffold
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistHeader
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSortControl
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.ArtistSongsViewModel
 
 /** the artist's songs in your library, as a playlist on the artist's banner */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +99,7 @@ fun ArtistSongsScreen(
                 creators = listOfNotNull(
                     name.takeIf { it.isNotBlank() }?.let { CreatorUi(name = it, avatarUrl = artist?.artist?.thumbnailUrl, artistId = artistId) }
                 ),
-                stats = com.example.musicfy.ui.screens.playlist.generatedStats(songs.size, totalSeconds),
+                stats = com.mochyy.mochymusic.ui.screens.playlist.generatedStats(songs.size, totalSeconds),
                 isPlaying = isThisQueue && isPlaying,
                 onPlayClick = { if (isThisQueue) playerConnection.togglePlayPause() else play() },
                 onShuffleClick = { play(shuffled = true) },

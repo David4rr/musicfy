@@ -1,6 +1,6 @@
 // LaunchIntro.kt
 
-package com.example.musicfy.ui.launch
+package com.mochyy.mochymusic.ui.launch
 
 import android.graphics.Paint
 import android.graphics.Path
@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.PathParser
-import com.example.musicfy.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -147,7 +147,7 @@ private val SplashIconSize = 288.dp
 private const val SplashViewport = 235f
 private const val SplashMaskRadius = 96f / 288f * SplashViewport
 
-// ic_splash_mark and ic_musicfy_mark are the same shapes; the splash one sits 58,48 further in
+// ic_splash_mark and ic_mochy_mark are the same shapes; the splash one sits 58,48 further in
 private val MarkOffset = Offset(58f, 48f)
 private const val MarkViewportWidth = 128f
 private const val MarkViewportHeight = 139f
@@ -392,38 +392,38 @@ private fun Density.placementAt(state: LaunchIntroState, size: IntSize): MarkPla
 /** the two marks, in the splash drawable's units, ready to draw at any scale */
 private class LaunchMarkArt {
     private val triangle = path(
-        "M163.5 96.3494C180.167 105.972 180.167 130.028 163.5 139.651L108 171.694C91.3333 181.316 " +
-            "70.5 169.288 70.5 150.043L70.5 85.957C70.5 66.712 91.3333 54.6839 108 64.3064L163.5 96.3494Z"
+        "M163.5 96.3493C180.167 105.972 180.167 130.028 163.5 139.651L108 171.694C91.3333 181.316 " +
+            "70.5 169.288 70.5 150.043V85.9569C70.5 66.7119 91.3333 54.6838 108 64.3063L163.5 96.3493Z"
     )
-    private val wave = path(
-        "M71.5 120C76 120 86.2 120 91 120C97 120 95 127.5 104 127.5C113 127.5 110.5 112 121.5 112" +
-            "C132.5 112 126.5 126.634 137.5 126.634C148.5 126.634 144.5 119.128 155 119.128" +
-            "C163.4 119.128 167.667 119.128 171 119.128"
-    )
+    // the face: the little chevron and the smile under it
+    private val face = path("M97 112L108.5 98L120 112M110.325 125C111.871 133.439 121.868 148.704 142.944 149.92")
     private val mask = Path().apply { addCircle(Pivot.x, Pivot.y, SplashMaskRadius, Path.Direction.CW) }
 
-    // ic_splash_mark: a light shape with a dark outline and a dark wave through it
-    private val fill = paint(0xFFFFFDFB.toInt()) { style = Paint.Style.FILL }
+    // ic_splash_mark: a white shape with a dark outline and a dark face
+    private val fill = paint(android.graphics.Color.WHITE) { style = Paint.Style.FILL }
     private val darkOutline = paint(0xFF212121.toInt()) {
         style = Paint.Style.STROKE
         strokeWidth = 19f
         strokeJoin = Paint.Join.ROUND
     }
-    private val darkWave = paint(0xFF212121.toInt()) {
+    private val darkFace = paint(0xFF212121.toInt()) {
         style = Paint.Style.STROKE
-        strokeWidth = 13f
+        strokeWidth = 11f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
     }
 
-    // ic_musicfy_mark: the same outline and wave, white, nothing filled
+    // ic_mochy_mark: the same outline and face, white, nothing filled
     private val lightOutline = paint(android.graphics.Color.WHITE) {
         style = Paint.Style.STROKE
         strokeWidth = 19f
         strokeJoin = Paint.Join.ROUND
     }
-    private val lightWave = paint(android.graphics.Color.WHITE) {
+    private val lightFace = paint(android.graphics.Color.WHITE) {
         style = Paint.Style.STROKE
-        strokeWidth = 13f
+        strokeWidth = 11f
         strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
     }
 
     fun draw(canvas: android.graphics.Canvas, filledAlpha: Float, outlineAlpha: Float) {
@@ -433,13 +433,13 @@ private class LaunchMarkArt {
             canvas.clipPath(mask)
             canvas.drawPath(triangle, fill)
             canvas.drawPath(triangle, darkOutline)
-            canvas.drawPath(wave, darkWave)
+            canvas.drawPath(face, darkFace)
             canvas.restore()
         }
         if (outlineAlpha > 0.002f) {
             canvas.saveLayerAlpha(ArtBounds, (outlineAlpha * 255f).toInt())
             canvas.drawPath(triangle, lightOutline)
-            canvas.drawPath(wave, lightWave)
+            canvas.drawPath(face, lightFace)
             canvas.restore()
         }
     }

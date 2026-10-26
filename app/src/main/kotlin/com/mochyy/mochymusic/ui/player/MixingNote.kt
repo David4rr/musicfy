@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -28,7 +28,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.damageBoundary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlin.math.exp

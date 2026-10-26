@@ -1,6 +1,6 @@
 // SettingsGroup.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -15,7 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,7 +104,7 @@ private fun ClassicItems(items: List<SettingsItem>) {
                         .padding(bottom = 8.dp),
                     shape = shape,
                     colors = CardDefaults.cardColors(
-                        containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
+                        containerColor = com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -140,7 +140,7 @@ private fun GroupedItems(items: List<SettingsItem>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
+            containerColor = com.mochyy.mochymusic.ui.screens.search.SearchColors.Field
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {

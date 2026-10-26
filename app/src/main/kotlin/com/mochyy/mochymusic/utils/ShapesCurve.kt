@@ -1,6 +1,6 @@
 // ShapesCurve.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ListItemColors

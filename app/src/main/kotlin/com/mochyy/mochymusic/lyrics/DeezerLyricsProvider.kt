@@ -1,12 +1,12 @@
 // DeezerLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.directlyrics.Deezer
-import com.example.musicfy.constants.EnableDeezerKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.EnableDeezerKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 
 object DeezerLyricsProvider : LyricsProvider {
     override val name = "Deezer"

@@ -1,7 +1,7 @@
-package com.example.musicfy.di
+package com.mochyy.mochymusic.di
 
 import android.content.Context
-import com.example.musicfy.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

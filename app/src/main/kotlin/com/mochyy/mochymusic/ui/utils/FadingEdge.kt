@@ -1,6 +1,6 @@
 // FadingEdge.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent

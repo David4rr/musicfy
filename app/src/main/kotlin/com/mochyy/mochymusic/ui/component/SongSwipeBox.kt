@@ -1,6 +1,6 @@
 // SongSwipeBox.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -8,10 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.datastore.preferences.core.Preferences
-import com.example.musicfy.R
-import com.example.musicfy.constants.SwipeLeftActionKey
-import com.example.musicfy.constants.SwipeRightActionKey
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.SwipeLeftActionKey
+import com.mochyy.mochymusic.constants.SwipeRightActionKey
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 
 /**
  * What sliding a song can do. Settings > Gesture picks one for each side. [title] names it in

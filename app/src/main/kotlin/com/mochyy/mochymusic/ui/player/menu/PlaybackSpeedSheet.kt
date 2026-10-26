@@ -1,6 +1,6 @@
 // PlaybackSpeedSheet.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.di.AudioLabEntryPoint
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.di.AudioLabEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import kotlin.math.abs
 import kotlin.math.log2

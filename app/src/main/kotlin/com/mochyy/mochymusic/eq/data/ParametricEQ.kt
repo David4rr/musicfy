@@ -1,4 +1,4 @@
-package com.example.musicfy.eq.data
+package com.mochyy.mochymusic.eq.data
 
 import kotlinx.serialization.Serializable
 

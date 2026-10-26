@@ -1,14 +1,14 @@
 //
-// The contract between Musicfy and a source module (Apple Music first). A module finds the track
-// Musicfy wants on its service and hands back a stream the player opens; Musicfy does all the
+// The contract between Mochy and a source module (Apple Music first). A module finds the track
+// Mochy wants on its service and hands back a stream the player opens; Mochy does all the
 // playing, so the equalizer, Audio FX, Crossmix and the visuals work on any source.
 //
-// Modules are built into Musicfy today. The contract is kept free of Android, Media3 and HTTP
+// Modules are built into Mochy today. The contract is kept free of Android, Media3 and HTTP
 // libraries so that a module can also ship as its own APK, found and loaded at runtime (see
 // ModuleRegistry in the app). Change any shape here and bump MODULE_API_VERSION: a module built
 // against another version is refused rather than crashing.
 
-package com.example.musicfy.module
+package com.mochyy.mochymusic.module
 
 const val MODULE_API_VERSION = 1
 
@@ -21,12 +21,12 @@ data class ModuleInfo(
     val apiVersion: Int = MODULE_API_VERSION,
 )
 
-/** What Musicfy gives a module. */
+/** What Mochy gives a module. */
 interface ModuleHost {
     /** small key-value storage private to this module: tokens, choices */
     val storage: ModuleStorage
 
-    /** HTTP through Musicfy's own client, so its proxy, DNS and IP-version settings apply. Blocking. */
+    /** HTTP through Mochy's own client, so its proxy, DNS and IP-version settings apply. Blocking. */
     fun http(request: HttpRequest): HttpResponse
 
     fun log(message: String)
@@ -50,7 +50,7 @@ class HttpResponse(val code: Int, val body: ByteArray) {
     val text: String get() = body.decodeToString()
 }
 
-/** The track Musicfy wants to play, as Musicfy knows it. */
+/** The track Mochy wants to play, as Mochy knows it. */
 data class TrackQuery(
     val title: String,
     val artists: List<String>,
@@ -60,7 +60,7 @@ data class TrackQuery(
 )
 
 /**
- * How a module's account is signed into: Musicfy opens [startUrl] in its sign-in browser and
+ * How a module's account is signed into: Mochy opens [startUrl] in its sign-in browser and
  * passes every request header the service's own web page sends to [SourceModule.onSignInHeader].
  */
 data class SignInSpec(
@@ -85,7 +85,7 @@ data class StreamOption(val id: String, val label: String, val description: Stri
 
 /**
  * A setting the module offers, shown as a row of chips: the stream quality, the catalog region.
- * The first option is the default; Musicfy keeps what was picked and passes it to every call.
+ * The first option is the default; Mochy keeps what was picked and passes it to every call.
  */
 data class ModuleChoice(val id: String, val label: String, val options: List<StreamOption>)
 

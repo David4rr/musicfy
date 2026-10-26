@@ -1,9 +1,9 @@
-package com.example.musicfy.eq.audio
+package com.mochyy.mochymusic.eq.audio
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
-import com.example.musicfy.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.data.ParametricEQ
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.pow

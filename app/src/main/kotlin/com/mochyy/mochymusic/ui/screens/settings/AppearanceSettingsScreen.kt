@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import android.os.Build
 import androidx.compose.ui.draw.clip
@@ -32,36 +32,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.BlurStrengthPxKey
-import com.example.musicfy.constants.CanvasThumbnailAnimationKey
-import com.example.musicfy.constants.CanvasWifiOnlyKey
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.constants.EnableElementBlurAnimatorKey
-import com.example.musicfy.constants.EnableProgressiveBlurKey
-import com.example.musicfy.constants.LyricsHighBloomKey
-import com.example.musicfy.constants.LyricsMotionStyle
-import com.example.musicfy.constants.LyricsMotionStyleKey
-import com.example.musicfy.constants.LyricsWaveAnimationKey
-import com.example.musicfy.constants.PlayVideoBackgroundKey
-import com.example.musicfy.constants.ShowFormatBadgeKey
-import com.example.musicfy.constants.ShowFormatSampleRateKey
-import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.DefaultPlayerSeekBarSlider
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.component.SubSettingsSearchBar
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.BlurStrengthPxKey
+import com.mochyy.mochymusic.constants.CanvasThumbnailAnimationKey
+import com.mochyy.mochymusic.constants.CanvasWifiOnlyKey
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.constants.EnableElementBlurAnimatorKey
+import com.mochyy.mochymusic.constants.EnableProgressiveBlurKey
+import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsMotionStyle
+import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
+import com.mochyy.mochymusic.constants.LyricsWaveAnimationKey
+import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
+import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
+import com.mochyy.mochymusic.constants.YtVideoBackgroundLyricsSyncKey
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(navController: NavController) {
-    val playerConnection = com.example.musicfy.LocalPlayerConnection.current
+    val playerConnection = com.mochyy.mochymusic.LocalPlayerConnection.current
     val context = androidx.compose.ui.platform.LocalContext.current
     var query by remember { mutableStateOf("") }
 
@@ -85,9 +85,9 @@ fun AppearanceSettingsScreen(navController: NavController) {
         DisableBlurKey,
         defaultValue = false
     )
-    var blurQuality by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.BlurQualityKey,
-        com.example.musicfy.constants.BlurQuality.HIGH,
+    var blurQuality by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.BlurQualityKey,
+        com.mochyy.mochymusic.constants.BlurQuality.HIGH,
     )
     val (progressiveBlur, onProgressiveBlurChange) = rememberPreference(
         EnableProgressiveBlurKey,
@@ -352,7 +352,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
             SettingsItem(
                 title = { Text("Blur quality") },
                 highlightKey = "Blur quality",
-                descriptionText = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) {
+                descriptionText = if (blurQuality == com.mochyy.mochymusic.constants.BlurQuality.LOW) {
                     "Lighter glass, like before 8.1. Smoother on slower phones"
                 } else {
                     "Finer frosted glass on the bar and the player"
@@ -362,15 +362,15 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 isVisible = !disableBlur,
                 isSubOption = true,
                 onClick = {
-                    blurQuality = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) {
-                        com.example.musicfy.constants.BlurQuality.HIGH
+                    blurQuality = if (blurQuality == com.mochyy.mochymusic.constants.BlurQuality.LOW) {
+                        com.mochyy.mochymusic.constants.BlurQuality.HIGH
                     } else {
-                        com.example.musicfy.constants.BlurQuality.LOW
+                        com.mochyy.mochymusic.constants.BlurQuality.LOW
                     }
                 },
                 trailingContent = {
                     Text(
-                        text = if (blurQuality == com.example.musicfy.constants.BlurQuality.LOW) "Low" else "High",
+                        text = if (blurQuality == com.mochyy.mochymusic.constants.BlurQuality.LOW) "Low" else "High",
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         color = Color.White.copy(alpha = 0.70f),

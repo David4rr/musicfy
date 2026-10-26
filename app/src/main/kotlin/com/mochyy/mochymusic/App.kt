@@ -1,6 +1,6 @@
 // App.kt
 
-package com.example.musicfy
+package com.mochyy.mochymusic
 
 import android.app.Application
 import android.app.NotificationChannel
@@ -23,15 +23,15 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.IpVersion
 import com.music.innertube.models.YouTubeLocale
 import com.music.kugou.KuGou
-import com.example.musicfy.constants.*
-import com.example.musicfy.di.ApplicationScope
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.extensions.toInetSocketAddress
-import com.example.musicfy.utils.CrashHandler
-import com.example.musicfy.utils.PreferencesCache
-import com.example.musicfy.utils.cipher.CipherDeobfuscator
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.constants.*
+import com.mochyy.mochymusic.di.ApplicationScope
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.extensions.toInetSocketAddress
+import com.mochyy.mochymusic.utils.CrashHandler
+import com.mochyy.mochymusic.utils.PreferencesCache
+import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.reportException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,9 +60,11 @@ class App : Application(), SingletonImageLoader.Factory {
     lateinit var applicationScope: CoroutineScope
 
     @Inject
-    lateinit var musicDatabase: com.example.musicfy.db.MusicDatabase
+    lateinit var musicDatabase: com.mochyy.mochymusic.db.MusicDatabase
 
     override fun onCreate() {
+        // before super, because that's where hilt builds the database and the player caches
+        com.mochyy.mochymusic.importer.transfer.TransferRestore.applyPending(this)
         super.onCreate()
 
         CrashHandler.install(this)
@@ -91,7 +93,7 @@ class App : Application(), SingletonImageLoader.Factory {
                 if ((dataStore.data.first()[LyricsCacheWipeKey] ?: 0) < LyricsCacheWipeGeneration) {
                     musicDatabase.clearFetchedLyrics(
                         keepProviders = listOf(
-                            com.example.musicfy.viewmodels.LyricsMenuViewModel.USER_EDITED,
+                            com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel.USER_EDITED,
                             "Manual",
                         ),
                     )
@@ -120,24 +122,24 @@ class App : Application(), SingletonImageLoader.Factory {
             if (ready == true) {
                 // its WebView boots on the main thread; let the launch intro and Home's reveal
                 // play out first. VISIONOS streams need no token, so nothing waits on this
-                com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
+                com.mochyy.mochymusic.ui.launch.LaunchGate.awaitIntro()
                 kotlinx.coroutines.delay(PoTokenAfterIntroMillis)
-                com.example.musicfy.utils.YTPlayerUtils.preWarmPoToken()
+                com.mochyy.mochymusic.utils.YTPlayerUtils.preWarmPoToken()
             }
         }
 
         applicationScope.launch(Dispatchers.IO) {
             // Local songs whose cover file was cleared away get it back from the song's own file.
             // After the intro, so it doesn't share the disk with the first frames.
-            com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
-            runCatching { com.example.musicfy.importer.LocalArtwork.repair(this@App, musicDatabase) }
+            com.mochyy.mochymusic.ui.launch.LaunchGate.awaitIntro()
+            runCatching { com.mochyy.mochymusic.importer.LocalArtwork.repair(this@App, musicDatabase) }
                 .onFailure { Timber.w(it, "Repairing local covers failed") }
         }
     }
 
     private suspend fun initializeSettings() {
         val settings = dataStore.data.first()
-        com.example.musicfy.utils.OfflineMode.set(settings[OfflineModeKey] ?: false)
+        com.mochyy.mochymusic.utils.OfflineMode.set(settings[OfflineModeKey] ?: false)
         val locale = Locale.getDefault()
         val languageTag = locale.language
 
@@ -203,7 +205,7 @@ class App : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[OfflineModeKey] ?: false }
                 .distinctUntilChanged()
-                .collect { com.example.musicfy.utils.OfflineMode.set(it) }
+                .collect { com.mochyy.mochymusic.utils.OfflineMode.set(it) }
         }
 
         applicationScope.launch(Dispatchers.IO) {

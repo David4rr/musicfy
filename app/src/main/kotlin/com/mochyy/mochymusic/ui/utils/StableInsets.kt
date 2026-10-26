@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets

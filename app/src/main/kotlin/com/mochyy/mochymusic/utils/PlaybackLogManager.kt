@@ -1,6 +1,6 @@
 // PlaybackLogManager.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

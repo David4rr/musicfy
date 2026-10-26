@@ -5,7 +5,7 @@
 // are in LibraryLocalTab.kt, LibraryCachedTab.kt and LibraryImportedTab.kt. While songs download or
 // files come in from the phone, a progress card sits at the top of All and Local.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,26 +31,26 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.ui.menu.rememberResyncAll
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.TransferBatch
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.LikedCover
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.navigateToTab
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.screens.search.SearchAvatar
-import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
-import com.example.musicfy.ui.screens.search.rememberCollapseProgress
-import com.example.musicfy.ui.screens.settings.importsync.ImportProgressRoute
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.LibraryHomeViewModel
-import com.example.musicfy.viewmodels.LibraryImportViewModel
+import com.mochyy.mochymusic.ui.menu.rememberResyncAll
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.TransferBatch
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.LikedCover
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.screens.search.SearchAvatar
+import com.mochyy.mochymusic.ui.screens.search.SearchHorizontalPadding
+import com.mochyy.mochymusic.ui.screens.search.rememberCollapseProgress
+import com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressRoute
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.LibraryHomeViewModel
+import com.mochyy.mochymusic.viewmodels.LibraryImportViewModel
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 
@@ -311,7 +311,7 @@ private fun LazyListScope.libraryAllTab(
                         row.forEach { item ->
                             LibraryPinnedTile(
                                 thumbnailUrl = item.thumbnail,
-                                sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+                                sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
                                 onClick = { onOpen(item) },
                                 onLongClick = { onUnpin(item.id) },
                                 modifier = Modifier.weight(1f),
@@ -378,7 +378,7 @@ private fun openShelfResult(
     item: YTItem,
     shelf: ShelfTabData,
     navController: NavController,
-    playerConnection: com.example.musicfy.playback.PlayerConnection?,
+    playerConnection: com.mochyy.mochymusic.playback.PlayerConnection?,
 ) {
     val index = if (item is SongItem) shelf.songs.indexOfFirst { it.id == item.id } else -1
     if (index < 0) {
@@ -392,7 +392,7 @@ private fun openShelfResult(
 private fun playShelf(
     shelf: ShelfTabData,
     startIndex: Int,
-    playerConnection: com.example.musicfy.playback.PlayerConnection?,
+    playerConnection: com.mochyy.mochymusic.playback.PlayerConnection?,
 ) {
     playerConnection?.playQueue(
         ListQueue(

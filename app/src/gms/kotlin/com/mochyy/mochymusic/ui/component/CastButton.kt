@@ -1,6 +1,6 @@
 // CastButton.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -31,10 +31,10 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.google.android.gms.cast.CastMediaControlIntent
 import com.google.android.gms.cast.framework.CastContext
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.EnableGoogleCastKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.EnableGoogleCastKey
+import com.mochyy.mochymusic.utils.rememberPreference
 import timber.log.Timber
 
 @Composable

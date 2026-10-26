@@ -1,9 +1,9 @@
 // PoTokenGenerator.kt
 
-package com.example.musicfy.utils.potoken
+package com.mochyy.mochymusic.utils.potoken
 
 import android.webkit.CookieManager
-import com.example.musicfy.utils.cipher.CipherDeobfuscator
+import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex

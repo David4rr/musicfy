@@ -1,6 +1,6 @@
 // SongInfoRow.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -52,17 +52,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import com.example.musicfy.constants.ShowFormatBadgeKey
-import com.example.musicfy.constants.ShowFormatSampleRateKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Composable
 fun SongInfoRow(
@@ -76,10 +76,10 @@ fun SongInfoRow(
     /** Sends a heart flying when the like button likes the song. */
     likeBurst: LikeBurstState? = null,
     /** What the round button beside the chevron does (set in the editor's menu); a like out of the box. */
-    sideAction: com.example.musicfy.ui.player.studio.PlayerMenuAction = com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE,
+    sideAction: com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction = com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE,
     /** [sideAction] is on (repeat on, shuffle on, a sleep timer running...), for its highlight. */
     sideActive: Boolean = false,
-    onSideAction: (com.example.musicfy.ui.player.studio.PlayerMenuAction) -> Unit = {},
+    onSideAction: (com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction) -> Unit = {},
     /** Where the two round buttons sit, for the editor, which pulls copies of them forward. */
     onSidePlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
     onChevronPlaced: ((androidx.compose.ui.layout.LayoutCoordinates) -> Unit)? = null,
@@ -203,7 +203,7 @@ fun SongInfoRow(
                 .onGloballyPositioned { onSidePositioned(it.boundsInRoot()) }
                 .then(sideModifier)
                 .then(if (sideLayer != null) Modifier.graphicsLayer(sideLayer) else Modifier)
-            if (sideAction == com.example.musicfy.ui.player.studio.PlayerMenuAction.LIKE) {
+            if (sideAction == com.mochyy.mochymusic.ui.player.studio.PlayerMenuAction.LIKE) {
                 PressScaleActionButton(
                     icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
                     tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),

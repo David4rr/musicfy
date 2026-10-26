@@ -1,5 +1,5 @@
 // CastOptionsProvider.kt
 
-package com.example.musicfy.cast
+package com.mochyy.mochymusic.cast
 
 class CastOptionsProvider

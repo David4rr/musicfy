@@ -1,6 +1,6 @@
 // CsvColumnMappingDialog.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -36,9 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.musicfy.R
-import com.example.musicfy.viewmodels.ConvertedSongLog
-import com.example.musicfy.viewmodels.CsvImportState
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.viewmodels.ConvertedSongLog
+import com.mochyy.mochymusic.viewmodels.CsvImportState
 
 @Composable
 fun CsvColumnMappingDialog(

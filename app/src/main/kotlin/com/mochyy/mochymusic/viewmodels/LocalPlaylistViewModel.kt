@@ -1,22 +1,22 @@
 // LocalPlaylistViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.constants.PlaylistSongSortDescendingKey
-import com.example.musicfy.constants.PlaylistSongSortType
-import com.example.musicfy.constants.PlaylistSongSortTypeKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.PlaylistSong
-import com.example.musicfy.extensions.reversed
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.playlistcover.PlaylistCovers
-import com.example.musicfy.utils.SyncUtils
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.PlaylistSongSortDescendingKey
+import com.mochyy.mochymusic.constants.PlaylistSongSortType
+import com.mochyy.mochymusic.constants.PlaylistSongSortTypeKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.PlaylistSong
+import com.mochyy.mochymusic.extensions.reversed
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.playlistcover.PlaylistCovers
+import com.mochyy.mochymusic.utils.SyncUtils
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

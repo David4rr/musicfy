@@ -1,11 +1,11 @@
 // LyricsUtils.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.text.format.DateUtils
 import com.atilika.kuromoji.ipadic.Tokenizer
 import com.github.promeg.pinyinhelper.Pinyin
-import com.example.musicfy.db.entities.LyricsEntity
+import com.mochyy.mochymusic.db.entities.LyricsEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
@@ -919,7 +919,7 @@ object LyricsUtils {
      * Character range each timed word occupies inside [text].
      *
      * Word timings arrive as bare strings with no offsets, so the position has to be recovered by
-     * walking the line. Mirrors the same walk [com.example.musicfy.ui.player.LyricsGlowLine] does
+     * walking the line. Mirrors the same walk [com.mochyy.mochymusic.ui.player.LyricsGlowLine] does
      * to build its karaoke mask, so the romanisation lines up with the sweep rather than drifting
      * out of step with it. A word that cannot be located yields an empty range and is skipped.
      */

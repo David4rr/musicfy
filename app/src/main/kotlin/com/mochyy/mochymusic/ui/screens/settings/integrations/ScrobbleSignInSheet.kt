@@ -1,6 +1,6 @@
-// last.fm or libre.fm sign-in in a sheet on the service's own page, the password never reaches musicfy
+// last.fm or libre.fm sign-in in a sheet on the service's own page, the password never reaches mochy
 
-package com.example.musicfy.ui.screens.settings.integrations
+package com.mochyy.mochymusic.ui.screens.settings.integrations
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,16 +30,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.scrobble.ScrobbleSite
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.ui.screens.settings.importsync.CaptureWebContent
-import com.example.musicfy.viewmodels.IntegrationsViewModel
+import com.mochyy.mochymusic.scrobble.ScrobbleSite
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.ui.screens.settings.importsync.CaptureWebContent
+import com.mochyy.mochymusic.viewmodels.IntegrationsViewModel
 import com.music.lastfm.AudioscrobblerException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
-/** how often to ask whether the user has allowed musicfy yet */
+/** how often to ask whether the user has allowed mochy yet */
 private const val CheckEveryMs = 2_500L
 
 @Composable
@@ -60,7 +60,7 @@ fun ScrobbleSignInContent(
         problem = null
         authUrl = null
         if (!site.api.isConfigured) {
-            problem = "${site.label} isn't set up in this build of Musicfy."
+            problem = "${site.label} isn't set up in this build of Mochy."
             return@LaunchedEffect
         }
         val token = try {
@@ -106,7 +106,7 @@ fun ScrobbleSignInContent(
             Text("Sign in to ${site.label}", color = SearchColors.Primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Log in, then allow Musicfy to scrobble. Your password stays with ${site.label}; Musicfy never sees it.",
+                "Log in, then allow Mochy to scrobble. Your password stays with ${site.label}; Mochy never sees it.",
                 color = SearchColors.Secondary,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,

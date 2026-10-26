@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.musicfy.artistvideo"
+    namespace = "com.mochyy.mochymusic.artistvideo"
     compileSdk = 36
 
     defaultConfig {

@@ -1,12 +1,12 @@
 // NetEaseLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.directlyrics.NetEase
-import com.example.musicfy.constants.EnableNetEaseKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.EnableNetEaseKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 
 object NetEaseLyricsProvider : LyricsProvider {
     override val name = "NetEase"

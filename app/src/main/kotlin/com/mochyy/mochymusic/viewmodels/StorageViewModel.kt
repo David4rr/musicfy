@@ -1,6 +1,6 @@
 // StorageViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import android.os.Environment
@@ -10,11 +10,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.SingletonImageLoader
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.playback.CachedSongs
-import com.example.musicfy.playback.DownloadUtil
-import com.example.musicfy.playback.ExoDownloadService
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.playback.CachedSongs
+import com.mochyy.mochymusic.playback.DownloadUtil
+import com.mochyy.mochymusic.playback.ExoDownloadService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-/** How much room Musicfy takes, in the four parts the Storage page shows, and the phone around it. */
+/** How much room Mochy takes, in the four parts the Storage page shows, and the phone around it. */
 data class StorageUsage(
     val deviceTotal: Long,
     val deviceFree: Long,
@@ -45,8 +45,8 @@ data class StorageUsage(
     /** the app itself and its settings, everything not counted above */
     val appData: Long,
 ) {
-    val musicfy: Long get() = cache + downloads + database + appData
-    val othersUsed: Long get() = (deviceTotal - deviceFree - musicfy).coerceAtLeast(0L)
+    val mochy: Long get() = cache + downloads + database + appData
+    val othersUsed: Long get() = (deviceTotal - deviceFree - mochy).coerceAtLeast(0L)
 }
 
 /** A finished download, with what it costs on the phone. */
@@ -87,7 +87,7 @@ class StorageViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Walks Musicfy's folders again. The page calls it on open and whenever the downloads change. */
+    /** Walks Mochy's folders again. The page calls it on open and whenever the downloads change. */
     fun measure() {
         viewModelScope.launch { _usage.value = withContext(Dispatchers.IO) { readUsage() } }
     }

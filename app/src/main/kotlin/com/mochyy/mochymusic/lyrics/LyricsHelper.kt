@@ -1,18 +1,18 @@
 // LyricsHelper.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import android.util.LruCache
-import com.example.musicfy.constants.LyricsProviderOrderKey
-import com.example.musicfy.constants.PreferredLyricsProvider
-import com.example.musicfy.constants.PreferredLyricsProviderKey
-import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.utils.NetworkConnectivityObserver
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.constants.LyricsProviderOrderKey
+import com.mochyy.mochymusic.constants.PreferredLyricsProvider
+import com.mochyy.mochymusic.constants.PreferredLyricsProviderKey
+import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.reportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -96,7 +96,7 @@ constructor(
         }
 
         // offline mode counts as no network: lyrics already saved for the song still show
-        val isNetworkAvailable = !com.example.musicfy.utils.OfflineMode.isOn && try {
+        val isNetworkAvailable = !com.mochyy.mochymusic.utils.OfflineMode.isOn && try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
 
@@ -179,7 +179,7 @@ constructor(
         provider: LyricsProvider,
         order: Int,
     ): ProviderCandidate? {
-        if (!provider.isEnabled(context) || com.example.musicfy.utils.OfflineMode.isOn) return null
+        if (!provider.isEnabled(context) || com.mochyy.mochymusic.utils.OfflineMode.isOn) return null
         val lyrics = try {
             withTimeoutOrNull(ProviderTimeoutMs) {
                 provider.getLyrics(
@@ -493,7 +493,7 @@ constructor(
         }
 
         // offline mode counts as no network: lyrics already saved for the song still show
-        val isNetworkAvailable = !com.example.musicfy.utils.OfflineMode.isOn && try {
+        val isNetworkAvailable = !com.mochyy.mochymusic.utils.OfflineMode.isOn && try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
 

@@ -1,6 +1,6 @@
 // GridItemPlaceholder.kt
 
-package com.example.musicfy.ui.component.shimmer
+package com.mochyy.mochymusic.ui.component.shimmer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -18,12 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.GridItemSize
-import com.example.musicfy.constants.GridItemsSizeKey
-import com.example.musicfy.constants.GridThumbnailHeight
-import com.example.musicfy.constants.SmallGridThumbnailHeight
-import com.example.musicfy.constants.ThumbnailCornerRadius
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.constants.GridItemSize
+import com.mochyy.mochymusic.constants.GridItemsSizeKey
+import com.mochyy.mochymusic.constants.GridThumbnailHeight
+import com.mochyy.mochymusic.constants.SmallGridThumbnailHeight
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 
 @Composable
 fun GridItemPlaceHolder(

@@ -1,6 +1,6 @@
 // CardExtraLines.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.MaterialTheme

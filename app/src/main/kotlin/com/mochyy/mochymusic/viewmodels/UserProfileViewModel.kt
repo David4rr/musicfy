@@ -3,16 +3,16 @@
 // What the profile page shows: listening totals, what you've been playing, your playlists and the
 // artists you play most. All of it comes from the local library and play history.
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.ui.screens.recap.toStoredMillis
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.ui.screens.recap.toStoredMillis
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -1,6 +1,6 @@
 // OnlineSearchResult.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -73,35 +73,35 @@ import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PauseSearchHistoryKey
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.db.entities.SearchHistory
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.extensions.togglePlayPause
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.RoundedHighlight
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeArtistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.OnlineSearchViewModel
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PauseSearchHistoryKey
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.db.entities.SearchHistory
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.RoundedHighlight
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.OnlineSearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
-import com.example.musicfy.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.component.navigateToTab
 
 private val SearchCategories = listOf(
     "All" to null,
@@ -451,7 +451,7 @@ private fun TopResultCard(
                     .graphicsLayer {
                         alpha = 0.55f
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            renderEffect = com.example.musicfy.ui.component.BlurEffectCache.get(
+                            renderEffect = com.mochyy.mochymusic.ui.component.BlurEffectCache.get(
                                 70f,
                                 android.graphics.Shader.TileMode.CLAMP
                             )
@@ -477,7 +477,7 @@ private fun TopResultCard(
             size = 108.dp,
             circle = item is ArtistItem,
             corner = 8.dp,
-            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+            sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -568,7 +568,7 @@ private fun ResultRow(
                 url = item.thumbnail,
                 size = 46.dp,
                 circle = item is ArtistItem,
-                sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+                sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {

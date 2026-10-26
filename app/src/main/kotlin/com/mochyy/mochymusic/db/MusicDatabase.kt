@@ -1,4 +1,4 @@
-package com.example.musicfy.db
+package com.mochyy.mochymusic.db
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -16,34 +16,34 @@ import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
-import com.example.musicfy.db.daos.SpeedDialDao
-import com.example.musicfy.db.entities.AlbumArtistMap
-import com.example.musicfy.db.entities.AlbumEntity
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.db.entities.Event
-import com.example.musicfy.db.entities.FormatEntity
-import com.example.musicfy.db.entities.LyricsEntity
-import com.example.musicfy.db.entities.PlayCountEntity
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.db.entities.ImportSession
-import com.example.musicfy.db.entities.ImportSessionSong
-import com.example.musicfy.db.entities.ImportedPlaylist
-import com.example.musicfy.db.entities.ImportedPlaylistTrack
-import com.example.musicfy.db.entities.ImportedSong
-import com.example.musicfy.db.entities.PlaylistEvent
-import com.example.musicfy.db.entities.PlaylistSongMap
-import com.example.musicfy.db.entities.PlaylistSongMapPreview
-import com.example.musicfy.db.entities.RecognitionHistory
-import com.example.musicfy.db.entities.RelatedSongMap
-import com.example.musicfy.db.entities.SearchHistory
-import com.example.musicfy.db.entities.SetVideoIdEntity
-import com.example.musicfy.db.entities.SongAlbumMap
-import com.example.musicfy.db.entities.SongArtistMap
-import com.example.musicfy.db.entities.SongEntity
-import com.example.musicfy.db.entities.SpeedDialItem
-import com.example.musicfy.db.entities.SortedSongAlbumMap
-import com.example.musicfy.db.entities.SortedSongArtistMap
-import com.example.musicfy.extensions.toSQLiteQuery
+import com.mochyy.mochymusic.db.daos.SpeedDialDao
+import com.mochyy.mochymusic.db.entities.AlbumArtistMap
+import com.mochyy.mochymusic.db.entities.AlbumEntity
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.db.entities.Event
+import com.mochyy.mochymusic.db.entities.FormatEntity
+import com.mochyy.mochymusic.db.entities.LyricsEntity
+import com.mochyy.mochymusic.db.entities.PlayCountEntity
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.entities.ImportSession
+import com.mochyy.mochymusic.db.entities.ImportSessionSong
+import com.mochyy.mochymusic.db.entities.ImportedPlaylist
+import com.mochyy.mochymusic.db.entities.ImportedPlaylistTrack
+import com.mochyy.mochymusic.db.entities.ImportedSong
+import com.mochyy.mochymusic.db.entities.PlaylistEvent
+import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.db.entities.PlaylistSongMapPreview
+import com.mochyy.mochymusic.db.entities.RecognitionHistory
+import com.mochyy.mochymusic.db.entities.RelatedSongMap
+import com.mochyy.mochymusic.db.entities.SearchHistory
+import com.mochyy.mochymusic.db.entities.SetVideoIdEntity
+import com.mochyy.mochymusic.db.entities.SongAlbumMap
+import com.mochyy.mochymusic.db.entities.SongArtistMap
+import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.entities.SpeedDialItem
+import com.mochyy.mochymusic.db.entities.SortedSongAlbumMap
+import com.mochyy.mochymusic.db.entities.SortedSongArtistMap
+import com.mochyy.mochymusic.extensions.toSQLiteQuery
 import timber.log.Timber
 import java.time.Instant
 import java.time.LocalDateTime
@@ -58,14 +58,14 @@ class MusicDatabase(
 
     /**
      * Pins [item], evicting the oldest pin first if that would push the count past
-     * [com.example.musicfy.db.daos.SpeedDialDao.Companion.MaxPinned].
+     * [com.mochyy.mochymusic.db.daos.SpeedDialDao.Companion.MaxPinned].
      *
      * The one place pins are created. Every menu that offers "Pin to Speed dial" should call this
      * instead of `speedDialDao.insert` directly — the cap only holds if there's a single entry
      * point enforcing it, and scattering the limit check across each menu's onClick would drift
      * the moment one of them was written (or edited) without it.
      */
-    suspend fun pinToSpeedDial(item: com.example.musicfy.db.entities.SpeedDialItem) {
+    suspend fun pinToSpeedDial(item: com.mochyy.mochymusic.db.entities.SpeedDialItem) {
         if (speedDialDao.count() >= SpeedDialDao.MaxPinned) {
             speedDialDao.oldest()?.let { speedDialDao.delete(it.id) }
         }
@@ -105,6 +105,9 @@ class MusicDatabase(
     fun close() = delegate.close()
 }
 
+// bump this with every schema change and add its migration to AllMigrations, the import checks old exports against it too
+const val MusicDatabaseVersion = 41
+
 @Database(
     entities = [
         SongEntity::class,
@@ -136,7 +139,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 41,
+    version = MusicDatabaseVersion,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -145,7 +148,7 @@ abstract class InternalDatabase : RoomDatabase() {
     abstract val speedDialDao: SpeedDialDao
 
     companion object {
-        const val DB_NAME = "song.db"
+        const val DB_NAME = "mochy.db"
 
         fun newInstance(context: Context): MusicDatabase =
             MusicDatabase(

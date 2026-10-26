@@ -1,6 +1,6 @@
 // AddMusicRows.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -40,12 +40,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.ui.component.Bone
-import com.example.musicfy.ui.component.BonesHost
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.ui.component.Bone
+import com.mochyy.mochymusic.ui.component.BonesHost
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.utils.resize
 
 /*
  * The pieces the "Add music" sheet is drawn from: a song row with its tick box, the two chips

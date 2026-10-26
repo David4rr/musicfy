@@ -4,7 +4,7 @@
 // with a little drift and blur, driven by how far each page is from settled. Both call sites hand
 // it a page offset (0 on screen, +1 one page to the right) and it does the rest.
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.Shader
 import androidx.compose.foundation.layout.Box

@@ -4,13 +4,13 @@
 // The liked songs, albums, artists and playlists on those tabs are all worked out from the songs,
 // the same way for both, so the two tabs and the pages they open always count alike.
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.compose.runtime.Immutable
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

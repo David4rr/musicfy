@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -44,15 +44,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.datastore.preferences.core.edit
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.R
-import com.example.musicfy.constants.AccountChannelHandleKey
-import com.example.musicfy.constants.AccountEmailKey
-import com.example.musicfy.constants.AccountNameKey
-import com.example.musicfy.constants.DataSyncIdKey
-import com.example.musicfy.constants.InnerTubeCookieKey
-import com.example.musicfy.constants.VisitorDataKey
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AccountChannelHandleKey
+import com.mochyy.mochymusic.constants.AccountEmailKey
+import com.mochyy.mochymusic.constants.AccountNameKey
+import com.mochyy.mochymusic.constants.DataSyncIdKey
+import com.mochyy.mochymusic.constants.InnerTubeCookieKey
+import com.mochyy.mochymusic.constants.VisitorDataKey
+import com.mochyy.mochymusic.utils.dataStore
 import com.music.innertube.YouTube
 import com.music.innertube.models.AccountInfo
 import com.music.innertube.utils.parseCookieString
@@ -104,7 +104,7 @@ fun YouTubeLoginScreen(navController: NavController) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Sign in to YouTube", style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Text(
-                    "Google's own sign-in page. Musicfy never sees your password.",
+                    "Google's own sign-in page. Mochy never sees your password.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.6f),
                 )

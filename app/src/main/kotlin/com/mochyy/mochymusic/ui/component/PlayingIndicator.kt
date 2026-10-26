@@ -1,6 +1,6 @@
 // PlayingIndicator.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -37,7 +37,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
@@ -64,7 +64,7 @@ fun PlayingIndicator(
     // frame every few milliseconds behind it. Likewise while the page it's on is opening, closing
     // or sinking behind another: that page is one cached picture then, and bars moving in it made
     // the whole page render again for every one of their frames.
-    val obscured = com.example.musicfy.LocalAppContentObscured.current
+    val obscured = com.mochyy.mochymusic.LocalAppContentObscured.current
     val navTransition = LocalNavAnimatedContentScope.current?.transition
     val held = remember(obscured, navTransition) {
         derivedStateOf {

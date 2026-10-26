@@ -1,21 +1,21 @@
 // CachePlaylistViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.di.DownloadCache
-import com.example.musicfy.di.PlayerCache
-import com.example.musicfy.extensions.filterExplicit
-import com.example.musicfy.extensions.filterVideoSongs
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.di.DownloadCache
+import com.mochyy.mochymusic.di.PlayerCache
+import com.mochyy.mochymusic.extensions.filterExplicit
+import com.mochyy.mochymusic.extensions.filterVideoSongs
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay

@@ -1,6 +1,6 @@
 // LyricsSourceFooter.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -43,12 +43,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.lyrics.EmbeddedLyrics
-import com.example.musicfy.lyrics.LyricsProviderRegistry
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.safeOpenUri
-import com.example.musicfy.viewmodels.LyricsMenuViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.lyrics.EmbeddedLyrics
+import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.safeOpenUri
+import com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel
 
 private val LabelColor = Color.White.copy(alpha = 0.55f)
 private val ValueColor = Color.White.copy(alpha = 0.38f)

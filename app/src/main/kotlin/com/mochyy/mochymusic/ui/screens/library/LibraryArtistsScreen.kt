@@ -1,6 +1,6 @@
 // LibraryArtistsScreen.kt
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -9,10 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.menu.ArtistMenu
-import com.example.musicfy.viewmodels.LibraryHomeViewModel
-import com.example.musicfy.viewmodels.LibraryShelfKind
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.menu.ArtistMenu
+import com.mochyy.mochymusic.viewmodels.LibraryHomeViewModel
+import com.mochyy.mochymusic.viewmodels.LibraryShelfKind
 
 /**
  * The library's artists, or with a [shelf] the Local or Cached tab's: only the artists of that

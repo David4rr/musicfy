@@ -1,6 +1,6 @@
 // DraggableScrollBarOverlay.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring

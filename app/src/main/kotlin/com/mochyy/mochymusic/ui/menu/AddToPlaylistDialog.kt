@@ -1,6 +1,6 @@
 // AddToPlaylistDialog.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -42,18 +42,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.music.innertube.YouTube
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.ui.component.CreatePlaylistDialog
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.PlaylistThumbnail
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.SheetLabel
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.SheetSearchField
-import com.example.musicfy.viewmodels.PlaylistsViewModel
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.ui.component.CreatePlaylistDialog
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.PlaylistThumbnail
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.SheetLabel
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.SheetSearchField
+import com.mochyy.mochymusic.viewmodels.PlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -74,12 +74,12 @@ private const val RecentCount = 4
  *   them with its [topSongArtworkUrl]: the new playlist's cover takes its colours from it.
  */
 /** The top toast for songs just added to [playlist]: what went in, and Undo (not for a synced playlist, which YouTube has already been told about). */
-internal fun announceAddedToPlaylist(database: com.example.musicfy.db.MusicDatabase, playlist: Playlist, ids: List<String>) {
+internal fun announceAddedToPlaylist(database: com.mochyy.mochymusic.db.MusicDatabase, playlist: Playlist, ids: List<String>) {
     if (ids.isEmpty()) return
     kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
         val first = database.song(ids.first()).firstOrNull()?.song
         val name = playlist.playlist.name
-        com.example.musicfy.ui.component.TopToaster.show(
+        com.mochyy.mochymusic.ui.component.TopToaster.show(
             text = if (ids.size == 1) "Added ${first?.title ?: "song"} to $name" else "Added ${ids.size} songs to $name",
             thumbnail = first?.thumbnailUrl,
             iconRes = R.drawable.playlist_add,

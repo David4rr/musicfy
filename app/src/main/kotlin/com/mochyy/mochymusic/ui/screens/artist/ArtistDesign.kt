@@ -4,7 +4,7 @@
 // bands, riding up and zooming like a playlist cover), the round photo and name or name logo, the
 // Play / like / Subscribe row, the release card that slides over to the bio, and the top bar.
 
-package com.example.musicfy.ui.screens.artist
+package com.mochyy.mochymusic.ui.screens.artist
 
 import android.graphics.Shader
 import androidx.compose.animation.AnimatedVisibility
@@ -88,32 +88,32 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.component.BoneColor
-import com.example.musicfy.ui.component.DownscaledBlur
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.ScrollAwayCover
-import com.example.musicfy.ui.component.containerTransformSource
-import com.example.musicfy.ui.component.detail.CircleAction
-import com.example.musicfy.ui.component.detail.PillContent
-import com.example.musicfy.ui.component.detail.PillFill
-import com.example.musicfy.ui.component.detail.PlayPill
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
-import com.example.musicfy.ui.component.detail.PlaylistTracking
-import com.example.musicfy.ui.component.detail.SectionTitleStyle
-import com.example.musicfy.ui.component.detail.TrackShape
-import com.example.musicfy.ui.component.detail.TrackSubtitleStyle
-import com.example.musicfy.ui.component.detail.TrackTitleStyle
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.CanvasArtworkPlayer
-import com.example.musicfy.ui.screens.search.SearchAvatar
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.viewmodels.ArtistRelease
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.BoneColor
+import com.mochyy.mochymusic.ui.component.DownscaledBlur
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.ScrollAwayCover
+import com.mochyy.mochymusic.ui.component.containerTransformSource
+import com.mochyy.mochymusic.ui.component.detail.CircleAction
+import com.mochyy.mochymusic.ui.component.detail.PillContent
+import com.mochyy.mochymusic.ui.component.detail.PillFill
+import com.mochyy.mochymusic.ui.component.detail.PlayPill
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.detail.PlaylistStatsStyle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTracking
+import com.mochyy.mochymusic.ui.component.detail.SectionTitleStyle
+import com.mochyy.mochymusic.ui.component.detail.TrackShape
+import com.mochyy.mochymusic.ui.component.detail.TrackSubtitleStyle
+import com.mochyy.mochymusic.ui.component.detail.TrackTitleStyle
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.CanvasArtworkPlayer
+import com.mochyy.mochymusic.ui.screens.search.SearchAvatar
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.viewmodels.ArtistRelease
 
 // the round photo sits this far down the banner, and the page's header starts there
 internal const val ArtistAvatarAt = 0.45f
@@ -274,7 +274,7 @@ private fun BoxScope.BannerBlurBand(
     }
     // high quality on android 13+ grows the blur toward the edge in one pass; a faded fixed blur bloomed around bright parts
     val smooth = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-        com.example.musicfy.ui.component.LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+        com.mochyy.mochymusic.ui.component.LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
     DownscaledBlur(
         radius = { BlurEffectCache.effectiveRadius(radius) },
         tileMode = Shader.TileMode.CLAMP,
@@ -828,17 +828,17 @@ internal fun ArtistTopBar(
 /** stand-ins for the header while YouTube answers */
 @Composable
 internal fun ArtistHeaderBones(modifier: Modifier = Modifier) {
-    com.example.musicfy.ui.component.BonesHost(modifier = modifier.fillMaxWidth()) {
+    com.mochyy.mochymusic.ui.component.BonesHost(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(start = PlaylistInset - 4.dp)) {
-            com.example.musicfy.ui.component.Bone(width = ArtistAvatarSize, height = ArtistAvatarSize, shape = CircleShape)
+            com.mochyy.mochymusic.ui.component.Bone(width = ArtistAvatarSize, height = ArtistAvatarSize, shape = CircleShape)
             Spacer(Modifier.height(16.dp))
-            com.example.musicfy.ui.component.Bone(width = 190.dp, height = 30.dp)
+            com.mochyy.mochymusic.ui.component.Bone(width = 190.dp, height = 30.dp)
             Spacer(Modifier.height(8.dp))
-            com.example.musicfy.ui.component.Bone(width = 150.dp, height = 10.dp)
+            com.mochyy.mochymusic.ui.component.Bone(width = 150.dp, height = 10.dp)
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                com.example.musicfy.ui.component.Bone(width = 92.dp, height = 33.dp, shape = RoundedCornerShape(50))
-                com.example.musicfy.ui.component.Bone(width = 33.dp, height = 33.dp, shape = CircleShape)
+                com.mochyy.mochymusic.ui.component.Bone(width = 92.dp, height = 33.dp, shape = RoundedCornerShape(50))
+                com.mochyy.mochymusic.ui.component.Bone(width = 33.dp, height = 33.dp, shape = CircleShape)
             }
         }
     }

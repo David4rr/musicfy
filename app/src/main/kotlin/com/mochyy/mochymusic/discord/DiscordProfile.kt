@@ -1,6 +1,6 @@
 // DiscordProfile.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

@@ -1,6 +1,6 @@
 // MetrolistWidgetManager.kt
 
-package com.example.musicfy.widget
+package com.mochyy.mochymusic.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -20,9 +20,9 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.toBitmap
-import com.example.musicfy.MainActivity
-import com.example.musicfy.R
-import com.example.musicfy.db.MusicDatabase
+import com.mochyy.mochymusic.MainActivity
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.MusicDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withLock
@@ -31,7 +31,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MusicfyWidgetManager @Inject constructor(
+class MochyWidgetManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase
 ) {

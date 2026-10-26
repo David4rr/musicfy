@@ -1,6 +1,6 @@
 // PreferenceKeys.kt
 
-package com.example.musicfy.constants
+package com.mochyy.mochymusic.constants
 
 import android.os.Build
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -107,7 +107,7 @@ val SelectedYtmPlaylistsKey = stringPreferencesKey("selectedYtmPlaylists")
 val YtSyncNewPlaylistsKey = booleanPreferencesKey("ytSyncNewPlaylists")
 /** Plays long enough to count go to the signed-in account's YouTube history. */
 val YtReportPlaysKey = booleanPreferencesKey("ytReportPlays")
-/** YouTube Music history is copied into Musicfy's own listening history. */
+/** YouTube Music history is copied into Mochy's own listening history. */
 val YtPullHistoryKey = booleanPreferencesKey("ytPullHistory")
 /** Newest YouTube history entry already copied, so the next pull stops there. */
 val YtHistoryLastSeenKey = stringPreferencesKey("ytHistoryLastSeen")
@@ -196,6 +196,13 @@ enum class CrossmixMode {
     CROSSMIX,
 }
 
+// crossmix is still being tuned, so it's greyed out and plays as auto crossfade; flip this to bring it back
+const val CrossmixAvailable = false
+
+/** the mode that actually plays, a saved crossmix falls back to auto crossfade while crossmix is in progress */
+fun CrossmixMode.playable(): CrossmixMode =
+    if (this == CrossmixMode.CROSSMIX && !CrossmixAvailable) CrossmixMode.AUTO_CROSSFADE else this
+
 // pause, play and skip fades: on by default, 2 s long, no layered effect until one is picked
 val TransportFadeEnabledKey = booleanPreferencesKey("transportFadeEnabled")
 val TransportFadeSecondsKey = floatPreferencesKey("transportFadeSeconds")
@@ -223,14 +230,14 @@ val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
-// Discord: signed in on Discord's own page in the browser (OAuth), so Musicfy only ever holds a
+// Discord: signed in on Discord's own page in the browser (OAuth), so Mochy only ever holds a
 // token Discord gave it for this, never the account's password or login token
 val DiscordAccessTokenKey = stringPreferencesKey("discordAccessToken")
 val DiscordRefreshTokenKey = stringPreferencesKey("discordRefreshToken")
 val DiscordTokenExpiresAtKey = longPreferencesKey("discordTokenExpiresAt")
 /** the signed-in account's name, picture, banner and bio, as JSON, for the profile preview */
 val DiscordProfileKey = stringPreferencesKey("discordProfile")
-/** a login started in the browser, kept on disk in case Android closes Musicfy meanwhile */
+/** a login started in the browser, kept on disk in case Android closes Mochy meanwhile */
 val DiscordLoginStateKey = stringPreferencesKey("discordLoginState")
 val DiscordLoginVerifierKey = stringPreferencesKey("discordLoginVerifier")
 
@@ -702,7 +709,7 @@ enum class LyricsAnimationStyle {
     KARAOKE,
     APPLE,
     APPLE_V2,
-    MUSICFY_1,
+    MOCHY_1,
     LYRICS_V2,
     METRO_LYRICS,
 }

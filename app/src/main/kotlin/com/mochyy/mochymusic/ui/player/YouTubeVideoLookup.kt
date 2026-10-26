@@ -1,11 +1,11 @@
 // YouTubeVideoLookup.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
-import com.example.musicfy.utils.YTPlayerUtils
+import com.mochyy.mochymusic.utils.YTPlayerUtils
 
 data class OfficialMusicVideo(
     val videoId: String,

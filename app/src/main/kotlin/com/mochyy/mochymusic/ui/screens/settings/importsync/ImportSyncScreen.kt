@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,13 +18,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.viewmodels.ImportSyncViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
 import java.time.LocalDate
 
 /** experimental hub: import from other services, sync a youtube account, tunemymusic csv, and backup */
@@ -124,13 +124,13 @@ fun ImportSyncScreen(
             style = SettingsGroupStyle.Grouped,
             items = listOf(
                 SettingsItem(
-                    title = { Text("Export to Musicfy CSV") },
-                    highlightKey = "Export to Musicfy CSV",
+                    title = { Text("Export to Mochy CSV") },
+                    highlightKey = "Export to Mochy CSV",
                     descriptionText = "Liked songs and playlists",
-                    detail = "Liked songs and playlists, import it back from Import → Musicfy backup",
+                    detail = "Liked songs and playlists, import it back from Import → Mochy backup",
                     icon = painterResource(R.drawable.backup),
                     iconShape = CircleShape,
-                    onClick = { exportLauncher.launch("musicfy-library-${LocalDate.now()}.csv") },
+                    onClick = { exportLauncher.launch("mochy-library-${LocalDate.now()}.csv") },
                 ),
             ),
         )

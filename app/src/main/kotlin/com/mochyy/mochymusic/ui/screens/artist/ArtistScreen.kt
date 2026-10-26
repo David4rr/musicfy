@@ -1,6 +1,6 @@
 // ArtistScreen.kt
 
-package com.example.musicfy.ui.screens.artist
+package com.mochyy.mochymusic.ui.screens.artist
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -14,7 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import com.example.musicfy.ui.utils.SnapLayoutInfoProvider
+import com.mochyy.mochymusic.ui.utils.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,59 +70,59 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalAppContentObscured
-import com.example.musicfy.LocalDetailAccentColor
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.canvas.appleArtworkUrl
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.constants.ShowArtistBackgroundVideoKey
-import com.example.musicfy.constants.ShowArtistDescriptionKey
-import com.example.musicfy.constants.ShowArtistSubscriberCountKey
-import com.example.musicfy.constants.ShowMonthlyListenersKey
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.YouTubeAlbumRadio
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.HomeCardSpacing
-import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.homeRowHeight
-import com.example.musicfy.ui.component.HomeTrackRow
-import com.example.musicfy.ui.component.HomeVideoCard
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.detail.FeaturedArtistUi
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
-import com.example.musicfy.ui.component.detail.PlaylistTrackBones
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.detail.playlistCoverHeight
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.component.navigateToTab
-import com.example.musicfy.ui.component.rememberCoverBlurAvailable
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.AlbumMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeArtistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.screens.settings.importsync.rememberYouTubeSignedIn
-import com.example.musicfy.ui.theme.rememberCoverThemeColor
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.ArtistVideos
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.ArtistViewModel
+import com.mochyy.mochymusic.LocalAppContentObscured
+import com.mochyy.mochymusic.LocalDetailAccentColor
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.canvas.appleArtworkUrl
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.constants.ShowArtistBackgroundVideoKey
+import com.mochyy.mochymusic.constants.ShowArtistDescriptionKey
+import com.mochyy.mochymusic.constants.ShowArtistSubscriberCountKey
+import com.mochyy.mochymusic.constants.ShowMonthlyListenersKey
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeAlbumRadio
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.HomeCardSpacing
+import com.mochyy.mochymusic.ui.component.HomeCoverCard
+import com.mochyy.mochymusic.ui.component.homeRowHeight
+import com.mochyy.mochymusic.ui.component.HomeTrackRow
+import com.mochyy.mochymusic.ui.component.HomeVideoCard
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistUi
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.detail.PlaylistStatsStyle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackBones
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.detail.playlistCoverHeight
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.component.rememberCoverBlurAvailable
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.AlbumMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.screens.settings.importsync.rememberYouTubeSignedIn
+import com.mochyy.mochymusic.ui.theme.rememberCoverThemeColor
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.ArtistVideos
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.ArtistViewModel
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.BrowseEndpoint
@@ -536,7 +536,7 @@ private fun LazyListScope.artistShelves(
     mediaAlbumId: () -> String?,
     isPlaying: () -> Boolean,
     artistName: String,
-    revealSeen: com.example.musicfy.ui.component.RevealSeenState,
+    revealSeen: com.mochyy.mochymusic.ui.component.RevealSeenState,
     onOpenMore: (BrowseEndpoint?) -> Unit,
     onOpen: (YTItem) -> Unit,
     onMenu: (YTItem) -> Unit,
@@ -698,7 +698,7 @@ private fun LazyListScope.coverShelf(
     title: String,
     items: List<YTItem>,
     moreEndpoint: BrowseEndpoint?,
-    revealSeen: com.example.musicfy.ui.component.RevealSeenState,
+    revealSeen: com.mochyy.mochymusic.ui.component.RevealSeenState,
     mediaAlbumId: () -> String?,
     isPlaying: () -> Boolean,
     onOpenMore: (BrowseEndpoint?) -> Unit,
@@ -735,7 +735,7 @@ private fun LazyListScope.coverShelf(
                     circular = item is ArtistItem,
                     isActive = item is AlbumItem && item.id == mediaAlbumId(),
                     isPlaying = isPlaying,
-                    sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+                    sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
                     modifier = Modifier.combinedClickable(
                         interactionSource = null,
                         indication = HomeCardHighlight,
@@ -756,7 +756,7 @@ private fun LazyListScope.videoShelf(
     moreEndpoint: BrowseEndpoint?,
     screenWidth: Dp,
     artistName: String,
-    revealSeen: com.example.musicfy.ui.component.RevealSeenState,
+    revealSeen: com.mochyy.mochymusic.ui.component.RevealSeenState,
     mediaMetadataId: () -> String?,
     isPlaying: () -> Boolean,
     onOpenMore: (BrowseEndpoint?) -> Unit,

@@ -1,6 +1,6 @@
 // ItemsPage.kt
 
-package com.example.musicfy.models
+package com.mochyy.mochymusic.models
 
 import com.music.innertube.models.YTItem
 

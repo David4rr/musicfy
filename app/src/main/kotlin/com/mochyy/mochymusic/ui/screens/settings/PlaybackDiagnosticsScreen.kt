@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -25,15 +25,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.utils.PlaybackLogEntry
-import com.example.musicfy.utils.PlaybackLogLevel
-import com.example.musicfy.utils.PlaybackLogManager
-import com.example.musicfy.utils.YTPlayerUtils
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.utils.PlaybackLogEntry
+import com.mochyy.mochymusic.utils.PlaybackLogLevel
+import com.mochyy.mochymusic.utils.PlaybackLogManager
+import com.mochyy.mochymusic.utils.YTPlayerUtils
 
 /** newest entries first, capped so the scrolling column stays responsive */
 private const val VISIBLE_ENTRIES = 200
@@ -176,5 +176,5 @@ private fun copyLogs(context: Context, logs: List<PlaybackLogEntry>) {
         }
     }
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-    clipboard?.setPrimaryClip(ClipData.newPlainText("musicfy playback log", text))
+    clipboard?.setPrimaryClip(ClipData.newPlainText("mochy playback log", text))
 }

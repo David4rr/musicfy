@@ -1,13 +1,13 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerMenuSlotsKey
-import com.example.musicfy.constants.PlayerSideButtonKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerMenuSlotsKey
+import com.mochyy.mochymusic.constants.PlayerSideButtonKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 /**
  * Everything the player's round buttons can do: the button beside the chevron and the four in the

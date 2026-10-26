@@ -1,17 +1,17 @@
 // LocalImportService.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportSession
-import com.example.musicfy.db.entities.ImportSessionSong
-import com.example.musicfy.models.TransferBatch
-import com.example.musicfy.models.TransferItem
-import com.example.musicfy.models.TransferState
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportSession
+import com.mochyy.mochymusic.db.entities.ImportSessionSong
+import com.mochyy.mochymusic.models.TransferBatch
+import com.mochyy.mochymusic.models.TransferItem
+import com.mochyy.mochymusic.models.TransferState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler

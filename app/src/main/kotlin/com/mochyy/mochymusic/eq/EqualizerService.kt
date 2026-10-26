@@ -1,9 +1,9 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
-import com.example.musicfy.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.audio.CustomEqualizerAudioProcessor
+import com.mochyy.mochymusic.eq.data.ParametricEQ
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton

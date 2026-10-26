@@ -1,6 +1,6 @@
 // LyricsGlowLine.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
@@ -62,11 +62,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.ui.component.agslRenderEffect
-import com.example.musicfy.ui.component.createAgslShader
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.component.setAgslUniform
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.ui.component.agslRenderEffect
+import com.mochyy.mochymusic.ui.component.createAgslShader
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.setAgslUniform
 
 enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
 
@@ -74,8 +74,8 @@ enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
  * Which side of the screen a line sits on.
  *
  * Word-synced providers mark duet and call-and-response lines with `{agent:v1}` / `{agent:v2}`,
- * which LyricsUtils has always parsed into [com.example.musicfy.lyrics.LyricsEntry.agent]. Until
- * now only the three unused renderers (MetroLyrics, MusicfyLyrics, LyricsV2) did anything with it,
+ * which LyricsUtils has always parsed into [com.mochyy.mochymusic.lyrics.LyricsEntry.agent]. Until
+ * now only the three unused renderers (MetroLyrics, MochyLyrics, LyricsV2) did anything with it,
  * so in the live player every voice rendered flush left and duets were impossible to follow.
  */
 enum class LyricsAlignment { START, CENTER, END }
@@ -207,7 +207,7 @@ fun LyricsGlowLine(
     alignment: LyricsAlignment = LyricsAlignment.START,
 
     /** Per-word readings drawn against the line, furigana style. */
-    ruby: List<com.example.musicfy.lyrics.RubyToken>? = null,
+    ruby: List<com.mochyy.mochymusic.lyrics.RubyToken>? = null,
 
     /**
      * Which side the readings sit on. Below by default; the caller moves them above when a
@@ -226,13 +226,13 @@ fun LyricsGlowLine(
     translationLoading: Boolean = false,
 
     /** Style 1 (words rise, held notes swell) or Style 2 (the original wave). */
-    motionStyle: com.example.musicfy.constants.LyricsMotionStyle =
-        com.example.musicfy.constants.LyricsMotionStyle.MOTION,
+    motionStyle: com.mochyy.mochymusic.constants.LyricsMotionStyle =
+        com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION,
 
     /** Holding the line: the lyrics page opens sharing with it. */
     onLongClick: (() -> Unit)? = null,
 ) {
-    val wordMotion = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+    val wordMotion = motionStyle == com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION
     val targetAlpha = restingAlphaOf(state)
     val targetScale = restingScaleOf(state)
 
@@ -559,7 +559,7 @@ enum class RubyPlacement { ABOVE, BELOW }
 @Composable
 private fun rememberRubyOverlay(
     layoutHolder: Array<TextLayoutResult?>,
-    ruby: List<com.example.musicfy.lyrics.RubyToken>?,
+    ruby: List<com.mochyy.mochymusic.lyrics.RubyToken>?,
     textLength: Int,
     placement: RubyPlacement,
     dimColor: ColorProducer,
@@ -961,7 +961,7 @@ internal class SweepProbe {
 @Composable
 internal fun KaraokeSweepText(
     text: String,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>,
     positionProvider: () -> Long,
     waveAmplitudeProvider: () -> Float,
     // read while drawing, so a fading line doesn't recompose every frame
@@ -972,11 +972,11 @@ internal fun KaraokeSweepText(
     lineHeight: androidx.compose.ui.unit.TextUnit = LyricsLineHeight,
     highBloom: Boolean = true,
     textAlign: TextAlign = TextAlign.Start,
-    ruby: List<com.example.musicfy.lyrics.RubyToken>? = null,
+    ruby: List<com.mochyy.mochymusic.lyrics.RubyToken>? = null,
     rubyPlacement: RubyPlacement = RubyPlacement.BELOW,
     rubyColor: ColorProducer = DefaultRubyColor,
-    motionStyle: com.example.musicfy.constants.LyricsMotionStyle =
-        com.example.musicfy.constants.LyricsMotionStyle.MOTION,
+    motionStyle: com.mochyy.mochymusic.constants.LyricsMotionStyle =
+        com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION,
     /**
      * Style 1 word rise, 0..1 with the line becoming active. Separate from [waveAmplitudeProvider]
      * on purpose: that one is zero when the lyrics shader is switched off, and the rise is drawn
@@ -989,7 +989,7 @@ internal fun KaraokeSweepText(
     motionScale: Float = 1f,
     probe: SweepProbe? = null,
 ) {
-    val wordMotion = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+    val wordMotion = motionStyle == com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION
     val head = rememberKaraokeHead(text, words, positionProvider, wordMotion)
 
     val hasRuby = !ruby.isNullOrEmpty()
@@ -1170,18 +1170,18 @@ private val LitRubyColor = ColorProducer { Color.White }
 internal class LyricLineParts(
     val lead: String,
     val backing: String?,
-    val leadWords: List<com.example.musicfy.lyrics.WordTimestamp>?,
-    val backingWords: List<com.example.musicfy.lyrics.WordTimestamp>?,
+    val leadWords: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
+    val backingWords: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
 )
 
 private fun partitionWords(
     text: String,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>?,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
     inBracket: BooleanArray,
-): Pair<List<com.example.musicfy.lyrics.WordTimestamp>, List<com.example.musicfy.lyrics.WordTimestamp>> {
-    if (words.isNullOrEmpty()) return emptyList<com.example.musicfy.lyrics.WordTimestamp>() to emptyList()
-    val lead = ArrayList<com.example.musicfy.lyrics.WordTimestamp>(words.size)
-    val backing = ArrayList<com.example.musicfy.lyrics.WordTimestamp>()
+): Pair<List<com.mochyy.mochymusic.lyrics.WordTimestamp>, List<com.mochyy.mochymusic.lyrics.WordTimestamp>> {
+    if (words.isNullOrEmpty()) return emptyList<com.mochyy.mochymusic.lyrics.WordTimestamp>() to emptyList()
+    val lead = ArrayList<com.mochyy.mochymusic.lyrics.WordTimestamp>(words.size)
+    val backing = ArrayList<com.mochyy.mochymusic.lyrics.WordTimestamp>()
     var searchFrom = 0
     for (word in words) {
         val trimmed = word.text.trim()
@@ -1197,7 +1197,7 @@ private fun partitionWords(
 
 internal fun splitBackingVocal(
     text: String,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>?,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
 ): LyricLineParts {
     val untouched = LyricLineParts(text, null, words, null)
     if (text.indexOf('(') < 0 && text.indexOf('[') < 0) return untouched
@@ -1247,7 +1247,7 @@ internal fun splitBackingVocal(
  * by searching the text it draws, and "(ooh" is not in "ooh yeah", so the first and last backing
  * words were never found: the sweep sat still until the middle word and stopped before the end.
  */
-private fun List<com.example.musicfy.lyrics.WordTimestamp>.withoutBrackets() =
+private fun List<com.mochyy.mochymusic.lyrics.WordTimestamp>.withoutBrackets() =
     mapNotNull { word ->
         val bare = word.text.filterNot { it == '(' || it == ')' || it == '[' || it == ']' }
         when {
@@ -1264,20 +1264,20 @@ private fun BackingVocalLine(
     text: String,
     color: ColorProducer,
     slide: Boolean,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>?,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
     positionProvider: () -> Long,
     waveAmplitudeProvider: () -> Float,
     sweep: Boolean,
     expandProvider: () -> Float,
     highBloom: Boolean,
     textAlign: TextAlign = TextAlign.Start,
-    motionStyle: com.example.musicfy.constants.LyricsMotionStyle =
-        com.example.musicfy.constants.LyricsMotionStyle.MOTION,
+    motionStyle: com.mochyy.mochymusic.constants.LyricsMotionStyle =
+        com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION,
     riseAmplitudeProvider: () -> Float = waveAmplitudeProvider,
 ) {
 
     val expand = rememberBackingExpand(words, positionProvider, expandProvider)
-    val wordMotion = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+    val wordMotion = motionStyle == com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION
 
     // Keep the sweep for as long as the backing line is on screen. It used to drop back to the
     // plain copy the moment the main line finished, while a backing vocal that trails the line
@@ -1356,7 +1356,7 @@ private const val BackingTailSec = 0.6
 
 @Composable
 private fun rememberBackingExpand(
-    words: List<com.example.musicfy.lyrics.WordTimestamp>?,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>?,
     positionProvider: () -> Long,
     lineAmplitudeProvider: () -> Float,
 ): androidx.compose.runtime.MutableFloatState {
@@ -1815,7 +1815,7 @@ private class TimedRange(
 
 internal fun karaokeFilledChars(
     text: String,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>,
     positionMs: Long,
 ): Int {
     var searchFrom = 0
@@ -1861,7 +1861,7 @@ internal fun karaokeAnnotated(
 @Composable
 private fun rememberKaraokeHead(
     text: String,
-    words: List<com.example.musicfy.lyrics.WordTimestamp>,
+    words: List<com.mochyy.mochymusic.lyrics.WordTimestamp>,
     positionProvider: () -> Long,
     /** Style 1: sweep through spaces smoothly and drive the per-word rise/swell springs. */
     wordMotion: Boolean = false,

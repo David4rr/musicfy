@@ -1,6 +1,6 @@
 // SubSettingsScaffold.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -58,9 +58,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.lerp as lerpDp
 import androidx.compose.ui.util.lerp
 import coil3.compose.rememberAsyncImagePainter
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.R
-import com.example.musicfy.ui.screens.search.rememberScrollCollapseProgress
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.screens.search.rememberScrollCollapseProgress
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -354,7 +354,7 @@ fun SubSettingsSearchBar(
                 onValueChange = onQueryChange,
                 singleLine = true,
                 textStyle = androidx.compose.ui.text.TextStyle(
-                    fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+                    fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
                     fontSize = 16.sp,
                     color = Color.White,
                     fontWeight = FontWeight.Normal
@@ -365,7 +365,7 @@ fun SubSettingsSearchBar(
                     if (query.isEmpty()) {
                         Text(
                             text = "Search any settings",
-                            fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+                            fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
                             fontSize = 16.sp,
                             color = Color.White.copy(alpha = 0.5f)
                         )

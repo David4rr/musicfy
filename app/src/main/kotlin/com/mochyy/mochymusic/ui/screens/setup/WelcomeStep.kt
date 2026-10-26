@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.setup
+package com.mochyy.mochymusic.ui.screens.setup
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -22,16 +22,16 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.component.FadeInCover
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.component.FadeInCover
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.utils.resize
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.BlurDirection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
@@ -186,7 +186,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 .padding(start = 32.dp, bottom = 175.dp, end = 32.dp)
         ) {
             Text(
-                text = "Welcome to\nmusicfy!",
+                text = "Welcome to\nmochy!",
                 fontSize = 42.sp,
                 lineHeight = 44.sp,
                 fontWeight = FontWeight.ExtraBold,

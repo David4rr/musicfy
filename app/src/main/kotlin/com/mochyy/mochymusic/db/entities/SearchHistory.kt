@@ -1,4 +1,4 @@
-package com.example.musicfy.db.entities
+package com.mochyy.mochymusic.db.entities
 
 import androidx.room.Entity
 import androidx.room.Index

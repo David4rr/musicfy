@@ -1,6 +1,6 @@
 // DonateSheet.kt
 
-package com.example.musicfy.ui.screens.donate
+package com.mochyy.mochymusic.ui.screens.donate
 
 import android.content.Context
 import android.content.Intent
@@ -39,10 +39,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 const val KofiUrl = "https://ko-fi.com/realidkroo"
 const val SocialBuzzUrl = "https://sociabuzz.com/realidkroo/tribe"

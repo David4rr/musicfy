@@ -1,22 +1,22 @@
 // LibraryHomeViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.AlbumSortType
-import com.example.musicfy.constants.ArtistSortType
-import com.example.musicfy.constants.PlaylistSortType
-import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.db.entities.SpeedDialItem
-import com.example.musicfy.importer.ImportProgress
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.MusicImportService
-import com.example.musicfy.playback.CachedSongs
-import com.example.musicfy.utils.ArtistImageResolver
+import com.mochyy.mochymusic.constants.AlbumSortType
+import com.mochyy.mochymusic.constants.ArtistSortType
+import com.mochyy.mochymusic.constants.PlaylistSortType
+import com.mochyy.mochymusic.constants.SongSortType
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.db.entities.SpeedDialItem
+import com.mochyy.mochymusic.importer.ImportProgress
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.MusicImportService
+import com.mochyy.mochymusic.playback.CachedSongs
+import com.mochyy.mochymusic.utils.ArtistImageResolver
 import com.music.innertube.YouTube
 import com.music.innertube.models.YTItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -223,8 +223,8 @@ data class ImportedSourceCard(
 
 /**
  * Downloads and imported files as one list, sorted as [sortType] says. They come from two queries
- * because they are two columns ([isDownloaded][com.example.musicfy.db.entities.SongEntity.isDownloaded]
- * and [isLocal][com.example.musicfy.db.entities.SongEntity.isLocal]); a download is dated by when
+ * because they are two columns ([isDownloaded][com.mochyy.mochymusic.db.entities.SongEntity.isDownloaded]
+ * and [isLocal][com.mochyy.mochymusic.db.entities.SongEntity.isLocal]); a download is dated by when
  * it finished downloading, an imported file by when it was imported.
  */
 internal fun MusicDatabase.onDeviceSongs(sortType: SongSortType, descending: Boolean): Flow<List<Song>> =

@@ -1,6 +1,6 @@
 // QueueScreen.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,16 +57,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerHorizontalPadding
-import com.example.musicfy.ui.component.PlayingIndicatorBox
-import com.example.musicfy.ui.component.SwipeAction
-import com.example.musicfy.ui.component.SwipeActionsBox
-import com.example.musicfy.ui.component.SwipeQueueColor
-import com.example.musicfy.ui.component.SwipeSaveColor
-import com.example.musicfy.ui.player.models.QueueItemData
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.ui.component.PlayingIndicatorBox
+import com.mochyy.mochymusic.ui.component.SwipeAction
+import com.mochyy.mochymusic.ui.component.SwipeActionsBox
+import com.mochyy.mochymusic.ui.component.SwipeQueueColor
+import com.mochyy.mochymusic.ui.component.SwipeSaveColor
+import com.mochyy.mochymusic.ui.player.models.QueueItemData
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.delay
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState

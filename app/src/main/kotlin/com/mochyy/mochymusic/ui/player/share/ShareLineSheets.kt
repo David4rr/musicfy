@@ -4,7 +4,7 @@
 // and flies in from the lyrics), then picking a style. The pieces every share sheet uses live in
 // ShareKit.kt.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -62,14 +62,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs

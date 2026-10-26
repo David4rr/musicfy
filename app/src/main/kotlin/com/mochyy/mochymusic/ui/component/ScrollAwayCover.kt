@@ -1,6 +1,6 @@
 // ScrollAwayCover.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.Shader
 import android.os.Build
@@ -21,9 +21,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import com.example.musicfy.constants.BlurQuality
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.BlurQuality
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 private const val CoverZoom = 0.22f
 private const val CoverSoftBy = 0.55f

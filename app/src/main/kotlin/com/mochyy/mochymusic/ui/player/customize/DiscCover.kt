@@ -1,6 +1,6 @@
 // DiscCover.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -50,8 +50,8 @@ import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.size.Precision
 import coil3.size.Size as CoilSize
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.min
 
 @Immutable
@@ -426,7 +426,7 @@ private fun BoxScope.DiscNamePlate(
     val band = (1f - geometry.art) / 2f * discSide
     val fontSize = (band * 0.30f).coerceIn(8f, 15f).sp
     val style = TextStyle(
-        fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+        fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = fontSize,
         letterSpacing = 0.22.em,

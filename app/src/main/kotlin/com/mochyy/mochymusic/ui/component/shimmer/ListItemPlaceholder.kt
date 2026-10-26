@@ -1,6 +1,6 @@
 // ListItemPlaceholder.kt
 
-package com.example.musicfy.ui.component.shimmer
+package com.mochyy.mochymusic.ui.component.shimmer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.ListItemHeight
-import com.example.musicfy.constants.ListThumbnailSize
-import com.example.musicfy.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.constants.ListItemHeight
+import com.mochyy.mochymusic.constants.ListThumbnailSize
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
 
 @Composable
 fun ListItemPlaceHolder(

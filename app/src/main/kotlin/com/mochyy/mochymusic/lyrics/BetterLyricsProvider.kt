@@ -1,12 +1,12 @@
 // BetterLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
-import com.example.musicfy.betterlyrics.BetterLyrics
-import com.example.musicfy.constants.EnableBetterLyricsKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.betterlyrics.BetterLyrics
+import com.mochyy.mochymusic.constants.EnableBetterLyricsKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 
 object BetterLyricsProvider : LyricsProvider {
     override val name = "BetterLyrics"

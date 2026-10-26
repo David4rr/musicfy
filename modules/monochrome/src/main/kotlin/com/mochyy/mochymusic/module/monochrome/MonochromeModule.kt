@@ -1,20 +1,20 @@
-package com.example.musicfy.module.monochrome
+package com.mochyy.mochymusic.module.monochrome
 
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.CatalogTrack
-import com.example.musicfy.module.DiagnosticStep
-import com.example.musicfy.module.HttpRequest
-import com.example.musicfy.module.MatchedTrack
-import com.example.musicfy.module.ModuleChoice
-import com.example.musicfy.module.ModuleHost
-import com.example.musicfy.module.ModuleInfo
-import com.example.musicfy.module.ResolveResult
-import com.example.musicfy.module.SignInSpec
-import com.example.musicfy.module.SourceModule
-import com.example.musicfy.module.SourceStream
-import com.example.musicfy.module.StreamFormat
-import com.example.musicfy.module.TrackMatcher
-import com.example.musicfy.module.TrackQuery
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.CatalogTrack
+import com.mochyy.mochymusic.module.DiagnosticStep
+import com.mochyy.mochymusic.module.HttpRequest
+import com.mochyy.mochymusic.module.MatchedTrack
+import com.mochyy.mochymusic.module.ModuleChoice
+import com.mochyy.mochymusic.module.ModuleHost
+import com.mochyy.mochymusic.module.ModuleInfo
+import com.mochyy.mochymusic.module.ResolveResult
+import com.mochyy.mochymusic.module.SignInSpec
+import com.mochyy.mochymusic.module.SourceModule
+import com.mochyy.mochymusic.module.SourceStream
+import com.mochyy.mochymusic.module.StreamFormat
+import com.mochyy.mochymusic.module.TrackMatcher
+import com.mochyy.mochymusic.module.TrackQuery
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
  * tracks.monochrome.st. A song is searched by artist and title, matched like every module matches,
  * and streamed as one FLAC file with byte ranges. No account, no challenge, no DRM.
  *
- * It replaces everything Musicfy had for Monochrome (the Unified Playback API behind a Turnstile
+ * It replaces everything Mochy had for Monochrome (the Unified Playback API behind a Turnstile
  * challenge, the Amazon and legacy TIDAL-proxy instances), which had all stopped answering.
  */
 class MonochromeModule : SourceModule {

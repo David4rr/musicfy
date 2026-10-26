@@ -5,7 +5,7 @@
 // just scale it down to fit. The Card style puts the lines on a coloured card like Spotify's; the
 // Cinematic style sets them straight on the background, word by word.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -68,9 +68,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -193,16 +193,16 @@ private fun shareText(size: Float, weight: FontWeight = FontWeight.Bold, color: 
     TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
 
 @Composable
-private fun MusicfyMark(color: Color, size: Float = 14f) {
+private fun MochyMark(color: Color, size: Float = 14f) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            painter = painterResource(R.drawable.ic_musicfy_mark),
+            painter = painterResource(R.drawable.ic_mochy_mark),
             contentDescription = null,
             tint = color,
             modifier = Modifier.size((size + 2f).dp),
         )
         Spacer(Modifier.width(6.dp))
-        Text("Musicfy", style = shareText(size, color = color, tracking = -0.4f))
+        Text("Mochy", style = shareText(size, color = color, tracking = -0.4f))
     }
 }
 
@@ -262,7 +262,7 @@ private fun CardLayout(session: LyricsShareSession, onCardTap: (() -> Unit)?) {
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(22.dp))
-            MusicfyMark(ink, size = 13f)
+            MochyMark(ink, size = 13f)
         }
     }
 }
@@ -270,7 +270,7 @@ private fun CardLayout(session: LyricsShareSession, onCardTap: (() -> Unit)?) {
 /**
  * The cinematic style: the words straight on the background, each one as its look says - bigger,
  * in capitals, glowing. Lines sit on their own, so a big word only pushes its own line apart. The
- * words shrink to fit when there are many, the Musicfy mark always keeps its place at the bottom,
+ * words shrink to fit when there are many, the Mochy mark always keeps its place at the bottom,
  * and the song slides past the words when it moves above or below them.
  */
 @Composable
@@ -303,7 +303,7 @@ private fun CinematicLayout(session: LyricsShareSession, regions: ShareRegions?)
                     }
                 }
             },
-            { MusicfyMark(ink) },
+            { MochyMark(ink) },
         ),
         modifier = Modifier.fillMaxSize(),
     ) { (headerPart, wordsPart, markPart), constraints ->

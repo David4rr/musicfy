@@ -1,6 +1,6 @@
 // AddMusicSheet.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
@@ -41,21 +41,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetLabel
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.SheetSearchField
-import com.example.musicfy.ui.component.TopToaster
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.SongSortType
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetLabel
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.SheetSearchField
+import com.mochyy.mochymusic.ui.component.TopToaster
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

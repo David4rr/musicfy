@@ -1,6 +1,6 @@
 // HiddenTouchThrough.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size

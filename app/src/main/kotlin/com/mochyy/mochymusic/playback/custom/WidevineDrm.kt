@@ -1,6 +1,6 @@
 // WidevineDrm.kt
 
-package com.example.musicfy.playback.custom
+package com.mochyy.mochymusic.playback.custom
 
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -9,7 +9,7 @@ import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.ExoMediaDrm
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
-import com.example.musicfy.module.LicenseServer
+import com.mochyy.mochymusic.module.LicenseServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Widevine for streams from source modules. The device's own CDM does the decrypting, inside the
- * platform; Musicfy only carries the CDM's challenge to the module, which trades it with its
+ * platform; Mochy only carries the CDM's challenge to the module, which trades it with its
  * service's license server. Multi-session, because Apple's streams change key after the first
  * segment.
  */

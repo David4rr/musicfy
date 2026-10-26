@@ -1,6 +1,6 @@
 // SuggestionModels.kt
 
-package com.example.musicfy.ui.screens.search.suggestions
+package com.mochyy.mochymusic.ui.screens.search.suggestions
 
 data class SuggestionTrack(
     val rank: Int,

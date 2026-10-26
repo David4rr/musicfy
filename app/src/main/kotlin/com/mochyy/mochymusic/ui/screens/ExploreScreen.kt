@@ -1,6 +1,6 @@
 // ExploreScreen.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -58,25 +58,25 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.ListItemHeight
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.NavigationTitle
-import com.example.musicfy.ui.component.YouTubeGridItem
-import com.example.musicfy.ui.component.YouTubeListItem
-import com.example.musicfy.ui.component.shimmer.GridItemPlaceHolder
-import com.example.musicfy.ui.component.shimmer.ShimmerHost
-import com.example.musicfy.ui.component.shimmer.TextPlaceholder
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.utils.SnapLayoutInfoProvider
-import com.example.musicfy.utils.listItemShape
-import com.example.musicfy.viewmodels.ChartsViewModel
-import com.example.musicfy.viewmodels.ExploreViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ListItemHeight
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.NavigationTitle
+import com.mochyy.mochymusic.ui.component.YouTubeGridItem
+import com.mochyy.mochymusic.ui.component.YouTubeListItem
+import com.mochyy.mochymusic.ui.component.shimmer.GridItemPlaceHolder
+import com.mochyy.mochymusic.ui.component.shimmer.ShimmerHost
+import com.mochyy.mochymusic.ui.component.shimmer.TextPlaceholder
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.utils.SnapLayoutInfoProvider
+import com.mochyy.mochymusic.utils.listItemShape
+import com.mochyy.mochymusic.viewmodels.ChartsViewModel
+import com.mochyy.mochymusic.viewmodels.ExploreViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable

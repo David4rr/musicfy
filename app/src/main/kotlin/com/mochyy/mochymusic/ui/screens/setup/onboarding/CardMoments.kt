@@ -1,8 +1,8 @@
 // the hello and done card pages, all motion runs off one frame clock read in draw lambdas so nothing recomposes
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
-import com.example.musicfy.ui.component.rememberDeviceTilt
+import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -52,7 +52,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -205,7 +205,7 @@ internal fun HelloCardStep(
                 },
         ) {
             Text("Hello!", color = Color.White, fontSize = 64.sp, lineHeight = 66.sp, fontWeight = FontWeight.Bold, letterSpacing = (-2).sp)
-            Text("welcome to musicfy!", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text("welcome to mochy!", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

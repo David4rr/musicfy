@@ -1,6 +1,6 @@
 // GenreScreen.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -63,18 +63,18 @@ import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.viewmodels.CommunityPlaylistItem
-import com.example.musicfy.viewmodels.GenreViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.viewmodels.CommunityPlaylistItem
+import com.mochyy.mochymusic.viewmodels.GenreViewModel
 
 private val HeaderHeight = 300.dp
 
@@ -303,7 +303,7 @@ private fun GenreHeader(
                         translationY = progressProvider() * parallaxPx
 
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                            renderEffect = com.example.musicfy.ui.component.BlurEffectCache.get(
+                            renderEffect = com.mochyy.mochymusic.ui.component.BlurEffectCache.get(
                                 60f,
                                 android.graphics.Shader.TileMode.CLAMP,
                             )
@@ -497,7 +497,7 @@ private fun GenreItemCard(
             size = 146.dp,
             circle = item is ArtistItem,
             corner = 10.dp,
-            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+            sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(

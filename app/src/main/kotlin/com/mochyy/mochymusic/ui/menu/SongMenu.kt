@@ -1,6 +1,6 @@
 // SongMenu.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import android.content.Intent
 import android.content.res.Configuration
@@ -60,44 +60,44 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.music.innertube.YouTube
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.importer.ImportedVersions
-import com.example.musicfy.importer.TrackMatch
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.TopToaster
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.LocalSyncUtils
-import com.example.musicfy.R
-import com.example.musicfy.constants.ListItemHeight
-import com.example.musicfy.constants.ListThumbnailSize
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.db.entities.Event
-import com.example.musicfy.db.entities.SpeedDialItem
-import com.example.musicfy.db.entities.PlaylistSong
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.ListDialog
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.Material3MenuGroup
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.NewAction
-import com.example.musicfy.ui.component.NewActionGrid
-import com.example.musicfy.ui.component.SheetActionCard
-import com.example.musicfy.ui.component.SheetActionCardRow
-import com.example.musicfy.ui.component.SheetDownloadCard
-import com.example.musicfy.ui.component.SheetHeaderGap
-import com.example.musicfy.ui.component.SheetHeader
-import com.example.musicfy.ui.component.SheetHeaderButton
-import com.example.musicfy.ui.component.SongListItem
-import com.example.musicfy.ui.component.TextFieldDialog
-import com.example.musicfy.utils.listItemShape
-import com.example.musicfy.ui.utils.ShowMediaInfo
-import com.example.musicfy.viewmodels.CachePlaylistViewModel
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.importer.ImportedVersions
+import com.mochyy.mochymusic.importer.TrackMatch
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.TopToaster
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalSyncUtils
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ListItemHeight
+import com.mochyy.mochymusic.constants.ListThumbnailSize
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.db.entities.Event
+import com.mochyy.mochymusic.db.entities.SpeedDialItem
+import com.mochyy.mochymusic.db.entities.PlaylistSong
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.ListDialog
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.Material3MenuGroup
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.NewAction
+import com.mochyy.mochymusic.ui.component.NewActionGrid
+import com.mochyy.mochymusic.ui.component.SheetActionCard
+import com.mochyy.mochymusic.ui.component.SheetActionCardRow
+import com.mochyy.mochymusic.ui.component.SheetDownloadCard
+import com.mochyy.mochymusic.ui.component.SheetHeaderGap
+import com.mochyy.mochymusic.ui.component.SheetHeader
+import com.mochyy.mochymusic.ui.component.SheetHeaderButton
+import com.mochyy.mochymusic.ui.component.SongListItem
+import com.mochyy.mochymusic.ui.component.TextFieldDialog
+import com.mochyy.mochymusic.utils.listItemShape
+import com.mochyy.mochymusic.ui.utils.ShowMediaInfo
+import com.mochyy.mochymusic.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -777,7 +777,7 @@ fun SongMenu(
  * of it. It used to only refresh this song's own details, so a wrong version stayed wrong and the
  * button looked like it did nothing.
  */
-private fun refetchImported(context: android.content.Context, database: com.example.musicfy.db.MusicDatabase, match: TrackMatch) {
+private fun refetchImported(context: android.content.Context, database: com.mochyy.mochymusic.db.MusicDatabase, match: TrackMatch) {
     ImportedVersions.scope.launch {
         val switched = ImportedVersions.refetch(context.applicationContext, database, match)
         if (switched != null) {

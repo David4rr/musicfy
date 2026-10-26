@@ -1,6 +1,6 @@
 // YouTubeUtils.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 // built once, because resize() runs for every thumbnail on screen and compiling a regex each call is wasted work
 private val YtimgQualityRegex = Regex("(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg")

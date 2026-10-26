@@ -1,6 +1,6 @@
 // LoadingScreen.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 
 @Composable
 fun LoadingScreen(

@@ -1,6 +1,6 @@
 // update notifications, at most three per release, riding the launch-time release check with no background job (see docs/notes/update.md)
 
-package com.example.musicfy.ui.screens.update
+package com.mochyy.mochymusic.ui.screens.update
 
 import android.Manifest
 import android.app.PendingIntent
@@ -13,16 +13,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.example.musicfy.MainActivity
-import com.example.musicfy.R
-import com.example.musicfy.core.updater.GithubRelease
-import com.example.musicfy.core.updater.UpdateState
-import com.example.musicfy.core.updater.getLatestRelease
-import com.example.musicfy.core.updater.isNewerThanInstalled
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.MainActivity
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.updater.GithubRelease
+import com.mochyy.mochymusic.core.updater.UpdateState
+import com.mochyy.mochymusic.core.updater.getLatestRelease
+import com.mochyy.mochymusic.core.updater.isNewerThanInstalled
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
 
 /** intent action the notification opens MainActivity with, it then shows the version sheet */
-const val ActionOpenUpdate = "com.example.musicfy.action.OPEN_UPDATE"
+const val ActionOpenUpdate = "com.mochyy.mochymusic.action.OPEN_UPDATE"
 
 private const val PrefsName = "update_notifications"
 private const val KeyRelease = "release"
@@ -86,8 +86,8 @@ private fun postNotification(context: Context, release: GithubRelease): Boolean 
 
     val summary = changelogSummaryLine(release.body).ifBlank { "Tap to see what's new." }
     val notification = NotificationCompat.Builder(context, ChannelId)
-        .setSmallIcon(R.drawable.musicfy_notification)
-        .setContentTitle("Musicfy ${release.version} is out")
+        .setSmallIcon(R.drawable.mochy_notification)
+        .setContentTitle("Mochy ${release.version} is out")
         .setContentText(summary)
         .setStyle(NotificationCompat.BigTextStyle().bigText(summary))
         .setContentIntent(pending)

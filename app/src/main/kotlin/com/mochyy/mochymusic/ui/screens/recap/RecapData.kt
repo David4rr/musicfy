@@ -3,12 +3,12 @@
 // Everything the monthly recap and the Stats page show, worked out from the play history alone
 // (the `event` table: one row per play of 30 s or more). Nothing here leaves the device.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.runtime.Immutable
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.RecapEventRow
-import com.example.musicfy.db.entities.Song
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.RecapEventRow
+import com.mochyy.mochymusic.db.entities.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek

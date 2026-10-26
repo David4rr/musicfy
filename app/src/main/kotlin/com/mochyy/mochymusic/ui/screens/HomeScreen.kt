@@ -1,8 +1,8 @@
 // HomeScreen.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
-import com.example.musicfy.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -29,11 +29,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.component.GlassPillBackground
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.GlassPillBackground
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.BlurDirection
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.geometry.Rect
@@ -59,8 +59,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.em
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -114,7 +114,7 @@ import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.ui.theme.PlayerColorExtractor
+import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
 import androidx.compose.ui.graphics.toArgb
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
@@ -122,68 +122,68 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.constants.ThumbnailCornerRadius
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.LocalItem
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.models.ArtistGroup
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.ArtistListCard
-import com.example.musicfy.ui.component.BonesHost
-import com.example.musicfy.ui.component.HeroCarousel
-import com.example.musicfy.ui.component.HeroHeightFraction
-import com.example.musicfy.ui.component.HomeCardCornerRadius
-import com.example.musicfy.ui.component.HomeCardSpacing
-import com.example.musicfy.ui.component.HomeContentInset
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.homeRowHeight
-import com.example.musicfy.ui.component.HomeSectionBones
-import com.example.musicfy.ui.component.HeroCarouselBones
-import com.example.musicfy.ui.launch.launchMarkTarget
-import com.example.musicfy.ui.launch.launchRise
-import com.example.musicfy.ui.launch.rememberLaunchHold
-import com.example.musicfy.ui.launch.ReportLaunchHomeComposed
-import com.example.musicfy.ui.component.HomeSectionTitle
-import com.example.musicfy.ui.component.HomeTrackRow
-import com.example.musicfy.ui.component.HomeVideoCard
-import com.example.musicfy.utils.ArtistVideos
-import com.example.musicfy.utils.FeedVideoKind
-import com.example.musicfy.utils.HomeVideo
-import com.example.musicfy.viewmodels.HomeCategory
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.LocalItem
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.models.ArtistGroup
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.ArtistListCard
+import com.mochyy.mochymusic.ui.component.BonesHost
+import com.mochyy.mochymusic.ui.component.HeroCarousel
+import com.mochyy.mochymusic.ui.component.HeroHeightFraction
+import com.mochyy.mochymusic.ui.component.HomeCardCornerRadius
+import com.mochyy.mochymusic.ui.component.HomeCardSpacing
+import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.HomeCoverCard
+import com.mochyy.mochymusic.ui.component.homeRowHeight
+import com.mochyy.mochymusic.ui.component.HomeSectionBones
+import com.mochyy.mochymusic.ui.component.HeroCarouselBones
+import com.mochyy.mochymusic.ui.launch.launchMarkTarget
+import com.mochyy.mochymusic.ui.launch.launchRise
+import com.mochyy.mochymusic.ui.launch.rememberLaunchHold
+import com.mochyy.mochymusic.ui.launch.ReportLaunchHomeComposed
+import com.mochyy.mochymusic.ui.component.HomeSectionTitle
+import com.mochyy.mochymusic.ui.component.HomeTrackRow
+import com.mochyy.mochymusic.ui.component.HomeVideoCard
+import com.mochyy.mochymusic.utils.ArtistVideos
+import com.mochyy.mochymusic.utils.FeedVideoKind
+import com.mochyy.mochymusic.utils.HomeVideo
+import com.mochyy.mochymusic.viewmodels.HomeCategory
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.flow.drop
-import com.example.musicfy.ui.component.LikedSongsThumbnail
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.PlaylistThumbnail
-import com.example.musicfy.ui.component.RevealSeenState
-import com.example.musicfy.ui.component.containerTransformSource
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.AlbumMenu
-import com.example.musicfy.ui.menu.ArtistMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeArtistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.utils.SnapLayoutInfoProvider
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.joinByBullet
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.CommunityPlaylistItem
-import com.example.musicfy.viewmodels.HomeViewModel
+import com.mochyy.mochymusic.ui.component.LikedSongsThumbnail
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.PlaylistThumbnail
+import com.mochyy.mochymusic.ui.component.RevealSeenState
+import com.mochyy.mochymusic.ui.component.containerTransformSource
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.AlbumMenu
+import com.mochyy.mochymusic.ui.menu.ArtistMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.utils.SnapLayoutInfoProvider
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.joinByBullet
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.CommunityPlaylistItem
+import com.mochyy.mochymusic.viewmodels.HomeViewModel
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -191,7 +191,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.example.musicfy.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.component.navigateToTab
 
 sealed class HomeSection(val id: String) {
     data object RecentlyPlayed : HomeSection("recently_played")
@@ -568,8 +568,8 @@ private fun HomeShell() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_musicfy_mark),
-                contentDescription = "Musicfy",
+                painter = painterResource(R.drawable.ic_mochy_mark),
+                contentDescription = "Mochy",
                 tint = Color.White,
                 modifier = Modifier
                     .launchMarkTarget()
@@ -621,7 +621,7 @@ fun HomeScreen(
 ) {
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
-    val playerBottomSheetState = com.example.musicfy.ui.component.LocalPlayerBottomSheetState.current
+    val playerBottomSheetState = com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState.current
     // the player service comes up a beat after the first frame; Home's skeleton doesn't wait for it
     val playerConnection = LocalPlayerConnection.current ?: run {
         HomeShell()
@@ -650,7 +650,7 @@ fun HomeScreen(
             .shuffled()
             .take(2)
             .map { playlist ->
-                com.example.musicfy.ui.component.PlaylistPickItem(
+                com.mochyy.mochymusic.ui.component.PlaylistPickItem(
                     id = playlist.id,
                     name = playlist.playlist.name,
                     thumbnailUrl = playlist.playlist.thumbnailUrl ?: playlist.thumbnails.firstOrNull(),
@@ -675,8 +675,8 @@ fun HomeScreen(
             .filter { it.songCount > 0 && it.id != "liked" }
             .take(5)
             .map {
-                com.example.musicfy.ui.component.StarterItem(
-                    kind = com.example.musicfy.ui.component.StarterItem.Kind.Playlist,
+                com.mochyy.mochymusic.ui.component.StarterItem(
+                    kind = com.mochyy.mochymusic.ui.component.StarterItem.Kind.Playlist,
                     id = it.id,
                     title = it.playlist.name,
                     detail = "${it.songCount} songs",
@@ -689,11 +689,11 @@ fun HomeScreen(
                 // still being asked for; the hero holds its bones meanwhile
                 songs == null -> emptyList()
                 songs.isNotEmpty() -> songs.map {
-                    com.example.musicfy.ui.component.StarterSongItem(it.song, it.artistName, it.artistThumbnail)
+                    com.mochyy.mochymusic.ui.component.StarterSongItem(it.song, it.artistName, it.artistThumbnail)
                 }
                 else -> libraryArtists.map {
-                    com.example.musicfy.ui.component.StarterItem(
-                        kind = com.example.musicfy.ui.component.StarterItem.Kind.Artist,
+                    com.mochyy.mochymusic.ui.component.StarterItem(
+                        kind = com.mochyy.mochymusic.ui.component.StarterItem.Kind.Artist,
                         id = it.id,
                         title = it.artist.name,
                         detail = "",
@@ -1062,7 +1062,7 @@ fun HomeScreen(
             group = group,
             onClick = {
                 group.artistId?.let {
-                    com.example.musicfy.utils.ArtistPageCache.putPicks(it, group)
+                    com.mochyy.mochymusic.utils.ArtistPageCache.putPicks(it, group)
                     navController.navigate("artist/$it/similar")
                 }
             },
@@ -1238,7 +1238,7 @@ fun HomeScreen(
             ) {
                 val backgroundColor = Color.Black
                 CompositionLocalProvider(
-                    com.example.musicfy.ui.component.LocalGridItemPadding provides 0.dp
+                    com.mochyy.mochymusic.ui.component.LocalGridItemPadding provides 0.dp
                 ) {
                     LazyColumn(
                         modifier = Modifier.glassRoot(
@@ -1707,8 +1707,8 @@ fun HomeScreen(
                     // it's also where the launch intro lands the splash mark
                     Box(contentAlignment = Alignment.CenterStart) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_musicfy_mark),
-                            contentDescription = "Musicfy",
+                            painter = painterResource(R.drawable.ic_mochy_mark),
+                            contentDescription = "Mochy",
                             tint = Color.White,
                             modifier = Modifier
                                 .launchMarkTarget()

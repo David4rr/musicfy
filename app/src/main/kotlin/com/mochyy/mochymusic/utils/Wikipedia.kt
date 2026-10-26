@@ -1,6 +1,6 @@
 // Wikipedia.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

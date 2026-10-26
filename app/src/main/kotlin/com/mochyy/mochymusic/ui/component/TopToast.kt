@@ -6,7 +6,7 @@
 // once above the app, draws whatever it holds. A new toast replaces the one showing; a swipe up
 // puts one away early.
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -63,9 +63,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

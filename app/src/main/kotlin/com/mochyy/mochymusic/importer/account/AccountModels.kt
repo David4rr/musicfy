@@ -1,10 +1,10 @@
 // AccountModels.kt
 
-package com.example.musicfy.importer.account
+package com.mochyy.mochymusic.importer.account
 
-import com.example.musicfy.importer.ImportedTrack
-import com.example.musicfy.importer.obj
-import com.example.musicfy.importer.string
+import com.mochyy.mochymusic.importer.ImportedTrack
+import com.mochyy.mochymusic.importer.obj
+import com.mochyy.mochymusic.importer.string
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -84,7 +84,7 @@ internal fun List<RemotePlaylist>.named(name: String): RemotePlaylist? {
 /** A signed-in account's library, read on demand. */
 interface AccountLibrary {
     val accountName: String?
-    /** The account's own picture, to start the Musicfy profile from. */
+    /** The account's own picture, to start the Mochy profile from. */
     val accountPhotoUrl: String? get() = null
     suspend fun playlists(): List<RemotePlaylist>
     suspend fun tracks(playlist: RemotePlaylist): List<ImportedTrack>
@@ -106,7 +106,7 @@ internal const val DESKTOP_USER_AGENT =
  * The pseudo header under which the sign-in page reports a query Spotify's web player made, as JSON
  * {name, hash, variables, url, post}, so the app can send the same query for the rest of a list.
  */
-const val WEB_PLAYER_QUERY_HEADER = "musicfy-web-player-query"
+const val WEB_PLAYER_QUERY_HEADER = "mochy-web-player-query"
 
 /** One query the web player was seen making, ready to be sent again with other variables. */
 class WebPlayerQuery(

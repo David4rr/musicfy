@@ -1,6 +1,6 @@
 // OnlineSearchSuggestionViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -11,12 +11,12 @@ import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.utils.YouTubeUrlParser
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.SearchHistory
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.SearchHistory
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,7 +50,7 @@ constructor(
                                 history = history,
                             )
                         }
-                    } else if (com.example.musicfy.utils.OfflineMode.isOn) {
+                    } else if (com.mochyy.mochymusic.utils.OfflineMode.isOn) {
                         // offline: the library is all there is to search, shown where YouTube's
                         // top results would be
                         combine(
@@ -62,7 +62,7 @@ constructor(
                         ) { history, songs, albums, artists, playlists ->
                             SearchSuggestionViewState(
                                 history = history,
-                                items = com.example.musicfy.ui.screens.library.searchLibrary(
+                                items = com.mochyy.mochymusic.ui.screens.library.searchLibrary(
                                     query, songs, artists, albums, playlists,
                                 ),
                             )

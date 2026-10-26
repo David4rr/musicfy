@@ -1,6 +1,6 @@
 // CastManager.kt
 
-package com.example.musicfy.cast
+package com.mochyy.mochymusic.cast
 
 import android.content.Context
 import androidx.media3.cast.CastPlayer

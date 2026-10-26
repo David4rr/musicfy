@@ -1,6 +1,6 @@
 // storage → manage downloads: every downloaded song with its size, suggestions of what to clear first, pick songs to remove them together
 
-package com.example.musicfy.ui.screens.settings.storage
+package com.mochyy.mochymusic.ui.screens.settings.storage
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -51,18 +51,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.musicfy.ui.component.BoneColor
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetLabel
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.SheetSearchField
-import com.example.musicfy.ui.component.detail.PlaylistSelectTick
-import com.example.musicfy.ui.screens.library.showConfirm
-import com.example.musicfy.ui.screens.playlist.SheetNote
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.viewmodels.DownloadedSong
-import com.example.musicfy.viewmodels.StorageViewModel
+import com.mochyy.mochymusic.ui.component.BoneColor
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetLabel
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.SheetSearchField
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
+import com.mochyy.mochymusic.ui.screens.library.showConfirm
+import com.mochyy.mochymusic.ui.screens.playlist.SheetNote
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.viewmodels.DownloadedSong
+import com.mochyy.mochymusic.viewmodels.StorageViewModel
 
 /** how many songs each suggestion shelf shows */
 private const val ShelfSize = 4

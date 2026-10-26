@@ -1,6 +1,6 @@
 // StreamFailureUi.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.collectAsState
-import com.example.musicfy.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalPlayerConnection
 import kotlin.math.ceil
 
 /** The red of a failed stream's countdown. */

@@ -1,6 +1,6 @@
 // SpeedDialGridItem.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
-import com.example.musicfy.R
-import com.example.musicfy.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
 
 @Composable
 fun SpeedDialGridItem(

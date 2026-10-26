@@ -1,6 +1,6 @@
 // LocalSearchScreen.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -44,28 +44,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.CONTENT_TYPE_LIST
-import com.example.musicfy.constants.ListItemHeight
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.AlbumListItem
-import com.example.musicfy.ui.component.ArtistListItem
-import com.example.musicfy.ui.component.ChipsRow
-import com.example.musicfy.ui.component.EmptyPlaceholder
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.PlaylistListItem
-import com.example.musicfy.ui.component.SongListItem
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.utils.listItemShape
-import com.example.musicfy.viewmodels.LocalFilter
-import com.example.musicfy.viewmodels.LocalSearchViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CONTENT_TYPE_LIST
+import com.mochyy.mochymusic.constants.ListItemHeight
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.AlbumListItem
+import com.mochyy.mochymusic.ui.component.ArtistListItem
+import com.mochyy.mochymusic.ui.component.ChipsRow
+import com.mochyy.mochymusic.ui.component.EmptyPlaceholder
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.PlaylistListItem
+import com.mochyy.mochymusic.ui.component.SongListItem
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.utils.listItemShape
+import com.mochyy.mochymusic.viewmodels.LocalFilter
+import com.mochyy.mochymusic.viewmodels.LocalSearchViewModel
 import kotlinx.coroutines.flow.drop
 
 @OptIn(ExperimentalFoundationApi::class)

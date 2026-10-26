@@ -1,6 +1,6 @@
 // SuggestionRegionSheet.kt
 
-package com.example.musicfy.ui.screens.search.suggestions
+package com.mochyy.mochymusic.ui.screens.search.suggestions
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
@@ -23,7 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.SuggestionRegionSlugToName
+import com.mochyy.mochymusic.constants.SuggestionRegionSlugToName
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

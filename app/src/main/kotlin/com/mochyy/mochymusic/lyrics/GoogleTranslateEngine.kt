@@ -12,7 +12,7 @@
 //   - The response is a deeply nested JSON array, not an object. It is parsed positionally.
 //   - Long requests get truncated, so lines are sent in batches rather than one giant blob.
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp

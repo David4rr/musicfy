@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -17,22 +17,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.DisableVideoAutoplayKey
-import com.example.musicfy.constants.DontSkipOnFailureKey
-import com.example.musicfy.constants.LocalSongAutoMetadataKey
-import com.example.musicfy.constants.OfflineModeKey
-import com.example.musicfy.constants.StreamFailureTimeoutKey
-import com.example.musicfy.ui.screens.audiolab.LabCard
-import com.example.musicfy.ui.screens.audiolab.LabSlider
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.component.SubSettingsSearchBar
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.DisableVideoAutoplayKey
+import com.mochyy.mochymusic.constants.DontSkipOnFailureKey
+import com.mochyy.mochymusic.constants.LocalSongAutoMetadataKey
+import com.mochyy.mochymusic.constants.OfflineModeKey
+import com.mochyy.mochymusic.constants.StreamFailureTimeoutKey
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCard
+import com.mochyy.mochymusic.ui.screens.audiolab.LabSlider
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Composable
 fun GeneralSettingsScreen(navController: NavController) {

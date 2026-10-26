@@ -1,11 +1,11 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /**
  * The studio's type: Inter at the app's own tracking, in a handful of sizes, so the selector, the

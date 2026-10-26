@@ -1,6 +1,6 @@
 // CoilBitmapLoader.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import android.content.Context
 import android.graphics.Bitmap

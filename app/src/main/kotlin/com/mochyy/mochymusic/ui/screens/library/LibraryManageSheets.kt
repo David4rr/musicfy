@@ -4,7 +4,7 @@
 // other action, as in the mocks. Anything that takes music out of the library asks once more on a
 // sheet pushed over this one.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
@@ -30,16 +30,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetIcon
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.viewmodels.LibraryImportViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetIcon
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.viewmodels.LibraryImportViewModel
 
 /**
  * [sources] are the services that have brought music in, one "Delete ... imports" row each.

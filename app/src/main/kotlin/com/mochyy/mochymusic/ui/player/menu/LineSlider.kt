@@ -1,6 +1,6 @@
 // LineSlider.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures

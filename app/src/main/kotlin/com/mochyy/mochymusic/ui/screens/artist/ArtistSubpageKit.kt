@@ -4,7 +4,7 @@
 // them) are playlist pages with the artist's banner as their cover. These are the parts they share:
 // the title line with the grid / list toggles, the two-up grid, and its square and video cells.
 
-package com.example.musicfy.ui.screens.artist
+package com.mochyy.mochymusic.ui.screens.artist
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -48,22 +48,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.BoneColor
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.ItemThumbnail
-import com.example.musicfy.ui.component.containerTransformSource
-import com.example.musicfy.ui.component.detail.PillContent
-import com.example.musicfy.ui.component.detail.PillFill
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
-import com.example.musicfy.ui.component.detail.PlaylistTitleStyle
-import com.example.musicfy.ui.component.detail.TrackSubtitleStyle
-import com.example.musicfy.ui.component.detail.TrackTitleStyle
-import com.example.musicfy.ui.component.detail.playlistCoverHeight
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.ArtistPageCache
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BoneColor
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.ItemThumbnail
+import com.mochyy.mochymusic.ui.component.containerTransformSource
+import com.mochyy.mochymusic.ui.component.detail.PillContent
+import com.mochyy.mochymusic.ui.component.detail.PillFill
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.detail.PlaylistStatsStyle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTitleStyle
+import com.mochyy.mochymusic.ui.component.detail.TrackSubtitleStyle
+import com.mochyy.mochymusic.ui.component.detail.TrackTitleStyle
+import com.mochyy.mochymusic.ui.component.detail.playlistCoverHeight
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.ArtistPageCache
 
 private val CellShape = RoundedCornerShape(18.dp)
 internal val SubpageGridGap = 14.dp
@@ -284,7 +284,7 @@ internal fun SubpageVideoCell(
                         .fillMaxSize()
                         .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.1f), Color.Black.copy(alpha = 0.45f))))
                 )
-                com.example.musicfy.ui.component.PlayingIndicatorBox(
+                com.mochyy.mochymusic.ui.component.PlayingIndicatorBox(
                     isActive = true,
                     playWhenReady = isPlaying,
                     shape = RoundedCornerShape(14.dp),

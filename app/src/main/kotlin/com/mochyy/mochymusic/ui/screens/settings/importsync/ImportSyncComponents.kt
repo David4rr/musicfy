@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -40,14 +40,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.constants.InnerTubeCookieKey
-import com.example.musicfy.importer.LinkSource
-import com.example.musicfy.importer.ParsedImport
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.ImportSyncViewModel
-import com.example.musicfy.viewmodels.PendingImport
+import com.mochyy.mochymusic.constants.InnerTubeCookieKey
+import com.mochyy.mochymusic.importer.LinkSource
+import com.mochyy.mochymusic.importer.ParsedImport
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
+import com.mochyy.mochymusic.viewmodels.PendingImport
 import com.music.innertube.utils.parseCookieString
 
 const val ImportSyncRoute = "import_sync"
@@ -72,7 +72,7 @@ fun ImportInfoCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field),
+        colors = CardDefaults.cardColors(containerColor = com.mochyy.mochymusic.ui.screens.search.SearchColors.Field),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp), content = content)

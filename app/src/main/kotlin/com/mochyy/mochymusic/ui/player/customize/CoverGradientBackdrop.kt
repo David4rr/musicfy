@@ -1,6 +1,6 @@
 // CoverGradientBackdrop.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.background
@@ -22,14 +22,14 @@ import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.size.Size as CoilSize
-import com.example.musicfy.ui.player.BackdropBlurTransformation
-import com.example.musicfy.ui.player.LocalCrossfadeShown
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.player.BackdropBlurTransformation
+import com.mochyy.mochymusic.ui.player.LocalCrossfadeShown
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.isActive
-import com.example.musicfy.ui.component.createAgslShader
-import com.example.musicfy.ui.component.setAgslUniform
-import com.example.musicfy.ui.component.asAgslPaintShader
-import com.example.musicfy.ui.component.setAgslInputShader
+import com.mochyy.mochymusic.ui.component.createAgslShader
+import com.mochyy.mochymusic.ui.component.setAgslUniform
+import com.mochyy.mochymusic.ui.component.asAgslPaintShader
+import com.mochyy.mochymusic.ui.component.setAgslInputShader
 import coil3.toBitmap
 import coil3.imageLoader
 import androidx.compose.ui.graphics.ShaderBrush

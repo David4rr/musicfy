@@ -1,6 +1,6 @@
 // Items.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -86,26 +86,26 @@ import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.LocalCropAlbumArt
-import com.example.musicfy.R
-import com.example.musicfy.constants.GridItemSize
-import com.example.musicfy.constants.GridThumbnailHeight
-import com.example.musicfy.constants.ListItemHeight
-import com.example.musicfy.constants.ListThumbnailSize
-import com.example.musicfy.constants.SmallGridThumbnailHeight
-import com.example.musicfy.constants.ThumbnailCornerRadius
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.joinByBullet
-import com.example.musicfy.utils.makeTimeString
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalCropAlbumArt
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.GridItemSize
+import com.mochyy.mochymusic.constants.GridThumbnailHeight
+import com.mochyy.mochymusic.constants.ListItemHeight
+import com.mochyy.mochymusic.constants.ListThumbnailSize
+import com.mochyy.mochymusic.constants.SmallGridThumbnailHeight
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.joinByBullet
+import com.mochyy.mochymusic.utils.makeTimeString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
@@ -116,7 +116,7 @@ const val ActiveBoxAlpha = 0.6f
 
 @Composable
 fun currentGridThumbnailHeight(): Dp {
-    val gridItemSize = com.example.musicfy.LocalGridItemSize.current
+    val gridItemSize = com.mochyy.mochymusic.LocalGridItemSize.current
     return if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
 }
 
@@ -513,7 +513,7 @@ fun SongGridItem(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
+            shape = RoundedCornerShape(com.mochyy.mochymusic.constants.GridThumbnailCornerRadius),
             modifier = Modifier.size(gridHeight)
         )
         if (!isActive) {
@@ -697,7 +697,7 @@ fun AlbumGridItem(
             thumbnailUrl = album.album.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
+            shape = RoundedCornerShape(com.mochyy.mochymusic.constants.GridThumbnailCornerRadius),
             modifier = Modifier.homeSharedElement(sharedElementKey),
         )
     },
@@ -834,7 +834,7 @@ fun PlaylistGridItem(
                 size = width,
                 modifier = Modifier.homeSharedElement(
                     sharedElementKey,
-                    com.example.musicfy.constants.GridThumbnailCornerRadius,
+                    com.mochyy.mochymusic.constants.GridThumbnailCornerRadius,
                     coverUrl = playlist.thumbnails.firstOrNull(),
                 ),
                 placeHolder = {
@@ -858,7 +858,7 @@ fun PlaylistGridItem(
                     )
                 }
             },
-            shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius)
+            shape = RoundedCornerShape(com.mochyy.mochymusic.constants.GridThumbnailCornerRadius)
         )
         }
     },
@@ -1039,10 +1039,10 @@ fun YouTubeGridItem(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
+            shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(com.mochyy.mochymusic.constants.GridThumbnailCornerRadius),
             modifier = Modifier.homeSharedElement(
                 if (item is AlbumItem || item is PlaylistItem) sharedElementKey else null,
-                com.example.musicfy.constants.GridThumbnailCornerRadius,
+                com.mochyy.mochymusic.constants.GridThumbnailCornerRadius,
                 coverUrl = item.thumbnail,
             ),
         )
@@ -1565,7 +1565,7 @@ object Icon {
 @Composable
 fun LikedSongsThumbnail(
     size: Dp,
-    shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
+    shape: Shape = RoundedCornerShape(com.mochyy.mochymusic.constants.ThumbnailCornerRadius),
     modifier: Modifier = Modifier,
 ) {
     LikedCover(

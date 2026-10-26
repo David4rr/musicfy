@@ -1,6 +1,6 @@
 // BrowseScreen.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
  import androidx.compose.foundation.ExperimentalFoundationApi
  import androidx.compose.foundation.combinedClickable
@@ -26,23 +26,23 @@ package com.example.musicfy.ui.screens
  import com.music.innertube.models.AlbumItem
  import com.music.innertube.models.ArtistItem
  import com.music.innertube.models.PlaylistItem
- import com.example.musicfy.LocalPlayerAwareWindowInsets
- import com.example.musicfy.LocalPlayerConnection
- import com.example.musicfy.R
- import com.example.musicfy.constants.GridItemSize
- import com.example.musicfy.constants.GridItemsSizeKey
- import com.example.musicfy.constants.GridThumbnailHeight
- import com.example.musicfy.ui.component.IconButton
- import com.example.musicfy.ui.component.LocalMenuState
- import com.example.musicfy.ui.component.YouTubeGridItem
- import com.example.musicfy.ui.component.shimmer.GridItemPlaceHolder
- import com.example.musicfy.ui.component.shimmer.ShimmerHost
- import com.example.musicfy.ui.menu.YouTubeAlbumMenu
- import com.example.musicfy.ui.menu.YouTubeArtistMenu
- import com.example.musicfy.ui.menu.YouTubePlaylistMenu
- import com.example.musicfy.ui.utils.backToMain
- import com.example.musicfy.utils.rememberEnumPreference
- import com.example.musicfy.viewmodels.BrowseViewModel
+ import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+ import com.mochyy.mochymusic.LocalPlayerConnection
+ import com.mochyy.mochymusic.R
+ import com.mochyy.mochymusic.constants.GridItemSize
+ import com.mochyy.mochymusic.constants.GridItemsSizeKey
+ import com.mochyy.mochymusic.constants.GridThumbnailHeight
+ import com.mochyy.mochymusic.ui.component.IconButton
+ import com.mochyy.mochymusic.ui.component.LocalMenuState
+ import com.mochyy.mochymusic.ui.component.YouTubeGridItem
+ import com.mochyy.mochymusic.ui.component.shimmer.GridItemPlaceHolder
+ import com.mochyy.mochymusic.ui.component.shimmer.ShimmerHost
+ import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+ import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+ import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+ import com.mochyy.mochymusic.ui.utils.backToMain
+ import com.mochyy.mochymusic.utils.rememberEnumPreference
+ import com.mochyy.mochymusic.viewmodels.BrowseViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
  @Composable

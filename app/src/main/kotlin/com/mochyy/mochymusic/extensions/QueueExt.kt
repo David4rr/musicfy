@@ -1,16 +1,16 @@
 // QueueExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.models.PersistQueue
-import com.example.musicfy.models.QueueData
-import com.example.musicfy.models.QueueType
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.LocalAlbumRadio
-import com.example.musicfy.playback.queues.Queue
-import com.example.musicfy.playback.queues.YouTubeAlbumRadio
-import com.example.musicfy.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.models.PersistQueue
+import com.mochyy.mochymusic.models.QueueData
+import com.mochyy.mochymusic.models.QueueType
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.playback.queues.LocalAlbumRadio
+import com.mochyy.mochymusic.playback.queues.Queue
+import com.mochyy.mochymusic.playback.queues.YouTubeAlbumRadio
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 
 fun Queue.toPersistQueue(
     title: String?,

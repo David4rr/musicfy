@@ -1,11 +1,11 @@
 // NetworkReload.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import com.example.musicfy.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
 
 private const val MinOfflineDurationMs = 3000L
 

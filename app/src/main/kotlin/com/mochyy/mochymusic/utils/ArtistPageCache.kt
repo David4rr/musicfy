@@ -1,8 +1,8 @@
 // ArtistPageCache.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
-import com.example.musicfy.models.ArtistGroup
+import com.mochyy.mochymusic.models.ArtistGroup
 import com.music.innertube.pages.ArtistPage
 import java.util.concurrent.ConcurrentHashMap
 

@@ -2,7 +2,7 @@
 //
 // The monthly recap: everything after the barcode is scratched. It runs in a full-screen dialog
 // window so it can cover the nav bar and mini player, and it starts and ends on exactly what the
-// Musicfy page is showing - the same card, the same giant column, the same dots - so the window
+// Mochy page is showing - the same card, the same giant column, the same dots - so the window
 // never shows as a seam: it fades in over an identical picture, and on the way out it shrinks back
 // into the page header before it goes.
 //
@@ -11,11 +11,11 @@
 // gets an enter and exit 0..1 and lays itself out from those. All of it is read in draw/layer
 // lambdas, so a running story redraws without recomposing.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.ui.unit.IntSize
 import android.os.SystemClock
-import com.example.musicfy.ui.component.rememberDeviceTilt
+import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.WindowManager
@@ -99,12 +99,12 @@ import androidx.core.view.WindowCompat
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
-import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfileIdCard
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -236,7 +236,7 @@ internal class StoryState(val geo: StoryGeometry, startCard: Rect) {
     var paletteTo by mutableStateOf(RecapPalette.Fallback)
     val paletteMix = Animatable(1f)
 
-    val text = GiantTextState("MUSICFY", half = 4, filledRows = 0..0).also { it.color = { textColor() } }
+    val text = GiantTextState("MOCHY", half = 4, filledRows = 0..0).also { it.color = { textColor() } }
     val logoSide = Animatable(0f)
 
     val cardX = Animatable(startCard.left)
@@ -601,7 +601,7 @@ private suspend fun animateDragBack(s: StoryState) {
 private fun StoryLogo(s: StoryState) {
     val geo = s.geo
     Icon(
-        painter = painterResource(R.drawable.ic_musicfy_mark),
+        painter = painterResource(R.drawable.ic_mochy_mark),
         contentDescription = null,
         tint = Color.White,
         modifier = Modifier
@@ -825,7 +825,7 @@ internal class StoryDirector(
             { s.text.scale.go(0.74f, 1200, androidx.compose.animation.core.FastOutSlowInEasing) },
             {
                 for (i in listOf(-2, 2, -3, 3, -4, 4)) {
-                    launch { s.text.row(i).slideIn("MUSICFY", 1000) }
+                    launch { s.text.row(i).slideIn("MOCHY", 1000) }
                     delay(70)
                 }
             },
@@ -1007,7 +1007,7 @@ internal class StoryDirector(
             { s.text.alpha.go(0.9f, 1200, delayMs = 300) },
             {
                 for (i in -4..4) {
-                    launch { s.text.row(i).slideIn("MUSICFY", 1000) }
+                    launch { s.text.row(i).slideIn("MOCHY", 1000) }
                     delay(50)
                 }
             },
@@ -1031,7 +1031,7 @@ internal class StoryDirector(
             { s.text.alpha.go(1f, 600) },
             {
                 for (i in -4..4) if (i != 0) launch { s.text.row(i).slideOut(560) }
-                if (row0.word != "MUSICFY" || row0.fill.value < 1f) row0.slideIn("MUSICFY", 700)
+                if (row0.word != "MOCHY" || row0.fill.value < 1f) row0.slideIn("MOCHY", 700)
             },
             { s.text.rotation.go(90f, 1050, delayMs = 150) },
             { s.text.scale.go(1f, 1050, delayMs = 150) },

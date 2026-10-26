@@ -1,14 +1,14 @@
-package com.example.musicfy.playback.audio
+package com.mochyy.mochymusic.playback.audio
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
-import com.example.musicfy.crossmix.CrossmixRole
-import com.example.musicfy.crossmix.CrossmixStyle
-import com.example.musicfy.crossmix.FxParams
-import com.example.musicfy.crossmix.evaluate
-import com.example.musicfy.crossmix.headroom
-import com.example.musicfy.constants.TransportEffect
+import com.mochyy.mochymusic.crossmix.CrossmixRole
+import com.mochyy.mochymusic.crossmix.CrossmixStyle
+import com.mochyy.mochymusic.crossmix.FxParams
+import com.mochyy.mochymusic.crossmix.evaluate
+import com.mochyy.mochymusic.crossmix.headroom
+import com.mochyy.mochymusic.constants.TransportEffect
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI

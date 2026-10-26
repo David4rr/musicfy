@@ -8,9 +8,9 @@
 // the nav bar; a near-identical-but-not-quite header would read as a bug, and sharing the actual
 // implementation is the only way to guarantee the collapse feels the same in both places.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
-import com.example.musicfy.ui.component.containerTransformSource
+import com.mochyy.mochymusic.ui.component.containerTransformSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -63,15 +63,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.HomeTrackRow
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.HomeTrackRow
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.em
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
-import com.example.musicfy.ui.screens.search.SearchTitleBlockHeight
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.ui.screens.search.SearchHorizontalPadding
+import com.mochyy.mochymusic.ui.screens.search.SearchTitleBlockHeight
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.launch
 
 /** Title + subtitle block height, for the collapsing header on Library screens. */
@@ -481,9 +481,9 @@ fun LibraryPlayBar(
         modifier = modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        com.example.musicfy.ui.component.detail.PlayPill(isPlaying = false, onClick = onPlay)
+        com.mochyy.mochymusic.ui.component.detail.PlayPill(isPlaying = false, onClick = onPlay)
         Spacer(modifier = Modifier.width(9.dp))
-        com.example.musicfy.ui.component.detail.CircleAction(
+        com.mochyy.mochymusic.ui.component.detail.CircleAction(
             icon = R.drawable.shuffle,
             contentDescription = "Shuffle",
             onClick = onMore,

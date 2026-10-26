@@ -1,4 +1,4 @@
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals

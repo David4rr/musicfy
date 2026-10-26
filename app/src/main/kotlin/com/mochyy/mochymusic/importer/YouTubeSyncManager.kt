@@ -1,17 +1,17 @@
 // YouTubeSyncManager.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
-import com.example.musicfy.constants.YtPullHistoryKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Event
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.utils.SyncUtils
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.YtPullHistoryKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Event
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.utils.SyncUtils
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import com.music.innertube.YouTube
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException

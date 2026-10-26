@@ -1,13 +1,13 @@
 // PlayerSliderColors.kt
 
-package com.example.musicfy.ui.theme
+package com.mochyy.mochymusic.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.example.musicfy.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
 
 object PlayerSliderColors {
 

@@ -1,10 +1,10 @@
 // PresenceImages.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
-import com.example.musicfy.core.updater.GithubOwner
-import com.example.musicfy.core.updater.GithubRepo
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.core.updater.GithubOwner
+import com.mochyy.mochymusic.core.updater.GithubRepo
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.roundToInt
 
 /** A status picture before Discord has it: what to show, not yet where it lives. */
@@ -34,7 +34,7 @@ object PresenceImages {
     // bump with VERSION in the script: Discord keeps its own copy of each address
     private const val AssetsBase = "https://raw.githubusercontent.com/$GithubOwner/$GithubRepo/main/assets/discord/v1"
 
-    const val LogoUrl = "$AssetsBase/musicfy.png"
+    const val LogoUrl = "$AssetsBase/mochy.png"
 
     fun statusUrl(status: PresencePicture.Status): String {
         val state = if (status.playing) "playing" else "paused"

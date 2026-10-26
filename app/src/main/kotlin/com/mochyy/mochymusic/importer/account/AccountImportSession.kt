@@ -1,17 +1,17 @@
 // AccountImportSession.kt
 
-package com.example.musicfy.importer.account
+package com.mochyy.mochymusic.importer.account
 
 import android.content.Context
-import com.example.musicfy.constants.AccountNameKey
-import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.ImportedTrack
-import com.example.musicfy.importer.ParsedImport
-import com.example.musicfy.importer.PlaylistOrigin
-import com.example.musicfy.importer.ResyncRead
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.AccountNameKey
+import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.ImportedTrack
+import com.mochyy.mochymusic.importer.ParsedImport
+import com.mochyy.mochymusic.importer.PlaylistOrigin
+import com.mochyy.mochymusic.importer.ResyncRead
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import com.music.innertube.YouTube
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

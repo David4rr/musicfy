@@ -31,7 +31,7 @@ data class AudioscrobblerSession(val name: String, val key: String)
 
 /** what the service said went wrong, by its own error codes (see the last.fm api docs) */
 class AudioscrobblerException(val code: Int, message: String) : Exception(message) {
-    /** the account took back musicfy's access or the session is gone: sign in again */
+    /** the account took back mochy's access or the session is gone: sign in again */
     val isSignedOut: Boolean get() = code == INVALID_SESSION
 
     /** turned down for good, like a song with no title, sending it again won't help */
@@ -40,7 +40,7 @@ class AudioscrobblerException(val code: Int, message: String) : Exception(messag
     /** worth trying the same request again later */
     val isTemporary: Boolean get() = code in TemporaryCodes
 
-    /** signing in: the user hasn't allowed musicfy on the page yet */
+    /** signing in: the user hasn't allowed mochy on the page yet */
     val isWaitingForUser: Boolean get() = code == TOKEN_NOT_AUTHORIZED
 
     /** signing in: the token is too old or unknown so a new one is needed */
@@ -72,10 +72,10 @@ class Audioscrobbler(
     /** a request token, the first step of signing in */
     suspend fun getToken(): String = call("auth.getToken").string("token") ?: throw unreadable()
 
-    /** the service's page where the user signs in and lets musicfy scrobble for them */
+    /** the service's page where the user signs in and lets mochy scrobble for them */
     fun authUrl(token: String): String = "$authPage?api_key=$apiKey&token=$token"
 
-    /** once the user has allowed musicfy on authUrl, until then this fails with AudioscrobblerException.isWaitingForUser */
+    /** once the user has allowed mochy on authUrl, until then this fails with AudioscrobblerException.isWaitingForUser */
     suspend fun getSession(token: String): AudioscrobblerSession {
         val session = call("auth.getSession", mapOf("token" to token))["session"] as? JsonObject ?: throw unreadable()
         return AudioscrobblerSession(
@@ -159,7 +159,7 @@ class Audioscrobbler(
         /** the most plays one track.scrobble request takes */
         const val MAX_BATCH = 50
 
-        private const val USER_AGENT = "Musicfy"
+        private const val USER_AGENT = "Mochy"
 
         private val client by lazy {
             HttpClient(OkHttp) {

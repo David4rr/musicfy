@@ -1,6 +1,6 @@
 // IntegrationCard.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background

@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.update
+package com.mochyy.mochymusic.ui.screens.update
 
 import android.graphics.Paint
 import android.graphics.Path
@@ -32,9 +32,9 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.component.rememberCoverBlurAvailable
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.rememberCoverBlurAvailable
 import kotlin.math.PI
 import kotlin.math.floor
 

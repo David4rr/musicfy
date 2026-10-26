@@ -1,4 +1,4 @@
-package com.example.musicfy.di
+package com.mochyy.mochymusic.di
 
 import javax.inject.Qualifier
 

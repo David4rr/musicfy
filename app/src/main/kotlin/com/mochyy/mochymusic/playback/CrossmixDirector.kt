@@ -1,4 +1,4 @@
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -7,13 +7,13 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.musicfy.crossmix.CrossmixAnalysisRepository
-import com.example.musicfy.crossmix.CrossmixPlan
-import com.example.musicfy.crossmix.CrossmixPlanner
-import com.example.musicfy.crossmix.CrossmixRole
-import com.example.musicfy.crossmix.CrossmixStyle
-import com.example.musicfy.crossmix.CrossmixTrackInput
-import com.example.musicfy.playback.audio.CrossmixTransitionAudioProcessor
+import com.mochyy.mochymusic.crossmix.CrossmixAnalysisRepository
+import com.mochyy.mochymusic.crossmix.CrossmixPlan
+import com.mochyy.mochymusic.crossmix.CrossmixPlanner
+import com.mochyy.mochymusic.crossmix.CrossmixRole
+import com.mochyy.mochymusic.crossmix.CrossmixStyle
+import com.mochyy.mochymusic.crossmix.CrossmixTrackInput
+import com.mochyy.mochymusic.playback.audio.CrossmixTransitionAudioProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -103,7 +103,7 @@ class CrossmixDirector(
         android.util.Log.i(Tag, status)
     }
 
-    private fun voiceSource(lyrics: String?, analysis: com.example.musicfy.crossmix.TrackAnalysis?): String = when {
+    private fun voiceSource(lyrics: String?, analysis: com.mochyy.mochymusic.crossmix.TrackAnalysis?): String = when {
         lyrics != null && Regex("""\[\d{1,2}:\d{2}""").containsMatchIn(lyrics) -> "synced lyrics"
         analysis?.vocal?.isNotEmpty() == true -> "the sound"
         else -> "a guess"

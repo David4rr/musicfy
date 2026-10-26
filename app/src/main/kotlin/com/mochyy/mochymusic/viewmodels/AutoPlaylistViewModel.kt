@@ -1,29 +1,29 @@
 // AutoPlaylistViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.constants.LikedSongSortDescendingKey
-import com.example.musicfy.constants.LikedSongSortType
-import com.example.musicfy.constants.LikedSongSortTypeKey
-import com.example.musicfy.constants.SongSortDescendingKey
-import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.constants.SongSortTypeKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportedSong
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.filterExplicit
-import com.example.musicfy.extensions.filterVideoSongs
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.playback.CachedSongs
-import com.example.musicfy.utils.SyncUtils
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.LikedSongSortDescendingKey
+import com.mochyy.mochymusic.constants.LikedSongSortType
+import com.mochyy.mochymusic.constants.LikedSongSortTypeKey
+import com.mochyy.mochymusic.constants.SongSortDescendingKey
+import com.mochyy.mochymusic.constants.SongSortType
+import com.mochyy.mochymusic.constants.SongSortTypeKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportedSong
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.filterExplicit
+import com.mochyy.mochymusic.extensions.filterVideoSongs
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.playback.CachedSongs
+import com.mochyy.mochymusic.utils.SyncUtils
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +41,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Liked songs that came from one place; [source] null is the ones liked here in Musicfy. */
+/** Liked songs that came from one place; [source] null is the ones liked here in Mochy. */
 data class LikedSourceSection(val source: ImportSource?, val songs: List<Song>)
 
 data class AutoPlaylistSongs(

@@ -1,6 +1,6 @@
 // SleepTimerSheet.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
@@ -50,10 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SheetIcon
-import com.example.musicfy.ui.component.AppSwitch
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SheetIcon
+import com.mochyy.mochymusic.ui.component.AppSwitch
 
 private val CardSurface = MenuRowSurface
 private val SheetEasing = MenuEasing

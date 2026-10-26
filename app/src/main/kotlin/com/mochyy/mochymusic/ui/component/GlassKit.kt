@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.RenderNode
 import android.os.Build
@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Stable
 class GlassState {
@@ -199,7 +199,7 @@ private const val ChromeAccentWash = 0.55f
  */
 @Composable
 fun rememberChromeAccentWash(): () -> Color {
-    val accent = com.example.musicfy.LocalDetailAccentColor.current
+    val accent = com.mochyy.mochymusic.LocalDetailAccentColor.current
     val wash = remember { androidx.compose.animation.Animatable(Color.Transparent) }
     LaunchedEffect(accent) {
         // fading out keeps the page's hue instead of greying through transparent black
@@ -237,7 +237,7 @@ internal fun glassDownscale(effectiveRadius: Float, low: Boolean = false): Int =
 
 /** The blur quality chosen in Appearance, for every glass surface under it. */
 val LocalBlurQuality = androidx.compose.runtime.staticCompositionLocalOf {
-    com.example.musicfy.constants.BlurQuality.HIGH
+    com.mochyy.mochymusic.constants.BlurQuality.HIGH
 }
 
 /** Lays its content out [margin] px bigger on every side, centred over the space it takes. */
@@ -377,7 +377,7 @@ internal fun DownscaledBlur(
     val currentRadius by rememberUpdatedState(radius)
     val currentOffscreen by rememberUpdatedState(offscreen)
     // A radius that animates only re-lays this out when it crosses into another resolution step.
-    val low = LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.LOW
+    val low = LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.LOW
     val downscale by remember(low) { derivedStateOf { glassDownscale(currentRadius(), low) } }
     val maskCache = remember { MaskedEffectCache() }
     val full = remember { FullSize() }
@@ -500,7 +500,7 @@ fun GlassPillBackground(
     var position by remember { mutableStateOf(Offset.Zero) }
 
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
-    val (blurStrengthPx) = rememberPreference(com.example.musicfy.constants.BlurStrengthPxKey, defaultValue = 25f)
+    val (blurStrengthPx) = rememberPreference(com.mochyy.mochymusic.constants.BlurStrengthPxKey, defaultValue = 25f)
 
     val currentBlurRadius by rememberUpdatedState(blurRadius)
 
@@ -521,7 +521,7 @@ fun GlassPillBackground(
                 // no blur below Android 12, so nothing to read past the edges; and low quality
                 // keeps to what's right under the glass, a much smaller area to blur
                 if (bleed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+                    LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
                 ) {
                     Modifier.bleed { kotlin.math.ceil(radius()).toInt() }
                 } else Modifier
@@ -564,7 +564,7 @@ fun ProgressiveGlassBackground(
     steps: Int = 5
 ) {
     val smooth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+        LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
     if (smooth) {
         // high quality: one pass whose radius grows row by row, faded in where the first step used to fade in
         val fade = 1f / steps.coerceAtLeast(1)

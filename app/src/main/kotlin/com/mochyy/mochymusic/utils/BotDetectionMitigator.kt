@@ -1,13 +1,13 @@
 // BotDetectionMitigator.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import androidx.datastore.preferences.core.edit
 import com.music.innertube.YouTube
-import com.example.musicfy.constants.VisitorDataKey
-import com.example.musicfy.utils.cipher.CipherDeobfuscator
-import com.example.musicfy.utils.PlaybackLogManager
-import com.example.musicfy.utils.PlaybackLogLevel
+import com.mochyy.mochymusic.constants.VisitorDataKey
+import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
+import com.mochyy.mochymusic.utils.PlaybackLogManager
+import com.mochyy.mochymusic.utils.PlaybackLogLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber

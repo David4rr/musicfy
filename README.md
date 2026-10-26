@@ -1,8 +1,8 @@
-<img width="1799" height="927" alt="i" src="https://github.com/user-attachments/assets/1ecb7a39-2114-40ba-9306-51ebf385780a" />
+<img width="1799" height="927" alt="Frame 286" src="https://github.com/user-attachments/assets/e793be23-be42-4b16-aa0d-bd8656026ecb" />
 
 <div align="center">
 
-  Sleek modern cool music player for android, open source, packed with features and doesn’t collect ur data >_< oh and, still in beta!
+  <sub>Sleek modern cool music player for android, open source, packed with features and doesn’t collect ur data >_< oh and, still in beta!</sub>
   <br/>
 <p align="center">
   <a href="https://github.com/realidkroo/musicfy/releases">
@@ -35,31 +35,12 @@
 </p>
 </div>
 
----
-
-
-> [!WARNING]
-> Were rebranding Musicfy into Mochy (music). when 8.1.2 released, please go ahead and install that. this repo will be renamed to Mochy in a short timee
-
-> Updating timeline 
-> Musicfy repo rebranded into Mochy-music -> a dummy repo named musicfy will created as a bridge for the updater to update into mochy. so 8.1.1 (musicfy) -> 8.1.2 (mochy with same github package fetching as before) -> 8.1.2 to next version will no longer have any links to musicfy.
-
----
-
-> [!WARNING]
-> Support for android 8+ until 11 is available but expect any bugs. this app is intended only for android 13+
 
 > [!WARNING]
 > This app still on beta!, expect some bugs! reporting it will be useful too.
 
-
-> [!WARNING]
-> Thanks for sharing the app, but PLEASE share this repo instead of sharing your own app download in a mediafire or smth, and this app is not for monetized, please dont upload it/gate keep it with a ads!!! i dont want my app to get monetized.
-
-> [!WARNING]
-> I dont support forks, please do not commit issue from forked apps here.
-
 ---
+
 ## Hhhh-how to install? :3
 
 1. On your phone, open the [latest release](https://github.com/realidkroo/musicfy/releases/latest).
@@ -147,7 +128,7 @@ Mochy is an independent, unofficial project made for personal and educational us
 - Mochy does not host, store or distribute any music. Everything is fetched from third-party services when you ask for it, and those services can change or stop working at any time.
 - You are responsible for how you use the app, including the terms of service of the accounts and services you connect and the copyright laws where you live.
 - Importing from other services (Spotify, etc.) uses your own account. Don't share your login data or tokens with anyone.
-- Importing music MAY need your own account with its password. WE'RE NEVER see your password. 
+- Importing music MAY need your own account with its password. WE'RE NEVER see your password.
 
 ---
 ## Preview

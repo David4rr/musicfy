@@ -1,6 +1,6 @@
 // GenreDescriptions.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 private val Descriptions: Map<String, String> = mapOf(
 

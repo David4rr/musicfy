@@ -1,6 +1,6 @@
 // the repo half of dev spaces: the playground numbers and the open and resolved issues with their filters
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import android.content.Context
 import androidx.compose.animation.animateContentSize
@@ -47,9 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.OdometerNumber
-import com.example.musicfy.ui.component.pressBounce
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.OdometerNumber
+import com.mochyy.mochymusic.ui.component.pressBounce
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 

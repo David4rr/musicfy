@@ -1,6 +1,6 @@
 // ThumbnailCornerRadiusSelector.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,9 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
-import com.example.musicfy.R
-import com.example.musicfy.constants.ThumbnailCornerRadiusKey
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadiusKey
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

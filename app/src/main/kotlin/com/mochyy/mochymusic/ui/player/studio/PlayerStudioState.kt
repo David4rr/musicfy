@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animate
@@ -20,7 +20,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.PlayerBottomBarStyle
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import androidx.compose.runtime.withFrameNanos

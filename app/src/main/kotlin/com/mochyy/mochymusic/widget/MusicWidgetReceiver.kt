@@ -1,6 +1,6 @@
 // MusicWidgetReceiver.kt
 
-package com.example.musicfy.widget
+package com.mochyy.mochymusic.widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import com.example.musicfy.playback.MusicService
+import com.mochyy.mochymusic.playback.MusicService
 
 class MusicWidgetReceiver : AppWidgetProvider() {
 
@@ -71,10 +71,10 @@ class MusicWidgetReceiver : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_PLAY_PAUSE = "com.example.musicfy.widget.PLAY_PAUSE"
-        const val ACTION_LIKE = "com.example.musicfy.widget.LIKE"
-        const val ACTION_NEXT = "com.example.musicfy.widget.NEXT"
-        const val ACTION_PREVIOUS = "com.example.musicfy.widget.PREVIOUS"
-        const val ACTION_UPDATE_WIDGET = "com.example.musicfy.widget.UPDATE_WIDGET"
+        const val ACTION_PLAY_PAUSE = "com.mochyy.mochymusic.widget.PLAY_PAUSE"
+        const val ACTION_LIKE = "com.mochyy.mochymusic.widget.LIKE"
+        const val ACTION_NEXT = "com.mochyy.mochymusic.widget.NEXT"
+        const val ACTION_PREVIOUS = "com.mochyy.mochymusic.widget.PREVIOUS"
+        const val ACTION_UPDATE_WIDGET = "com.mochyy.mochymusic.widget.UPDATE_WIDGET"
     }
 }

@@ -1,11 +1,11 @@
-package com.example.musicfy.core.updater.downloadmanager
+package com.mochyy.mochymusic.core.updater.downloadmanager
 
 import android.content.Context
 import android.os.Environment
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -45,14 +45,14 @@ class UpdateDownloadWorker(private val context: Context, workerParams: WorkerPar
 
             val downloadDir = File(
                 context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                "musicfy_updates"
+                "mochy_updates"
             )
             if (!downloadDir.exists()) {
                 downloadDir.mkdirs()
             }
 
             val isZip = apkUrl.contains("nightly.link") || apkUrl.endsWith(".zip")
-            val downloadFile = if (isZip) File(downloadDir, "musicfy_temp.zip") else File(downloadDir, "musicfy.apk")
+            val downloadFile = if (isZip) File(downloadDir, "mochy_temp.zip") else File(downloadDir, "mochy.apk")
             val outputStream = FileOutputStream(downloadFile)
 
             val buffer = ByteArray(8192)
@@ -88,7 +88,7 @@ class UpdateDownloadWorker(private val context: Context, workerParams: WorkerPar
             connection.disconnect()
 
             val finalFile = if (isZip) {
-                val targetApkFile = File(downloadDir, "musicfy.apk")
+                val targetApkFile = File(downloadDir, "mochy.apk")
                 var extracted = false
                 try {
                     ZipInputStream(downloadFile.inputStream()).use { zis ->

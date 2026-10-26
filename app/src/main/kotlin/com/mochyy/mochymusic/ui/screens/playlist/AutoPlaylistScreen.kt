@@ -1,6 +1,6 @@
 // AutoPlaylistScreen.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -73,60 +73,60 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.LastPlayedLikedSongsTimeKey
-import com.example.musicfy.constants.LikedSongSortDescendingKey
-import com.example.musicfy.constants.LikedSongSortType
-import com.example.musicfy.constants.LikedSongSortTypeKey
-import com.example.musicfy.constants.SongSortDescendingKey
-import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.constants.SongSortTypeKey
-import com.example.musicfy.constants.YtmSyncKey
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.DraggableScrollbar
-import com.example.musicfy.ui.component.EmptyPlaceholder
-import com.example.musicfy.ui.component.LikedCover
-import com.example.musicfy.ui.component.LikedCoverColors
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.rememberLikedCoverColors
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.detail.featuredArtistsOf
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistHeader
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.detail.PlaylistSortControl
-import com.example.musicfy.ui.component.detail.PlaylistSearchControl
-import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
-import com.example.musicfy.ui.component.detail.PlaylistTrackBones
-import com.example.musicfy.ui.component.detail.PlaylistModeBar
-import com.example.musicfy.ui.component.detail.PlaylistSelectTick
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.detail.playlistCoverHeight
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.AutoPlaylistMenu
-import com.example.musicfy.ui.menu.SelectionSongMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.screens.library.ImportSourceIcon
-import com.example.musicfy.ui.screens.setup.onboarding.SquircleShape
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.AutoPlaylistViewModel
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.LastPlayedLikedSongsTimeKey
+import com.mochyy.mochymusic.constants.LikedSongSortDescendingKey
+import com.mochyy.mochymusic.constants.LikedSongSortType
+import com.mochyy.mochymusic.constants.LikedSongSortTypeKey
+import com.mochyy.mochymusic.constants.SongSortDescendingKey
+import com.mochyy.mochymusic.constants.SongSortType
+import com.mochyy.mochymusic.constants.SongSortTypeKey
+import com.mochyy.mochymusic.constants.YtmSyncKey
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.DraggableScrollbar
+import com.mochyy.mochymusic.ui.component.EmptyPlaceholder
+import com.mochyy.mochymusic.ui.component.LikedCover
+import com.mochyy.mochymusic.ui.component.LikedCoverColors
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.rememberLikedCoverColors
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.detail.featuredArtistsOf
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistDetailScaffold
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistHeader
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSortControl
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSearchControl
+import com.mochyy.mochymusic.ui.component.detail.PlaylistStatsStyle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackBones
+import com.mochyy.mochymusic.ui.component.detail.PlaylistModeBar
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.detail.playlistCoverHeight
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.AutoPlaylistMenu
+import com.mochyy.mochymusic.ui.menu.SelectionSongMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.screens.library.ImportSourceIcon
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.SquircleShape
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.AutoPlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -586,12 +586,12 @@ fun AutoPlaylistScreen(
             ) { index, song -> trackRow(index, song) }
         } else {
             filteredSections.forEach { section ->
-                item(key = "source_${section.source?.key ?: "musicfy"}") {
+                item(key = "source_${section.source?.key ?: "mochy"}") {
                     LikedSourceSeparator(
                         source = section.source,
                         modifier = Modifier
                             .animateItem()
-                            .revealOnAppear(key = "source_${section.source?.key ?: "musicfy"}", seenState = revealSeen),
+                            .revealOnAppear(key = "source_${section.source?.key ?: "mochy"}", seenState = revealSeen),
                     )
                 }
                 itemsIndexed(
@@ -670,7 +670,7 @@ private fun AutoPlaylistSearchBar(
 
 /**
  * the small line above each service's songs in Liked songs' import order: its app icon, its name,
- * then a hairline across. the ones liked here get Musicfy's own.
+ * then a hairline across. the ones liked here get Mochy's own.
  */
 @Composable
 private fun LikedSourceSeparator(source: ImportSource?, modifier: Modifier = Modifier) {
@@ -691,7 +691,7 @@ private fun LikedSourceSeparator(source: ImportSource?, modifier: Modifier = Mod
                     .background(colorResource(R.color.ic_launcher_background)),
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
+                    painter = painterResource(R.drawable.ic_mochy_mark),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(9.dp),
@@ -700,7 +700,7 @@ private fun LikedSourceSeparator(source: ImportSource?, modifier: Modifier = Mod
         }
         Spacer(Modifier.width(6.dp))
         Text(
-            text = source?.label?.replaceFirstChar { it.uppercase() } ?: "Musicfy",
+            text = source?.label?.replaceFirstChar { it.uppercase() } ?: "Mochy",
             style = PlaylistStatsStyle,
             color = Color.White.copy(alpha = 0.62f),
             maxLines = 1,

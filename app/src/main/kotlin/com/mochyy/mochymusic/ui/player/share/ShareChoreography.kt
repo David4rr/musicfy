@@ -5,7 +5,7 @@
 // lines below rise in from the bottom up, so everything closes in on the line you held. Closing
 // runs the same clock backwards, so swiping the sheet away plays all of it in reverse.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -18,7 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.ui.component.smoothstep
+import com.mochyy.mochymusic.ui.component.smoothstep
 import kotlinx.coroutines.flow.first
 
 // Times on the clock, in milliseconds of the opening.

@@ -1,27 +1,27 @@
 // SourceModules.kt
 
-package com.example.musicfy.modules
+package com.mochyy.mochymusic.modules
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.content.edit
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.HttpRequest
-import com.example.musicfy.module.HttpResponse
-import com.example.musicfy.module.MODULE_API_VERSION
-import com.example.musicfy.module.ModuleHost
-import com.example.musicfy.module.ModuleStorage
-import com.example.musicfy.module.ResolveResult
-import com.example.musicfy.module.SourceModule
-import com.example.musicfy.module.SourceStream
-import com.example.musicfy.module.TrackQuery
-import com.example.musicfy.module.applemusic.AppleMusicModule
-import com.example.musicfy.module.monochrome.MonochromeModule
-import com.example.musicfy.constants.EnableMonochromeBackendKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.HttpRequest
+import com.mochyy.mochymusic.module.HttpResponse
+import com.mochyy.mochymusic.module.MODULE_API_VERSION
+import com.mochyy.mochymusic.module.ModuleHost
+import com.mochyy.mochymusic.module.ModuleStorage
+import com.mochyy.mochymusic.module.ResolveResult
+import com.mochyy.mochymusic.module.SourceModule
+import com.mochyy.mochymusic.module.SourceStream
+import com.mochyy.mochymusic.module.TrackQuery
+import com.mochyy.mochymusic.module.applemusic.AppleMusicModule
+import com.mochyy.mochymusic.module.monochrome.MonochromeModule
+import com.mochyy.mochymusic.constants.EnableMonochromeBackendKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dalvik.system.PathClassLoader
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +41,7 @@ import javax.inject.Singleton
 /** A module as the settings show it. */
 data class ModuleEntry(
     val module: SourceModule,
-    /** built into Musicfy, or an installed module app */
+    /** built into Mochy, or an installed module app */
     val packageName: String?,
     val enabled: Boolean,
     /** choice id to the option picked; a choice not in here is on its first option */
@@ -50,10 +50,10 @@ data class ModuleEntry(
 )
 
 /**
- * Musicfy's source modules: the ones built in, and any installed as their own app.
+ * Mochy's source modules: the ones built in, and any installed as their own app.
  *
  * A module app declares a service with the [ModuleAction] intent filter and its entry class in
- * meta-data [EntryMetaKey]; it's loaded into Musicfy only when it's signed with Musicfy's own key,
+ * meta-data [EntryMetaKey]; it's loaded into Mochy only when it's signed with Mochy's own key,
  * since its code runs inside the app, and only when it was built for this [MODULE_API_VERSION].
  * An installed module replaces a built-in one with the same id, so a module can be updated on its
  * own. The module code is compiled against `:modules:api` only.
@@ -240,7 +240,7 @@ class SourceModules @Inject constructor(
         }
     }
 
-    /** module apps installed on the phone, signed like Musicfy and built for this API */
+    /** module apps installed on the phone, signed like Mochy and built for this API */
     @SuppressLint("QueryPermissionsNeeded")
     private fun discover(): List<Pair<SourceModule, String?>> = runCatching {
         val pm = context.packageManager
@@ -249,7 +249,7 @@ class SourceModules @Inject constructor(
             val pkg = service.packageName
             val entry = service.metaData?.getString(EntryMetaKey) ?: return@mapNotNull null
             if (pm.checkSignatures(context.packageName, pkg) != PackageManager.SIGNATURE_MATCH) {
-                Timber.tag(Tag).w("Skipping module $pkg: not signed like Musicfy")
+                Timber.tag(Tag).w("Skipping module $pkg: not signed like Mochy")
                 return@mapNotNull null
             }
             runCatching {
@@ -257,7 +257,7 @@ class SourceModules @Inject constructor(
                 val loader = PathClassLoader(app.sourceDir, app.nativeLibraryDir, javaClass.classLoader)
                 val module = loader.loadClass(entry).getDeclaredConstructor().newInstance() as SourceModule
                 if (module.info.apiVersion != MODULE_API_VERSION) {
-                    Timber.tag(Tag).w("Skipping module $pkg: built for API ${module.info.apiVersion}, Musicfy has $MODULE_API_VERSION")
+                    Timber.tag(Tag).w("Skipping module $pkg: built for API ${module.info.apiVersion}, Mochy has $MODULE_API_VERSION")
                     null
                 } else module to pkg
             }.onFailure { Timber.tag(Tag).w(it, "Couldn't load module $pkg") }.getOrNull()
@@ -266,10 +266,10 @@ class SourceModules @Inject constructor(
 
     companion object {
         private const val Tag = "SourceModules"
-        const val ModuleAction = "com.example.musicfy.SOURCE_MODULE"
+        const val ModuleAction = "com.mochyy.mochymusic.SOURCE_MODULE"
         /** YouTube Music in the provider order: not a module, and needs no account */
         const val YouTubeId = "youtube"
         private val KnownOrder = listOf(MonochromeModule.Id, AppleMusicModule.Id, YouTubeId)
-        const val EntryMetaKey = "com.example.musicfy.module.entry"
+        const val EntryMetaKey = "com.mochyy.mochymusic.module.entry"
     }
 }

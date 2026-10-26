@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -76,25 +76,25 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerBackgroundStyle
-import com.example.musicfy.constants.PlayerBottomBarStyle
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.PlayerEndTimestamp
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.SeekBarStyle
-import com.example.musicfy.ui.component.SeekBarTrack
-import com.example.musicfy.ui.player.customize.PlayerBackgroundPreview
-import com.example.musicfy.ui.player.customize.coverArtBox
-import com.example.musicfy.ui.player.customize.displayName
-import com.example.musicfy.ui.player.customize.isDisc
-import com.example.musicfy.ui.player.styles.Responsive
-import com.example.musicfy.ui.player.styles.rememberResponsive
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.makeTimeString
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyle
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerEndTimestamp
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.SeekBarStyle
+import com.mochyy.mochymusic.ui.component.SeekBarTrack
+import com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundPreview
+import com.mochyy.mochymusic.ui.player.customize.coverArtBox
+import com.mochyy.mochymusic.ui.player.customize.displayName
+import com.mochyy.mochymusic.ui.player.customize.isDisc
+import com.mochyy.mochymusic.ui.player.styles.Responsive
+import com.mochyy.mochymusic.ui.player.styles.rememberResponsive
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.makeTimeString
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -448,7 +448,7 @@ private fun CoverEditor(
         if (coverStyle.isDisc) {
             val art = parts.anchors.cover.value
             if (art.width > 0f) {
-                val card = remember(coverStyle) { com.example.musicfy.ui.player.customize.discGeometryFor(coverStyle).albumCard }
+                val card = remember(coverStyle) { com.mochyy.mochymusic.ui.player.customize.discGeometryFor(coverStyle).albumCard }
                 val target = if (card != null) {
                     val side = minOf(art.width, art.height) * card.side
                     val c = Offset(art.left + art.width * card.centerX, art.top + art.height * card.centerY)

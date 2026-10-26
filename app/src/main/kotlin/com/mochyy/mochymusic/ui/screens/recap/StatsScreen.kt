@@ -5,10 +5,10 @@
 // year / month picker. Cards open into the detail behind them: a line of every day, the top ten,
 // the genre split, the week and the clock. Nothing here is sent anywhere.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import com.example.musicfy.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -73,19 +73,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.ui.utils.stableSystemBars
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.utils.rememberPreference
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.Month
@@ -301,8 +301,8 @@ fun StatsScreen(navController: NavController) {
         ) {
             Box(contentAlignment = Alignment.CenterStart) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
-                    contentDescription = "Musicfy",
+                    painter = painterResource(R.drawable.ic_mochy_mark),
+                    contentDescription = "Mochy",
                     tint = Color.White,
                     modifier = Modifier
                         .size(width = 31.dp, height = 34.dp)

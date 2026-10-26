@@ -1,6 +1,6 @@
 // AppleMusicScraper.kt
 
-package com.example.musicfy.ui.screens.search.suggestions
+package com.mochyy.mochymusic.ui.screens.search.suggestions
 
 import android.util.Log
 import okhttp3.OkHttpClient

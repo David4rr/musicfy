@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -34,14 +34,14 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.ui.player.PressScaleActionButton
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.player.PressScaleActionButton
 import kotlin.math.roundToInt
 
 /** the player's menu item label, exactly as its chevron menu sets it */
 private val MenuLabelStyle = TextStyle(
-    fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+    fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
     fontSize = 14.sp,
     fontWeight = FontWeight.SemiBold,
     color = Color.White,

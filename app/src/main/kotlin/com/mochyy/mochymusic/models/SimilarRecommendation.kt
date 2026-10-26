@@ -1,9 +1,9 @@
 // SimilarRecommendation.kt
 
-package com.example.musicfy.models
+package com.mochyy.mochymusic.models
 
 import com.music.innertube.models.YTItem
-import com.example.musicfy.db.entities.LocalItem
+import com.mochyy.mochymusic.db.entities.LocalItem
 
 data class SimilarRecommendation(
     val title: LocalItem,

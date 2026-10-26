@@ -1,6 +1,6 @@
 // PersistQueue.kt
 
-package com.example.musicfy.models
+package com.mochyy.mochymusic.models
 
 import java.io.Serializable
 

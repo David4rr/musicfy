@@ -4,7 +4,7 @@
 // was imported as, with how long each runs and where it's from, so a live or sped-up take is easy
 // to tell from the studio one. The pick is saved for that track, so later imports use it too.
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,19 +35,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.ImportedVersions
-import com.example.musicfy.importer.TrackMatch
-import com.example.musicfy.importer.TrackMatcher
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.TopToaster
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.screens.library.LibraryGridArtwork
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.utils.makeTimeString
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.ImportedVersions
+import com.mochyy.mochymusic.importer.TrackMatch
+import com.mochyy.mochymusic.importer.TrackMatcher
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.TopToaster
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.screens.library.LibraryGridArtwork
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.utils.makeTimeString
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV

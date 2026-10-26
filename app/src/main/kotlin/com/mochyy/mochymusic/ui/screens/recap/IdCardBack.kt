@@ -3,7 +3,7 @@
 // The back of the profile ID card: a real Code 128 barcode (a phone camera reads it), hidden under
 // a silver scratch-off strip, and the green scanner sweep that "reads" it before the recap opens.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
@@ -53,8 +53,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
-import com.example.musicfy.ui.screens.setup.onboarding.MarqueeStrip
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.MarqueeStrip
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -305,7 +305,7 @@ private fun ScratchCoating(
         translate(strip.left, strip.top) {
             drawSilver(strip.size, r, now)
             // repeated micro text, like a lottery ticket's coating
-            val micro = measurer.measure("SCRATCH · MUSICFY · ", microStyle, softWrap = false, maxLines = 1)
+            val micro = measurer.measure("SCRATCH · MOCHY · ", microStyle, softWrap = false, maxLines = 1)
             clipRect(0f, 0f, strip.width, strip.height) {
                 var y = strip.height * 0.18f
                 var row = 0

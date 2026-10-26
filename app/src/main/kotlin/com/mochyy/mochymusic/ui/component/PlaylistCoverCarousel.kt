@@ -1,6 +1,6 @@
 // PlaylistCoverCarousel.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -55,12 +55,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.playlistcover.CoverChoice
-import com.example.musicfy.playlistcover.PlaylistCoverGenerator
-import com.example.musicfy.playlistcover.PlaylistCoverStyle
-import com.example.musicfy.playlistcover.PlaylistCovers
-import com.example.musicfy.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.playlistcover.CoverChoice
+import com.mochyy.mochymusic.playlistcover.PlaylistCoverGenerator
+import com.mochyy.mochymusic.playlistcover.PlaylistCoverStyle
+import com.mochyy.mochymusic.playlistcover.PlaylistCovers
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first

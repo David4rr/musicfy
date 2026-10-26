@@ -1,6 +1,6 @@
 // TurntableArt.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset

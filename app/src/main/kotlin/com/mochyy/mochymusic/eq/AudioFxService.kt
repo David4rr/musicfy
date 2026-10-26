@@ -1,10 +1,10 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
-import com.example.musicfy.eq.audio.LoudnessParams
-import com.example.musicfy.eq.audio.ReplayGainParams
-import com.example.musicfy.eq.audio.ReverbParams
-import com.example.musicfy.eq.audio.SpatialParams
-import com.example.musicfy.eq.audio.VolumeCurve
+import com.mochyy.mochymusic.eq.audio.LoudnessParams
+import com.mochyy.mochymusic.eq.audio.ReplayGainParams
+import com.mochyy.mochymusic.eq.audio.ReverbParams
+import com.mochyy.mochymusic.eq.audio.SpatialParams
+import com.mochyy.mochymusic.eq.audio.VolumeCurve
 import javax.inject.Inject
 import javax.inject.Singleton
 

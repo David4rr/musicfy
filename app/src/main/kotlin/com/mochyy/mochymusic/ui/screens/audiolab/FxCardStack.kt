@@ -1,6 +1,6 @@
 // audio fx header: a fanned stack of cards, one per effect that's on, the front one moves to the back every few seconds or on a tap
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -33,12 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.example.musicfy.eq.LoudnessSettings
-import com.example.musicfy.eq.PlaybackSettings
-import com.example.musicfy.eq.ReverbSettings
-import com.example.musicfy.eq.SpatialSettings
-import com.example.musicfy.eq.VolumeSettings
-import com.example.musicfy.ui.component.damageBoundary
+import com.mochyy.mochymusic.eq.LoudnessSettings
+import com.mochyy.mochymusic.eq.PlaybackSettings
+import com.mochyy.mochymusic.eq.ReverbSettings
+import com.mochyy.mochymusic.eq.SpatialSettings
+import com.mochyy.mochymusic.eq.VolumeSettings
+import com.mochyy.mochymusic.ui.component.damageBoundary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 

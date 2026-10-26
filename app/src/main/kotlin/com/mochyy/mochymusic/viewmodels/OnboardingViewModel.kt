@@ -1,6 +1,6 @@
 // OnboardingViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import android.net.Uri
@@ -10,24 +10,24 @@ import androidx.compose.runtime.setValue
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.ProfileCardNumberKey
-import com.example.musicfy.constants.ProfileJoinedEpochDayKey
-import com.example.musicfy.constants.SelectedYtmPlaylistsKey
-import com.example.musicfy.constants.YtPullHistoryKey
-import com.example.musicfy.constants.YtReportPlaysKey
-import com.example.musicfy.constants.YtSyncLikedSongsKey
-import com.example.musicfy.constants.YtSyncNewPlaylistsKey
-import com.example.musicfy.constants.YtmSyncKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.importer.MusicImportService
-import com.example.musicfy.importer.ParsedImport
-import com.example.musicfy.importer.YouTubeSyncManager
-import com.example.musicfy.importer.account.AccountImportSession
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.importer.parseImportCsv
-import com.example.musicfy.ui.screens.setup.onboarding.BlurCapability
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.ProfileCardNumberKey
+import com.mochyy.mochymusic.constants.ProfileJoinedEpochDayKey
+import com.mochyy.mochymusic.constants.SelectedYtmPlaylistsKey
+import com.mochyy.mochymusic.constants.YtPullHistoryKey
+import com.mochyy.mochymusic.constants.YtReportPlaysKey
+import com.mochyy.mochymusic.constants.YtSyncLikedSongsKey
+import com.mochyy.mochymusic.constants.YtSyncNewPlaylistsKey
+import com.mochyy.mochymusic.constants.YtmSyncKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.importer.MusicImportService
+import com.mochyy.mochymusic.importer.ParsedImport
+import com.mochyy.mochymusic.importer.YouTubeSyncManager
+import com.mochyy.mochymusic.importer.account.AccountImportSession
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.parseImportCsv
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BlurCapability
+import com.mochyy.mochymusic.utils.dataStore
 import com.music.innertube.YouTube
 import com.music.innertube.models.ArtistItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -135,7 +135,7 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    /** A Musicfy (or any playlist) CSV; null on success, otherwise what went wrong. */
+    /** A Mochy (or any playlist) CSV; null on success, otherwise what went wrong. */
     suspend fun importBackup(uri: Uri): String? = withContext(Dispatchers.IO) {
         try {
             val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }

@@ -1,6 +1,6 @@
 // SmoothCornerShape.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Rect

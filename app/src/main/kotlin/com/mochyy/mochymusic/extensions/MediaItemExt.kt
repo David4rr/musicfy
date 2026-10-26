@@ -1,16 +1,16 @@
 // MediaItemExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
 import android.os.Bundle
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
 import com.music.innertube.models.SongItem
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.ui.utils.resize
 
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata
@@ -92,7 +92,7 @@ fun MediaMetadata.toMediaItem() = MediaItem.Builder()
  * opposed to one the user queued. Kept in the media metadata extras so it travels with the item
  * through the player's timeline.
  */
-private const val AutoplayExtra = "musicfy.autoplay"
+private const val AutoplayExtra = "mochy.autoplay"
 
 val MediaItem.isAutoplay: Boolean
     get() = mediaMetadata.extras?.getBoolean(AutoplayExtra, false) == true

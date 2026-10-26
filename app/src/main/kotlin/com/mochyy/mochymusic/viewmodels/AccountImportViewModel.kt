@@ -1,18 +1,18 @@
 // AccountImportViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.importer.ParsedImport
-import com.example.musicfy.importer.PlaylistResync
-import com.example.musicfy.importer.ResyncStart
-import com.example.musicfy.importer.account.AccountImportSession
-import com.example.musicfy.importer.account.AccountImportState
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.ui.screens.settings.importsync.ResyncAllArg
+import com.mochyy.mochymusic.importer.ParsedImport
+import com.mochyy.mochymusic.importer.PlaylistResync
+import com.mochyy.mochymusic.importer.ResyncStart
+import com.mochyy.mochymusic.importer.account.AccountImportSession
+import com.mochyy.mochymusic.importer.account.AccountImportState
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.ui.screens.settings.importsync.ResyncAllArg
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

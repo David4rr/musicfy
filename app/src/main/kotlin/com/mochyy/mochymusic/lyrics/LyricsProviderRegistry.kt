@@ -1,8 +1,8 @@
 // LyricsProviderRegistry.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
-import com.example.musicfy.constants.PreferredLyricsProvider
+import com.mochyy.mochymusic.constants.PreferredLyricsProvider
 
 object LyricsProviderRegistry {
     private val providerMap = mapOf(

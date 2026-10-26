@@ -1,6 +1,6 @@
 // CoroutineExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope

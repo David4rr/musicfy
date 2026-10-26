@@ -1,11 +1,11 @@
-package com.example.musicfy.playback.audio
+package com.mochyy.mochymusic.playback.audio
 
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
-import com.example.musicfy.eq.AudioFxService
-import com.example.musicfy.eq.audio.ReplayGainTags
-import com.example.musicfy.eq.audio.VolumeCurve
+import com.mochyy.mochymusic.eq.AudioFxService
+import com.mochyy.mochymusic.eq.audio.ReplayGainTags
+import com.mochyy.mochymusic.eq.audio.VolumeCurve
 import java.nio.ByteBuffer
 
 /**

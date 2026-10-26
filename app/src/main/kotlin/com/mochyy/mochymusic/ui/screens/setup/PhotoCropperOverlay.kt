@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.setup
+package com.mochyy.mochymusic.ui.screens.setup
 
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder

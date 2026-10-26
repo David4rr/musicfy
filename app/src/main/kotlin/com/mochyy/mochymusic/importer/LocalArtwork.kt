@@ -1,12 +1,12 @@
 // LocalArtwork.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.ui.screens.extractAudioMetadata
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.ui.screens.extractAudioMetadata
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

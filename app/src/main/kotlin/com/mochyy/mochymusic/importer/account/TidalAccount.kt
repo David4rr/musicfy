@@ -1,15 +1,15 @@
 // TidalAccount.kt
 
-package com.example.musicfy.importer.account
+package com.mochyy.mochymusic.importer.account
 
 import android.util.Base64
-import com.example.musicfy.importer.ImportedTrack
-import com.example.musicfy.importer.array
-import com.example.musicfy.importer.dateMs
-import com.example.musicfy.importer.idString
-import com.example.musicfy.importer.long
-import com.example.musicfy.importer.obj
-import com.example.musicfy.importer.string
+import com.mochyy.mochymusic.importer.ImportedTrack
+import com.mochyy.mochymusic.importer.array
+import com.mochyy.mochymusic.importer.dateMs
+import com.mochyy.mochymusic.importer.idString
+import com.mochyy.mochymusic.importer.long
+import com.mochyy.mochymusic.importer.obj
+import com.mochyy.mochymusic.importer.string
 import kotlinx.serialization.json.JsonObject
 
 private const val API = "https://api.tidal.com/v1"

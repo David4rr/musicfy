@@ -1,8 +1,8 @@
 // PlaylistCovers.kt
 
-package com.example.musicfy.playlistcover
+package com.mochyy.mochymusic.playlistcover
 
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import androidx.core.content.res.ResourcesCompat
 import android.content.Context
 import android.graphics.Bitmap
@@ -30,9 +30,9 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.size.Scale
 import coil3.toBitmap
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

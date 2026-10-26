@@ -1,6 +1,6 @@
 // FileExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
 import java.io.File
 import java.io.InputStream

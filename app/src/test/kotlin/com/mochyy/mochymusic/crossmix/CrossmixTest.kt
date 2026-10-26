@@ -1,8 +1,8 @@
-package com.example.musicfy.crossmix
+package com.mochyy.mochymusic.crossmix
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
-import com.example.musicfy.playback.audio.CrossmixTransitionAudioProcessor
+import com.mochyy.mochymusic.playback.audio.CrossmixTransitionAudioProcessor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

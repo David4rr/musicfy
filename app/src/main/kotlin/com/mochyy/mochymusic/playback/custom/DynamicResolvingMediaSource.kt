@@ -1,4 +1,4 @@
-package com.example.musicfy.playback.custom
+package com.mochyy.mochymusic.playback.custom
 
 import android.net.Uri
 import android.os.Handler

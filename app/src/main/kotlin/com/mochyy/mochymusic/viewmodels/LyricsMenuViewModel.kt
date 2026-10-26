@@ -1,20 +1,20 @@
 // LyricsMenuViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.LyricsEntity
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.lyrics.LyricsHelper
-import com.example.musicfy.lyrics.LyricsProviderRegistry
-import com.example.musicfy.lyrics.LyricsResult
-import com.example.musicfy.lyrics.LyricsWithProvider
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.utils.NetworkConnectivityObserver
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.LyricsEntity
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.lyrics.LyricsHelper
+import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
+import com.mochyy.mochymusic.lyrics.LyricsResult
+import com.mochyy.mochymusic.lyrics.LyricsWithProvider
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -98,7 +98,7 @@ constructor(
             // replaced and the refetch becomes a no-op.
             val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
             // offline, a refetch would replace the lyrics there are with "not found"
-            if (lyricsWithProvider.provider == com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider) return@launch
+            if (lyricsWithProvider.provider == com.mochyy.mochymusic.lyrics.LyricsHelper.NoConnectionProvider) return@launch
             database.query {
                 upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
             }

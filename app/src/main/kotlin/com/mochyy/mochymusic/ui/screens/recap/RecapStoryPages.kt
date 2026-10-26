@@ -3,7 +3,7 @@
 // What each recap page shows. Every page is a pure function of its PageAnim (enter/exit 0..1) and
 // the shared StoryState; nothing here starts an animation of its own.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -61,9 +61,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
 import java.time.DayOfWeek
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -200,7 +200,7 @@ private fun JourneyPage(s: StoryState, data: RecapStoryData, time: RecapTime) {
             .at(0f, av[1] + av[2] / 2f + geo.dp(44f))
             .padding(horizontal = 36.dp),
     ) {
-        Text("${data.name} you started your journey in Musicfy on", style = recapBold(22f), modifier = Modifier.lineMotion(anim, 0, n, drag = drag))
+        Text("${data.name} you started your journey in Mochy on", style = recapBold(22f), modifier = Modifier.lineMotion(anim, 0, n, drag = drag))
         Spacer(Modifier.height(4.dp))
         OdometerText(
             text = DateLong.format(data.joinedDate),
@@ -826,7 +826,7 @@ private fun Receipt(data: RecapStoryData, modifier: Modifier) {
             .padding(horizontal = 26.dp, vertical = 40.dp),
     ) {
         ReceiptLine(dashes)
-        ReceiptLine("MUSICFY")
+        ReceiptLine("MOCHY")
         ReceiptLine("${data.monthName} recap")
         ReceiptLine("printed at ${now.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}/${now.format(DateTimeFormatter.ofPattern("HH:mm"))}")
         ReceiptLine(dashes)
@@ -898,7 +898,7 @@ private fun ReceiptItem(url: String?, shape: Shape, title: String, value: String
 private fun EndPage(s: StoryState, data: RecapStoryData, time: RecapTime) {
     val geo = s.geo
     val anim = s.pages[P_END]
-    val cardBottom = geo.top + geo.dp(175f) + (geo.width - 2 * geo.inset) / com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
+    val cardBottom = geo.top + geo.dp(175f) + (geo.width - 2 * geo.inset) / com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
     Text(
         "There you go",
         style = recapBold(34f).copy(color = Color.White.copy(alpha = 0.72f)),

@@ -1,6 +1,6 @@
 // Dimensions.kt
 
-package com.example.musicfy.constants
+package com.mochyy.mochymusic.constants
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring

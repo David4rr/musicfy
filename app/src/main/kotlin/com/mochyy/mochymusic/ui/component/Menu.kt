@@ -18,7 +18,7 @@
 //
 // Both fields stay on the data class purely so existing call sites keep compiling; they are inert.
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 
 @Composable
 fun Material3MenuGroup(

@@ -1,6 +1,6 @@
 // MiniLyricsTicker.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -60,16 +60,16 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.LyricsHighBloomKey
-import com.example.musicfy.constants.LyricsMotionStyle
-import com.example.musicfy.constants.LyricsMotionStyleKey
-import com.example.musicfy.constants.LyricsWaveAnimationKey
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.lyrics.RubyToken
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsMotionStyle
+import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
+import com.mochyy.mochymusic.constants.LyricsWaveAnimationKey
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.RubyToken
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged

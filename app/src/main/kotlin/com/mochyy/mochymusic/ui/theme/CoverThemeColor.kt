@@ -1,6 +1,6 @@
 // CoverThemeColor.kt
 
-package com.example.musicfy.ui.theme
+package com.mochyy.mochymusic.ui.theme
 
 import android.content.Context
 import android.util.LruCache

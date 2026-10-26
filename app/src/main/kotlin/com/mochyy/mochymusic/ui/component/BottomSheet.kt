@@ -1,6 +1,6 @@
 // BottomSheet.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
@@ -23,7 +23,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import com.example.musicfy.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalPlayerConnection
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import kotlin.math.abs
@@ -72,7 +72,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.NavigationBarAnimationSpec
+import com.mochyy.mochymusic.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch

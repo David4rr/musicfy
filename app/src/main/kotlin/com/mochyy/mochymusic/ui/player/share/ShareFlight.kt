@@ -8,7 +8,7 @@
 // Everything is drawn from the share's one clock in the draw phase, so the flight never recomposes
 // or re-measures while it moves.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,8 +38,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.example.musicfy.ui.component.smoothstep
-import com.example.musicfy.ui.player.LyricsAlignment
+import com.mochyy.mochymusic.ui.component.smoothstep
+import com.mochyy.mochymusic.ui.player.LyricsAlignment
 import kotlin.math.roundToInt
 
 @Composable

@@ -3,7 +3,7 @@
 // The generic A-Z list behind Songs, Artists, Playlists and each import source's songs. One
 // implementation for all of them: the only real differences are the subtitle and what a tap does.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
@@ -21,10 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.screens.search.rememberCollapseProgress
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.screens.search.rememberCollapseProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -67,7 +67,7 @@ fun <T> LibraryEntityListScreen(
     val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
 
     val playerConnection = LocalPlayerConnection.current
-    val idle = remember { MutableStateFlow<com.example.musicfy.models.MediaMetadata?>(null) }
+    val idle = remember { MutableStateFlow<com.mochyy.mochymusic.models.MediaMetadata?>(null) }
     val metadataFlow = if (playingIdOf != null) playerConnection?.mediaMetadata ?: idle else idle
     val nowPlaying by metadataFlow.collectAsState()
     val isPlaying by (playerConnection?.isEffectivelyPlaying ?: remember { MutableStateFlow(false) }).collectAsState()

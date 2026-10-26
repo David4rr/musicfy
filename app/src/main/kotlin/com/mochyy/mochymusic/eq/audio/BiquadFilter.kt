@@ -1,7 +1,7 @@
-package com.example.musicfy.eq.audio
+package com.mochyy.mochymusic.eq.audio
 
-import com.example.musicfy.eq.data.FilterType
-import com.example.musicfy.eq.data.ParametricEQBand
+import com.mochyy.mochymusic.eq.data.FilterType
+import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.log10

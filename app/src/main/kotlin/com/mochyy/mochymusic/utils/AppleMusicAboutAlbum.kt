@@ -1,8 +1,8 @@
 // AppleMusicAboutAlbum.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
-import com.example.musicfy.canvas.AppleMusicToken
+import com.mochyy.mochymusic.canvas.AppleMusicToken
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp

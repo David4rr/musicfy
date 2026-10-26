@@ -1,6 +1,6 @@
 // ComposeToImage.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import android.content.ContentValues
 import android.content.Context
@@ -30,8 +30,8 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.LyricsBackgroundStyle
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.LyricsBackgroundStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -239,7 +239,7 @@ object ComposeToImage {
 
         canvas.drawOval(logoBoxRect, logoBgPaint)
 
-        val rawLogo = context.getDrawable(R.drawable.musicfy_icon)?.toBitmap()
+        val rawLogo = context.getDrawable(R.drawable.mochy_icon)?.toBitmap()
         rawLogo?.let {
             val logoPaint = Paint().apply {
 
@@ -533,7 +533,7 @@ object ComposeToImage {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "$fileName.png")
                 put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/musicfy")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/mochy")
             }
             val uri = context.contentResolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,

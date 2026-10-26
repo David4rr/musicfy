@@ -1,6 +1,6 @@
 // NavigationBuilder.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
 import android.app.Activity
 import android.content.Intent
@@ -8,7 +8,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import com.example.musicfy.db.entities.FormatEntity
+import com.mochyy.mochymusic.db.entities.FormatEntity
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -75,41 +75,41 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.navArgument
-import com.example.musicfy.R
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.constants.DarkModeKey
-import com.example.musicfy.ui.theme.ForceDarkTheme
-import com.example.musicfy.constants.PlaylistSortType
-import com.example.musicfy.constants.PureBlackKey
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.db.entities.SongArtistMap
-import com.example.musicfy.db.entities.SongEntity
-import com.example.musicfy.ui.component.ContainerCloseEasing
-import com.example.musicfy.ui.component.ContainerCloseMillis
-import com.example.musicfy.ui.component.ContainerOpenDamping
-import com.example.musicfy.ui.component.ContainerOpenStiffness
-import com.example.musicfy.ui.component.LocalNavAnimatedContentScope
-import com.example.musicfy.ui.component.NavigationTitle
-import com.example.musicfy.ui.screens.artist.ArtistAlbumsScreen
-import com.example.musicfy.ui.screens.artist.ArtistItemsScreen
-import com.example.musicfy.ui.screens.artist.ArtistScreen
-import com.example.musicfy.ui.screens.artist.ArtistSongsScreen
-import com.example.musicfy.ui.screens.playlist.AutoPlaylistScreen
-import com.example.musicfy.ui.screens.playlist.CachePlaylistScreen
-import com.example.musicfy.ui.screens.playlist.LocalPlaylistScreen
-import com.example.musicfy.ui.screens.playlist.OnlinePlaylistScreen
-import com.example.musicfy.ui.screens.playlist.TopPlaylistScreen
-import com.example.musicfy.ui.screens.search.GenreScreen
-import com.example.musicfy.ui.screens.search.OnlineSearchResult
-import com.example.musicfy.ui.screens.search.SearchScreen
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.ui.screens.settings.ProfileScreen
-import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
-import com.example.musicfy.ui.screens.SectionDetailScreen
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.constants.DarkModeKey
+import com.mochyy.mochymusic.ui.theme.ForceDarkTheme
+import com.mochyy.mochymusic.constants.PlaylistSortType
+import com.mochyy.mochymusic.constants.PureBlackKey
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.db.entities.SongArtistMap
+import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.ui.component.ContainerCloseEasing
+import com.mochyy.mochymusic.ui.component.ContainerCloseMillis
+import com.mochyy.mochymusic.ui.component.ContainerOpenDamping
+import com.mochyy.mochymusic.ui.component.ContainerOpenStiffness
+import com.mochyy.mochymusic.ui.component.LocalNavAnimatedContentScope
+import com.mochyy.mochymusic.ui.component.NavigationTitle
+import com.mochyy.mochymusic.ui.screens.artist.ArtistAlbumsScreen
+import com.mochyy.mochymusic.ui.screens.artist.ArtistItemsScreen
+import com.mochyy.mochymusic.ui.screens.artist.ArtistScreen
+import com.mochyy.mochymusic.ui.screens.artist.ArtistSongsScreen
+import com.mochyy.mochymusic.ui.screens.playlist.AutoPlaylistScreen
+import com.mochyy.mochymusic.ui.screens.playlist.CachePlaylistScreen
+import com.mochyy.mochymusic.ui.screens.playlist.LocalPlaylistScreen
+import com.mochyy.mochymusic.ui.screens.playlist.OnlinePlaylistScreen
+import com.mochyy.mochymusic.ui.screens.playlist.TopPlaylistScreen
+import com.mochyy.mochymusic.ui.screens.search.GenreScreen
+import com.mochyy.mochymusic.ui.screens.search.OnlineSearchResult
+import com.mochyy.mochymusic.ui.screens.search.SearchScreen
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.ui.screens.settings.ProfileScreen
+import com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen
+import com.mochyy.mochymusic.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.musicfy.viewmodels.HomeViewModel
-import com.example.musicfy.ui.screens.library.LibraryArtistsScreen
+import com.mochyy.mochymusic.viewmodels.HomeViewModel
+import com.mochyy.mochymusic.ui.screens.library.LibraryArtistsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -259,7 +259,7 @@ fun NavGraphBuilder.navigationBuilder(
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val useDarkTheme = ForceDarkTheme
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.example.musicfy.ui.screens.library.LibraryHomeScreen(
+            com.mochyy.mochymusic.ui.screens.library.LibraryHomeScreen(
                 navController = navController,
                 pureBlack = remember(pureBlackEnabled, useDarkTheme) { pureBlackEnabled && useDarkTheme },
             )
@@ -267,7 +267,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     coverSourceComposable("library/songs") {
-        com.example.musicfy.ui.screens.library.LibrarySongsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.library.LibrarySongsScreen(navController = navController)
     }
 
     composable(
@@ -277,27 +277,27 @@ fun NavGraphBuilder.navigationBuilder(
     ) {
         // the scope a playlist's cover needs to grow into its page, as on Home
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController)
+            com.mochyy.mochymusic.ui.screens.library.LibraryPlaylistsScreen(navController = navController)
         }
     }
 
     coverSourceComposable("library/added") {
-        com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
     // The Library's Local and Cached tabs open these: the same pages again, counting only that
     // tab's songs. "library/local/albums", "library/cached/albums" and so on.
-    com.example.musicfy.viewmodels.LibraryShelfKind.entries.forEach { shelf ->
+    com.mochyy.mochymusic.viewmodels.LibraryShelfKind.entries.forEach { shelf ->
         coverSourceComposable("library/${shelf.key}/added") {
-            com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, shelf = shelf)
+            com.mochyy.mochymusic.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController, shelf = shelf)
         }
 
         coverSourceComposable("library/${shelf.key}/albums") {
-            com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController, shelf = shelf)
+            com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen(navController = navController, shelf = shelf)
         }
 
         coverSourceComposable("library/${shelf.key}/artists") {
-            com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController, shelf = shelf)
+            com.mochyy.mochymusic.ui.screens.library.LibraryArtistsScreen(navController = navController, shelf = shelf)
         }
 
         composable(
@@ -306,7 +306,7 @@ fun NavGraphBuilder.navigationBuilder(
             popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
         ) {
             CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-                com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController, shelf = shelf)
+                com.mochyy.mochymusic.ui.screens.library.LibraryPlaylistsScreen(navController = navController, shelf = shelf)
             }
         }
     }
@@ -316,7 +316,7 @@ fun NavGraphBuilder.navigationBuilder(
         route = "library/imported/{source}",
         arguments = listOf(navArgument("source") { type = NavType.StringType }),
     ) {
-        com.example.musicfy.ui.screens.library.LibraryImportedScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.library.LibraryImportedScreen(navController = navController)
     }
 
     // The Imported tab's Playlists cards: the playlists one service brought in.
@@ -327,9 +327,9 @@ fun NavGraphBuilder.navigationBuilder(
         popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
     ) { entry ->
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(
+            com.mochyy.mochymusic.ui.screens.library.LibraryPlaylistsScreen(
                 navController = navController,
-                source = com.example.musicfy.importer.ImportSource.fromKey(entry.arguments?.getString("source")),
+                source = com.mochyy.mochymusic.importer.ImportSource.fromKey(entry.arguments?.getString("source")),
             )
         }
     }
@@ -339,53 +339,53 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("stats") {
-        com.example.musicfy.ui.screens.recap.StatsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.recap.StatsScreen(navController = navController)
     }
 
     composable("cipher_settings") {
-        com.example.musicfy.ui.screens.settings.CipherSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.CipherSettingsScreen(navController = navController)
     }
 
     composable("playback_diagnostics") {
-        com.example.musicfy.ui.screens.settings.PlaybackDiagnosticsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.PlaybackDiagnosticsScreen(navController = navController)
     }
 
-    composable("musicfy_settings") {
-        com.example.musicfy.ui.screens.settings.MusicfySettingsScreen(navController = navController)
+    composable("mochy_settings") {
+        com.mochyy.mochymusic.ui.screens.settings.MochySettingsScreen(navController = navController)
     }
 
     composable("general_settings") {
-        com.example.musicfy.ui.screens.settings.GeneralSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.GeneralSettingsScreen(navController = navController)
     }
 
     composable("appearance_settings") {
-        com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute) {
-        com.example.musicfy.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute) {
-        com.example.musicfy.ui.screens.settings.integrations.discord.DiscordScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordScreen(navController = navController)
     }
 
     composable(
-        route = com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceRoute,
+        route = com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceRoute,
         arguments = listOf(navArgument("site") { type = NavType.StringType }),
     ) { entry ->
-        val site = com.example.musicfy.scrobble.ScrobbleSite.entries
+        val site = com.mochyy.mochymusic.scrobble.ScrobbleSite.entries
             .find { it.name == entry.arguments?.getString("site") }
-            ?: com.example.musicfy.scrobble.ScrobbleSite.LASTFM
-        com.example.musicfy.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
+            ?: com.mochyy.mochymusic.scrobble.ScrobbleSite.LASTFM
+        com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceScreen(navController = navController, site = site)
     }
 
     composable("playback_settings") {
-        com.example.musicfy.ui.screens.settings.PlaybackSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.PlaybackSettingsScreen(navController = navController)
     }
 
     composable("crossmix_settings") {
-        com.example.musicfy.ui.screens.settings.CrossmixSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.CrossmixSettingsScreen(navController = navController)
     }
 
     composable(
@@ -393,46 +393,46 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("person") { type = NavType.IntType; defaultValue = 0 }),
     ) { entry ->
         val person = entry.arguments?.getInt("person") ?: 0
-        com.example.musicfy.ui.screens.settings.devspace.DeveloperSpaceScreen(
+        com.mochyy.mochymusic.ui.screens.settings.devspace.DeveloperSpaceScreen(
             navController = navController,
             initialPage = person,
         )
     }
 
-    composable(com.example.musicfy.ui.screens.settings.devspace.DevPlaygroundRoute) {
-        com.example.musicfy.ui.screens.settings.devspace.DevPlaygroundScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.storage.StorageRoute) {
-        com.example.musicfy.ui.screens.settings.storage.StorageScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.storage.StorageRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.storage.StorageScreen(navController = navController)
     }
 
     composable("experimental_settings") {
-        com.example.musicfy.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.ImportSyncRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.ImportSyncScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.ImportProvidersRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.ImportProvidersScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProvidersScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.ImportTuneMyMusicRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.TuneMyMusicImportScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportTuneMyMusicRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.TuneMyMusicImportScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.ImportProgressRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.ImportProgressScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.ImportProgressScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.YouTubeSyncRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.YouTubeSyncScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeSyncScreen(navController = navController)
     }
 
     composable(
-        route = com.example.musicfy.ui.screens.settings.importsync.AccountImportRoutePattern,
+        route = com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportRoutePattern,
         arguments = listOf(
             navArgument("service") { type = NavType.StringType },
             // what a Re-sync opened the page for, and the services Re-sync all goes on to
@@ -448,52 +448,52 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
     ) {
-        com.example.musicfy.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginRoute) {
-        com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginScreen(navController = navController)
     }
 
     composable("equalizer") {
-        com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.equalizer.EqualizerScreen(navController = navController)
     }
 
     composable("gesture_settings") {
-        com.example.musicfy.ui.screens.gesture.GestureScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.gesture.GestureScreen(navController = navController)
     }
 
     composable("audio_lab") {
-        com.example.musicfy.ui.screens.audiolab.AudioLabScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.audiolab.AudioLabScreen(navController = navController)
     }
 
     composable("audio_fx") {
-        com.example.musicfy.ui.screens.audiolab.AudioFxScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.audiolab.AudioFxScreen(navController = navController)
     }
 
     composable("audio_quality") {
-        com.example.musicfy.ui.screens.audiolab.AudioQualityScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.audiolab.AudioQualityScreen(navController = navController)
     }
 
-    composable(com.example.musicfy.ui.screens.settings.modules.ModulesRoute) {
-        com.example.musicfy.ui.screens.settings.modules.ModulesScreen(navController = navController)
+    composable(com.mochyy.mochymusic.ui.screens.settings.modules.ModulesRoute) {
+        com.mochyy.mochymusic.ui.screens.settings.modules.ModulesScreen(navController = navController)
     }
 
     composable(
-        route = com.example.musicfy.ui.screens.settings.modules.ModuleRoutePattern,
+        route = com.mochyy.mochymusic.ui.screens.settings.modules.ModuleRoutePattern,
         arguments = listOf(navArgument("id") { type = NavType.StringType }),
     ) { entry ->
-        com.example.musicfy.ui.screens.settings.modules.ModuleScreen(
+        com.mochyy.mochymusic.ui.screens.settings.modules.ModuleScreen(
             navController = navController,
             id = entry.arguments?.getString("id").orEmpty(),
         )
     }
 
     composable(
-        route = com.example.musicfy.ui.screens.settings.modules.ModuleSignInRoutePattern,
+        route = com.mochyy.mochymusic.ui.screens.settings.modules.ModuleSignInRoutePattern,
         arguments = listOf(navArgument("id") { type = NavType.StringType }),
     ) { entry ->
-        com.example.musicfy.ui.screens.settings.modules.ModuleSignInScreen(
+        com.mochyy.mochymusic.ui.screens.settings.modules.ModuleSignInScreen(
             navController = navController,
             id = entry.arguments?.getString("id").orEmpty(),
         )
@@ -614,7 +614,7 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
     ) {
-        com.example.musicfy.ui.screens.artist.ArtistSimilarScreen(navController)
+        com.mochyy.mochymusic.ui.screens.artist.ArtistSimilarScreen(navController)
     }
 
     coverSourceComposable(
@@ -769,11 +769,11 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     coverSourceComposable("library/albums") {
-        com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.library.LibraryAlbumsScreen(navController = navController)
     }
 
     coverSourceComposable("library/artists") {
-        com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController)
+        com.mochyy.mochymusic.ui.screens.library.LibraryArtistsScreen(navController = navController)
     }
 }
 

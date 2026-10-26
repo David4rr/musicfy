@@ -5,7 +5,7 @@
 // it does. Picking closes the sheet right away; there's no Done button. The choice is read by
 // SongSwipeBox in every song list.
 
-package com.example.musicfy.ui.screens.gesture
+package com.mochyy.mochymusic.ui.screens.gesture
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -35,22 +35,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.SwipeLeftActionKey
-import com.example.musicfy.constants.SwipeRightActionKey
-import com.example.musicfy.ui.component.DefaultSwipeLeft
-import com.example.musicfy.ui.component.DefaultSwipeRight
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SheetIcon
-import com.example.musicfy.ui.component.SheetOptionRow
-import com.example.musicfy.ui.component.SongSwipeAction
-import com.example.musicfy.ui.component.bleedHorizontally
-import com.example.musicfy.ui.screens.audiolab.AudioLabPage
-import com.example.musicfy.ui.screens.audiolab.LabCard
-import com.example.musicfy.ui.screens.audiolab.LabColors
-import com.example.musicfy.ui.screens.audiolab.LabTitle
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.SwipeLeftActionKey
+import com.mochyy.mochymusic.constants.SwipeRightActionKey
+import com.mochyy.mochymusic.ui.component.DefaultSwipeLeft
+import com.mochyy.mochymusic.ui.component.DefaultSwipeRight
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SheetIcon
+import com.mochyy.mochymusic.ui.component.SheetOptionRow
+import com.mochyy.mochymusic.ui.component.SongSwipeAction
+import com.mochyy.mochymusic.ui.component.bleedHorizontally
+import com.mochyy.mochymusic.ui.screens.audiolab.AudioLabPage
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCard
+import com.mochyy.mochymusic.ui.screens.audiolab.LabColors
+import com.mochyy.mochymusic.ui.screens.audiolab.LabTitle
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 
 private val CardPadding = 20.dp
 

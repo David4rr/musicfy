@@ -1,9 +1,9 @@
 // YouTubeLyricsVideoSync.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.lyrics.LyricsUtils
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.LyricsUtils
 import com.music.innertube.YouTube
 
 typealias LyricVideoAnchor = Pair<Long, Long>

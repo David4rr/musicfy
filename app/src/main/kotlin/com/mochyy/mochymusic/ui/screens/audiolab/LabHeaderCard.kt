@@ -1,6 +1,6 @@
 // the tilted card the audio lab headers show, it always dips under the sheet's top edge so the sheet cuts it off whatever height the title is
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /** where a card stands in the header picture: low in its corner, its bottom well under the sheet */
 internal val LabCardStart = 22.dp

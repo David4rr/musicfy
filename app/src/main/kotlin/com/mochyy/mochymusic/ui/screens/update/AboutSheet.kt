@@ -1,6 +1,6 @@
-// about app, upstream credits and license sheets pushed from the version sheet or the musicfy page
+// about app, upstream credits and license sheets pushed from the version sheet or the mochy page
 
-package com.example.musicfy.ui.screens.update
+package com.mochyy.mochymusic.ui.screens.update
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
@@ -51,15 +51,15 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.R
-import com.example.musicfy.core.updater.GithubOwner
-import com.example.musicfy.core.updater.GithubRepo
-import com.example.musicfy.core.updater.GithubRepoUrl
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.screens.donate.showDonateSheet
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.updater.GithubOwner
+import com.mochyy.mochymusic.core.updater.GithubRepo
+import com.mochyy.mochymusic.core.updater.GithubRepoUrl
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.screens.donate.showDonateSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -181,7 +181,7 @@ private val MoreCredits = listOf(
 private val Licenses = listOf(
     LicenseEntry(
         tag = "GPL-3.0",
-        title = "Musicfy · GNU General Public License v3.0",
+        title = "Mochy Music · GNU General Public License v3.0",
         subtitle = "Free and open source software, source code on GitHub",
         url = "$GithubRepoUrl/blob/main/LICENSE",
     ),
@@ -259,7 +259,7 @@ private suspend fun fetchContributors(): List<ContributorEntry> {
                 connectTimeout = 8_000
                 readTimeout = 8_000
                 setRequestProperty("Accept", "application/vnd.github+json")
-                setRequestProperty("User-Agent", "musicfy-android")
+                setRequestProperty("User-Agent", "mochy-android")
             }
             try {
                 val arr = JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
@@ -321,7 +321,7 @@ private fun ColumnScope.AboutSheetContent(
     Box(Modifier.fillMaxWidth()) {
         // zero-size layout places the spinning ring behind the top icon without pushing the column down
         VersionRing(
-            text = "MUSICFY $installed",
+            text = "MOCHY $installed",
             scrollProgress = { scrollState.value / ringScrollRangePx },
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -358,7 +358,7 @@ private fun ColumnScope.AboutSheetContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_musicfy_mark),
+                        painter = painterResource(R.drawable.ic_mochy_mark),
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(38.dp),
@@ -374,7 +374,7 @@ private fun ColumnScope.AboutSheetContent(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Musicfy | $installed",
+                    text = "Mochy Music | $installed",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.4).sp,
@@ -391,7 +391,7 @@ private fun ColumnScope.AboutSheetContent(
                     .padding(horizontal = 18.dp, vertical = 16.dp),
             ) {
                 Text(
-                    text = "musicfy is a music app but\nkinda cool.",
+                    text = "Mochy Music is a music app but\nkinda cool.",
                     fontSize = 15.sp,
                     lineHeight = 19.sp,
                     fontWeight = FontWeight.Bold,
@@ -408,7 +408,7 @@ private fun ColumnScope.AboutSheetContent(
                     onClick = { popup.showDonateSheet() },
                 )
                 AboutPillRow(
-                    text = "musicfy github \u2192",
+                    text = "Mochy Music github \u2192",
                     onClick = { context.openUrl(GithubRepoUrl) },
                 )
             }

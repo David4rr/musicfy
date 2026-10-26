@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,25 +32,25 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.DefaultPlayerCoverStyle
-import com.example.musicfy.constants.PlayerBackgroundStyle
-import com.example.musicfy.constants.PlayerBackgroundStyleKey
-import com.example.musicfy.constants.PlayerBottomBarStyle
-import com.example.musicfy.constants.PlayerBottomBarStyleKey
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.PlayerCoverStyleKey
-import com.example.musicfy.ui.player.PlayerProgressSlider
-import com.example.musicfy.ui.player.PlayerTransportRow
-import com.example.musicfy.ui.player.PlayerVolumeBar
-import com.example.musicfy.ui.player.SongInfoRow
-import com.example.musicfy.ui.player.customize.DiscCoverStack
-import com.example.musicfy.ui.player.customize.PlayerBackgroundPreview
-import com.example.musicfy.ui.player.customize.coverArtBox
-import com.example.musicfy.ui.player.customize.isDisc
-import com.example.musicfy.ui.player.models.TrackInfo
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.DefaultPlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyleKey
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyle
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyleKey
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerCoverStyleKey
+import com.mochyy.mochymusic.ui.player.PlayerProgressSlider
+import com.mochyy.mochymusic.ui.player.PlayerTransportRow
+import com.mochyy.mochymusic.ui.player.PlayerVolumeBar
+import com.mochyy.mochymusic.ui.player.SongInfoRow
+import com.mochyy.mochymusic.ui.player.customize.DiscCoverStack
+import com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundPreview
+import com.mochyy.mochymusic.ui.player.customize.coverArtBox
+import com.mochyy.mochymusic.ui.player.customize.isDisc
+import com.mochyy.mochymusic.ui.player.models.TrackInfo
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 
 /** swallows every touch, so a preview shows its content without playing it */
 internal fun Modifier.inert(): Modifier = pointerInput(Unit) {

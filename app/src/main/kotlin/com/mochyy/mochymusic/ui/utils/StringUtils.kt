@@ -1,6 +1,6 @@
 // StringUtils.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import java.text.DecimalFormat
 import kotlin.math.absoluteValue

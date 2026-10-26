@@ -1,6 +1,6 @@
 // the bar visualizers on the audio lab pages, they follow the music through one spectrum per page and drift in an idle wave when nothing plays
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
@@ -15,7 +15,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.eq.audio.SpectrumAnalyzer
+import com.mochyy.mochymusic.eq.audio.SpectrumAnalyzer
 import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.pow

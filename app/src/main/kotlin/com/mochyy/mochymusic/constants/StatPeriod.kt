@@ -1,8 +1,8 @@
 // StatPeriod.kt
 
-package com.example.musicfy.constants
+package com.mochyy.mochymusic.constants
 
-import com.example.musicfy.ui.screens.OptionStats
+import com.mochyy.mochymusic.ui.screens.OptionStats
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 

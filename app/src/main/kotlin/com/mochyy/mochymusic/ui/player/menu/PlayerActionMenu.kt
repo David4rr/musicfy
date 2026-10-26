@@ -1,6 +1,6 @@
 // PlayerActionMenu.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -58,21 +58,21 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.KeepScreenOn
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.SheetActionCard
-import com.example.musicfy.ui.component.SheetActionCardRow
-import com.example.musicfy.ui.component.SheetDownloadCard
-import com.example.musicfy.ui.component.SheetHeaderGap
-import com.example.musicfy.ui.component.SheetIcon
-import com.example.musicfy.ui.menu.AddToPlaylistDialog
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.KeepScreenOn
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.SheetActionCard
+import com.mochyy.mochymusic.ui.component.SheetActionCardRow
+import com.mochyy.mochymusic.ui.component.SheetDownloadCard
+import com.mochyy.mochymusic.ui.component.SheetHeaderGap
+import com.mochyy.mochymusic.ui.component.SheetIcon
+import com.mochyy.mochymusic.ui.menu.AddToPlaylistDialog
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -116,7 +116,7 @@ fun PlayerActionMenu(
 
     // Only touched by the lyrics section. hiltViewModel() itself is cheap, but the flows are
     // collected lazily so a menu opened from the player does no lyrics work at all.
-    val lyricsMenuViewModel: com.example.musicfy.viewmodels.LyricsMenuViewModel = hiltViewModel()
+    val lyricsMenuViewModel: com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel = hiltViewModel()
     val lyricsMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
@@ -410,7 +410,7 @@ private fun MenuRow(
     }
 }
 
-/** The phone doesn't sleep while Musicfy is open: for following lyrics, or a phone on a car mount. */
+/** The phone doesn't sleep while Mochy is open: for following lyrics, or a phone on a car mount. */
 @Composable
 private fun KeepScreenOnRow() {
     val (keepScreenOn, setKeepScreenOn) = rememberPreference(KeepScreenOn, defaultValue = false)

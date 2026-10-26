@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,27 +39,27 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.DiscLabelContent
-import com.example.musicfy.constants.DiscLabelContentKey
-import com.example.musicfy.constants.DiscNameKey
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.PlayerEndTimestamp
-import com.example.musicfy.constants.PlayerEndTimestampKey
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.ButtonStyle
-import com.example.musicfy.ui.component.PlayerTransportButtons
-import com.example.musicfy.ui.component.SeekBarStyle
-import com.example.musicfy.ui.component.SeekBarTrack
-import com.example.musicfy.ui.component.TransportColors
-import com.example.musicfy.ui.player.customize.CoverOption
-import com.example.musicfy.ui.player.customize.options
-import com.example.musicfy.ui.player.menu.LocalMenuSheetClose
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.player.menu.MenuSheetSurface
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.DiscLabelContent
+import com.mochyy.mochymusic.constants.DiscLabelContentKey
+import com.mochyy.mochymusic.constants.DiscNameKey
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerEndTimestamp
+import com.mochyy.mochymusic.constants.PlayerEndTimestampKey
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.ButtonStyle
+import com.mochyy.mochymusic.ui.component.PlayerTransportButtons
+import com.mochyy.mochymusic.ui.component.SeekBarStyle
+import com.mochyy.mochymusic.ui.component.SeekBarTrack
+import com.mochyy.mochymusic.ui.component.TransportColors
+import com.mochyy.mochymusic.ui.player.customize.CoverOption
+import com.mochyy.mochymusic.ui.player.customize.options
+import com.mochyy.mochymusic.ui.player.menu.LocalMenuSheetClose
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuSheetSurface
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 
 /** the sheet the editor has open, if any */
 @Composable
@@ -232,7 +232,7 @@ private val PosterVisualizerOption = CoverOption.Switch(
     title = "Visualizer",
     description = "bars round the cover, moving with the music",
     icon = R.drawable.graphic_eq,
-    key = com.example.musicfy.constants.PosterVisualizerKey,
+    key = com.mochyy.mochymusic.constants.PosterVisualizerKey,
     default = false,
 )
 

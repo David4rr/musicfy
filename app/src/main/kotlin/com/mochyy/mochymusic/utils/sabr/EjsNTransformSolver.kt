@@ -1,6 +1,6 @@
 // EjsNTransformSolver.kt
 
-package com.example.musicfy.utils.sabr
+package com.mochyy.mochymusic.utils.sabr
 
 import android.content.Context
 import android.net.Uri
@@ -8,8 +8,8 @@ import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import com.example.musicfy.utils.cipher.CipherDeobfuscator
-import com.example.musicfy.utils.cipher.PlayerJsFetcher
+import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
+import com.mochyy.mochymusic.utils.cipher.PlayerJsFetcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -21,7 +21,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 object EjsNTransformSolver {
-    private const val TAG = "musicfy_EjsNSolver"
+    private const val TAG = "mochy_EjsNSolver"
 
     private var solverWebView: SolverWebView? = null
 

@@ -1,8 +1,8 @@
-// MusicfySettingsScreen.kt
+// MochySettingsScreen.kt
 
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
-import com.example.musicfy.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.component.navigateToTab
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -48,22 +48,22 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.scrobble.ScrobbleSite
-import com.example.musicfy.ui.screens.settings.integrations.IntegrationsRoute
-import com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute
-import com.example.musicfy.ui.screens.settings.integrations.scrobbleServiceRoute
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.SettingsHighlight
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.screens.search.SearchAvatar
-import com.example.musicfy.ui.screens.search.SearchField
-import com.example.musicfy.ui.screens.search.SearchGlassTopBar
-import com.example.musicfy.ui.screens.search.rememberScrollCollapseProgress
-import com.example.musicfy.ui.screens.search.searchTopBarHeight
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.scrobble.ScrobbleSite
+import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
+import com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute
+import com.mochyy.mochymusic.ui.screens.settings.integrations.scrobbleServiceRoute
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.SettingsHighlight
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.screens.search.SearchAvatar
+import com.mochyy.mochymusic.ui.screens.search.SearchField
+import com.mochyy.mochymusic.ui.screens.search.SearchGlassTopBar
+import com.mochyy.mochymusic.ui.screens.search.rememberScrollCollapseProgress
+import com.mochyy.mochymusic.ui.screens.search.searchTopBarHeight
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberPreference
 
 private data class SettingsEntry(
     val title: String,
@@ -185,7 +185,7 @@ private val BubbleColor = Color(0xFF1C1C1E)
 private val IconBgColor = Color(0xFF333338)
 
 @Composable
-fun MusicfySettingsScreen(navController: NavController) {
+fun MochySettingsScreen(navController: NavController) {
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
@@ -462,7 +462,7 @@ fun MusicfySettingsScreen(navController: NavController) {
                 }
             }
 
-            val bottomInset = com.example.musicfy.LocalPlayerAwareWindowInsets.current.asPaddingValues()
+            val bottomInset = com.mochyy.mochymusic.LocalPlayerAwareWindowInsets.current.asPaddingValues()
             val bottomPadding = bottomInset.calculateBottomPadding()
             val bottomSpacerHeight = maxOf(340.dp, bottomPadding + 160.dp)
 
@@ -471,18 +471,18 @@ fun MusicfySettingsScreen(navController: NavController) {
         }
         }
 
-        // Top bar: Musicfy mark + "Settings" title slide away on scroll (progressive glass blur
+        // Top bar: Mochy mark + "Settings" title slide away on scroll (progressive glass blur
         // behind the gradient, matching Library/Search) while the search field glides up to sit
         // beside the profile avatar.
         SearchGlassTopBar(
             glassState = glassState,
             progressProvider = { collapseProgress },
             pureBlack = true,
-            title = "Musicfy",
+            title = "Mochy",
             titleContent = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
-                    contentDescription = "Musicfy",
+                    painter = painterResource(R.drawable.ic_mochy_mark),
+                    contentDescription = "Mochy",
                     tint = Color.White,
                     modifier = Modifier.size(32.dp),
                 )

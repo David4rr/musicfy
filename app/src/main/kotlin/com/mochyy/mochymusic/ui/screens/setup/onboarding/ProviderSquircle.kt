@@ -1,6 +1,6 @@
 // each service's app icon, clipped to the squircle shape app icons use
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -24,8 +24,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.R
-import com.example.musicfy.importer.account.AccountService
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.account.AccountService
 
 @Composable
 internal fun ProviderSquircle(service: AccountService, size: Dp = 40.dp, modifier: Modifier = Modifier) {

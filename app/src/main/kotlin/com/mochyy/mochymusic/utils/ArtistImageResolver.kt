@@ -1,8 +1,8 @@
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import android.util.Log
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.ui.utils.resize
 import com.music.innertube.YouTube
 import com.music.innertube.models.ArtistItem
 import okhttp3.OkHttpClient

@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -35,9 +35,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.R
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

@@ -1,15 +1,15 @@
 // PlaylistResync.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportedPlaylist
-import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.importer.account.ResyncTarget
-import com.example.musicfy.importer.account.YouTubeMusicLibrary
-import com.example.musicfy.importer.account.named
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportedPlaylist
+import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.importer.account.ResyncTarget
+import com.mochyy.mochymusic.importer.account.YouTubeMusicLibrary
+import com.mochyy.mochymusic.importer.account.named
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

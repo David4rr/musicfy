@@ -1,6 +1,6 @@
 // LyricsSteadyWrap.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf

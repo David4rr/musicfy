@@ -1,6 +1,6 @@
 // AddMusicSources.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,15 +10,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.ui.component.isImportedFile
-import com.example.musicfy.ui.menu.announceAddedToPlaylist
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.ui.component.isImportedFile
+import com.mochyy.mochymusic.ui.menu.announceAddedToPlaylist
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint

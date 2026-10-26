@@ -1,6 +1,6 @@
 // AudioResampler.kt
 
-package com.example.musicfy.recognition
+package com.mochyy.mochymusic.recognition
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi

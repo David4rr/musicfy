@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -22,12 +22,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.viewmodels.ImportSyncViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
 
 private const val UNMATCHED_SHOWN = 200
 

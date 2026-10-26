@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.integrations
+package com.mochyy.mochymusic.ui.screens.settings.integrations
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image

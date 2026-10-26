@@ -4,7 +4,7 @@
 // player, so the real queue is never touched: the recap pauses the main player when it opens and
 // hands back to it when it closes.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -15,8 +15,8 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.utils.YTPlayerUtils
+import com.mochyy.mochymusic.constants.AudioQuality
+import com.mochyy.mochymusic.utils.YTPlayerUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

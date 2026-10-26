@@ -1,6 +1,6 @@
 // OnlineBlur.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,9 +17,9 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.transformations
-import com.example.musicfy.ui.player.BackdropBlurTransformation
-import com.example.musicfy.ui.utils.fadingEdge
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.player.BackdropBlurTransformation
+import com.mochyy.mochymusic.ui.utils.fadingEdge
+import com.mochyy.mochymusic.ui.utils.resize
 
 @Composable
 fun OnlineBlur(

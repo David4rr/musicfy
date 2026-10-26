@@ -1,17 +1,17 @@
 // PlayerCoverStyles.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.annotation.DrawableRes
 import androidx.datastore.preferences.core.Preferences
-import com.example.musicfy.R
-import com.example.musicfy.constants.CanvasThumbnailAnimationKey
-import com.example.musicfy.constants.DiscNameKey
-import com.example.musicfy.constants.DiscRealisticModeKey
-import com.example.musicfy.constants.DiscRotatingAnimationKey
-import com.example.musicfy.constants.PlayVideoBackgroundKey
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CanvasThumbnailAnimationKey
+import com.mochyy.mochymusic.constants.DiscNameKey
+import com.mochyy.mochymusic.constants.DiscRealisticModeKey
+import com.mochyy.mochymusic.constants.DiscRotatingAnimationKey
+import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.YtVideoBackgroundLyricsSyncKey
 
 val PlayerCoverStyle.isDisc: Boolean
     get() = when (this) {

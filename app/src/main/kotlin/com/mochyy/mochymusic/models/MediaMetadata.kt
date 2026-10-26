@@ -1,13 +1,13 @@
 // MediaMetadata.kt
 
-package com.example.musicfy.models
+package com.mochyy.mochymusic.models
 
 import androidx.compose.runtime.Immutable
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.db.entities.SongEntity
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.ui.utils.resize
 import java.io.Serializable
 import java.time.LocalDateTime
 

@@ -1,6 +1,6 @@
 // FrostedGlass.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,7 +77,7 @@ fun FrostedChromeGlass(
 ) {
     val color = if (pureBlack) Color.Black else GlassChromeColor
     // the grain only matters on the finer, high quality glass
-    val grain = LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+    val grain = LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
     Box(
         modifier = modifier.drawWithContent {
             drawContent()

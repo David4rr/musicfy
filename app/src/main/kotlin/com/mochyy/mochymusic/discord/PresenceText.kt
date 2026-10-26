@@ -1,10 +1,10 @@
 // PresenceText.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 /** The words the user can drop into any status line or button, and Discord's length rules. */
 object PresenceText {
-    const val AppName = "Musicfy"
+    const val AppName = "Mochy"
 
     /** the placeholder, and what it means, in the order the Discord page lists them */
     val Placeholders = listOf(

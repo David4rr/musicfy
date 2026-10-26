@@ -1,6 +1,6 @@
 // HeroCarousel.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.content.Context
 import android.graphics.Shader
@@ -101,26 +101,26 @@ import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.musicfy.R
-import com.example.musicfy.applecanvas.AppleMusicCanvasProvider
-import com.example.musicfy.canvas.CanvasArtwork
-import com.example.musicfy.canvas.MonochromeApiCanvas
-import com.example.musicfy.constants.CanvasThumbnailAnimationKey
-import com.example.musicfy.constants.CanvasWifiOnlyKey
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.db.entities.LocalItem
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.models.SimilarRecommendation
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.PlayerConnection
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.player.CanvasArtworkPlaybackCache
-import com.example.musicfy.ui.player.CanvasArtworkPlayer
-import com.example.musicfy.ui.player.normalizeCanvasArtistName
-import com.example.musicfy.ui.player.normalizeCanvasSongTitle
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.DailyDiscoverItem
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.applecanvas.AppleMusicCanvasProvider
+import com.mochyy.mochymusic.canvas.CanvasArtwork
+import com.mochyy.mochymusic.canvas.MonochromeApiCanvas
+import com.mochyy.mochymusic.constants.CanvasThumbnailAnimationKey
+import com.mochyy.mochymusic.constants.CanvasWifiOnlyKey
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.db.entities.LocalItem
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.models.SimilarRecommendation
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.player.CanvasArtworkPlaybackCache
+import com.mochyy.mochymusic.ui.player.CanvasArtworkPlayer
+import com.mochyy.mochymusic.ui.player.normalizeCanvasArtistName
+import com.mochyy.mochymusic.ui.player.normalizeCanvasSongTitle
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.DailyDiscoverItem
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -318,11 +318,11 @@ data class ListeningPickItem(val item: MediaMetadata, val reason: String) : Hero
  */
 private fun extraHeroPicks(
     similar: List<SimilarRecommendation>?,
-    onRepeat: List<com.example.musicfy.db.entities.Song>?,
-    forgotten: List<com.example.musicfy.db.entities.Song>?,
+    onRepeat: List<com.mochyy.mochymusic.db.entities.Song>?,
+    forgotten: List<com.mochyy.mochymusic.db.entities.Song>?,
 ): List<HeroCarouselItem> = buildList {
     similar.orEmpty()
-        .sortedBy { if (it.title is com.example.musicfy.db.entities.Artist) 0 else 1 }
+        .sortedBy { if (it.title is com.mochyy.mochymusic.db.entities.Artist) 0 else 1 }
         .take(4)
         .forEach { row ->
             val pick = row.items.firstOrNull { it is SongItem && !it.thumbnail.isNullOrEmpty() }
@@ -330,9 +330,9 @@ private fun extraHeroPicks(
                 ?: return@forEach
             val seed = row.title
             val reason = when (seed) {
-                is com.example.musicfy.db.entities.Artist ->
+                is com.mochyy.mochymusic.db.entities.Artist ->
                     HeroLabel("Because you listen to", seed.thumbnailUrl, seed.title, roundCover = true)
-                is com.example.musicfy.db.entities.Album -> HeroLabel("Because you played", seed.thumbnailUrl, seed.title)
+                is com.mochyy.mochymusic.db.entities.Album -> HeroLabel("Because you played", seed.thumbnailUrl, seed.title)
                 else -> HeroLabel("Similar to", seed.thumbnailUrl, seed.title)
             }
             add(RelatedPickItem(pick, reason))
@@ -489,8 +489,8 @@ fun HeroCarousel(
     starterItems: List<HeroCarouselItem> = emptyList(),
     playlistPicks: List<PlaylistPickItem> = emptyList(),
     similarRecommendations: List<SimilarRecommendation>? = null,
-    onRepeat: List<com.example.musicfy.db.entities.Song>? = null,
-    forgottenFavorites: List<com.example.musicfy.db.entities.Song>? = null,
+    onRepeat: List<com.mochyy.mochymusic.db.entities.Song>? = null,
+    forgottenFavorites: List<com.mochyy.mochymusic.db.entities.Song>? = null,
 ) {
     val showGacha = gachaPool.size >= GachaMinPool
     // only the first song of each list is used, so a reload that reshuffles the tails doesn't
@@ -524,7 +524,7 @@ fun HeroCarousel(
 
             val regular = count { it !is GachaItem }
             if (regular < 5) {
-                keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
+                keepListening?.filterIsInstance<com.mochyy.mochymusic.db.entities.Song>()
                     ?.filter { song -> none { it.mediaId == song.id } }
                     ?.take(5 - regular)
                     ?.forEach { song ->
@@ -693,7 +693,7 @@ private fun HeroPager(
     // the same goes for the gacha's drift and the auto-advance: Home sinking back behind a page, or
     // the player sliding up over it, keeps the app in one cached picture, and any of them moving
     // made that whole picture render again for every one of its frames
-    val obscured = com.example.musicfy.LocalAppContentObscured.current
+    val obscured = com.mochyy.mochymusic.LocalAppContentObscured.current
     val heroHeld = remember(obscured, navSettledState) { { !navSettledState.value || obscured.value } }
 
     if (!isSingleItem) {
@@ -928,7 +928,7 @@ private fun HeroMedia(
                     // also held while the open player covers Home: it kept decoding and drawing
                     // frames under it. It picks up where it was once Home shows again.
                     isPlaying = canvasMayPlay() && heroAtRest && !isPagerMoving() &&
-                        !com.example.musicfy.LocalAppContentObscured.current.value,
+                        !com.mochyy.mochymusic.LocalAppContentObscured.current.value,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -964,7 +964,7 @@ private fun BoxScope.HeroBlurBand(
     // a half-size copy. Both bands redraw with every frame of the hero's video, so it adds up.
     // high quality on android 13+ grows the blur toward the edge in one pass; a faded fixed blur bloomed around bright parts
     val smooth = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-        LocalBlurQuality.current == com.example.musicfy.constants.BlurQuality.HIGH
+        LocalBlurQuality.current == com.mochyy.mochymusic.constants.BlurQuality.HIGH
     DownscaledBlur(
         radius = { BlurEffectCache.effectiveRadius(radius) },
         tileMode = Shader.TileMode.CLAMP,

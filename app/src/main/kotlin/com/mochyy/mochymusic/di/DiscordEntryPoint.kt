@@ -1,6 +1,6 @@
-package com.example.musicfy.di
+package com.mochyy.mochymusic.di
 
-import com.example.musicfy.discord.DiscordAuth
+import com.mochyy.mochymusic.discord.DiscordAuth
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent

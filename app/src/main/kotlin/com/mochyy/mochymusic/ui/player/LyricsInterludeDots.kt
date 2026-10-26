@@ -18,7 +18,7 @@
 // spring, bob slowly while they wait, and each one glows only as it lights up, then lets the glow
 // fade.
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -45,7 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.damageBoundary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI

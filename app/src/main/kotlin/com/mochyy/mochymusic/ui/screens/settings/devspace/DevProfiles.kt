@@ -1,6 +1,6 @@
 // the people on dev spaces and the top half of each page: banner, avatar, name, a line about them and their links
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
@@ -47,14 +47,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.transformations
-import com.example.musicfy.R
-import com.example.musicfy.core.updater.DiscordUrl
-import com.example.musicfy.core.updater.InstagramUrl
-import com.example.musicfy.core.updater.ThreadsUrl
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.screens.donate.showDonateSheet
-import com.example.musicfy.ui.utils.SoftBlurTransformation
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.core.updater.DiscordUrl
+import com.mochyy.mochymusic.core.updater.InstagramUrl
+import com.mochyy.mochymusic.core.updater.ThreadsUrl
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.screens.donate.showDonateSheet
+import com.mochyy.mochymusic.ui.utils.SoftBlurTransformation
 
 internal data class DevSocial(val label: String, val url: String)
 

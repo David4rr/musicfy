@@ -1,24 +1,24 @@
-package com.example.musicfy.module.applemusic
+package com.mochyy.mochymusic.module.applemusic
 
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.DiagnosticStep
-import com.example.musicfy.module.HttpRequest
-import com.example.musicfy.module.HttpResponse
-import com.example.musicfy.module.LicenseServer
-import com.example.musicfy.module.MatchedTrack
-import com.example.musicfy.module.ModuleChoice
-import com.example.musicfy.module.ModuleHost
-import com.example.musicfy.module.ModuleInfo
-import com.example.musicfy.module.ResolveResult
-import com.example.musicfy.module.SignInSpec
-import com.example.musicfy.module.SourceModule
-import com.example.musicfy.module.SourceStream
-import com.example.musicfy.module.StreamDrm
-import com.example.musicfy.module.StreamFormat
-import com.example.musicfy.module.StreamOption
-import com.example.musicfy.module.TrackQuery
-import com.example.musicfy.module.CatalogTrack
-import com.example.musicfy.module.TrackMatcher
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.DiagnosticStep
+import com.mochyy.mochymusic.module.HttpRequest
+import com.mochyy.mochymusic.module.HttpResponse
+import com.mochyy.mochymusic.module.LicenseServer
+import com.mochyy.mochymusic.module.MatchedTrack
+import com.mochyy.mochymusic.module.ModuleChoice
+import com.mochyy.mochymusic.module.ModuleHost
+import com.mochyy.mochymusic.module.ModuleInfo
+import com.mochyy.mochymusic.module.ResolveResult
+import com.mochyy.mochymusic.module.SignInSpec
+import com.mochyy.mochymusic.module.SourceModule
+import com.mochyy.mochymusic.module.SourceStream
+import com.mochyy.mochymusic.module.StreamDrm
+import com.mochyy.mochymusic.module.StreamFormat
+import com.mochyy.mochymusic.module.StreamOption
+import com.mochyy.mochymusic.module.TrackQuery
+import com.mochyy.mochymusic.module.CatalogTrack
+import com.mochyy.mochymusic.module.TrackMatcher
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -35,13 +35,13 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Plays the user's own Apple Music subscription inside Musicfy.
+ * Plays the user's own Apple Music subscription inside Mochy.
  *
  * Signing in happens on music.apple.com itself; the module keeps the web player's developer token
  * and the account's music-user token. A song is found in the catalog by title, artist and length,
  * its web-playback stream is opened, and the device's Widevine CDM decrypts it inside the
  * platform, licensed by Apple's web license server exactly as the web player in Chrome is.
- * Musicfy's own player does the playing, so every effect applies.
+ * Mochy's own player does the playing, so every effect applies.
  *
  * What it can't do: lossless, Atmos and Apple's Spatial mix (only in streams encoded for FairPlay,
  * Apple's own DRM) and downloads (no offline licenses; the audio is never decrypted outside the
@@ -53,7 +53,7 @@ class AppleMusicModule : SourceModule {
         id = Id,
         name = "Apple Music",
         version = "1.0",
-        description = "Plays your Apple Music subscription in Musicfy, in AAC 256, with every Audio Lab effect",
+        description = "Plays your Apple Music subscription in Mochy, in AAC 256, with every Audio Lab effect",
     )
 
     private lateinit var host: ModuleHost
@@ -71,7 +71,7 @@ class AppleMusicModule : SourceModule {
         sessionOrigins = setOf("https://music.apple.com"),
         desktopSite = false,
         title = "Sign in to Apple Music",
-        subtitle = "Your subscription plays in Musicfy",
+        subtitle = "Your subscription plays in Mochy",
     )
 
     override val choices = listOf(

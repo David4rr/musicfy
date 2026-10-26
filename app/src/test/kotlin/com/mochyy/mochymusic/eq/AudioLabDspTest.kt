@@ -1,18 +1,18 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
-import com.example.musicfy.eq.audio.CustomEqualizerAudioProcessor
-import com.example.musicfy.eq.audio.LoudnessAudioProcessor
-import com.example.musicfy.eq.audio.LoudnessParams
-import com.example.musicfy.eq.audio.ReverbAudioProcessor
-import com.example.musicfy.eq.audio.ReverbParams
-import com.example.musicfy.eq.audio.SpatialAudioProcessor
-import com.example.musicfy.eq.audio.SpatialMode
-import com.example.musicfy.eq.audio.SpatialParams
-import com.example.musicfy.eq.data.FilterType
-import com.example.musicfy.eq.data.ParametricEQ
-import com.example.musicfy.eq.data.ParametricEQBand
+import com.mochyy.mochymusic.eq.audio.CustomEqualizerAudioProcessor
+import com.mochyy.mochymusic.eq.audio.LoudnessAudioProcessor
+import com.mochyy.mochymusic.eq.audio.LoudnessParams
+import com.mochyy.mochymusic.eq.audio.ReverbAudioProcessor
+import com.mochyy.mochymusic.eq.audio.ReverbParams
+import com.mochyy.mochymusic.eq.audio.SpatialAudioProcessor
+import com.mochyy.mochymusic.eq.audio.SpatialMode
+import com.mochyy.mochymusic.eq.audio.SpatialParams
+import com.mochyy.mochymusic.eq.data.FilterType
+import com.mochyy.mochymusic.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -229,7 +229,7 @@ class AudioLabDspTest {
     @Test
     fun `ReplayGain comes from the file's Vorbis comments, track or album, never past the peak`() {
         // as Monochrome's FLAC of Eastside carries them, plus album tags to tell apart
-        val tags = com.example.musicfy.eq.audio.ReplayGainTags()
+        val tags = com.mochyy.mochymusic.eq.audio.ReplayGainTags()
         tags.update(
             listOf(
                 "REPLAYGAIN_TRACK_GAIN" to "-8.89 dB",
@@ -239,11 +239,11 @@ class AudioLabDspTest {
             )
         )
         assertTrue(tags.present)
-        val track = com.example.musicfy.eq.audio.ReplayGainParams(com.example.musicfy.eq.audio.ReplayGainMode.Track, preampDb = 3f)
+        val track = com.mochyy.mochymusic.eq.audio.ReplayGainParams(com.mochyy.mochymusic.eq.audio.ReplayGainMode.Track, preampDb = 3f)
         // -8.89 + 3 = -5.89 dB
         assertEquals(0.5075f, tags.linear(track, normalize = true), 0.002f)
         // album: -6 + 3 = -3 dB is 0.708, but its peak of 0.5 allows at most 2x, so -3 dB stands
-        val album = track.copy(mode = com.example.musicfy.eq.audio.ReplayGainMode.Album)
+        val album = track.copy(mode = com.mochyy.mochymusic.eq.audio.ReplayGainMode.Album)
         assertEquals(0.708f, tags.linear(album, normalize = true), 0.002f)
         // a big preamp can't push past full scale on a 1.0 peak
         assertEquals(1f, tags.linear(track.copy(preampDb = 20f), normalize = true), 0.0001f)

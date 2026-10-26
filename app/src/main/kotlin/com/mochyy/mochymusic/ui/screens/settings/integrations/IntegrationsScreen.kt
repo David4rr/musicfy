@@ -1,6 +1,6 @@
-// musicfy → settings → integrations: a card per service, tapping one opens its own page
+// mochy → settings → integrations: a card per service, tapping one opens its own page
 
-package com.example.musicfy.ui.screens.settings.integrations
+package com.mochyy.mochymusic.ui.screens.settings.integrations
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -9,10 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.scrobble.ScrobbleSite
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.settings.integrations.discord.DiscordRoute
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.scrobble.ScrobbleSite
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute
 
 const val IntegrationsRoute = "integrations_settings"
 

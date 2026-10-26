@@ -4,7 +4,7 @@
 // "Cancel all downloads" for downloads, "Create playlist" for local imports to keep them together. Opened from the Library's progress card, and right after a local
 // import starts.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -34,15 +34,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.models.TransferBatch
-import com.example.musicfy.models.TransferItem
-import com.example.musicfy.models.TransferState
-import com.example.musicfy.ui.component.CreatePlaylistDialog
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.viewmodels.LibraryImportViewModel
+import com.mochyy.mochymusic.models.TransferBatch
+import com.mochyy.mochymusic.models.TransferItem
+import com.mochyy.mochymusic.models.TransferState
+import com.mochyy.mochymusic.ui.component.CreatePlaylistDialog
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.viewmodels.LibraryImportViewModel
 import kotlinx.coroutines.flow.StateFlow
 
 /** Which job a progress card or sheet follows. */

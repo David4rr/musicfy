@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.view.ContextThemeWrapper
 import android.content.Context
@@ -53,15 +53,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.R
-import com.example.musicfy.importer.account.DESKTOP_USER_AGENT
-import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.account.DESKTOP_USER_AGENT
+import com.mochyy.mochymusic.importer.account.WEB_PLAYER_QUERY_HEADER
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
 /** the page-side name of CaptureBridge, scripts the app runs in the page report through it too */
-internal const val BRIDGE_NAME = "MusicfyCapture"
+internal const val BRIDGE_NAME = "MochyCapture"
 
 /** headers the web players send with their session: the token itself and spotify's client details */
 private val SESSION_HEADERS = setOf("authorization", "media-user-token", "client-token", "app-platform", "spotify-app-version")
@@ -69,9 +69,9 @@ private val SESSION_HEADERS = setOf("authorization", "media-user-token", "client
 /** wraps fetch and xhr so the session headers and spotify's library queries the web player sends reach the app */
 private val HOOK_JS = """
 (function() {
-  if (window.__musicfyHooked) return;
-  window.__musicfyHooked = true;
-  window.__musicfyQueries = window.__musicfyQueries || {};
+  if (window.__mochyHooked) return;
+  window.__mochyHooked = true;
+  window.__mochyQueries = window.__mochyQueries || {};
   var wanted = { 'authorization': 1, 'media-user-token': 1, 'client-token': 1, 'app-platform': 1, 'spotify-app-version': 1 };
   var seen = {};
   var seenCount = 0;
@@ -108,7 +108,7 @@ private val HOOK_JS = """
         post = false;
       }
       if (!name || !hash) return;
-      window.__musicfyQueries[name] = 1;
+      window.__mochyQueries[name] = 1;
       address.search = '';
       var key = 'query|' + name + '|' + hash;
       if (seen[key]) return;
@@ -147,16 +147,16 @@ private val HOOK_JS = """
     var originalOpen = XMLHttpRequest.prototype.open;
     var originalSet = XMLHttpRequest.prototype.setRequestHeader;
     XMLHttpRequest.prototype.open = function(method, url) {
-      try { this.__musicfyUrl = url; } catch (e) {}
+      try { this.__mochyUrl = url; } catch (e) {}
       return originalOpen.apply(this, arguments);
     };
     XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-      report(name, value, this.__musicfyUrl);
+      report(name, value, this.__mochyUrl);
       return originalSet.apply(this, arguments);
     };
     var originalSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.send = function(body) {
-      reportQuery(this.__musicfyUrl, body);
+      reportQuery(this.__mochyUrl, body);
       return originalSend.apply(this, arguments);
     };
   } catch (e) {}

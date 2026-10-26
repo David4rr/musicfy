@@ -1,6 +1,6 @@
 // BackdropBlurTransformation.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import android.graphics.Bitmap
 import androidx.core.graphics.createBitmap

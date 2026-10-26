@@ -1,6 +1,6 @@
 // LyricsEntry.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import kotlinx.coroutines.flow.MutableStateFlow
 

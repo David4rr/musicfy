@@ -1,6 +1,6 @@
 // DeepLService.kt
 
-package com.example.musicfy.api
+package com.mochyy.mochymusic.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

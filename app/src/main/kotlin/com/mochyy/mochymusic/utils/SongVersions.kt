@@ -1,9 +1,9 @@
 // SongVersions.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
-import com.example.musicfy.ui.player.normalizeCanvasArtistName
-import com.example.musicfy.ui.player.normalizeCanvasSongTitle
+import com.mochyy.mochymusic.ui.player.normalizeCanvasArtistName
+import com.mochyy.mochymusic.ui.player.normalizeCanvasSongTitle
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV

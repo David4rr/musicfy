@@ -1,4 +1,4 @@
-package com.example.musicfy.constants
+package com.mochyy.mochymusic.constants
 
 enum class HapticFocus {
     BALANCE,

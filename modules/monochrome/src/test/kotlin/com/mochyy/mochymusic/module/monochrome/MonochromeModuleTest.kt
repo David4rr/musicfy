@@ -1,13 +1,13 @@
-package com.example.musicfy.module.monochrome
+package com.mochyy.mochymusic.module.monochrome
 
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.HttpRequest
-import com.example.musicfy.module.HttpResponse
-import com.example.musicfy.module.ModuleHost
-import com.example.musicfy.module.ModuleStorage
-import com.example.musicfy.module.ResolveResult
-import com.example.musicfy.module.StreamFormat
-import com.example.musicfy.module.TrackQuery
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.HttpRequest
+import com.mochyy.mochymusic.module.HttpResponse
+import com.mochyy.mochymusic.module.ModuleHost
+import com.mochyy.mochymusic.module.ModuleStorage
+import com.mochyy.mochymusic.module.ResolveResult
+import com.mochyy.mochymusic.module.StreamFormat
+import com.mochyy.mochymusic.module.TrackQuery
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

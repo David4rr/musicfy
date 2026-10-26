@@ -1,12 +1,12 @@
 // DiscordLoginActivity.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import com.example.musicfy.MainActivity
-import com.example.musicfy.di.DiscordEntryPoint
+import com.mochyy.mochymusic.MainActivity
+import com.mochyy.mochymusic.di.DiscordEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 
 /**

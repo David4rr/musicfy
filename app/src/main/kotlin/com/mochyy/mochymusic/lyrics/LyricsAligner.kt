@@ -1,8 +1,8 @@
 // LyricsAligner.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
-import com.example.musicfy.lyrics.VocalActivity.Companion.FrameMs
+import com.mochyy.mochymusic.lyrics.VocalActivity.Companion.FrameMs
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max

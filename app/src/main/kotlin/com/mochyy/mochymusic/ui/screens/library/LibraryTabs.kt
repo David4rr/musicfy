@@ -3,7 +3,7 @@
 // The All / Local / Cached / Imported switch at the top of the Library, and the small pieces the
 // tabs share: the two-wide card grid, the caps section label and the "Manage" pill of a tab.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -32,9 +32,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
-import com.example.musicfy.viewmodels.LibraryShelfKind
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.ui.screens.search.SearchHorizontalPadding
+import com.mochyy.mochymusic.viewmodels.LibraryShelfKind
 
 /**
  * What the Library shows: everything, what plays from the phone, what the player has cached, or

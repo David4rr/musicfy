@@ -1,10 +1,10 @@
 // ThemeViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.ViewModel
-import com.example.musicfy.ui.screens.DarkMode
-import com.example.musicfy.ui.theme.DefaultThemeColor
+import com.mochyy.mochymusic.ui.screens.DarkMode
+import com.mochyy.mochymusic.ui.theme.DefaultThemeColor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -1,6 +1,6 @@
 // MusicRecognitionService.kt
 
-package com.example.musicfy.recognition
+package com.mochyy.mochymusic.recognition
 
 import android.Manifest
 import android.annotation.SuppressLint

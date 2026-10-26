@@ -1,15 +1,15 @@
 // LyricsTranslationHelper.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
-import com.example.musicfy.api.DeepLService
-import com.example.musicfy.api.MistralService
-import com.example.musicfy.api.OpenRouterService
-import com.example.musicfy.api.OpenRouterStreamingService
-import com.example.musicfy.constants.LanguageCodeToName
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.LyricsEntity
+import com.mochyy.mochymusic.api.DeepLService
+import com.mochyy.mochymusic.api.MistralService
+import com.mochyy.mochymusic.api.OpenRouterService
+import com.mochyy.mochymusic.api.OpenRouterStreamingService
+import com.mochyy.mochymusic.constants.LanguageCodeToName
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.LyricsEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -265,12 +265,12 @@ object LyricsTranslationHelper {
 
                 val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
                 if (effectiveApiKey.isBlank()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_api_key_required))
+                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_api_key_required))
                     return@launchTranslation
                 }
 
                 if (lyrics.isEmpty()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_no_lyrics))
+                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_no_lyrics))
                     return@launchTranslation
                 }
 
@@ -279,7 +279,7 @@ object LyricsTranslationHelper {
                 }
 
                 if (nonEmptyEntries.isEmpty()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_lyrics_empty))
+                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_lyrics_empty))
                     return@launchTranslation
                 }
 
@@ -325,7 +325,7 @@ object LyricsTranslationHelper {
                 }
 
                 if (targetLanguage.isBlank()) {
-                    _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_language_required))
+                    _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_language_required))
                     return@launchTranslation
                 }
 
@@ -468,7 +468,7 @@ object LyricsTranslationHelper {
                             _status.value = TranslationStatus.Success
                         }
                         else -> {
-                            _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_unexpected))
+                            _status.value = TranslationStatus.Error(context.getString(com.mochyy.mochymusic.R.string.ai_error_unexpected))
                         }
                     }
 
@@ -481,12 +481,12 @@ object LyricsTranslationHelper {
                         return@onFailure
                     }
 
-                    val errorMessage = error.message ?: context.getString(com.example.musicfy.R.string.ai_error_unknown)
+                    val errorMessage = error.message ?: context.getString(com.mochyy.mochymusic.R.string.ai_error_unknown)
                     _status.value = TranslationStatus.Error(errorMessage)
                 }
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException && isCompositionActive) {
-                    val errorMessage = e.message ?: context.getString(com.example.musicfy.R.string.ai_error_translation_failed)
+                    val errorMessage = e.message ?: context.getString(com.mochyy.mochymusic.R.string.ai_error_translation_failed)
                     _status.value = TranslationStatus.Error(errorMessage)
                 }
             }

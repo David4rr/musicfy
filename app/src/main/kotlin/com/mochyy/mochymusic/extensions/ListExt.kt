@@ -1,10 +1,10 @@
 // ListExt.kt
 
-package com.example.musicfy.extensions
+package com.mochyy.mochymusic.extensions
 
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
 
 fun <T> List<T>.reversed(reversed: Boolean) = if (reversed) asReversed() else this
 

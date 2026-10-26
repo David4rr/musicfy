@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.PlayerBottomBarStyle
-import com.example.musicfy.ui.player.HeldPart
-import com.example.musicfy.ui.player.PlayerLayoutTweaks
+import com.mochyy.mochymusic.constants.PlayerBottomBarStyle
+import com.mochyy.mochymusic.ui.player.HeldPart
+import com.mochyy.mochymusic.ui.player.PlayerLayoutTweaks
 import kotlin.math.roundToInt
 
 /** 0..1 eased in and out, for the stretches of a move that run off one spring */

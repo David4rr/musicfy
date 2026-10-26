@@ -1,6 +1,6 @@
 // MainActivity.kt
 
-package com.example.musicfy
+package com.mochyy.mochymusic
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -24,7 +24,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import com.example.musicfy.ui.component.LocalSharedTransitionScope
+import com.mochyy.mochymusic.ui.component.LocalSharedTransitionScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -135,88 +135,88 @@ import coil3.toBitmap
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
-import com.example.musicfy.R
-import com.example.musicfy.constants.AppBarHeight
-import com.example.musicfy.constants.AppLanguageKey
-import com.example.musicfy.constants.DarkModeKey
-import com.example.musicfy.ui.theme.ForceDarkTheme
-import com.example.musicfy.constants.DefaultOpenTabKey
-import com.example.musicfy.constants.CropAlbumArtKey
-import com.example.musicfy.constants.GridItemsSizeKey
-import com.example.musicfy.constants.GridItemSize
-import com.example.musicfy.constants.SwipeToSongKey
-import com.example.musicfy.constants.DisableScreenshotKey
-import com.example.musicfy.constants.DynamicThemeKey
-import com.example.musicfy.constants.EnableHighRefreshRateKey
-import com.example.musicfy.constants.MiniPlayerBottomSpacing
-import com.example.musicfy.constants.MiniPlayerHeight
-import com.example.musicfy.constants.NavigationBarAnimationSpec
-import com.example.musicfy.constants.NavigationBarHeight
-import com.example.musicfy.constants.SlimNavBarHeight
-import com.example.musicfy.constants.SlimNavBarKey
-import com.example.musicfy.constants.StopMusicOnTaskClearKey
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AppBarHeight
+import com.mochyy.mochymusic.constants.AppLanguageKey
+import com.mochyy.mochymusic.constants.DarkModeKey
+import com.mochyy.mochymusic.ui.theme.ForceDarkTheme
+import com.mochyy.mochymusic.constants.DefaultOpenTabKey
+import com.mochyy.mochymusic.constants.CropAlbumArtKey
+import com.mochyy.mochymusic.constants.GridItemsSizeKey
+import com.mochyy.mochymusic.constants.GridItemSize
+import com.mochyy.mochymusic.constants.SwipeToSongKey
+import com.mochyy.mochymusic.constants.DisableScreenshotKey
+import com.mochyy.mochymusic.constants.DynamicThemeKey
+import com.mochyy.mochymusic.constants.EnableHighRefreshRateKey
+import com.mochyy.mochymusic.constants.MiniPlayerBottomSpacing
+import com.mochyy.mochymusic.constants.MiniPlayerHeight
+import com.mochyy.mochymusic.constants.NavigationBarAnimationSpec
+import com.mochyy.mochymusic.constants.NavigationBarHeight
+import com.mochyy.mochymusic.constants.SlimNavBarHeight
+import com.mochyy.mochymusic.constants.SlimNavBarKey
+import com.mochyy.mochymusic.constants.StopMusicOnTaskClearKey
 
-import com.example.musicfy.core.updater.getAutoUpdateCheckSetting
-import com.example.musicfy.core.updater.isNewerVersion
-import com.example.musicfy.core.updater.saveUpdateAvailableState
-import com.example.musicfy.core.updater.getUpdateNotificationsSetting
+import com.mochyy.mochymusic.core.updater.getAutoUpdateCheckSetting
+import com.mochyy.mochymusic.core.updater.isNewerVersion
+import com.mochyy.mochymusic.core.updater.saveUpdateAvailableState
+import com.mochyy.mochymusic.core.updater.getUpdateNotificationsSetting
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.constants.PauseListenHistoryKey
-import com.example.musicfy.constants.PauseSearchHistoryKey
-import com.example.musicfy.constants.PureBlackKey
-import com.example.musicfy.constants.SYSTEM_DEFAULT
-import com.example.musicfy.constants.SelectedThemeColorKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.SearchHistory
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.DownloadUtil
-import com.example.musicfy.playback.MusicService
-import com.example.musicfy.playback.MusicService.MusicBinder
-import com.example.musicfy.playback.PlayerConnection
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.AppNavigationBar
-import com.example.musicfy.ui.component.onTabTapped
-import com.example.musicfy.ui.component.AppNavigationRail
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.BottomSheetState
-import com.example.musicfy.ui.component.rememberBottomSheetState
-import com.example.musicfy.ui.component.shimmer.ShimmerTheme
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.player.BottomSheetPlayer
-import com.example.musicfy.ui.screens.Screens
-import com.example.musicfy.ui.screens.search.requestSearchFocus
-import com.example.musicfy.ui.screens.navigationBuilder
-import com.example.musicfy.ui.screens.DarkMode
-import com.example.musicfy.ui.screens.NavigationTab
-import com.example.musicfy.ui.theme.ColorSaver
-import com.example.musicfy.ui.theme.DefaultThemeColor
-import com.example.musicfy.ui.theme.MusicfyTheme
-import com.example.musicfy.ui.theme.extractThemeColor
-import com.example.musicfy.ui.utils.appBarScrollBehavior
-import com.example.musicfy.ui.utils.resetHeightOffset
-import com.example.musicfy.ui.utils.handOffToLaunchIntro
-import com.example.musicfy.ui.launch.LaunchGate
-import com.example.musicfy.ui.launch.LaunchIntroOverlay
-import com.example.musicfy.ui.launch.LaunchIntroState
-import com.example.musicfy.ui.launch.LocalLaunchIntro
-import com.example.musicfy.ui.launch.launchRise
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.utils.SyncUtils
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.utils.reportException
-import com.example.musicfy.utils.setAppLocale
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.constants.PauseListenHistoryKey
+import com.mochyy.mochymusic.constants.PauseSearchHistoryKey
+import com.mochyy.mochymusic.constants.PureBlackKey
+import com.mochyy.mochymusic.constants.SYSTEM_DEFAULT
+import com.mochyy.mochymusic.constants.SelectedThemeColorKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.SearchHistory
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.DownloadUtil
+import com.mochyy.mochymusic.playback.MusicService
+import com.mochyy.mochymusic.playback.MusicService.MusicBinder
+import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.AppNavigationBar
+import com.mochyy.mochymusic.ui.component.onTabTapped
+import com.mochyy.mochymusic.ui.component.AppNavigationRail
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.BottomSheetState
+import com.mochyy.mochymusic.ui.component.rememberBottomSheetState
+import com.mochyy.mochymusic.ui.component.shimmer.ShimmerTheme
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.player.BottomSheetPlayer
+import com.mochyy.mochymusic.ui.screens.Screens
+import com.mochyy.mochymusic.ui.screens.search.requestSearchFocus
+import com.mochyy.mochymusic.ui.screens.navigationBuilder
+import com.mochyy.mochymusic.ui.screens.DarkMode
+import com.mochyy.mochymusic.ui.screens.NavigationTab
+import com.mochyy.mochymusic.ui.theme.ColorSaver
+import com.mochyy.mochymusic.ui.theme.DefaultThemeColor
+import com.mochyy.mochymusic.ui.theme.MochyTheme
+import com.mochyy.mochymusic.ui.theme.extractThemeColor
+import com.mochyy.mochymusic.ui.utils.appBarScrollBehavior
+import com.mochyy.mochymusic.ui.utils.resetHeightOffset
+import com.mochyy.mochymusic.ui.utils.handOffToLaunchIntro
+import com.mochyy.mochymusic.ui.launch.LaunchGate
+import com.mochyy.mochymusic.ui.launch.LaunchIntroOverlay
+import com.mochyy.mochymusic.ui.launch.LaunchIntroState
+import com.mochyy.mochymusic.ui.launch.LocalLaunchIntro
+import com.mochyy.mochymusic.ui.launch.launchRise
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.utils.SyncUtils
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.utils.reportException
+import com.mochyy.mochymusic.utils.setAppLocale
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
-import com.example.musicfy.ui.screens.setup.SetupWizardContainer
+import com.mochyy.mochymusic.ui.screens.setup.SetupWizardContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -255,15 +255,16 @@ private fun isUpgradedInstall(context: android.content.Context): Boolean =
         info.lastUpdateTime > info.firstInstallTime
     }.getOrDefault(false)
 
-private fun markOnboardedOnThisInstall(context: android.content.Context) {
+// also called by the import once it has swapped the old library in, so onboarding doesn't show again
+internal fun markOnboardedOnThisInstall(context: android.content.Context) {
     runCatching { java.io.File(context.noBackupFilesDir, SETUP_MARKER_FILE).createNewFile() }
 }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
-        private const val ACTION_SEARCH = "com.example.musicfy.action.SEARCH"
-        private const val ACTION_LIBRARY = "com.example.musicfy.action.LIBRARY"
+        private const val ACTION_SEARCH = "com.mochyy.mochymusic.action.SEARCH"
+        private const val ACTION_LIBRARY = "com.mochyy.mochymusic.action.LIBRARY"
     }
 
     @Inject
@@ -358,7 +359,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == com.example.musicfy.ui.screens.update.ActionOpenUpdate) {
+        if (intent.action == com.mochyy.mochymusic.ui.screens.update.ActionOpenUpdate) {
             openUpdateRequests++
             return
         }
@@ -376,7 +377,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         introRequested = savedInstanceState == null && intent?.action == Intent.ACTION_MAIN
         if (introRequested) LaunchGate.begin() else LaunchGate.skip()
-        if (savedInstanceState == null && intent?.action == com.example.musicfy.ui.screens.update.ActionOpenUpdate) {
+        // the first start after an import says so once the intro is out of the way
+        com.mochyy.mochymusic.importer.transfer.TransferRestore.takeRestoredNote(this)?.let { note ->
+            lifecycleScope.launch {
+                LaunchGate.awaitIntro()
+                com.mochyy.mochymusic.ui.component.TopToaster.show(note, iconRes = R.drawable.backup, durationMs = 5000L)
+            }
+        }
+        if (savedInstanceState == null && intent?.action == com.mochyy.mochymusic.ui.screens.update.ActionOpenUpdate) {
             openUpdateRequests++
         }
 
@@ -408,7 +416,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            musicfyApp(
+            mochyApp(
                 playerConnection = playerConnection,
                 database = database,
                 downloadUtil = downloadUtil,
@@ -420,7 +428,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     @Composable
-    private fun musicfyApp(
+    private fun mochyApp(
         playerConnection: PlayerConnection?,
         database: MusicDatabase,
         downloadUtil: DownloadUtil,
@@ -437,21 +445,21 @@ class MainActivity : ComponentActivity() {
                 // Same cached lookup the version sheet and home prompt use (this app's own
                 // releases - the old checker here queried another project's repo). Launch-time
                 // only: nothing about updates runs in the background.
-                val release = com.example.musicfy.core.updater.getLatestRelease().getOrNull()
+                val release = com.mochyy.mochymusic.core.updater.getLatestRelease().getOrNull()
                 val isAvailable = release != null &&
-                    com.example.musicfy.core.updater.isNewerThanInstalled(release.version)
+                    com.mochyy.mochymusic.core.updater.isNewerThanInstalled(release.version)
                 saveUpdateAvailableState(context, isAvailable)
 
                 if (release != null && isAvailable && getUpdateNotificationsSetting(context)) {
                     // At most three reminders per release (now, +2 weeks, +3 months).
-                    com.example.musicfy.ui.screens.update.maybeNotifyUpdate(context, release)
+                    com.mochyy.mochymusic.ui.screens.update.maybeNotifyUpdate(context, release)
                 }
             }
         }
 
         // "Keep screen on" (the player's menu, or a chevron button): the phone doesn't sleep while
-        // Musicfy is on screen. A window flag only holds while the app is in front, which is the point.
-        val keepScreenOn by rememberPreference(com.example.musicfy.constants.KeepScreenOn, defaultValue = false)
+        // Mochy is on screen. A window flag only holds while the app is in front, which is the point.
+        val keepScreenOn by rememberPreference(com.mochyy.mochymusic.constants.KeepScreenOn, defaultValue = false)
         val rootView = androidx.compose.ui.platform.LocalView.current
         DisposableEffect(keepScreenOn) {
             rootView.keepScreenOn = keepScreenOn
@@ -551,7 +559,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        MusicfyTheme(
+        MochyTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
         ) {
@@ -635,10 +643,10 @@ class MainActivity : ComponentActivity() {
                 // a page belongs to the tab page under it, however it was reached
                 val backStack by navController.currentBackStack.collectAsState()
                 val selectedTabRoute by remember(navigationItems) {
-                    derivedStateOf { com.example.musicfy.ui.component.owningTab(backStack, navigationItems) }
+                    derivedStateOf { com.mochyy.mochymusic.ui.component.owningTab(backStack, navigationItems) }
                 }
                 val tabOwnership = remember(navigationItems) {
-                    com.example.musicfy.ui.component.TabOwnership(navigationItems)
+                    com.mochyy.mochymusic.ui.component.TabOwnership(navigationItems)
                 }
                 // every page's tab is noted while it's on the stack, so the slide still knows it
                 // after a tab switch has saved the page away
@@ -843,12 +851,12 @@ class MainActivity : ComponentActivity() {
                 val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
                 val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
                 val blurQuality by rememberEnumPreference(
-                    com.example.musicfy.constants.BlurQualityKey,
-                    com.example.musicfy.constants.BlurQuality.HIGH,
+                    com.mochyy.mochymusic.constants.BlurQualityKey,
+                    com.mochyy.mochymusic.constants.BlurQuality.HIGH,
                 )
                 val swipeToSong by rememberPreference(SwipeToSongKey, false)
 
-                val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
+                val setupCompleted by rememberPreference(com.mochyy.mochymusic.constants.SetupCompletedKey, false)
                 var forceShowSetup by remember { mutableStateOf(false) }
                 // Seeded once per process: a restored backup can say setup is done on an
                 // install that has never actually shown the wizard. Kept as state because
@@ -859,7 +867,7 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
-                    com.example.musicfy.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
+                    com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
 
                     LocalPlayerConnection provides playerConnection,
                     LocalGlassState provides glassState,
@@ -874,22 +882,22 @@ class MainActivity : ComponentActivity() {
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
                     LocalLaunchIntro provides launchIntro,
-                    com.example.musicfy.ui.component.LocalBlurQuality provides blurQuality,
+                    com.mochyy.mochymusic.ui.component.LocalBlurQuality provides blurQuality,
                 ) {
-                    com.example.musicfy.ui.component.PopupSheetHost(
+                    com.mochyy.mochymusic.ui.component.PopupSheetHost(
                         states = listOf(
-                            com.example.musicfy.ui.component.LocalMenuState.current,
-                            com.example.musicfy.ui.component.LocalBottomSheetPageState.current,
-                            com.example.musicfy.ui.component.LocalZoomOutOverlayState.current,
+                            com.mochyy.mochymusic.ui.component.LocalMenuState.current,
+                            com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState.current,
+                            com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState.current,
                         ),
                     ) {
-                    com.example.musicfy.ui.screens.update.UpdateNotificationOpener(
+                    com.mochyy.mochymusic.ui.screens.update.UpdateNotificationOpener(
                         requests = openUpdateRequests,
                         onOpenDevSpace = { personIndex ->
                             navController.navigate("developer_space?person=$personIndex")
                         },
                     )
-                    com.example.musicfy.ui.screens.donate.DonatePromptScheduler(
+                    com.mochyy.mochymusic.ui.screens.donate.DonatePromptScheduler(
                         enabled = setupCompleted && onboardedHere && !forceShowSetup,
                     )
                         SetupWizardContainer(
@@ -898,14 +906,14 @@ class MainActivity : ComponentActivity() {
                                 markOnboardedOnThisInstall(context)
                                 onboardedHere = true
                                 coroutineScope.launch(Dispatchers.IO) {
-                                    val savedUriStr = uri?.let { com.example.musicfy.ui.screens.profile.ProfileStore.copyPhoto(context, it) }.orEmpty()
+                                    val savedUriStr = uri?.let { com.mochyy.mochymusic.ui.screens.profile.ProfileStore.copyPhoto(context, it) }.orEmpty()
 
                                     dataStore.updateData { prefs ->
                                         prefs.toMutablePreferences().apply {
-                                            set(com.example.musicfy.constants.SetupCompletedKey, true)
-                                            set(com.example.musicfy.constants.UsernameKey, username)
+                                            set(com.mochyy.mochymusic.constants.SetupCompletedKey, true)
+                                            set(com.mochyy.mochymusic.constants.UsernameKey, username)
                                             if (savedUriStr.isNotEmpty()) {
-                                                set(com.example.musicfy.constants.ProfilePicUriKey, savedUriStr)
+                                                set(com.mochyy.mochymusic.constants.ProfilePicUriKey, savedUriStr)
                                             }
                                         }
                                     }
@@ -922,7 +930,7 @@ class MainActivity : ComponentActivity() {
                                     exit = fadeOut(animationSpec = tween(durationMillis = 200))
                                 ) {
                                     Row {
-                                        val profilePicStr by rememberPreference(com.example.musicfy.constants.ProfilePicUriKey, "")
+                                        val profilePicStr by rememberPreference(com.mochyy.mochymusic.constants.ProfilePicUriKey, "")
                                         TopAppBar(
                                             navigationIcon = {},
                                             title = {
@@ -1244,7 +1252,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // action feedback ("Added to Queue", "Undo"...) drops in over the sheets too
-                    com.example.musicfy.ui.component.TopToastHost()
+                    com.mochyy.mochymusic.ui.component.TopToastHost()
 
                     HomeUpdatePrompt(currentRoute = currentRoute)
 
@@ -1333,7 +1341,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Audio files shared to Musicfy from another app or a file manager are imported as local songs. */
+    /** Audio files shared to Mochy from another app or a file manager are imported as local songs. */
     private fun importSharedAudio(intent: Intent): Boolean {
         if (intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_SEND_MULTIPLE) return false
         val uris = if (intent.action == Intent.ACTION_SEND) {
@@ -1349,14 +1357,14 @@ class MainActivity : ComponentActivity() {
             var done = 0
             for (uri in uris) {
                 try {
-                    com.example.musicfy.importer.importSharedAudio(applicationContext, database, uri)
+                    com.mochyy.mochymusic.importer.importSharedAudio(applicationContext, database, uri)
                     done++
                 } catch (e: Exception) {
                     reportException(e)
                 }
             }
-            com.example.musicfy.ui.component.TopToaster.show(
-                if (done == 0) "Couldn't import that" else "Imported $done song${if (done != 1) "s" else ""} to Musicfy",
+            com.mochyy.mochymusic.ui.component.TopToaster.show(
+                if (done == 0) "Couldn't import that" else "Imported $done song${if (done != 1) "s" else ""} to Mochy",
             )
         }
         return true
@@ -1466,7 +1474,7 @@ val SubSettingsRoutes = setOf(
     "experimental_settings",
     "cipher_settings",
     "playback_diagnostics",
-    "musicfy_settings",
+    "mochy_settings",
     "import_sync",
     "import_providers",
     "import_tunemymusic",
@@ -1511,20 +1519,20 @@ private const val UpdateSnoozeWindowMillis = 24L * 60L * 60L * 1000L
 private fun HomeUpdatePrompt(currentRoute: String?) {
     if (currentRoute != Screens.Home.route) return
 
-    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
+    val updateState by com.mochyy.mochymusic.ui.screens.update.rememberUpdateState()
     val (snoozedAt, setSnoozedAt) = rememberPreference(
-        com.example.musicfy.constants.UpdatePromptSnoozedAtKey,
+        com.mochyy.mochymusic.constants.UpdatePromptSnoozedAtKey,
         defaultValue = 0L,
     )
-    val (userName) = rememberPreference(com.example.musicfy.constants.UsernameKey, "")
+    val (userName) = rememberPreference(com.mochyy.mochymusic.constants.UsernameKey, "")
 
     var dismissed by rememberSaveable { mutableStateOf(false) }
 
-    val release = (updateState as? com.example.musicfy.core.updater.UpdateState.Available)?.release
+    val release = (updateState as? com.mochyy.mochymusic.core.updater.UpdateState.Available)?.release
     val snoozeExpired = System.currentTimeMillis() - snoozedAt > UpdateSnoozeWindowMillis
 
     if (release != null && snoozeExpired && !dismissed) {
-        com.example.musicfy.ui.screens.update.UpdatePromptSheet(
+        com.mochyy.mochymusic.ui.screens.update.UpdatePromptSheet(
             release = release,
             userName = userName,
             onSnooze = {

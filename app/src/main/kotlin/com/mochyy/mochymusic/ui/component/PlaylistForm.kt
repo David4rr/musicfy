@@ -1,6 +1,6 @@
 // PlaylistForm.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.playlistcover.CoverChoice
+import com.mochyy.mochymusic.playlistcover.CoverChoice
 
 private const val MaxNameLength = 80
 private const val MaxDescriptionLength = 300

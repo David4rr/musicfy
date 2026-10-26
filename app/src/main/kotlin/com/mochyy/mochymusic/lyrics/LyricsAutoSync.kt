@@ -1,11 +1,11 @@
 // LyricsAutoSync.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.net.Uri
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
-import com.example.musicfy.playback.audio.StreamPcmDecoder
+import com.mochyy.mochymusic.playback.audio.StreamPcmDecoder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

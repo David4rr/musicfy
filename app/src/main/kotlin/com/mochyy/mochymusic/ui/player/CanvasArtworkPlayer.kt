@@ -1,12 +1,12 @@
 // CanvasArtworkPlayer.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import com.example.musicfy.ui.utils.rememberSettled
+import com.mochyy.mochymusic.ui.utils.rememberSettled
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -243,7 +243,7 @@ fun CanvasArtworkPlayer(
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 view.setRenderEffect(
-                    com.example.musicfy.ui.component.BlurEffectCache.getNative(
+                    com.mochyy.mochymusic.ui.component.BlurEffectCache.getNative(
                         blurRadiusPx,
                         android.graphics.Shader.TileMode.CLAMP
                     )

@@ -1,10 +1,10 @@
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.runtime.Stable
-import com.example.musicfy.playback.PlayerConnection
-import com.example.musicfy.ui.player.models.QueueState
-import com.example.musicfy.ui.player.models.TrackInfo
-import com.example.musicfy.ui.player.models.TransportState
+import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.ui.player.models.QueueState
+import com.mochyy.mochymusic.ui.player.models.TrackInfo
+import com.mochyy.mochymusic.ui.player.models.TransportState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine

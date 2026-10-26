@@ -1,6 +1,6 @@
 // TextPlaceholder.kt
 
-package com.example.musicfy.ui.component.shimmer
+package com.mochyy.mochymusic.ui.component.shimmer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

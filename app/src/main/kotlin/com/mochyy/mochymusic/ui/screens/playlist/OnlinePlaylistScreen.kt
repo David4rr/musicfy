@@ -1,6 +1,6 @@
 // OnlinePlaylistScreen.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -65,46 +65,46 @@ import androidx.compose.ui.util.fastForEachReversed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.playback.queues.YouTubePlaylistQueue
-import com.example.musicfy.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.playback.queues.YouTubePlaylistQueue
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import androidx.compose.material3.IconButton
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.HomeCardSpacing
-import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.coverTransitionKey
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.detail.CreatorUi
-import com.example.musicfy.ui.component.detail.featuredArtistsOf
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistHeader
-import com.example.musicfy.ui.component.detail.PlaylistSectionTitle
-import com.example.musicfy.ui.component.detail.PlaylistTrackBones
-import com.example.musicfy.ui.component.detail.PlaylistModeBar
-import com.example.musicfy.ui.component.detail.PlaylistSelectTick
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeArtistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
-import com.example.musicfy.ui.menu.YouTubeSelectionSongMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.menu.toggleSavedPlaylist
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.viewmodels.OnlinePlaylistViewModel
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.HomeCardSpacing
+import com.mochyy.mochymusic.ui.component.HomeCoverCard
+import com.mochyy.mochymusic.ui.component.coverTransitionKey
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.detail.CreatorUi
+import com.mochyy.mochymusic.ui.component.detail.featuredArtistsOf
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistDetailScaffold
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistHeader
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSectionTitle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackBones
+import com.mochyy.mochymusic.ui.component.detail.PlaylistModeBar
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSelectionSongMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.menu.toggleSavedPlaylist
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.viewmodels.OnlinePlaylistViewModel
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -280,7 +280,7 @@ fun OnlinePlaylistScreen(
         if (currentPlaylist == null || songs.isEmpty()) {
             if (isLoading) {
                 item(key = "loading_header") {
-                    Spacer(Modifier.height(com.example.musicfy.ui.component.detail.playlistCoverHeight() * 0.975f))
+                    Spacer(Modifier.height(com.mochyy.mochymusic.ui.component.detail.playlistCoverHeight() * 0.975f))
                 }
                 item(key = "loading_tracks") {
                     PlaylistTrackBones()

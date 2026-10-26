@@ -1,6 +1,6 @@
-// dev spaces: a pager with a page for each person who makes musicfy, the repo numbers are fetched on every open
+// dev spaces: a pager with a page for each person who makes mochy, the repo numbers are fetched on every open
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
@@ -42,15 +42,15 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch

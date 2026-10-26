@@ -1,9 +1,9 @@
 // EmptyQueue.kt
 
-package com.example.musicfy.playback.queues
+package com.mochyy.mochymusic.playback.queues
 
 import androidx.media3.common.MediaItem
-import com.example.musicfy.models.MediaMetadata
+import com.mochyy.mochymusic.models.MediaMetadata
 
 object EmptyQueue : Queue {
     override val preloadItem: MediaMetadata? = null

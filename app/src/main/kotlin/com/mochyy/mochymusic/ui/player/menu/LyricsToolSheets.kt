@@ -6,7 +6,7 @@
 // because every one of them acts on lyrics that are on screen. "Refetch lyrics" from a player with
 // no lyrics view open is an action whose entire result is invisible.
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,19 +48,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.TranslateLanguageKey
-import com.example.musicfy.constants.TranslateLyricsKey
-import com.example.musicfy.constants.TranslateSourceLanguageKey
-import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import com.example.musicfy.lyrics.LyricsProviderRegistry
-import com.example.musicfy.lyrics.LyricsTranslationHelper
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.SheetIcon
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.LyricsMenuViewModel
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.TranslateLanguageKey
+import com.mochyy.mochymusic.constants.TranslateLyricsKey
+import com.mochyy.mochymusic.constants.TranslateSourceLanguageKey
+import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
+import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.SheetIcon
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel
 
 // ---------------------------------------------------------------------------------------------
 // Editor

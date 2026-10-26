@@ -4,7 +4,7 @@
 // colour - and set each one up underneath. Whatever page you land on is applied at once, so the
 // picture behind (peeking over the top) changes as you go; Ok just closes.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,13 +57,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.screens.audiolab.LabCard
-import com.example.musicfy.ui.screens.audiolab.LabSlider
-import com.example.musicfy.ui.screens.audiolab.LabToggleRow
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCard
+import com.mochyy.mochymusic.ui.screens.audiolab.LabSlider
+import com.mochyy.mochymusic.ui.screens.audiolab.LabToggleRow
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlin.math.abs
 
 private enum class BackgroundPage(val label: String) {

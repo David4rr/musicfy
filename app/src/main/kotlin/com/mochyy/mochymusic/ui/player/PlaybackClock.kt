@@ -1,6 +1,6 @@
 // PlaybackClock.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import android.view.animation.AnimationUtils
 import androidx.compose.runtime.Stable

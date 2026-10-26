@@ -1,20 +1,20 @@
 // DiscordViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.discord.DiscordAuth
-import com.example.musicfy.discord.DiscordLogin
-import com.example.musicfy.discord.DiscordPresence
-import com.example.musicfy.discord.DiscordProfile
-import com.example.musicfy.discord.NowPlaying
-import com.example.musicfy.discord.PresenceConnection
-import com.example.musicfy.discord.PresenceSettings
-import com.example.musicfy.utils.PreferencesCache
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.discord.DiscordAuth
+import com.mochyy.mochymusic.discord.DiscordLogin
+import com.mochyy.mochymusic.discord.DiscordPresence
+import com.mochyy.mochymusic.discord.DiscordProfile
+import com.mochyy.mochymusic.discord.NowPlaying
+import com.mochyy.mochymusic.discord.PresenceConnection
+import com.mochyy.mochymusic.discord.PresenceSettings
+import com.mochyy.mochymusic.utils.PreferencesCache
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.NonCancellable

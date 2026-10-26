@@ -1,6 +1,6 @@
 // PlaylistModeBar.kt
 
-package com.example.musicfy.ui.component.detail
+package com.mochyy.mochymusic.ui.component.detail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -49,11 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.GlassPillBackground
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.GlassPillBackground
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.utils.resize
 
 /**
  * what the playlist top bar shows instead of back and the dots while a song list is in a mode.

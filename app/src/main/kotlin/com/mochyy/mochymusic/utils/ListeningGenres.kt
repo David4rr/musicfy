@@ -1,6 +1,6 @@
 // ListeningGenres.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import okhttp3.OkHttpClient
 import okhttp3.Request

@@ -3,7 +3,7 @@
 // CoolfontEditor, the Cinematic share's word editor. Pick a look on a card (glow, caps or big), then
 // tap words or swipe across them to give it to them; the card again (or Done) finishes.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -75,11 +75,11 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs

@@ -1,4 +1,4 @@
-package com.example.musicfy.playback.audio
+package com.mochyy.mochymusic.playback.audio
 
 import androidx.media3.common.C
 import androidx.media3.common.Format

@@ -3,9 +3,9 @@
 // "Imported from Spotify": every song one service brought in, in the same A-Z list as Songs, with the
 // service's own icon where the Library home has the avatar.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
-import com.example.musicfy.ui.screens.search.AvatarSize
+import com.mochyy.mochymusic.ui.screens.search.AvatarSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,16 +13,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.removeImportSwipeAction
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.viewmodels.LibraryImportedViewModel
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.removeImportSwipeAction
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.viewmodels.LibraryImportedViewModel
 
 @Composable
 fun LibraryImportedScreen(

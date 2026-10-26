@@ -1,6 +1,6 @@
 // VibraSignature.kt
 
-package com.example.musicfy.recognition
+package com.mochyy.mochymusic.recognition
 
 object VibraSignature {
 

@@ -1,13 +1,13 @@
 // ArtistSimilarViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.utils.ArtistPageCache
-import com.example.musicfy.utils.ArtistVideos
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.utils.ArtistPageCache
+import com.mochyy.mochymusic.utils.ArtistVideos
+import com.mochyy.mochymusic.utils.reportException
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem

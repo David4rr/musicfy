@@ -1,4 +1,4 @@
-package com.example.musicfy.eq.audio
+package com.mochyy.mochymusic.eq.audio
 
 import androidx.annotation.OptIn
 import androidx.media3.common.C

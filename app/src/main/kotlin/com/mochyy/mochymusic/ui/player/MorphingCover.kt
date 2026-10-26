@@ -1,6 +1,6 @@
 // MorphingCover.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.animation.AnimatedContent
@@ -91,18 +91,18 @@ import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.size.Precision
 import coil3.size.Size as CoilSize
-import com.example.musicfy.R
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.ThumbnailCornerRadius
-import com.example.musicfy.extensions.togglePlayPause
-import com.example.musicfy.ui.player.models.TrackInfo
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.ThumbnailCornerRadius
+import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.ui.player.models.TrackInfo
+import com.mochyy.mochymusic.ui.utils.resize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.component.rememberCoverBlurAvailable
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.rememberCoverBlurAvailable
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -110,41 +110,41 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
-import com.example.musicfy.canvas.CanvasArtwork
-import com.example.musicfy.canvas.MonochromeApiCanvas
-import com.example.musicfy.applecanvas.AppleMusicCanvasProvider
-import com.example.musicfy.LocalGlassState
-import com.example.musicfy.constants.CanvasThumbnailAnimationKey
-import com.example.musicfy.constants.CanvasWifiOnlyKey
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
-import com.example.musicfy.constants.PlayVideoBackgroundKey
-import com.example.musicfy.constants.DisableVideoAutoplayKey
-import com.example.musicfy.utils.YTPlayerUtils
-import com.example.musicfy.constants.PlayerBackgroundStyle
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
-import com.example.musicfy.ui.player.customize.DiscCoverStack
-import com.example.musicfy.ui.player.customize.PlayerBackgroundContent
-import com.example.musicfy.ui.player.customize.CoverGradientBackdrop
-import com.example.musicfy.ui.player.customize.coverArtBox
-import com.example.musicfy.ui.player.customize.coverArtBoxF
-import com.example.musicfy.ui.player.customize.usesBoxedStage
-import com.example.musicfy.ui.player.customize.isDisc
-import com.example.musicfy.ui.component.ChromeHighlightColor
-import com.example.musicfy.ui.component.FrostedChromeGlass
-import com.example.musicfy.ui.component.agslRenderEffect
-import com.example.musicfy.ui.player.customize.rememberWarpShader
-import com.example.musicfy.ui.component.setAgslUniform
-import com.example.musicfy.ui.component.drawGlassNode
-import com.example.musicfy.ui.component.glassNodeHasContent
-import com.example.musicfy.ui.component.glassNodeHeight
-import com.example.musicfy.ui.component.glassNodeWidth
-import com.example.musicfy.ui.component.RoundedHighlight
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.canvas.CanvasArtwork
+import com.mochyy.mochymusic.canvas.MonochromeApiCanvas
+import com.mochyy.mochymusic.applecanvas.AppleMusicCanvasProvider
+import com.mochyy.mochymusic.LocalGlassState
+import com.mochyy.mochymusic.constants.CanvasThumbnailAnimationKey
+import com.mochyy.mochymusic.constants.CanvasWifiOnlyKey
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.constants.ForceYtBackdropBlur1500Key
+import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
+import com.mochyy.mochymusic.constants.DisableVideoAutoplayKey
+import com.mochyy.mochymusic.utils.YTPlayerUtils
+import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.YtVideoBackgroundLyricsSyncKey
+import com.mochyy.mochymusic.ui.player.customize.DiscCoverStack
+import com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundContent
+import com.mochyy.mochymusic.ui.player.customize.CoverGradientBackdrop
+import com.mochyy.mochymusic.ui.player.customize.coverArtBox
+import com.mochyy.mochymusic.ui.player.customize.coverArtBoxF
+import com.mochyy.mochymusic.ui.player.customize.usesBoxedStage
+import com.mochyy.mochymusic.ui.player.customize.isDisc
+import com.mochyy.mochymusic.ui.component.ChromeHighlightColor
+import com.mochyy.mochymusic.ui.component.FrostedChromeGlass
+import com.mochyy.mochymusic.ui.component.agslRenderEffect
+import com.mochyy.mochymusic.ui.player.customize.rememberWarpShader
+import com.mochyy.mochymusic.ui.component.setAgslUniform
+import com.mochyy.mochymusic.ui.component.drawGlassNode
+import com.mochyy.mochymusic.ui.component.glassNodeHasContent
+import com.mochyy.mochymusic.ui.component.glassNodeHeight
+import com.mochyy.mochymusic.ui.component.glassNodeWidth
+import com.mochyy.mochymusic.ui.component.RoundedHighlight
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.utils.rememberPreference
 import androidx.core.content.getSystemService
 
 @Stable
@@ -239,6 +239,9 @@ internal val LyricsHeaderArtX = 36.dp
 internal val LyricsHeaderArtTopFromStatusBar = 28.dp
 
 private val SquaredCoverCornerRadius = 22.dp
+
+// room between two squared cards while they swipe, so one card leaves whole before the next arrives
+private val SquaredCardGap = 20.dp
 
 private val TurntableDim = Color.Black.copy(alpha = 0.58f)
 
@@ -606,7 +609,7 @@ fun MorphingCover(
         val mediaId = trackInfo.mediaId
         val videoId = videoInfo?.videoId
         val lyricsRaw = currentLyrics?.lyrics
-            ?.takeIf { it.isNotBlank() && it != com.example.musicfy.db.entities.LyricsEntity.LYRICS_NOT_FOUND }
+            ?.takeIf { it.isNotBlank() && it != com.mochyy.mochymusic.db.entities.LyricsEntity.LYRICS_NOT_FOUND }
         // the track's own video is already in step with it; anchors are for lining up a separate one
         if (!lyricsSyncEnabled || videoId == null || videoId == mediaId || lyricsRaw == null) {
             lyricVideoAnchors = null
@@ -681,6 +684,14 @@ fun MorphingCover(
             animationSpec = tween(400, easing = FastOutSlowInEasing),
             label = "pauseSaturation"
         )
+        // the squared cover swipes as whole cards: each song's picture and canvas is a rounded card that slides out frame and all
+        val squaredCards = coverStyle == PlayerCoverStyle.SQUARED && !alternateStyle
+        val swipesCards by androidx.compose.runtime.rememberUpdatedState(squaredCards)
+        val cardGreyFilter = remember(pauseFilter) {
+            Modifier.graphicsLayer {
+                colorFilter = if (animatedPauseSaturation < 0.999f) pauseFilter.forSaturation(animatedPauseSaturation) else null
+            }
+        }
 
         // the cover mirrored under itself, blurred and fading into the moving backdrop; it rides the cover's morph and the song row, so it follows a close, a page opening and a swipe
         if (isEdgeToEdge && !alternateStyle && trackInfo.thumbnailUrl != null) {
@@ -744,13 +755,16 @@ fun MorphingCover(
                         // record's shadow) was cut flat along the bottom the moment it paused.
                         val clipped = !isDiscStyle ||
                             discWeight(progressProvider, lyricsProgressProvider) < 0.5f
-                        colorFilter = if (clipped && animatedPauseSaturation < 0.999f) {
+                        // squared cards clip and grey themselves, a clip or filter here would cut them off at the frame mid-swipe
+                        colorFilter = if (clipped && !squaredCards && animatedPauseSaturation < 0.999f) {
                             pauseFilter.forSaturation(animatedPauseSaturation)
                         } else {
                             null
                         }
 
-                        clip = clipped
+                        // a squared card only leaves its frame on the full-size cover, as the mini player's or the lyrics header's thumbnail it stays inside
+                        val cardsLeaveFrame = squaredCards && p > 0.98f && lyricsProgressProvider() < 0.02f
+                        clip = clipped && !cardsLeaveFrame
 
                         val expandedRadius = if (coverStyle == PlayerCoverStyle.SQUARED) {
                             SquaredCoverCornerRadius
@@ -778,7 +792,7 @@ fun MorphingCover(
                                         // and a touch beside it (the room round a big record) is
                                         // left for the player's own hold
                                         detectDiscDoubleTap(
-                                            onDisc = { p -> com.example.musicfy.ui.player.customize.isOnDisc(currentCoverStyle, androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()), p) },
+                                            onDisc = { p -> com.mochyy.mochymusic.ui.player.customize.isOnDisc(currentCoverStyle, androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()), p) },
                                             onDoubleTap = likeAt,
                                         )
                                     } else {
@@ -837,10 +851,13 @@ fun MorphingCover(
                                         // how far the finger goes for one song: a record's spacing in the
                                         // row, or the cover's own width
                                         spacing = if (swipesDisc) {
-                                            com.example.musicfy.ui.player.customize.discSpacingPx(
+                                            com.mochyy.mochymusic.ui.player.customize.discSpacingPx(
                                                 currentCoverStyle,
                                                 androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()),
                                             )
+                                        } else if (swipesCards) {
+                                            // a card travels its width plus the gap, so the finger has to too to stay 1:1
+                                            size.width.toFloat() + SquaredCardGap.toPx()
                                         } else {
                                             size.width.toFloat()
                                         }
@@ -907,8 +924,14 @@ fun MorphingCover(
                     carousel = carousel,
                     fallbackUrl = trackInfo.thumbnailUrl,
                     modifier = Modifier.fillMaxSize(),
+                    parallax = if (squaredCards) 0f else 0.3f,
+                    cardShape = if (squaredCards) artShape else null,
+                    cardGap = if (squaredCards) SquaredCardGap else 0.dp,
                 ) { url, pictureModifier ->
-                    CoverPicture(thumbnailUrl = url, modifier = pictureModifier)
+                    CoverPicture(
+                        thumbnailUrl = url,
+                        modifier = if (squaredCards) pictureModifier.then(cardGreyFilter) else pictureModifier,
+                    )
                 }
 
                 // Each song's canvas rides on its own cover's page, pinned to that song's place in the
@@ -935,10 +958,13 @@ fun MorphingCover(
                                 .fillMaxSize()
                                 .graphicsLayer {
                                     val o = carousel?.offsetOfSong(info.mediaId) ?: carousel?.playingOffset ?: 0f
-                                    translationX = o * size.width
+                                    // on a squared card the canvas is part of the card, so it moves and rounds with it
+                                    translationX = o * (size.width + if (squaredCards) SquaredCardGap.toPx() else 0f)
                                     alpha = if (kotlin.math.abs(o) >= 1f) 0f else 1f
+                                    if (squaredCards) shape = artShape
                                     clip = true
                                 }
+                                .then(if (squaredCards) cardGreyFilter else Modifier)
                         ) {
                             CoverCanvasLayer(
                                 trackInfo = info,
@@ -946,6 +972,8 @@ fun MorphingCover(
                                 isDiscStyle = isDiscStyle,
                                 editMode = editMode,
                                 progressProvider = progressProvider,
+                                // a squared card keeps its canvas the whole way down, it only fades as it lands in the mini player
+                                sheetFade = if (squaredCards) ::squaredCanvasSheetFade else ::canvasSheetFade,
                             )
 
                             if (playing && !isDiscStyle && playVideoBackground && videoInfo != null) {
@@ -1538,7 +1566,7 @@ private fun SheetPillGlass(
 ) {
     val glassState = LocalGlassState.current ?: remember { GlassState() }
     // outside the mount check, so the wash keeps its place while the glass comes and goes
-    val accentWash = com.example.musicfy.ui.component.rememberChromeAccentWash()
+    val accentWash = com.mochyy.mochymusic.ui.component.rememberChromeAccentWash()
     val mountedHolder = remember { booleanArrayOf(true) }
     val mounted by remember {
         derivedStateOf {
@@ -1649,6 +1677,9 @@ private const val CanvasMountAt = 0.995f
 /** The canvas's share of the cover as the sheet closes: all of it near open, none by 60%. */
 private fun canvasSheetFade(p: Float): Float = ((p - 0.6f) / 0.35f).coerceIn(0f, 1f)
 
+// the squared card carries its canvas through the close and only lets it go as it shrinks into the mini player
+private fun squaredCanvasSheetFade(p: Float): Float = ((p - 0.05f) / 0.25f).coerceIn(0f, 1f)
+
 /**
  * The cover's canvas - an animated cover, with a video player of its own - over the picture.
  *
@@ -1664,6 +1695,7 @@ private fun CoverCanvasLayer(
     isDiscStyle: Boolean,
     editMode: Boolean,
     progressProvider: () -> Float,
+    sheetFade: (Float) -> Float = ::canvasSheetFade,
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
@@ -1718,8 +1750,8 @@ private fun CoverCanvasLayer(
             next
         }
     }
-    val playing by remember(editMode) {
-        derivedStateOf { !editMode && canvasSheetFade(progressProvider()) > 0f }
+    val playing by remember(editMode, sheetFade) {
+        derivedStateOf { !editMode && sheetFade(progressProvider()) > 0f }
     }
     AnimatedVisibility(
         visible = mounted,
@@ -1734,7 +1766,7 @@ private fun CoverCanvasLayer(
             isPlaying = playing,
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = canvasSheetFade(progressProvider()) }
+                .graphicsLayer { alpha = sheetFade(progressProvider()) }
         )
     }
 }

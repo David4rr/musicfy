@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.styles
+package com.mochyy.mochymusic.ui.player.styles
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
@@ -59,14 +59,14 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import androidx.media3.common.Player
-import com.example.musicfy.LocalArtworkColor
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.extensions.toggleRepeatMode
-import com.example.musicfy.R
-import com.example.musicfy.constants.PlayerStyle
-import com.example.musicfy.constants.playerStyleRotatedKey
-import com.example.musicfy.ui.component.LocalPlayerBottomSheetState
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalArtworkColor
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.extensions.toggleRepeatMode
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PlayerStyle
+import com.mochyy.mochymusic.constants.playerStyleRotatedKey
+import com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -396,7 +396,7 @@ fun Modifier.styleGestures(
     enabled: Boolean,
     interactive: () -> Boolean,
     onToggle: () -> Unit,
-    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    carousel: com.mochyy.mochymusic.ui.player.SongCarousel?,
     player: () -> androidx.media3.common.Player?,
 ): Modifier =
     if (!enabled) this else this
@@ -537,7 +537,7 @@ fun BoxScope.StyleMenu(
                 ) {
                     row.forEachIndexed { k, item ->
                         if (k > 0) Spacer(Modifier.width(4.dp))
-                        Text(text = item.label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
+                        Text(text = item.label, color = if (pill) Color.White else tones.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.05).em, fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily)
                         StyleCircle(icon = item.icon, tones = tones, size = buttonSize + 6.dp, onClick = item.onClick, pill = pill, active = item.active)
                     }
                 }

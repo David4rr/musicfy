@@ -1,4 +1,4 @@
-package com.example.musicfy.crossmix
+package com.mochyy.mochymusic.crossmix
 
 import kotlin.math.PI
 import kotlin.math.cos

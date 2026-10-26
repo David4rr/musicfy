@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.setup
+package com.mochyy.mochymusic.ui.screens.setup
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -47,40 +47,43 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicfy.constants.CrossmixMode
-import com.example.musicfy.constants.CrossmixModeKey
-import com.example.musicfy.constants.DisableAiFilterKey
-import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.importer.account.AccountImportState
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.ui.screens.settings.importsync.onSignInTick
-import com.example.musicfy.ui.screens.settings.importsync.CaptureWebContent
-import com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginWebContent
-import com.example.musicfy.ui.screens.settings.importsync.clearWebSession
-import com.example.musicfy.ui.screens.setup.onboarding.BehindScale
-import com.example.musicfy.ui.screens.setup.onboarding.BlurCapability
-import com.example.musicfy.ui.screens.setup.onboarding.BlurWarningPage
-import com.example.musicfy.ui.screens.setup.onboarding.BrowserSpring
-import com.example.musicfy.ui.screens.setup.onboarding.BuildHomePage
-import com.example.musicfy.ui.screens.setup.onboarding.CardInfo
-import com.example.musicfy.ui.screens.setup.onboarding.DoneStep
-import com.example.musicfy.ui.screens.setup.onboarding.HelloCardStep
-import com.example.musicfy.ui.screens.setup.onboarding.ImportAskPage
-import com.example.musicfy.ui.screens.setup.onboarding.ImportModePage
-import com.example.musicfy.ui.screens.setup.onboarding.LastOnePage
-import com.example.musicfy.ui.screens.setup.onboarding.MinArtists
-import com.example.musicfy.ui.screens.setup.onboarding.Onb
-import com.example.musicfy.ui.screens.setup.onboarding.OnbButton
-import com.example.musicfy.ui.screens.setup.onboarding.OnboardingBrowserSheet
-import com.example.musicfy.ui.screens.setup.onboarding.ProfilePage
-import com.example.musicfy.ui.screens.setup.onboarding.ProviderListPage
-import com.example.musicfy.ui.screens.setup.onboarding.ProviderSetupPage
-import com.example.musicfy.ui.screens.setup.onboarding.SyncOptionsPage
-import com.example.musicfy.ui.screens.setup.onboarding.WhatToSyncPage
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.OnboardingViewModel
-import com.example.musicfy.viewmodels.YouTubeSyncChoices
+import com.mochyy.mochymusic.constants.CrossmixMode
+import com.mochyy.mochymusic.constants.CrossmixModeKey
+import com.mochyy.mochymusic.constants.DisableAiFilterKey
+import com.mochyy.mochymusic.constants.DisableBlurKey
+import com.mochyy.mochymusic.importer.account.AccountImportState
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.ui.screens.settings.importsync.onSignInTick
+import com.mochyy.mochymusic.ui.screens.settings.importsync.CaptureWebContent
+import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginWebContent
+import com.mochyy.mochymusic.ui.screens.settings.importsync.clearWebSession
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BehindScale
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BlurCapability
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BlurWarningPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BrowserSpring
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BuildHomePage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.CardInfo
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.DoneStep
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.HelloCardStep
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ImportAskPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ImportModePage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.LastOnePage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.MinArtists
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.Onb
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbButton
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnboardingBrowserSheet
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfilePage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderListPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderSetupPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.RestoringPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.SyncOptionsPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.WhatToSyncPage
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.OnboardingViewModel
+import com.mochyy.mochymusic.viewmodels.TransferStep
+import com.mochyy.mochymusic.viewmodels.TransferViewModel
+import com.mochyy.mochymusic.viewmodels.YouTubeSyncChoices
 import com.music.innertube.models.ArtistItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,12 +91,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 private enum class Step {
-    Welcome, ImportAsk, ImportMode, Providers, ProviderSetup, WhatToSync, SyncOptions,
+    Welcome, ImportAsk, ImportMode, Restoring, Providers, ProviderSetup, WhatToSync, SyncOptions,
     Profile, Hello, BuildHome, BlurWarning, LastOne, Done,
 }
 
 /** pages that play once and move on by themselves, back never returns to them */
-private val AutoSteps = setOf(Step.Hello, Step.Done)
+private val AutoSteps = setOf(Step.Hello, Step.Done, Step.Restoring)
 
 /** the onboarding flow: welcome, import or sync, sign in, playlists, profile card, hello, artists, blur warning, last one, done */
 @Composable
@@ -145,6 +148,49 @@ fun SetupWizardScreen(
                 if (error == null) go(Step.Profile)
             }
         }
+    }
+
+    // ---- previous data: a whole export from the old app or another phone ----
+    val transfer: TransferViewModel = hiltViewModel()
+    val importStep by transfer.import.collectAsState()
+    val transferManifest by transfer.manifest.collectAsState()
+    var waitingForPermission by remember { mutableStateOf<Uri?>(null) }
+    fun startRestoring(uri: Uri) {
+        transfer.importFrom(uri)
+        go(Step.Restoring)
+    }
+    // local songs come back through the phone's music library, so ask first; a no still imports everything else
+    val audioPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        waitingForPermission?.let { uri ->
+            waitingForPermission = null
+            startRestoring(uri)
+        }
+    }
+    val transferPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                transfer.check(uri)
+                    .onSuccess { manifest ->
+                        if (transfer.wantsAudioPermission(manifest)) {
+                            waitingForPermission = uri
+                            audioPermission.launch(TransferViewModel.AudioPermission)
+                        } else {
+                            startRestoring(uri)
+                        }
+                    }
+                    .onFailure { backupError = it.message }
+            }
+        }
+    }
+    // a failed import goes back to the choices and says why there
+    LaunchedEffect(importStep) {
+        val failed = importStep as? TransferStep.Failed ?: return@LaunchedEffect
+        if (step == Step.Restoring) {
+            forward = false
+            history.removeAt(history.lastIndex)
+        }
+        backupError = failed.message
+        transfer.clearImport()
     }
 
     val session = vm.session
@@ -319,6 +365,10 @@ fun SetupWizardScreen(
                         )
 
                         Step.ImportMode -> ImportModePage(
+                            onPreviousData = {
+                                backupError = null
+                                transferPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                            },
                             onImport = { go(Step.Providers) },
                             onBackup = {
                                 backupError = null
@@ -327,6 +377,8 @@ fun SetupWizardScreen(
                             onBack = ::back,
                             backupError = backupError,
                         )
+
+                        Step.Restoring -> RestoringPage(step = importStep, manifest = transferManifest)
 
                         Step.Providers -> ProviderListPage(
                             onPick = { service ->

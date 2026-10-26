@@ -2,18 +2,18 @@
 
 @file:OptIn(ExperimentalCoroutinesApi::class)
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.constants.AddToPlaylistSortDescendingKey
-import com.example.musicfy.constants.AddToPlaylistSortTypeKey
-import com.example.musicfy.constants.PlaylistSortType
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.extensions.toEnum
-import com.example.musicfy.utils.SyncUtils
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.AddToPlaylistSortDescendingKey
+import com.mochyy.mochymusic.constants.AddToPlaylistSortTypeKey
+import com.mochyy.mochymusic.constants.PlaylistSortType
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.utils.SyncUtils
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi

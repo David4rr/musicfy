@@ -1,6 +1,6 @@
 // SleepTimer.kt
 
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf

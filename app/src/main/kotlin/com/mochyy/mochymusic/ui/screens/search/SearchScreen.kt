@@ -1,6 +1,6 @@
 // SearchScreen.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.ui.screens.Screens
+import com.mochyy.mochymusic.ui.screens.Screens
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -69,25 +69,25 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.music.innertube.utils.YouTubeUrlParser
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.PauseSearchHistoryKey
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.db.entities.SearchHistory
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.MoodAndGenresViewModel
-import com.example.musicfy.viewmodels.coverKey
-import com.example.musicfy.viewmodels.OnlineSearchSuggestionViewModel
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PauseSearchHistoryKey
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.db.entities.SearchHistory
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.MoodAndGenresViewModel
+import com.mochyy.mochymusic.viewmodels.coverKey
+import com.mochyy.mochymusic.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
-import com.example.musicfy.ui.component.navigateToTab
+import com.mochyy.mochymusic.ui.component.navigateToTab
 
 /** set on the search page's entry to open its field with the keyboard up */
 private const val SearchFocusKey = "focusSearch"
@@ -110,7 +110,7 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val playerConnection = LocalPlayerConnection.current
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    val offlineMode by rememberPreference(com.example.musicfy.constants.OfflineModeKey, defaultValue = false)
+    val offlineMode by rememberPreference(com.mochyy.mochymusic.constants.OfflineModeKey, defaultValue = false)
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -407,14 +407,14 @@ private fun SearchBrowseContent(
 private fun SearchActiveContent(
     listState: LazyListState,
     query: String,
-    state: com.example.musicfy.viewmodels.SearchSuggestionViewState,
+    state: com.mochyy.mochymusic.viewmodels.SearchSuggestionViewState,
     onFill: (String) -> Unit,
     onSubmit: (String) -> Unit,
     onDeleteHistory: (SearchHistory) -> Unit,
     navController: NavController,
 ) {
     val playerConnection = LocalPlayerConnection.current
-    val offlineMode by rememberPreference(com.example.musicfy.constants.OfflineModeKey, defaultValue = false)
+    val offlineMode by rememberPreference(com.mochyy.mochymusic.constants.OfflineModeKey, defaultValue = false)
     val bottomInset = LocalPlayerAwareWindowInsets.current
         .asPaddingValues()
         .calculateBottomPadding()
@@ -563,7 +563,7 @@ private fun SuggestionResultRow(
             url = item.thumbnail,
             size = 44.dp,
             circle = item is ArtistItem,
-            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
+            sharedElementKey = com.mochyy.mochymusic.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

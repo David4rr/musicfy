@@ -1,6 +1,6 @@
 // DiscCoverStack.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.layout.Box
@@ -17,13 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.rememberTextMeasurer
-import com.example.musicfy.constants.DiscLabelContent
-import com.example.musicfy.constants.DiscNameKey
-import com.example.musicfy.constants.DiscRealisticModeKey
-import com.example.musicfy.constants.DiscRotatingAnimationKey
-import com.example.musicfy.constants.PlayerCoverStyle
-import com.example.musicfy.ui.player.CarouselSong
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.DiscLabelContent
+import com.mochyy.mochymusic.constants.DiscNameKey
+import com.mochyy.mochymusic.constants.DiscRealisticModeKey
+import com.mochyy.mochymusic.constants.DiscRotatingAnimationKey
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.ui.player.CarouselSong
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 
@@ -42,18 +42,18 @@ fun DiscCoverStack(
      * the player's row of songs the swipe and skips run along (see SongCarousel). Without one -
      * the editor, the previews - there's just the playing song's record, still.
      */
-    carousel: com.example.musicfy.ui.player.SongCarousel? = null,
+    carousel: com.mochyy.mochymusic.ui.player.SongCarousel? = null,
     /** how much colour the records' pictures keep: greyer while paused */
     saturationProvider: () -> Float = { 1f },
 ) {
     val (rotatingEnabled) = rememberPreference(DiscRotatingAnimationKey, defaultValue = true)
     val (realistic) = rememberPreference(DiscRealisticModeKey, defaultValue = true)
     val (customName) = rememberPreference(DiscNameKey, defaultValue = "")
-    val labelContent by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.DiscLabelContentKey,
+    val labelContent by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.DiscLabelContentKey,
         DiscLabelContent.CUSTOM,
     )
-    val connection = com.example.musicfy.LocalPlayerConnection.current
+    val connection = com.mochyy.mochymusic.LocalPlayerConnection.current
     val track = connection?.uiState?.trackInfo?.collectAsState()?.value
 
     // what a record's label says, as chosen in the cover editor
@@ -188,7 +188,7 @@ private val albumArtworkCache = java.util.concurrent.ConcurrentHashMap<String, S
  */
 @Composable
 internal fun rememberAlbumArtwork(mediaId: String, fallback: String?): String? {
-    val database = com.example.musicfy.LocalDatabase.current
+    val database = com.mochyy.mochymusic.LocalDatabase.current
     val found by androidx.compose.runtime.produceState(albumArtworkCache[mediaId], mediaId) {
         if (mediaId.isBlank() || albumArtworkCache.containsKey(mediaId)) {
             value = albumArtworkCache[mediaId]

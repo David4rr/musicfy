@@ -5,7 +5,7 @@
 // the words: the words open the word editor ("CoolfontEditor", in ShareWordEditor.kt), and the
 // arrow over the song moves it under the words.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,9 +27,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /** How tall the picture is in an editor: most of the sheet, leaving the title and the buttons room. */
 @Composable

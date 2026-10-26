@@ -4,7 +4,7 @@
 // on, translating the lyrics, downloading the song and adding it to a playlist. BottomSheetPlayer
 // hands these to [PlayerMenuExtras] so its own list of actions stays a list.
 
-package com.example.musicfy.ui.player.studio
+package com.mochyy.mochymusic.ui.player.studio
 
 import android.content.Context
 import android.widget.Toast
@@ -19,16 +19,16 @@ import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.constants.KeepScreenOn
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.lyrics.LyricsTranslationHelper
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.PlayerConnection
-import com.example.musicfy.ui.menu.AddToPlaylistDialog
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.constants.KeepScreenOn
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.ui.menu.AddToPlaylistDialog
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.flow.flowOf
 
 /** What the extra chevron actions do, and whether each one is on right now. */
@@ -56,7 +56,7 @@ class PlayerMenuExtras internal constructor(
         when (action) {
             PlayerMenuAction.KEEP_AWAKE -> {
                 setKeepScreenOn(!keepScreenOn)
-                toast(if (keepScreenOn) "The screen can sleep again" else "The screen stays on while Musicfy is open")
+                toast(if (keepScreenOn) "The screen can sleep again" else "The screen stays on while Mochy is open")
             }
             PlayerMenuAction.TRANSLATE_LYRICS -> {
                 if (translating) {

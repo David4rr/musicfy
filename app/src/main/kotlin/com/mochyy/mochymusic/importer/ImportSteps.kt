@@ -1,16 +1,16 @@
 // ImportSteps.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportSessionSong
-import com.example.musicfy.db.entities.ImportedPlaylist
-import com.example.musicfy.db.entities.ImportedSong
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.db.entities.PlaylistSongMap
-import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.models.toMediaMetadata
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportSessionSong
+import com.mochyy.mochymusic.db.entities.ImportedPlaylist
+import com.mochyy.mochymusic.db.entities.ImportedSong
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.models.toMediaMetadata
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CancellationException

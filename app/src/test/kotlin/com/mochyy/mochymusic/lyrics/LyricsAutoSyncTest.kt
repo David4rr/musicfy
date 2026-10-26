@@ -1,4 +1,4 @@
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

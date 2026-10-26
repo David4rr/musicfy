@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.styles
+package com.mochyy.mochymusic.ui.player.styles
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -15,7 +15,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.text.style.TextAlign
-import com.example.musicfy.ui.player.MinInterludeGapMs
+import com.mochyy.mochymusic.ui.player.MinInterludeGapMs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.LyricsEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
@@ -58,7 +58,7 @@ import kotlin.math.sin
 
 /** big type with no padding above or below the glyphs, so stacked lines sit tight like a poster */
 internal fun posterType(size: TextUnit, weight: FontWeight = FontWeight.Bold) = TextStyle(
-    fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+    fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
     fontSize = size,
     lineHeight = size * 0.96f,
     fontWeight = weight,
@@ -293,7 +293,7 @@ private class WordCell(
  * script. Drawn one at a time, Arabic letters lost their joins and came out as loose shapes.
  */
 private fun letterBounds(word: String, graphemes: java.text.BreakIterator): IntArray {
-    if (word.isEmpty() || !com.example.musicfy.ui.player.splitsIntoLetters(word, 0, word.length)) {
+    if (word.isEmpty() || !com.mochyy.mochymusic.ui.player.splitsIntoLetters(word, 0, word.length)) {
         return intArrayOf(0, word.length)
     }
     graphemes.setText(word)
@@ -483,7 +483,7 @@ private fun measureLine(
     val subWidth = maxWidth.roundToInt().coerceAtLeast(1)
     val subs = listOfNotNull(reading?.let { it to 0.74f }, translation?.let { it to 0.56f }).map { (text, alpha) ->
         val style = TextStyle(
-            fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+            fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily,
             fontSize = with(density) { subPx.toSp() },
             lineHeight = with(density) { (subPx * 1.22f).toSp() },
             fontWeight = FontWeight.SemiBold,
@@ -617,7 +617,7 @@ private fun lastAtOrBefore(times: LongArray, t: Long): Int {
 private data class LineKey(val index: Int, val reading: String?, val translation: String?)
 
 /** the pronunciation of [entry]: its romanisation, or the readings of its words joined up */
-private fun readingOf(roman: String?, ruby: List<com.example.musicfy.lyrics.RubyToken>?, text: String): String? =
+private fun readingOf(roman: String?, ruby: List<com.mochyy.mochymusic.lyrics.RubyToken>?, text: String): String? =
     roman?.takeIf { it.isNotBlank() && it != text }
         ?: ruby?.joinToString(" ") { it.text.trim() }?.takeIf { it.isNotBlank() && it != text }
 
@@ -819,16 +819,16 @@ private fun InterludeRow(gap: Interlude, position: LivePosition, color: Color, b
         LineSide.CENTER -> 0.5f
         LineSide.RIGHT -> 1f
     }
-    com.example.musicfy.ui.player.LyricsInterludeDots(
+    com.mochyy.mochymusic.ui.player.LyricsInterludeDots(
         startMs = gap.startMs,
         endMs = gap.endMs,
         positionProvider = provider,
         accentColor = color,
         visible = visible,
         alignment = when (gap.side) {
-            LineSide.LEFT -> com.example.musicfy.ui.player.LyricsAlignment.START
-            LineSide.CENTER -> com.example.musicfy.ui.player.LyricsAlignment.CENTER
-            LineSide.RIGHT -> com.example.musicfy.ui.player.LyricsAlignment.END
+            LineSide.LEFT -> com.mochyy.mochymusic.ui.player.LyricsAlignment.START
+            LineSide.CENTER -> com.mochyy.mochymusic.ui.player.LyricsAlignment.CENTER
+            LineSide.RIGHT -> com.mochyy.mochymusic.ui.player.LyricsAlignment.END
         },
         modifier = Modifier
             .graphicsLayer {
@@ -838,7 +838,7 @@ private fun InterludeRow(gap: Interlude, position: LivePosition, color: Color, b
             }
             // the row pads itself for the lyrics page; here the dots line up with the words' edge
             .layout { measurable, constraints ->
-                val pad = com.example.musicfy.ui.player.LyricsHeaderArtX.roundToPx()
+                val pad = com.mochyy.mochymusic.ui.player.LyricsHeaderArtX.roundToPx()
                 val wide = constraints.maxWidth + pad * 2
                 val p = measurable.measure(constraints.copy(minWidth = wide, maxWidth = wide))
                 layout(constraints.maxWidth, p.height) { p.place(-pad, 0) }

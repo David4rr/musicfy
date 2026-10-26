@@ -1,6 +1,6 @@
 // ModulesViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.media.MediaDrm
 import android.media.NotProvisionedException
@@ -9,13 +9,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.DiagnosticStep
-import com.example.musicfy.module.ResolveResult
-import com.example.musicfy.module.StreamDrm
-import com.example.musicfy.module.TrackQuery
-import com.example.musicfy.modules.SourceModules
-import com.example.musicfy.playback.custom.WidevineDrm
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.DiagnosticStep
+import com.mochyy.mochymusic.module.ResolveResult
+import com.mochyy.mochymusic.module.StreamDrm
+import com.mochyy.mochymusic.module.TrackQuery
+import com.mochyy.mochymusic.modules.SourceModules
+import com.mochyy.mochymusic.playback.custom.WidevineDrm
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -153,7 +153,7 @@ class ModulesViewModel @Inject constructor(
      * whole path playback takes (playlist, segments, DRM sessions, the decoder), nothing faked.
      */
     @androidx.annotation.OptIn(UnstableApi::class)
-    private suspend fun checkPlayback(stream: com.example.musicfy.module.SourceStream): String {
+    private suspend fun checkPlayback(stream: com.mochyy.mochymusic.module.SourceStream): String {
         val drm = stream.drm as? StreamDrm.Widevine
         val factory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(context)
@@ -171,7 +171,7 @@ class ModulesViewModel @Inject constructor(
             val item = androidx.media3.common.MediaItem.Builder()
                 .setUri(stream.url)
                 .apply {
-                    if (stream.format == com.example.musicfy.module.StreamFormat.Hls) setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                    if (stream.format == com.mochyy.mochymusic.module.StreamFormat.Hls) setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
                     if (drm != null) setDrmConfiguration(
                         androidx.media3.common.MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID).setMultiSession(true).build()
                     )

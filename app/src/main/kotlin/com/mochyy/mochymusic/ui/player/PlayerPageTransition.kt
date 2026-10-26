@@ -1,6 +1,6 @@
 // PlayerPageTransition.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.withFrameNanos

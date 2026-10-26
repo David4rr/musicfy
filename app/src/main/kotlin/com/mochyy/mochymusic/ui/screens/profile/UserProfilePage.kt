@@ -2,10 +2,10 @@
 //
 // The profile page from the mock: the photo, the name in big type with the card number on its
 // baseline, "Edit profile", then listening totals, what you've been playing, your playlists and the
-// artists you play most. It opens out of the ID card on the Musicfy page (see ProfileMorph.kt), so
+// artists you play most. It opens out of the ID card on the Mochy page (see ProfileMorph.kt), so
 // the photo, name and number stay hidden until the flying copies have landed on them.
 
-package com.example.musicfy.ui.screens.profile
+package com.mochyy.mochymusic.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -63,31 +63,31 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.HomeCardCornerRadius
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.HomeCardSpacing
-import com.example.musicfy.ui.component.HomeContentInset
-import com.example.musicfy.ui.component.HomeCoverCard
-import com.example.musicfy.ui.component.HomeSectionTitle
-import com.example.musicfy.ui.component.LikedSongsThumbnail
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
-import com.example.musicfy.ui.component.OdometerNumber
-import com.example.musicfy.ui.component.PlaylistThumbnail
-import com.example.musicfy.ui.component.homeCardSize
-import com.example.musicfy.ui.menu.ArtistMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.screens.settings.figureSp
-import com.example.musicfy.ui.screens.setup.onboarding.idCardName
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.stableSystemBars
-import com.example.musicfy.viewmodels.ListenTotal
-import com.example.musicfy.viewmodels.UserProfileViewModel
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.HomeCardCornerRadius
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.HomeCardSpacing
+import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.ui.component.HomeCoverCard
+import com.mochyy.mochymusic.ui.component.HomeSectionTitle
+import com.mochyy.mochymusic.ui.component.LikedSongsThumbnail
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.ui.component.OdometerNumber
+import com.mochyy.mochymusic.ui.component.PlaylistThumbnail
+import com.mochyy.mochymusic.ui.component.homeCardSize
+import com.mochyy.mochymusic.ui.menu.ArtistMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.screens.settings.figureSp
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.idCardName
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.viewmodels.ListenTotal
+import com.mochyy.mochymusic.viewmodels.UserProfileViewModel
 
 internal val ProfilePhotoSize = 98.dp
 internal val ProfilePhotoGrey = Color(0xFF4F4F4F)

@@ -2,9 +2,9 @@
 //
 // The Library's Imported tab: the import banner, then what each service brought in, as songs
 // (All music) and as playlists, and Manage imports at the bottom. Songs YouTube sync keeps up to
-// date count under YouTube here, apart from the songs liked in Musicfy itself.
+// date count under YouTube here, apart from the songs liked in Mochy itself.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -13,11 +13,11 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.importer.ImportProgress
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
-import com.example.musicfy.viewmodels.ImportedSourceCard
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.importer.ImportProgress
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.ui.screens.search.SearchHorizontalPadding
+import com.mochyy.mochymusic.viewmodels.ImportedSourceCard
 
 /** What one service brought in, for its two cards. */
 @Immutable

@@ -1,6 +1,6 @@
 // MetroLyrics.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.graphics.BlurMaskFilter
 import android.graphics.Typeface
@@ -52,14 +52,14 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.res.ResourcesCompat
-import com.example.musicfy.R
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.AppleMusicLyricsBlurKey
-import com.example.musicfy.constants.LyricsRomanizeAsMainKey
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.ui.screens.LyricsPosition
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.AppleMusicLyricsBlurKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeAsMainKey
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.ui.screens.LyricsPosition
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
 import kotlin.math.cos

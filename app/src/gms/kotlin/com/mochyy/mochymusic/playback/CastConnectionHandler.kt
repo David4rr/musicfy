@@ -1,6 +1,6 @@
 // CastConnectionHandler.kt
 
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import android.content.Context
 import android.net.Uri
@@ -21,9 +21,9 @@ import com.google.android.gms.cast.framework.SessionManager
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.images.WebImage
-import com.example.musicfy.extensions.metadata
-import com.example.musicfy.models.MediaMetadata as AppMediaMetadata
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.extensions.metadata
+import com.mochyy.mochymusic.models.MediaMetadata as AppMediaMetadata
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

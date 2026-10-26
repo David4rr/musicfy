@@ -1,9 +1,9 @@
 // NavControllerUtils.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import androidx.navigation.NavController
-import com.example.musicfy.ui.screens.Screens
+import com.mochyy.mochymusic.ui.screens.Screens
 
 fun NavController.backToMain() {
     val mainRoutes = Screens.MainScreens.map { it.route }

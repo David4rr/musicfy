@@ -1,6 +1,6 @@
 // PoTokenException.kt
 
-package com.example.musicfy.utils.potoken
+package com.mochyy.mochymusic.utils.potoken
 
 class PoTokenException(message: String) : Exception(message)
 

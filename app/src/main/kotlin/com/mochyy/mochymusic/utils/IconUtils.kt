@@ -1,6 +1,6 @@
 // IconUtils.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import android.content.ComponentName
 import android.content.Context
@@ -9,8 +9,8 @@ import android.content.pm.PackageManager
 object IconUtils {
     fun setIcon(context: Context, enabled: Boolean) {
         val pm = context.packageManager
-        val dynamic = ComponentName(context, "com.example.musicfy.MainActivityAlias")
-        val static = ComponentName(context, "com.example.musicfy.MainActivityStatic")
+        val dynamic = ComponentName(context, "com.mochyy.mochymusic.MainActivityAlias")
+        val static = ComponentName(context, "com.mochyy.mochymusic.MainActivityStatic")
 
         pm.setComponentEnabledSetting(
             dynamic,

@@ -1,4 +1,4 @@
-package com.example.musicfy.core
+package com.mochyy.mochymusic.core
 
 import android.content.Context
 import android.media.AudioDeviceInfo

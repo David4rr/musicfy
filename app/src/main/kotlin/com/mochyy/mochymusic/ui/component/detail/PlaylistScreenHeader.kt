@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.component.detail
+package com.mochyy.mochymusic.ui.component.detail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -36,8 +36,8 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.R
-import com.example.musicfy.ui.theme.PlayerColorExtractor
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

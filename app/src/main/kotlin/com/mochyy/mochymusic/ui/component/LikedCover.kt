@@ -5,7 +5,7 @@
 // white heart on top. it's drawn rather than a picture, so it's a handful of gradients at any size
 // and doesn't need blur, which older phones can't do.
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.content.Context
 import android.graphics.RadialGradient
@@ -40,9 +40,9 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.ui.theme.CoverThemeColor
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.theme.CoverThemeColor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

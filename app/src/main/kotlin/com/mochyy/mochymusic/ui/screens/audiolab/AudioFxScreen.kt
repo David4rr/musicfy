@@ -1,6 +1,6 @@
 // audio lab's effects as cards, each with a live picture, a switch and options that fold away while it is off
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import android.content.Context
 import android.media.AudioManager
@@ -41,16 +41,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.AudioNormalizationKey
-import com.example.musicfy.eq.MaxSpeed
-import com.example.musicfy.eq.MinSpeed
-import com.example.musicfy.eq.ReverbPresets
-import com.example.musicfy.eq.audio.SpatialMode
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.AudioLabViewModel
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AudioNormalizationKey
+import com.mochyy.mochymusic.eq.MaxSpeed
+import com.mochyy.mochymusic.eq.MinSpeed
+import com.mochyy.mochymusic.eq.ReverbPresets
+import com.mochyy.mochymusic.eq.audio.SpatialMode
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.AudioLabViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.log10
@@ -174,10 +174,10 @@ private fun LoudnessCard(viewModel: AudioLabViewModel) {
                     )
                     LabChips(
                         chips = listOf(LabChip("track", "Track"), LabChip("album", "Album")),
-                        selectedKey = if (rg.replayGainMode == com.example.musicfy.eq.audio.ReplayGainMode.Album) "album" else "track",
+                        selectedKey = if (rg.replayGainMode == com.mochyy.mochymusic.eq.audio.ReplayGainMode.Album) "album" else "track",
                         onSelect = { key ->
                             viewModel.updateNormalize {
-                                it.copy(replayGainMode = if (key == "album") com.example.musicfy.eq.audio.ReplayGainMode.Album else com.example.musicfy.eq.audio.ReplayGainMode.Track)
+                                it.copy(replayGainMode = if (key == "album") com.mochyy.mochymusic.eq.audio.ReplayGainMode.Album else com.mochyy.mochymusic.eq.audio.ReplayGainMode.Track)
                             }
                         },
                     )
@@ -288,7 +288,7 @@ private fun AtmosCard(viewModel: AudioLabViewModel) {
         header = {
             LabToggleRow(
                 title = "Dolby Atmos & surround",
-                subtitle = "Plays 5.1, 7.1 and Atmos beds as 3D sound on any headphones, with Musicfy's head model, instead of folding them to stereo. From the next song.",
+                subtitle = "Plays 5.1, 7.1 and Atmos beds as 3D sound on any headphones, with Mochy's head model, instead of folding them to stereo. From the next song.",
                 checked = spatial.surround,
                 onCheckedChange = { on -> viewModel.updateSpatial { it.copy(surround = on) } },
             )
@@ -431,7 +431,7 @@ private fun SpeedCard(viewModel: AudioLabViewModel) {
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 LabTextAction("Reset", R.drawable.refresh, enabled = !playback.isNormal) {
-                    viewModel.updatePlayback { com.example.musicfy.eq.PlaybackSettings() }
+                    viewModel.updatePlayback { com.mochyy.mochymusic.eq.PlaybackSettings() }
                 }
             }
         },
@@ -482,7 +482,7 @@ private fun VolumeCard(viewModel: AudioLabViewModel) {
                 LabSlider("Volume limit", pct(volume.limit), volume.limit,
                     { v -> viewModel.updateVolume { it.copy(limit = (v * 100).roundToInt() / 100f) } }, 0.2f..1f)
                 Text(
-                    "Shapes Musicfy's own volume (the player's slider, fades and ducking). The limit caps how loud the app ever plays.",
+                    "Shapes Mochy's own volume (the player's slider, fades and ducking). The limit caps how loud the app ever plays.",
                     fontFamily = InterFontFamily, fontSize = 12.sp, lineHeight = 16.sp, color = LabColors.Secondary,
                     modifier = Modifier.padding(top = 4.dp),
                 )

@@ -1,4 +1,4 @@
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -30,14 +30,14 @@ class CsvImportTest {
     }
 
     @Test
-    fun musicfyExportRoundTrips() {
+    fun mochyExportRoundTrips() {
         val rows = listOf(
             CsvExportRow(null, "Liked \"Quoted\" Song", "Ärtist", "Album", 215_000, "dQw4w9WgXcQ", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"),
             CsvExportRow("Mix, Vol. 1", "Line\nBreak", "日本のアーティスト", null, null, "abcdefghijk", null),
             CsvExportRow("Empty one", null, null, null, null, null, null),
             CsvExportRow("Local files", "From phone", "Someone", null, 1000, null, null),
         )
-        val parsed = parseImportCsv(writeMusicfyCsv(rows))
+        val parsed = parseImportCsv(writeMochyCsv(rows))
 
         assertEquals(1, parsed.likedSongs.size)
         with(parsed.likedSongs[0]) {

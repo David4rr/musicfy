@@ -1,6 +1,6 @@
 // EnumDialog.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column

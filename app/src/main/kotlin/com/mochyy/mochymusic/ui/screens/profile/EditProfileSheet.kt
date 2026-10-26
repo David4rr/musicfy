@@ -3,7 +3,7 @@
 // "Edit profile": the username and picture the profile already has, ready to change. Built from the
 // onboarding's own pieces, so it reads like the profile step you filled in on day one.
 
-package com.example.musicfy.ui.screens.profile
+package com.mochyy.mochymusic.ui.screens.profile
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -41,15 +41,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.screens.setup.PhotoCropperContainer
-import com.example.musicfy.ui.screens.setup.onboarding.Onb
-import com.example.musicfy.ui.screens.setup.onboarding.OnbButton
-import com.example.musicfy.ui.screens.setup.onboarding.OnbTextField
-import com.example.musicfy.ui.screens.setup.onboarding.OnboardingPage
-import com.example.musicfy.ui.screens.setup.onboarding.PageBadge
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.screens.setup.PhotoCropperContainer
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.Onb
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbButton
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbTextField
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnboardingPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.PageBadge
 import kotlinx.coroutines.launch
 
 /** Opens the editor filled in with the name and picture the profile shows now. */
@@ -91,7 +91,7 @@ private fun EditProfileContent(currentName: String, currentPhoto: Any?, onSaved:
             modifier = Modifier.background(Onb.Page),
             footer = {
                 Text(
-                    "Musicfy will never store your data online!",
+                    "Mochy will never store your data online!",
                     color = Onb.Faint,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,

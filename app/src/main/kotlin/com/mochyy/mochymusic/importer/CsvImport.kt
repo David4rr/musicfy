@@ -1,8 +1,8 @@
 // CsvImport.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
-/** reads playlist csvs from tunemymusic, exportify and musicfy's own export, columns are found by header name so order doesn't matter */
+/** reads playlist csvs from tunemymusic, exportify and mochy's own export, columns are found by header name so order doesn't matter */
 fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playlist"): ParsedImport {
     val rows = parseCsvRows(text).filter { row -> row.any { it.isNotBlank() } }
     if (rows.isEmpty()) return ParsedImport(emptyList(), emptyMap())
@@ -37,7 +37,7 @@ fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playli
         val playlistName = cell(playlistIdx) ?: fallbackPlaylistName
         val title = cell(titleIdx)
         if (title == null) {
-            // a playlist row with no track keeps an empty playlist from a musicfy export
+            // a playlist row with no track keeps an empty playlist from a mochy export
             if (!isLiked && playlistIdx >= 0 && cell(playlistIdx) != null) playlists.getOrPut(playlistName) { mutableListOf() }
             continue
         }
@@ -63,7 +63,7 @@ fun parseImportCsv(text: String, fallbackPlaylistName: String = "Imported playli
 /** kept for the setup wizard, which only ever offered tunemymusic files */
 fun parseTuneMyMusicCsv(text: String): ParsedImport = parseImportCsv(text)
 
-/** one row of a musicfy export; playlistName is null for liked songs */
+/** one row of a mochy export; playlistName is null for liked songs */
 data class CsvExportRow(
     val playlistName: String?,
     val title: String?,
@@ -74,7 +74,7 @@ data class CsvExportRow(
     val thumbnailUrl: String?,
 )
 
-fun writeMusicfyCsv(rows: List<CsvExportRow>): String = buildString {
+fun writeMochyCsv(rows: List<CsvExportRow>): String = buildString {
     appendCsvLine(listOf("Type", "Playlist name", "Track name", "Artist name", "Album", "Duration (ms)", "Video ID", "Thumbnail"))
     for (row in rows) {
         appendCsvLine(

@@ -1,12 +1,12 @@
 // KuGouLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.kugou.KuGou
-import com.example.musicfy.constants.EnableKugouKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.EnableKugouKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 
 object KuGouLyricsProvider : LyricsProvider {
     override val name = "Kugou"

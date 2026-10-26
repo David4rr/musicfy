@@ -1,6 +1,6 @@
 // NowPlaying.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 /** What the player is on, as the Discord status needs it. MusicService fills it in. */
 data class NowPlaying(

@@ -1,6 +1,6 @@
 // DiscordHttp.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Musicfy's calls to Discord's web API and gateway, sharing one connection pool. */
+/** Mochy's calls to Discord's web API and gateway, sharing one connection pool. */
 internal object DiscordHttp {
     const val Api = "https://discord.com/api/v10"
 

@@ -1,6 +1,6 @@
 // LyricsScreen.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -68,11 +68,11 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import com.example.musicfy.ui.player.share.LyricsShareHost
-import com.example.musicfy.ui.player.share.LyricsShareSession
-import com.example.musicfy.ui.player.share.ShareFlightSource
-import com.example.musicfy.ui.player.share.fullBoundsInWindow
-import com.example.musicfy.ui.player.share.ShareSong
+import com.mochyy.mochymusic.ui.player.share.LyricsShareHost
+import com.mochyy.mochymusic.ui.player.share.LyricsShareSession
+import com.mochyy.mochymusic.ui.player.share.ShareFlightSource
+import com.mochyy.mochymusic.ui.player.share.fullBoundsInWindow
+import com.mochyy.mochymusic.ui.player.share.ShareSong
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -91,42 +91,42 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import androidx.media3.common.Player
-import com.example.musicfy.extensions.togglePlayPause
-import com.example.musicfy.extensions.toggleRepeatMode
-import com.example.musicfy.constants.AiProviderKey
-import com.example.musicfy.constants.DeeplApiKey
-import com.example.musicfy.constants.DeeplFormalityKey
-import com.example.musicfy.constants.LyricsHighBloomKey
-import com.example.musicfy.constants.OpenRouterApiKey
-import com.example.musicfy.constants.OpenRouterBaseUrlKey
-import com.example.musicfy.constants.OpenRouterModelKey
-import com.example.musicfy.constants.LyricsRomanizeBelarusianKey
-import com.example.musicfy.constants.LyricsRomanizeBulgarianKey
-import com.example.musicfy.constants.LyricsRomanizeChineseKey
-import com.example.musicfy.constants.LyricsRomanizeHindiKey
-import com.example.musicfy.constants.LyricsRomanizeJapaneseKey
-import com.example.musicfy.constants.LyricsRomanizeKoreanKey
-import com.example.musicfy.constants.LyricsRomanizeKyrgyzKey
-import com.example.musicfy.constants.LyricsRomanizeMacedonianKey
-import com.example.musicfy.constants.LyricsRomanizePunjabiKey
-import com.example.musicfy.constants.LyricsRomanizeRussianKey
-import com.example.musicfy.constants.LyricsRomanizeSerbianKey
-import com.example.musicfy.constants.LyricsRomanizeUkrainianKey
-import com.example.musicfy.constants.LyricsWaveAnimationKey
-import com.example.musicfy.constants.TranslateLanguageKey
-import com.example.musicfy.constants.TranslateLyricsKey
-import com.example.musicfy.constants.TranslateSourceLanguageKey
-import com.example.musicfy.constants.TranslateModeKey
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.lyrics.LyricsTranslationHelper
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.ui.theme.PlayerColorExtractor
-import com.example.musicfy.viewmodels.LyricsScreenViewModel
+import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.extensions.toggleRepeatMode
+import com.mochyy.mochymusic.constants.AiProviderKey
+import com.mochyy.mochymusic.constants.DeeplApiKey
+import com.mochyy.mochymusic.constants.DeeplFormalityKey
+import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.OpenRouterApiKey
+import com.mochyy.mochymusic.constants.OpenRouterBaseUrlKey
+import com.mochyy.mochymusic.constants.OpenRouterModelKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBelarusianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBulgarianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeChineseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeHindiKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeJapaneseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKoreanKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKyrgyzKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeMacedonianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizePunjabiKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeRussianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeSerbianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeUkrainianKey
+import com.mochyy.mochymusic.constants.LyricsWaveAnimationKey
+import com.mochyy.mochymusic.constants.TranslateLanguageKey
+import com.mochyy.mochymusic.constants.TranslateLyricsKey
+import com.mochyy.mochymusic.constants.TranslateSourceLanguageKey
+import com.mochyy.mochymusic.constants.TranslateModeKey
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
+import com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -179,8 +179,8 @@ internal val LyricsRecenterEasing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f)
  */
 internal val LyricsSmoothRecenterEasing = CubicBezierEasing(0.42f, 0f, 0.16f, 1f)
 
-internal fun recenterEasingFor(style: com.example.musicfy.constants.LyricsMotionStyle) =
-    if (style == com.example.musicfy.constants.LyricsMotionStyle.MOTION) LyricsSmoothRecenterEasing else LyricsRecenterEasing
+internal fun recenterEasingFor(style: com.mochyy.mochymusic.constants.LyricsMotionStyle) =
+    if (style == com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION) LyricsSmoothRecenterEasing else LyricsRecenterEasing
 
 private const val ScrollDirectionThresholdPx = 6L
 
@@ -339,11 +339,11 @@ fun LyricsScreen(
         }
     }
 
-    val (motionStyle) = com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.LyricsMotionStyleKey,
-        defaultValue = com.example.musicfy.constants.LyricsMotionStyle.MOTION,
+    val (motionStyle) = com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.LyricsMotionStyleKey,
+        defaultValue = com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION,
     )
-    val cascade = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+    val cascade = motionStyle == com.mochyy.mochymusic.constants.LyricsMotionStyle.MOTION
 
     // Opens already on the playing line. Starting at the top and scrolling down to it fought the
     // open transition - the line the card grows into would still be moving.
@@ -774,7 +774,7 @@ fun LyricsScreen(
                     // connection" aren't sources, so there's nothing to credit for them.
                     val provider = lyricsEntity?.provider
                     if (provider != null && provider != "Unknown" &&
-                        provider != com.example.musicfy.lyrics.LyricsHelper.NoConnectionProvider
+                        provider != com.mochyy.mochymusic.lyrics.LyricsHelper.NoConnectionProvider
                     ) {
                         item(key = "source", contentType = "source") {
                             LyricsSourceFooter(

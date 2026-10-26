@@ -1,6 +1,6 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
-import com.example.musicfy.eq.audio.ReverbParams
+import com.mochyy.mochymusic.eq.audio.ReverbParams
 import kotlinx.serialization.Serializable
 
 @Serializable

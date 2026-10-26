@@ -1,6 +1,6 @@
 // CipherDeobfuscator.kt
 
-package com.example.musicfy.utils.cipher
+package com.mochyy.mochymusic.utils.cipher
 
 import android.content.Context
 import android.net.Uri
@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 object CipherDeobfuscator {
-    private const val TAG = "musicfy_CipherDeobfusc"
+    private const val TAG = "mochy_CipherDeobfusc"
 
     lateinit var appContext: Context
         private set

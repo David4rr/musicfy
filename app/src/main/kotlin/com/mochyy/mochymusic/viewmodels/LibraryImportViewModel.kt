@@ -1,26 +1,26 @@
 // LibraryImportViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.R
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.importer.DeviceMusicScanner
-import com.example.musicfy.importer.DeviceSong
-import com.example.musicfy.importer.ImportHistory
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.LocalArtwork
-import com.example.musicfy.importer.LocalFolders
-import com.example.musicfy.importer.LocalImportService
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.importer.DeviceMusicScanner
+import com.mochyy.mochymusic.importer.DeviceSong
+import com.mochyy.mochymusic.importer.ImportHistory
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.LocalArtwork
+import com.mochyy.mochymusic.importer.LocalFolders
+import com.mochyy.mochymusic.importer.LocalImportService
 import androidx.media3.exoplayer.offline.DownloadService
-import com.example.musicfy.models.TransferBatch
-import com.example.musicfy.models.TransferState
-import com.example.musicfy.playback.DownloadUtil
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.ui.component.TopToaster
+import com.mochyy.mochymusic.models.TransferBatch
+import com.mochyy.mochymusic.models.TransferState
+import com.mochyy.mochymusic.playback.DownloadUtil
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.ui.component.TopToaster
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -120,7 +120,7 @@ class LibraryImportViewModel @Inject constructor(
         return startFolderImport(files, emptyMessage = null)
     }
 
-    /** True if Musicfy has music folders the user picked. */
+    /** True if Mochy has music folders the user picked. */
     fun hasFolders(): Boolean = LocalFolders.read(context).isNotEmpty()
 
     private fun startFolderImport(files: List<Uri>, emptyMessage: String?): Boolean {

@@ -1,4 +1,4 @@
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.util.UnstableApi

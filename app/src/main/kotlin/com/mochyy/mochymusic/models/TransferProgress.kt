@@ -3,7 +3,7 @@
 // What the Library's progress card and progress sheet show, whichever job is running: songs being
 // downloaded for offline, or files being imported from the phone.
 
-package com.example.musicfy.models
+package com.mochyy.mochymusic.models
 
 import androidx.compose.runtime.Immutable
 

@@ -1,22 +1,22 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
 import android.content.Context
 import androidx.core.content.edit
-import com.example.musicfy.eq.audio.Biquad
-import com.example.musicfy.eq.audio.LoudnessParams
-import com.example.musicfy.eq.audio.PeakLimiter
-import com.example.musicfy.eq.audio.ReplayGainMode
-import com.example.musicfy.eq.audio.ReplayGainParams
-import com.example.musicfy.eq.audio.ResponseCurve
-import com.example.musicfy.eq.audio.SpatialMode
-import com.example.musicfy.eq.audio.SpatialParams
-import com.example.musicfy.eq.audio.VolumeCurve
-import com.example.musicfy.eq.autoeq.AutoEqTuning
-import com.example.musicfy.eq.autoeq.HeadphoneForm
-import com.example.musicfy.eq.data.EQProfileRepository
-import com.example.musicfy.eq.data.FilterType
-import com.example.musicfy.eq.data.ParametricEQ
-import com.example.musicfy.eq.data.ParametricEQBand
+import com.mochyy.mochymusic.eq.audio.Biquad
+import com.mochyy.mochymusic.eq.audio.LoudnessParams
+import com.mochyy.mochymusic.eq.audio.PeakLimiter
+import com.mochyy.mochymusic.eq.audio.ReplayGainMode
+import com.mochyy.mochymusic.eq.audio.ReplayGainParams
+import com.mochyy.mochymusic.eq.audio.ResponseCurve
+import com.mochyy.mochymusic.eq.audio.SpatialMode
+import com.mochyy.mochymusic.eq.audio.SpatialParams
+import com.mochyy.mochymusic.eq.audio.VolumeCurve
+import com.mochyy.mochymusic.eq.autoeq.AutoEqTuning
+import com.mochyy.mochymusic.eq.autoeq.HeadphoneForm
+import com.mochyy.mochymusic.eq.data.EQProfileRepository
+import com.mochyy.mochymusic.eq.data.FilterType
+import com.mochyy.mochymusic.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,7 +95,7 @@ data class SpatialSettings(
     val feedDb: Float = 4.5f,
     val speakerAngle: Float = 30f,
     val amount: Float = 1f,
-    /** dolby atmos / surround rendered binaurally by musicfy rather than by the device */
+    /** dolby atmos / surround rendered binaurally by mochy rather than by the device */
     val surround: Boolean = false,
     /** both ears hear the whole mix */
     val mono: Boolean = false,

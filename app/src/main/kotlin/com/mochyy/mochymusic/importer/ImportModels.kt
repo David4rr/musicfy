@@ -1,6 +1,6 @@
 // ImportModels.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import com.music.innertube.models.SongItem
 
@@ -9,7 +9,7 @@ data class ImportedTrack(
     val artist: String,
     val album: String?,
     val durationMs: Long? = null,
-    /** exact youtube id when the source already knows it (musicfy csv, youtube links) — no search needed */
+    /** exact youtube id when the source already knows it (mochy csv, youtube links) — no search needed */
     val videoId: String? = null,
     val thumbnailUrl: String? = null,
     /** full youtube item when the source is youtube itself, so nothing is lost converting back */
@@ -28,7 +28,7 @@ enum class ImportSource(val key: String, val label: String) {
     YOUTUBE_MUSIC("youtube_music", "YouTube Music"),
     DEEZER("deezer", "Deezer"),
 
-    /** a file or a service with no name of its own (a tunemymusic csv, a musicfy backup) */
+    /** a file or a service with no name of its own (a tunemymusic csv, a mochy backup) */
     OTHER("other", "other sources");
 
     /** the sources the library gives a category of their own */

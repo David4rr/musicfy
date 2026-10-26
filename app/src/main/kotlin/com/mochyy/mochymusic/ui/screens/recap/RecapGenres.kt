@@ -6,11 +6,11 @@
 // answers are kept on disk so each artist is asked about once, and shares are weighted locally by
 // listening time.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import android.content.Context
 import androidx.compose.runtime.Immutable
-import com.example.musicfy.utils.ListeningGenres
+import com.mochyy.mochymusic.utils.ListeningGenres
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex

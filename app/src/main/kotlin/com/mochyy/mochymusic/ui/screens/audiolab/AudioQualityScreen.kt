@@ -1,6 +1,6 @@
 // audio lab's quality page: streaming tiers per provider, download quality and the provider order
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -44,17 +44,17 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.applemusic.AppleMusicModule
-import com.example.musicfy.module.monochrome.MonochromeModule
-import com.example.musicfy.modules.SourceModules
-import com.example.musicfy.viewmodels.ModulesViewModel
-import com.example.musicfy.R
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.AudioQualityKey
-import com.example.musicfy.eq.audio.AudioTap
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.applemusic.AppleMusicModule
+import com.mochyy.mochymusic.module.monochrome.MonochromeModule
+import com.mochyy.mochymusic.modules.SourceModules
+import com.mochyy.mochymusic.viewmodels.ModulesViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AudioQuality
+import com.mochyy.mochymusic.constants.AudioQualityKey
+import com.mochyy.mochymusic.eq.audio.AudioTap
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 import kotlin.math.exp
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -75,8 +75,8 @@ private class Effective(val quality: AudioQuality, val title: String, val format
 fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel = hiltViewModel()) {
     val (stored, onQuality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
     val (downloadQuality, onDownloadQuality) = rememberEnumPreference(
-        com.example.musicfy.constants.DownloadQualityKey,
-        defaultValue = com.example.musicfy.constants.DownloadQuality.HIGH,
+        com.mochyy.mochymusic.constants.DownloadQualityKey,
+        defaultValue = com.mochyy.mochymusic.constants.DownloadQuality.HIGH,
     )
     // the tiers Monochrome used to serve from here belong to its module now
     val quality = if (stored.usesMonochrome) AudioQuality.HIGH else stored
@@ -147,7 +147,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
                     QualityRow("Lossless", "FLAC, as Monochrome has it: CD quality or better", selected = true, enabled = active) {}
                 }
                 LabTextAction("${entry.module.info.name} settings", R.drawable.navigate_next) {
-                    navController.navigate(com.example.musicfy.ui.screens.settings.modules.moduleRoute(id))
+                    navController.navigate(com.mochyy.mochymusic.ui.screens.settings.modules.moduleRoute(id))
                 }
             }
         }
@@ -156,7 +156,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
         Spacer(Modifier.height(24.dp))
         LabSheetTitle("Download")
         LabGroup {
-            com.example.musicfy.constants.DownloadQuality.entries.forEach { option ->
+            com.mochyy.mochymusic.constants.DownloadQuality.entries.forEach { option ->
                 QualityRow(option.title, option.description, selected = downloadQuality == option, enabled = true) {
                     onDownloadQuality(option)
                 }
@@ -185,7 +185,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
                     val entry = entries.firstOrNull { it.module.info.id == id }
                     // not signed in: there's nothing to switch on yet, so its sign-in opens
                     if (entry == null || entry.account !is AccountState.SignedIn) {
-                        navController.navigate(com.example.musicfy.ui.screens.settings.modules.moduleRoute(id))
+                        navController.navigate(com.mochyy.mochymusic.ui.screens.settings.modules.moduleRoute(id))
                     } else {
                         modules.setEnabled(id, !entry.enabled)
                     }
@@ -200,7 +200,7 @@ fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel =
     }
 }
 
-private fun moduleStatus(entry: com.example.musicfy.modules.ModuleEntry): String = when {
+private fun moduleStatus(entry: com.mochyy.mochymusic.modules.ModuleEntry): String = when {
     entry.account is AccountState.SignedOut -> "Sign in to play from it"
     entry.account is AccountState.Expired -> "Sign in again"
     entry.enabled -> "On"

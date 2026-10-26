@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.theme
+package com.mochyy.mochymusic.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb

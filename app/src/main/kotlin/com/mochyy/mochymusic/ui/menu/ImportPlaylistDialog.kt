@@ -1,6 +1,6 @@
 // ImportPlaylistDialog.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -12,11 +12,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.importer.PlaylistSourceRecord
-import com.example.musicfy.ui.component.TextFieldDialog
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.importer.PlaylistSourceRecord
+import com.mochyy.mochymusic.ui.component.TextFieldDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch

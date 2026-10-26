@@ -1,11 +1,11 @@
 // ScrobbleSendWorker.kt
 
-package com.example.musicfy.scrobble
+package com.mochyy.mochymusic.scrobble
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.musicfy.di.ScrobblerEntryPoint
+import com.mochyy.mochymusic.di.ScrobblerEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 
 /**

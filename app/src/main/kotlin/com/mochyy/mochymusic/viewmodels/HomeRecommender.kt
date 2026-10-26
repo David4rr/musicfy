@@ -1,14 +1,14 @@
 // HomeRecommender.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.core.content.edit
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.utils.ListeningGenres
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.models.MediaMetadata
+import com.mochyy.mochymusic.utils.ListeningGenres
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.BrowseEndpoint
@@ -142,7 +142,7 @@ class HomeRecommender(
             .ifEmpty {
                 // nothing played yet: the artists picked during onboarding (saved to the library)
                 // stand in until listening history takes over
-                database.artists(com.example.musicfy.constants.ArtistSortType.CREATE_DATE, true).first()
+                database.artists(com.mochyy.mochymusic.constants.ArtistSortType.CREATE_DATE, true).first()
                     .filter { it.artist.isYouTubeArtist && it.artist.name.lowercase() !in avoidArtists }
                     .take(14)
             }

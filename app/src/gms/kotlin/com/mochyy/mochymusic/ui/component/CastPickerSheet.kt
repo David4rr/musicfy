@@ -1,6 +1,6 @@
 // CastPickerSheet.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -24,7 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.mediarouter.media.MediaRouter
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 
 @Composable
 fun CastPickerSheet(

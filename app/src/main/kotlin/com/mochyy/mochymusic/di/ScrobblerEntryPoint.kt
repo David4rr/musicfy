@@ -1,6 +1,6 @@
-package com.example.musicfy.di
+package com.mochyy.mochymusic.di
 
-import com.example.musicfy.scrobble.Scrobbler
+import com.mochyy.mochymusic.scrobble.Scrobbler
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent

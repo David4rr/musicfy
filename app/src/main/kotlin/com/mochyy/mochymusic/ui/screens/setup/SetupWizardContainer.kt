@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.setup
+package com.mochyy.mochymusic.ui.screens.setup
 
 import android.net.Uri
 import androidx.compose.animation.core.Animatable
@@ -31,9 +31,9 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.constants.SetupCompletedKey
-import com.example.musicfy.ui.launch.LaunchGate
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.constants.SetupCompletedKey
+import com.mochyy.mochymusic.ui.launch.LaunchGate
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 

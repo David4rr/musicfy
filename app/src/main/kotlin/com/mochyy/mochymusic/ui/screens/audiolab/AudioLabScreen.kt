@@ -1,6 +1,6 @@
 // audio lab home: big cards for the equalizer and effects, shorter ones for quality and transitions, each drawing shows its state
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -56,18 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.AudioQualityKey
-import com.example.musicfy.constants.CrossmixMode
-import com.example.musicfy.constants.CrossmixModeKey
-import com.example.musicfy.eq.EqPresets
-import com.example.musicfy.eq.EqSettings
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.AudioLabViewModel
+import com.mochyy.mochymusic.constants.AudioQuality
+import com.mochyy.mochymusic.constants.AudioQualityKey
+import com.mochyy.mochymusic.constants.CrossmixMode
+import com.mochyy.mochymusic.constants.CrossmixModeKey
+import com.mochyy.mochymusic.constants.playable
+import com.mochyy.mochymusic.eq.EqPresets
+import com.mochyy.mochymusic.eq.EqSettings
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.AudioLabViewModel
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -93,8 +94,8 @@ fun AudioLabScreen(
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.sources.refresh() }
     // whichever provider plays first sets what "quality" means
     val firstProvider = order.firstOrNull { id ->
-        if (id == com.example.musicfy.modules.SourceModules.YouTubeId) youTubeOn
-        else modules.any { it.module.info.id == id && it.enabled && it.account is com.example.musicfy.module.AccountState.SignedIn }
+        if (id == com.mochyy.mochymusic.modules.SourceModules.YouTubeId) youTubeOn
+        else modules.any { it.module.info.id == id && it.enabled && it.account is com.mochyy.mochymusic.module.AccountState.SignedIn }
     }
     val (mode) = rememberEnumPreference(CrossmixModeKey, defaultValue = CrossmixMode.AUTO_CROSSFADE)
 
@@ -133,7 +134,7 @@ fun AudioLabScreen(
         val transition: @Composable (Modifier) -> Unit = { modifier ->
             SmallHubCard(
                 title = "Transition",
-                status = when (mode) {
+                status = when (mode.playable()) {
                     CrossmixMode.OFF -> "Off"
                     CrossmixMode.AUTO_CROSSFADE -> "Auto"
                     CrossmixMode.MANUAL_CROSSFADE -> "Manual"
@@ -187,8 +188,8 @@ private fun equalizerStatus(eq: EqSettings, userPresets: Map<String, String>): S
 }
 
 private fun qualityName(q: AudioQuality, firstProvider: String?): String = when (firstProvider) {
-    com.example.musicfy.module.monochrome.MonochromeModule.Id -> "Monochrome · Lossless"
-    com.example.musicfy.module.applemusic.AppleMusicModule.Id -> "Apple Music · AAC"
+    com.mochyy.mochymusic.module.monochrome.MonochromeModule.Id -> "Monochrome · Lossless"
+    com.mochyy.mochymusic.module.applemusic.AppleMusicModule.Id -> "Apple Music · AAC"
     else -> "YouTube · " + when (q) {
         AudioQuality.LOW -> "Low"
         AudioQuality.MEDIUM -> "Medium"
@@ -301,7 +302,7 @@ private fun BoxScope.EqualizerSketch(eq: EqSettings) {
     val mid by animateFloatAsState(band(250.0, 4000.0), spring(dampingRatio = 0.6f, stiffness = 140f), label = "mid")
     val high by animateFloatAsState(band(4000.0, 30_000.0), spring(dampingRatio = 0.6f, stiffness = 140f), label = "high")
     val level = remember { LevelFollower() }
-    val time = sketchTime { eq.enabled && com.example.musicfy.eq.audio.AudioTap.isLive }
+    val time = sketchTime { eq.enabled && com.mochyy.mochymusic.eq.audio.AudioTap.isLive }
     val last = remember { floatArrayOf(-1f) }
     Canvas(Modifier.fillMaxSize()) {
         val t = time.value
@@ -358,8 +359,8 @@ private fun BoxScope.FxSketch(active: Boolean) {
 @Composable
 private fun BoxScope.QualitySketch(quality: AudioQuality, firstProvider: String?) {
     val fine = when {
-        firstProvider == com.example.musicfy.module.monochrome.MonochromeModule.Id -> 1f
-        firstProvider == com.example.musicfy.module.applemusic.AppleMusicModule.Id -> 0.65f
+        firstProvider == com.mochyy.mochymusic.module.monochrome.MonochromeModule.Id -> 1f
+        firstProvider == com.mochyy.mochymusic.module.applemusic.AppleMusicModule.Id -> 0.65f
         quality == AudioQuality.LOW -> 0f
         quality == AudioQuality.MEDIUM -> 0.35f
         else -> 0.65f

@@ -7,7 +7,7 @@
 // only the steps around them live here. The import runs in the background once started, and the
 // Library's banner turns into its progress bar.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -44,24 +44,24 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicfy.importer.account.AccountImportState
-import com.example.musicfy.importer.account.AccountService
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.screens.settings.importsync.CaptureWebContent
-import com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginWebContent
-import com.example.musicfy.ui.screens.settings.importsync.clearWebSession
-import com.example.musicfy.ui.screens.settings.importsync.onSignInTick
-import com.example.musicfy.ui.screens.setup.onboarding.BehindScale
-import com.example.musicfy.ui.screens.setup.onboarding.BrowserSpring
-import com.example.musicfy.ui.screens.setup.onboarding.Onb
-import com.example.musicfy.ui.screens.setup.onboarding.OnboardingBrowserSheet
-import com.example.musicfy.ui.screens.setup.onboarding.ProviderListPage
-import com.example.musicfy.ui.screens.setup.onboarding.ProviderSetupPage
-import com.example.musicfy.ui.screens.setup.onboarding.SyncOptionsPage
-import com.example.musicfy.ui.screens.setup.onboarding.WhatToSyncPage
-import com.example.musicfy.viewmodels.OnboardingViewModel
-import com.example.musicfy.viewmodels.YouTubeSyncChoices
+import com.mochyy.mochymusic.importer.account.AccountImportState
+import com.mochyy.mochymusic.importer.account.AccountService
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.screens.settings.importsync.CaptureWebContent
+import com.mochyy.mochymusic.ui.screens.settings.importsync.YouTubeLoginWebContent
+import com.mochyy.mochymusic.ui.screens.settings.importsync.clearWebSession
+import com.mochyy.mochymusic.ui.screens.settings.importsync.onSignInTick
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BehindScale
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.BrowserSpring
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.Onb
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnboardingBrowserSheet
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderListPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderSetupPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.SyncOptionsPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.WhatToSyncPage
+import com.mochyy.mochymusic.viewmodels.OnboardingViewModel
+import com.mochyy.mochymusic.viewmodels.YouTubeSyncChoices
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

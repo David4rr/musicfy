@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -6,7 +6,7 @@ import android.animation.ObjectAnimator
 import android.view.View
 import android.view.animation.PathInterpolator
 import androidx.core.splashscreen.SplashScreen
-import com.example.musicfy.ui.launch.LaunchGate
+import com.mochyy.mochymusic.ui.launch.LaunchGate
 import timber.log.Timber
 
 // with the intro the app already draws the same mark in the same spot under the splash, so this

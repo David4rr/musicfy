@@ -1,4 +1,4 @@
-package com.example.musicfy.db.entities
+package com.mochyy.mochymusic.db.entities
 
 sealed class LocalItem {
     abstract val id: String

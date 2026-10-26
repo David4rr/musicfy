@@ -1,10 +1,10 @@
 // YouTubeArtistMenu.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
-import com.example.musicfy.ui.component.SheetHeaderGap
-import com.example.musicfy.ui.component.SheetHeaderButton
-import com.example.musicfy.ui.component.SheetHeader
+import com.mochyy.mochymusic.ui.component.SheetHeaderGap
+import com.mochyy.mochymusic.ui.component.SheetHeaderButton
+import com.mochyy.mochymusic.ui.component.SheetHeader
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,17 +30,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.music.innertube.models.ArtistItem
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.SpeedDialItem
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.Material3MenuGroup
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.NewAction
-import com.example.musicfy.ui.component.NewActionGrid
-import com.example.musicfy.ui.component.YouTubeListItem
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.SpeedDialItem
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.playback.queues.YouTubeQueue
+import com.mochyy.mochymusic.ui.component.Material3MenuGroup
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.NewAction
+import com.mochyy.mochymusic.ui.component.NewActionGrid
+import com.mochyy.mochymusic.ui.component.YouTubeListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope

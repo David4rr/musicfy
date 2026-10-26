@@ -1,6 +1,6 @@
-package com.example.musicfy.crossmix
+package com.mochyy.mochymusic.crossmix
 
-import com.example.musicfy.constants.TransportEffect
+import com.mochyy.mochymusic.constants.TransportEffect
 import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.sin

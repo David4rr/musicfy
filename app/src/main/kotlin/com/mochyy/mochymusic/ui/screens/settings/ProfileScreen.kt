@@ -1,14 +1,14 @@
 // ProfileScreen.kt
 //
-// The Musicfy page. A dark header holds the profile ID card over a dot grid, with a giant MUSICFY
+// The Mochy page. A dark header holds the profile ID card over a dot grid, with a giant MOCHY
 // column sliding up the right edge. Pull the header down and it fills the screen, the card flips to
 // a scratch-off barcode, and scratching it opens the month's recap (ui/screens/recap) - which hands
 // back to this header when it's done. Below: listening time (into Stats), version, settings.
 
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
-import com.example.musicfy.ui.component.BlurEffectCache
-import com.example.musicfy.ui.component.rememberDeviceTilt
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
+import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -119,62 +119,62 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.BuildConfig
-import com.example.musicfy.LocalAppContentObscured
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.constants.InnerTubeCookieKey
-import com.example.musicfy.constants.ProfileCardNumberKey
-import com.example.musicfy.constants.ProfileJoinedEpochDayKey
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.constants.UsernameKey
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.HomeContentInset
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
-import com.example.musicfy.ui.component.OdometerNumber
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.screens.profile.ProfileMorphHost
-import com.example.musicfy.ui.screens.profile.rememberProfileMorphState
-import com.example.musicfy.ui.screens.profile.zoomsAwayFor
-import com.example.musicfy.ui.screens.recap.DateLong
-import com.example.musicfy.ui.screens.recap.Emphasized
-import com.example.musicfy.ui.screens.recap.GiantTextState
-import com.example.musicfy.ui.screens.recap.HeaderDots
-import com.example.musicfy.ui.screens.recap.HeaderGrey
-import com.example.musicfy.ui.screens.recap.HeaderText
-import com.example.musicfy.ui.screens.recap.IdCardBack
-import com.example.musicfy.ui.screens.recap.RecapAnchors
-import com.example.musicfy.ui.screens.recap.RecapAvailability
-import com.example.musicfy.ui.screens.recap.RecapRepository
-import com.example.musicfy.ui.screens.recap.RecapStoryData
-import com.example.musicfy.ui.screens.recap.RecapStoryHost
-import com.example.musicfy.ui.screens.recap.ScanVerdict
-import com.example.musicfy.ui.screens.recap.ScratchState
-import com.example.musicfy.ui.screens.recap.StoryDark
-import com.example.musicfy.ui.screens.recap.StoryDots
-import com.example.musicfy.ui.screens.recap.StoryTextDark
-import com.example.musicfy.ui.screens.recap.easeOutCubic
-import com.example.musicfy.ui.screens.recap.giantText
-import com.example.musicfy.ui.screens.recap.go
-import com.example.musicfy.ui.screens.recap.lerpF
-import com.example.musicfy.ui.screens.recap.recapBarcodeCaption
-import com.example.musicfy.ui.screens.recap.recapBarcodePayload
-import com.example.musicfy.ui.screens.recap.recapDots
-import com.example.musicfy.ui.screens.recap.rememberRecapTime
-import com.example.musicfy.ui.screens.settings.devspace.DevAvatar
-import com.example.musicfy.ui.screens.settings.devspace.DevPeople
-import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
-import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
-import com.example.musicfy.ui.screens.update.UpdateHeadline
-import com.example.musicfy.ui.screens.update.rememberUpdateState
-import com.example.musicfy.ui.screens.update.showAboutSheet
-import com.example.musicfy.ui.screens.update.showUpdateSheet
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.stableSystemBars
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.UserProfileViewModel
+import com.mochyy.mochymusic.BuildConfig
+import com.mochyy.mochymusic.LocalAppContentObscured
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.InnerTubeCookieKey
+import com.mochyy.mochymusic.constants.ProfileCardNumberKey
+import com.mochyy.mochymusic.constants.ProfileJoinedEpochDayKey
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.constants.UsernameKey
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.ui.component.OdometerNumber
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.screens.profile.ProfileMorphHost
+import com.mochyy.mochymusic.ui.screens.profile.rememberProfileMorphState
+import com.mochyy.mochymusic.ui.screens.profile.zoomsAwayFor
+import com.mochyy.mochymusic.ui.screens.recap.DateLong
+import com.mochyy.mochymusic.ui.screens.recap.Emphasized
+import com.mochyy.mochymusic.ui.screens.recap.GiantTextState
+import com.mochyy.mochymusic.ui.screens.recap.HeaderDots
+import com.mochyy.mochymusic.ui.screens.recap.HeaderGrey
+import com.mochyy.mochymusic.ui.screens.recap.HeaderText
+import com.mochyy.mochymusic.ui.screens.recap.IdCardBack
+import com.mochyy.mochymusic.ui.screens.recap.RecapAnchors
+import com.mochyy.mochymusic.ui.screens.recap.RecapAvailability
+import com.mochyy.mochymusic.ui.screens.recap.RecapRepository
+import com.mochyy.mochymusic.ui.screens.recap.RecapStoryData
+import com.mochyy.mochymusic.ui.screens.recap.RecapStoryHost
+import com.mochyy.mochymusic.ui.screens.recap.ScanVerdict
+import com.mochyy.mochymusic.ui.screens.recap.ScratchState
+import com.mochyy.mochymusic.ui.screens.recap.StoryDark
+import com.mochyy.mochymusic.ui.screens.recap.StoryDots
+import com.mochyy.mochymusic.ui.screens.recap.StoryTextDark
+import com.mochyy.mochymusic.ui.screens.recap.easeOutCubic
+import com.mochyy.mochymusic.ui.screens.recap.giantText
+import com.mochyy.mochymusic.ui.screens.recap.go
+import com.mochyy.mochymusic.ui.screens.recap.lerpF
+import com.mochyy.mochymusic.ui.screens.recap.recapBarcodeCaption
+import com.mochyy.mochymusic.ui.screens.recap.recapBarcodePayload
+import com.mochyy.mochymusic.ui.screens.recap.recapDots
+import com.mochyy.mochymusic.ui.screens.recap.rememberRecapTime
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DevAvatar
+import com.mochyy.mochymusic.ui.screens.settings.devspace.DevPeople
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfileIdCard
+import com.mochyy.mochymusic.ui.screens.update.UpdateHeadline
+import com.mochyy.mochymusic.ui.screens.update.rememberUpdateState
+import com.mochyy.mochymusic.ui.screens.update.showAboutSheet
+import com.mochyy.mochymusic.ui.screens.update.showUpdateSheet
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.stableSystemBars
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.UserProfileViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
@@ -186,7 +186,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
-private object MusicfyGreeting {
+private object MochyGreeting {
     private fun pick() = listOf("Hello again", "Hey", "Welcome back", "Good to see you").random()
 
     private val greetingState = mutableStateOf("Hello again")
@@ -234,7 +234,7 @@ fun ProfileScreen(navController: NavController) {
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")
     val (cardNumberPref, setCardNumber) = rememberPreference(ProfileCardNumberKey, "")
     val (joinedEpochDay, setJoinedEpochDay) = rememberPreference(ProfileJoinedEpochDayKey, -1L)
-    val (forceRecap) = rememberPreference(com.example.musicfy.constants.ForceMonthlyRecapKey, false)
+    val (forceRecap) = rememberPreference(com.mochyy.mochymusic.constants.ForceMonthlyRecapKey, false)
 
     // the profile page that opens out of the card (ui/screens/profile)
     val profile = rememberProfileMorphState()
@@ -292,7 +292,7 @@ fun ProfileScreen(navController: NavController) {
     val time = rememberRecapTime(running = !storyCovering, held = { profile.holdsPage || obscured.value })
     val measurer = rememberTextMeasurer()
     val giant = remember {
-        GiantTextState("MUSICFY", filledRows = 0..0).apply { color = { lerp(HeaderText, StoryTextDark, expand) } }
+        GiantTextState("MOCHY", filledRows = 0..0).apply { color = { lerp(HeaderText, StoryTextDark, expand) } }
     }
 
     // whether there's a recap waiting, so the pull hint can say so now and then
@@ -413,7 +413,7 @@ fun ProfileScreen(navController: NavController) {
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
 
-    // the Musicfy page, and over it the profile page when the card has been tapped
+    // the Mochy page, and over it the profile page when the card has been tapped
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         BoxWithConstraints(
             modifier = Modifier
@@ -533,7 +533,7 @@ fun ProfileScreen(navController: NavController) {
                     ) {
                         // greeting (in the header; its scrolled-away twin lives in the top bar)
                         Text(
-                            text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                            text = "${MochyGreeting.current}, ${accountName.ifBlank { "there" }}!",
                             style = PageTitle,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -711,7 +711,7 @@ fun ProfileScreen(navController: NavController) {
                             zoomOutState.dismissAll()
                             navController.navigate("developer_space?person=$personIndex")
                         }
-                        val hasUpdate = updateState is com.example.musicfy.core.updater.UpdateState.Available
+                        val hasUpdate = updateState is com.mochyy.mochymusic.core.updater.UpdateState.Available
                         VersionCard(
                             updateHeadline = if (hasUpdate) UpdateHeadline else null,
                             onCardClick = { zoomOutState.showUpdateSheet(updateState, onOpenDevSpace = openDevSpace) },
@@ -727,7 +727,7 @@ fun ProfileScreen(navController: NavController) {
                         DeveloperCard(onClick = { navController.navigate("developer_space") })
                         Spacer(Modifier.height(28.dp))
                         Text("Settings", style = PageTitle.copy(fontSize = 15.sp), modifier = Modifier.padding(start = 2.dp, bottom = 10.dp))
-                        OpenSettingsRow(onClick = { navController.navigate("musicfy_settings") })
+                        OpenSettingsRow(onClick = { navController.navigate("mochy_settings") })
                         Spacer(Modifier.height(180.dp))
                     }
                 }
@@ -765,8 +765,8 @@ fun ProfileScreen(navController: NavController) {
 
             // ---- logo, and the greeting sliding into the bar beside it ----
             Icon(
-                painter = painterResource(R.drawable.ic_musicfy_mark),
-                contentDescription = "Musicfy",
+                painter = painterResource(R.drawable.ic_mochy_mark),
+                contentDescription = "Mochy",
                 tint = Color.White,
                 modifier = Modifier
                     .padding(start = HomeContentInset, top = statusBarTop + TopBarLogoTop)
@@ -780,7 +780,7 @@ fun ProfileScreen(navController: NavController) {
             )
             if (collapseProgress > 0.01f) {
                 Text(
-                    text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                    text = "${MochyGreeting.current}, ${accountName.ifBlank { "there" }}!",
                     style = PageTitle.copy(fontSize = 18.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

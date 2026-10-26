@@ -6,7 +6,7 @@
 // whatever is under it back at the left. A period with nothing to show (before the first play, or
 // still to come) is grey, and landing on one goes back to where it started.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -45,8 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.component.HomeContentInset
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.component.HomeContentInset
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Month

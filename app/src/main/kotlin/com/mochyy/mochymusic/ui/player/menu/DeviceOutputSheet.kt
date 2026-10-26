@@ -1,6 +1,6 @@
 // DeviceOutputSheet.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -36,9 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SheetIcon
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SheetIcon
 
 @Composable
 fun DeviceOutputSheet(onDismiss: () -> Unit) {

@@ -1,6 +1,6 @@
 // the live pictures on the audio fx page, each draws what its effect does to sound and only runs on the frame clock while on screen and uncovered
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -24,13 +24,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.eq.AudioFxService
-import com.example.musicfy.eq.LoudnessSettings
-import com.example.musicfy.eq.PlaybackSettings
-import com.example.musicfy.eq.SpatialSettings
-import com.example.musicfy.eq.VolumeSettings
-import com.example.musicfy.eq.audio.AudioTap
-import com.example.musicfy.eq.audio.SpatialMode
+import com.mochyy.mochymusic.eq.AudioFxService
+import com.mochyy.mochymusic.eq.LoudnessSettings
+import com.mochyy.mochymusic.eq.PlaybackSettings
+import com.mochyy.mochymusic.eq.SpatialSettings
+import com.mochyy.mochymusic.eq.VolumeSettings
+import com.mochyy.mochymusic.eq.audio.AudioTap
+import com.mochyy.mochymusic.eq.audio.SpatialMode
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp

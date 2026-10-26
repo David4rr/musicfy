@@ -1,9 +1,9 @@
 // PresenceActivity.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import android.net.Uri
-import com.example.musicfy.core.updater.GithubRepoUrl
+import com.mochyy.mochymusic.core.updater.GithubRepoUrl
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -116,7 +116,7 @@ data class PresenceActivity(
     }
 }
 
-/** The page a button opens for [track]: the song itself where Musicfy knows it, a search otherwise. */
+/** The page a button opens for [track]: the song itself where Mochy knows it, a search otherwise. */
 fun PresenceButtonTarget.linkFor(track: NowPlaying): String {
     val query = Uri.encode("${track.title} ${track.artist}".trim())
     return when (this) {
@@ -126,6 +126,6 @@ fun PresenceButtonTarget.linkFor(track: NowPlaying): String {
         PresenceButtonTarget.SPOTIFY -> "https://open.spotify.com/search/$query"
         PresenceButtonTarget.APPLE_MUSIC -> "https://music.apple.com/search?term=$query"
         PresenceButtonTarget.TIDAL -> "https://listen.tidal.com/search?q=$query"
-        PresenceButtonTarget.MUSICFY -> GithubRepoUrl
+        PresenceButtonTarget.MOCHY -> GithubRepoUrl
     }
 }

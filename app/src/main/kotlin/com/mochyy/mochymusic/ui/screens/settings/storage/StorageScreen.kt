@@ -1,6 +1,6 @@
-// settings → storage: how much of the phone musicfy takes, the cache limit, clearing downloads or the cache, and manage downloads
+// settings → storage: how much of the phone mochy takes, the cache limit, clearing downloads or the cache, and manage downloads
 
-package com.example.musicfy.ui.screens.settings.storage
+package com.mochyy.mochymusic.ui.screens.settings.storage
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -35,14 +35,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.MaxSongCacheSizeKey
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.library.showConfirm
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.StorageUsage
-import com.example.musicfy.viewmodels.StorageViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.MaxSongCacheSizeKey
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.library.showConfirm
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.StorageUsage
+import com.mochyy.mochymusic.viewmodels.StorageViewModel
 
 const val StorageRoute = "storage_settings"
 
@@ -67,8 +67,8 @@ fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hi
 
         Spacer(Modifier.height(22.dp))
         Text(
-            usage?.let { "Musicfy uses ${percentOf(it.musicfy, it.deviceTotal)} of your storage (${formatSize(it.musicfy)}), which is split into" }
-                ?: "Working out how much room Musicfy takes…",
+            usage?.let { "Mochy uses ${percentOf(it.mochy, it.deviceTotal)} of your storage (${formatSize(it.mochy)}), which is split into" }
+                ?: "Working out how much room Mochy takes…",
             style = storageText(17f, FontWeight.SemiBold),
             modifier = Modifier.padding(horizontal = 2.dp),
         )
@@ -131,6 +131,9 @@ fun StorageScreen(navController: NavController, viewModel: StorageViewModel = hi
                 onClick = { menuState.showManageDownloadsSheet(viewModel) },
             )
         }
+
+        Spacer(Modifier.height(26.dp))
+        TransferSection()
     }
 }
 
@@ -152,16 +155,16 @@ private fun OverallCard(usage: StorageUsage?) {
         Spacer(Modifier.height(14.dp))
         UsageBar(
             parts = listOf(
-                BarPart(MusicfyGreen, usage?.musicfy ?: 0),
+                BarPart(MochyGreen, usage?.mochy ?: 0),
                 BarPart(OthersGrey, usage?.othersUsed ?: 0),
             ),
             total = usage?.deviceTotal ?: 0,
         )
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            LegendSwatch(MusicfyGreen)
+            LegendSwatch(MochyGreen)
             Spacer(Modifier.width(8.dp))
-            Text("Musicfy", style = storageText(16f, FontWeight.SemiBold))
+            Text("Mochy", style = storageText(16f, FontWeight.SemiBold))
             Spacer(Modifier.width(16.dp))
             LegendSwatch(OthersGrey)
             Spacer(Modifier.width(8.dp))
@@ -176,21 +179,21 @@ private fun OverallCard(usage: StorageUsage?) {
 @Composable
 private fun BreakdownCard(usage: StorageUsage?) {
     StorageCardColumn {
-        Text("Musicfy app data usage", style = storageText(17f))
+        Text("Mochy app data usage", style = storageText(17f))
         Spacer(Modifier.height(14.dp))
         UsageBar(
             parts = listOf(
                 BarPart(CacheOrange, usage?.cache ?: 0),
-                BarPart(MusicfyGreen, usage?.downloads ?: 0),
+                BarPart(MochyGreen, usage?.downloads ?: 0),
                 BarPart(DatabaseRed, usage?.database ?: 0),
                 BarPart(AppDataBlue, usage?.appData ?: 0),
             ),
-            total = usage?.musicfy ?: 0,
+            total = usage?.mochy ?: 0,
         )
         Spacer(Modifier.height(16.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             LegendRow(CacheOrange, "Cache", usage?.let { formatSize(it.cache) })
-            LegendRow(MusicfyGreen, "Downloaded music & local", usage?.let { formatSize(it.downloads) })
+            LegendRow(MochyGreen, "Downloaded music & local", usage?.let { formatSize(it.downloads) })
             LegendRow(DatabaseRed, "Database", usage?.let { formatSize(it.database) })
             LegendRow(AppDataBlue, "App data", usage?.let { formatSize(it.appData) })
         }
@@ -246,7 +249,7 @@ private fun CacheLimitCard(limit: Int, onLimitChange: (Int) -> Unit, appliesLate
             exit = shrinkVertically() + fadeOut(),
         ) {
             Text(
-                "The new limit starts next time you open Musicfy.",
+                "The new limit starts next time you open Mochy.",
                 style = storageText(12f, FontWeight.Medium, StorageMuted, -0.1f),
                 modifier = Modifier.padding(top = 8.dp),
             )

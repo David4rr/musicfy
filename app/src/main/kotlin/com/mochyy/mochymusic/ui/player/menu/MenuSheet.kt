@@ -1,6 +1,6 @@
 // MenuSheet.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.CubicBezierEasing

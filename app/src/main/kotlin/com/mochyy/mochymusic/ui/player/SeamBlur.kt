@@ -1,6 +1,6 @@
 // SeamBlur.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -29,11 +29,11 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.example.musicfy.ui.component.GlassPillBackground
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.rememberCoverBlurAvailable
-import com.example.musicfy.ui.player.models.TrackInfo
-import com.example.musicfy.ui.theme.PlayerColorExtractor
+import com.mochyy.mochymusic.ui.component.GlassPillBackground
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.rememberCoverBlurAvailable
+import com.mochyy.mochymusic.ui.player.models.TrackInfo
+import com.mochyy.mochymusic.ui.theme.PlayerColorExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

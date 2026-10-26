@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- the splash icon, icon new - transparent 9.svg as it is; LaunchIntro.kt draws the same shapes to morph it into home's logo -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="235dp"
     android:height="235dp"
     android:viewportWidth="235"
     android:viewportHeight="235">
     <path
-        android:fillColor="#FFFDFB"
-        android:pathData="M163.5 96.3494C180.167 105.972 180.167 130.028 163.5 139.651L108 171.694C91.3333 181.316 70.5 169.288 70.5 150.043L70.5 85.957C70.5 66.712 91.3333 54.6839 108 64.3064L163.5 96.3494Z" />
-    <path
+        android:pathData="M163.5 96.3493C180.167 105.972 180.167 130.028 163.5 139.651L108 171.694C91.3333 181.316 70.5 169.288 70.5 150.043V85.9569C70.5 66.7119 91.3333 54.6838 108 64.3063L163.5 96.3493Z"
+        android:fillColor="#FFFFFF"
         android:strokeColor="#212121"
         android:strokeWidth="19"
-        android:strokeLineJoin="round"
-        android:pathData="M163.5 96.3494C180.167 105.972 180.167 130.028 163.5 139.651L108 171.694C91.3333 181.316 70.5 169.288 70.5 150.043L70.5 85.957C70.5 66.712 91.3333 54.6839 108 64.3064L163.5 96.3494Z" />
+        android:strokeLineJoin="round" />
     <path
+        android:pathData="M97 112L108.5 98L120 112"
+        android:fillColor="#00000000"
         android:strokeColor="#212121"
-        android:strokeWidth="13"
-        android:pathData="M71.5 120C76 120 86.2 120 91 120C97 120 95 127.5 104 127.5C113 127.5 110.5 112 121.5 112C132.5 112 126.5 126.634 137.5 126.634C148.5 126.634 144.5 119.128 155 119.128C163.4 119.128 167.667 119.128 171 119.128" />
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M110.325 125C111.871 133.439 121.868 148.704 142.944 149.92"
+        android:fillColor="#00000000"
+        android:strokeColor="#212121"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

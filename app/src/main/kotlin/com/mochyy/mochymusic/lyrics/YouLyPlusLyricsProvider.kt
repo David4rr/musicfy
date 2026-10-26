@@ -1,12 +1,12 @@
 // YouLyPlusLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.youlyplus.YouLyPlus
-import com.example.musicfy.constants.EnableYouLyPlusKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.EnableYouLyPlusKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 
 object YouLyPlusLyricsProvider : LyricsProvider {
     override val name = "YouLyPlus"

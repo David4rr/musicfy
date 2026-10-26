@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -13,17 +13,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.PersistentQueueKey
-import com.example.musicfy.constants.SkipSilenceKey
-import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.component.SubSettingsSearchBar
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.PersistentQueueKey
+import com.mochyy.mochymusic.constants.SkipSilenceKey
+import com.mochyy.mochymusic.constants.StopPlaybackOnTaskRemovedKey
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.component.SubSettingsSearchBar
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Composable
 fun PlaybackSettingsScreen(navController: NavController) {

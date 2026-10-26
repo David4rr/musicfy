@@ -1,22 +1,22 @@
 // AudioLabViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.eq.AudioLabStore
-import com.example.musicfy.eq.AutoEqCorrection
-import com.example.musicfy.eq.EqPresets
-import com.example.musicfy.eq.EqSettings
-import com.example.musicfy.eq.audio.Biquad
-import com.example.musicfy.eq.autoeq.AutoEqEntry
-import com.example.musicfy.eq.autoeq.AutoEqFitter
-import com.example.musicfy.eq.autoeq.AutoEqMeasurement
-import com.example.musicfy.eq.autoeq.AutoEqModel
-import com.example.musicfy.eq.autoeq.AutoEqRepository
-import com.example.musicfy.eq.autoeq.AutoEqTuning
-import com.example.musicfy.eq.data.FilterType
-import com.example.musicfy.eq.data.ParametricEQBand
+import com.mochyy.mochymusic.eq.AudioLabStore
+import com.mochyy.mochymusic.eq.AutoEqCorrection
+import com.mochyy.mochymusic.eq.EqPresets
+import com.mochyy.mochymusic.eq.EqSettings
+import com.mochyy.mochymusic.eq.audio.Biquad
+import com.mochyy.mochymusic.eq.autoeq.AutoEqEntry
+import com.mochyy.mochymusic.eq.autoeq.AutoEqFitter
+import com.mochyy.mochymusic.eq.autoeq.AutoEqMeasurement
+import com.mochyy.mochymusic.eq.autoeq.AutoEqModel
+import com.mochyy.mochymusic.eq.autoeq.AutoEqRepository
+import com.mochyy.mochymusic.eq.autoeq.AutoEqTuning
+import com.mochyy.mochymusic.eq.data.FilterType
+import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -46,9 +46,9 @@ class AudioLabViewModel @Inject constructor(
     val store: AudioLabStore,
     private val autoEq: AutoEqRepository,
     /** what the effects are doing right now, for the pictures' meters */
-    val fx: com.example.musicfy.eq.AudioFxService,
+    val fx: com.mochyy.mochymusic.eq.AudioFxService,
     /** the providers and their order, for the hub's quality tile */
-    val sources: com.example.musicfy.modules.SourceModules,
+    val sources: com.mochyy.mochymusic.modules.SourceModules,
 ) : ViewModel() {
 
     val eq = store.eq
@@ -217,22 +217,22 @@ class AudioLabViewModel @Inject constructor(
 
     // ---- Audio FX ---------------------------------------------------------------------------
 
-    fun updateReverb(transform: (com.example.musicfy.eq.ReverbSettings) -> com.example.musicfy.eq.ReverbSettings) =
+    fun updateReverb(transform: (com.mochyy.mochymusic.eq.ReverbSettings) -> com.mochyy.mochymusic.eq.ReverbSettings) =
         store.updateReverb(transform)
 
-    fun updateLoudness(transform: (com.example.musicfy.eq.LoudnessSettings) -> com.example.musicfy.eq.LoudnessSettings) =
+    fun updateLoudness(transform: (com.mochyy.mochymusic.eq.LoudnessSettings) -> com.mochyy.mochymusic.eq.LoudnessSettings) =
         store.updateLoudness(transform)
 
-    fun updateSpatial(transform: (com.example.musicfy.eq.SpatialSettings) -> com.example.musicfy.eq.SpatialSettings) =
+    fun updateSpatial(transform: (com.mochyy.mochymusic.eq.SpatialSettings) -> com.mochyy.mochymusic.eq.SpatialSettings) =
         store.updateSpatial(transform)
 
-    fun updatePlayback(transform: (com.example.musicfy.eq.PlaybackSettings) -> com.example.musicfy.eq.PlaybackSettings) =
+    fun updatePlayback(transform: (com.mochyy.mochymusic.eq.PlaybackSettings) -> com.mochyy.mochymusic.eq.PlaybackSettings) =
         store.updatePlayback(transform)
 
-    fun updateVolume(transform: (com.example.musicfy.eq.VolumeSettings) -> com.example.musicfy.eq.VolumeSettings) =
+    fun updateVolume(transform: (com.mochyy.mochymusic.eq.VolumeSettings) -> com.mochyy.mochymusic.eq.VolumeSettings) =
         store.updateVolume(transform)
 
-    fun updateNormalize(transform: (com.example.musicfy.eq.NormalizeSettings) -> com.example.musicfy.eq.NormalizeSettings) =
+    fun updateNormalize(transform: (com.mochyy.mochymusic.eq.NormalizeSettings) -> com.mochyy.mochymusic.eq.NormalizeSettings) =
         store.updateNormalize(transform)
 
     companion object {

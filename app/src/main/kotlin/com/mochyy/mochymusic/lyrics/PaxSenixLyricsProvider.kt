@@ -1,12 +1,12 @@
 // PaxSenixLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.paxsenix.Paxsenix
-import com.example.musicfy.constants.EnablePaxsenixKey
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
+import com.mochyy.mochymusic.constants.EnablePaxsenixKey
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import timber.log.Timber
 
 object PaxSenixLyricsProvider : LyricsProvider {

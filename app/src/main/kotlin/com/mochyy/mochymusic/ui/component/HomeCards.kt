@@ -1,6 +1,6 @@
 // HomeCards.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalGridItemSize
-import com.example.musicfy.R
-import com.example.musicfy.constants.GridItemSize
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.LocalGridItemSize
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.GridItemSize
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import coil3.compose.AsyncImage
 
 // spacing and type straight from the Figma home frames (13:11 / 14:212)

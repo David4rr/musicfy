@@ -1,6 +1,6 @@
-// musicfy → settings → integrations → discord: log in in the browser, then shape the status friends see with a live preview
+// mochy → settings → integrations → discord: log in in the browser, then shape the status friends see with a live preview
 
-package com.example.musicfy.ui.screens.settings.integrations.discord
+package com.mochyy.mochymusic.ui.screens.settings.integrations.discord
 
 import android.content.Intent
 import android.widget.Toast
@@ -42,16 +42,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.discord.DiscordLogin
-import com.example.musicfy.discord.NowPlaying
-import com.example.musicfy.discord.PresenceConnection
-import com.example.musicfy.discord.PresenceImage
-import com.example.musicfy.discord.PresenceKind
-import com.example.musicfy.discord.PresenceSettings
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.settings.integrations.IntegrationPageSubtitle
-import com.example.musicfy.viewmodels.DiscordViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.discord.DiscordLogin
+import com.mochyy.mochymusic.discord.NowPlaying
+import com.mochyy.mochymusic.discord.PresenceConnection
+import com.mochyy.mochymusic.discord.PresenceImage
+import com.mochyy.mochymusic.discord.PresenceKind
+import com.mochyy.mochymusic.discord.PresenceSettings
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationPageSubtitle
+import com.mochyy.mochymusic.viewmodels.DiscordViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -164,10 +164,10 @@ private fun statusLine(
     connection: PresenceConnection,
     login: DiscordLogin,
 ): String = when {
-    !configured -> "Not set up in this build of Musicfy"
+    !configured -> "Not set up in this build of Mochy"
     login == DiscordLogin.Finishing -> "Signing in…"
     !signedIn -> "Log in below to turn it on"
-    !enabled -> "Off, so your profile shows nothing from Musicfy"
+    !enabled -> "Off, so your profile shows nothing from Mochy"
     connection == PresenceConnection.Live -> "On your profile now"
     connection == PresenceConnection.Connecting -> "Connecting to Discord…"
     connection == PresenceConnection.Retrying -> "Can't reach Discord. Trying again…"
@@ -253,7 +253,7 @@ private fun CustomizeSection(
         )
     }
     Spacer(gap)
-    DiscordTextCard("Activity name", settings.name, { text -> edit { copy(name = text) } }, hint = "Musicfy")
+    DiscordTextCard("Activity name", settings.name, { text -> edit { copy(name = text) } }, hint = "Mochy")
 
     DiscordSectionTitle("Strings customisation")
     DiscordNoticeCard("Empty a box to hide that line")

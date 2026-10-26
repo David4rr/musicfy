@@ -3,14 +3,14 @@
 // Saving the profile's name and picture. The picture is copied into the app's own files, because
 // the one the picker hands over can vanish (a cropped copy in the cache, a deleted gallery photo).
 
-package com.example.musicfy.ui.screens.profile
+package com.mochyy.mochymusic.ui.screens.profile
 
 import android.content.Context
 import android.net.Uri
 import androidx.datastore.preferences.core.edit
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.constants.UsernameKey
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.constants.UsernameKey
+import com.mochyy.mochymusic.utils.dataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext

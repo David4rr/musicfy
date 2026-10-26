@@ -1,6 +1,6 @@
 // LyricsOffsetSheet.kt
 
-package com.example.musicfy.ui.player.menu
+package com.mochyy.mochymusic.ui.player.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,10 +45,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.db.entities.LyricsEntity
-import com.example.musicfy.lyrics.LyricsAutoSync
-import com.example.musicfy.lyrics.LyricsUtils
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.db.entities.LyricsEntity
+import com.mochyy.mochymusic.lyrics.LyricsAutoSync
+import com.mochyy.mochymusic.lyrics.LyricsUtils
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

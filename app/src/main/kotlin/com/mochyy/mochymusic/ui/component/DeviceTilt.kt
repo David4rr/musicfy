@@ -1,6 +1,6 @@
 // DeviceTilt.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.hardware.Sensor
 import android.hardware.SensorEvent

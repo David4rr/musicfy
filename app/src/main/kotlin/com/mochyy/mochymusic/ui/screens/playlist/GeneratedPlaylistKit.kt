@@ -6,7 +6,7 @@
 // into black down the screen, the collapsed pill is a full capsule with a round cover, and search
 // is the Library's capsule under the buttons instead of a toolbar.
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,16 +49,16 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.detail.CreatorUi
-import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
-import com.example.musicfy.ui.component.detail.PlaylistHeader
-import com.example.musicfy.ui.component.detail.PlaylistInset
-import com.example.musicfy.ui.component.detail.PlaylistModeBar
-import com.example.musicfy.ui.component.detail.PlaylistStatsStyle
-import com.example.musicfy.ui.component.detail.SectionTitleStyle
-import com.example.musicfy.ui.component.detail.playlistCompactHeaderHeight
-import com.example.musicfy.ui.screens.search.SearchFieldHeight
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.detail.CreatorUi
+import com.mochyy.mochymusic.ui.component.detail.PlaylistDetailScaffold
+import com.mochyy.mochymusic.ui.component.detail.PlaylistHeader
+import com.mochyy.mochymusic.ui.component.detail.PlaylistInset
+import com.mochyy.mochymusic.ui.component.detail.PlaylistModeBar
+import com.mochyy.mochymusic.ui.component.detail.PlaylistStatsStyle
+import com.mochyy.mochymusic.ui.component.detail.SectionTitleStyle
+import com.mochyy.mochymusic.ui.component.detail.playlistCompactHeaderHeight
+import com.mochyy.mochymusic.ui.screens.search.SearchFieldHeight
 
 /**
  * the frame every generated page sits in. [rows] fills the list under the header; the header,
@@ -229,7 +229,7 @@ fun generatedStats(songCount: Int, totalSeconds: Int): String {
 /** all downloaded, some on their way, or neither, for the ••• menu's download line */
 @Composable
 fun rememberSongsDownloadState(songIds: List<String>): Int {
-    val downloadUtil = com.example.musicfy.LocalDownloadUtil.current
+    val downloadUtil = com.mochyy.mochymusic.LocalDownloadUtil.current
     var state by remember { mutableStateOf(androidx.media3.exoplayer.offline.Download.STATE_STOPPED) }
     androidx.compose.runtime.LaunchedEffect(songIds) {
         if (songIds.isEmpty()) return@LaunchedEffect
@@ -254,10 +254,10 @@ fun rememberSongsDownloadState(songIds: List<String>): Int {
 /** what the menu's download line does from each state: start them, or take them back off */
 fun toggleSongsDownload(
     context: android.content.Context,
-    songs: List<com.example.musicfy.db.entities.Song>,
+    songs: List<com.mochyy.mochymusic.db.entities.Song>,
     state: Int,
 ) {
-    val service = com.example.musicfy.playback.ExoDownloadService::class.java
+    val service = com.mochyy.mochymusic.playback.ExoDownloadService::class.java
     if (state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED ||
         state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
     ) {

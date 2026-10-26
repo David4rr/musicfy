@@ -1,6 +1,6 @@
 // the last.fm or libre.fm page: every song that counts is scrobbled, and offline plays wait for a network
 
-package com.example.musicfy.ui.screens.settings.integrations
+package com.mochyy.mochymusic.ui.screens.settings.integrations
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
@@ -18,19 +18,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.LastFMUseNowPlaying
-import com.example.musicfy.constants.LastFMUseSendLikes
-import com.example.musicfy.scrobble.ScrobbleSite
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.IntegrationsViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.LastFMUseNowPlaying
+import com.mochyy.mochymusic.constants.LastFMUseSendLikes
+import com.mochyy.mochymusic.scrobble.ScrobbleSite
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.IntegrationsViewModel
 
 const val ScrobbleServiceRoute = "integrations_settings/scrobble/{site}"
 
@@ -143,7 +143,7 @@ private fun ScrobbleAccountGroup(
                 descriptionText = if (site.api.isConfigured) {
                     "Keep your listening history, stats and recommendations there"
                 } else {
-                    "Not set up in this build of Musicfy"
+                    "Not set up in this build of Mochy"
                 },
                 icon = painterResource(R.drawable.login),
                 iconShape = CircleShape,
@@ -171,7 +171,7 @@ private fun ScrobbleAccountGroup(
             ),
             SettingsItem(
                 title = { Text("Sign out") },
-                descriptionText = "Musicfy stops scrobbling to ${site.label}",
+                descriptionText = "Mochy stops scrobbling to ${site.label}",
                 icon = painterResource(R.drawable.logout),
                 iconShape = CircleShape,
                 onClick = onSignOut,

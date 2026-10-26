@@ -1,6 +1,6 @@
 // VocalActivity.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import java.nio.ShortBuffer
 import kotlin.math.PI

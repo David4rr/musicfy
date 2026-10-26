@@ -1,6 +1,6 @@
 // PlaylistDetail.kt
 
-package com.example.musicfy.ui.component.detail
+package com.mochyy.mochymusic.ui.component.detail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -102,30 +102,30 @@ import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.transformations
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDetailAccentColor
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.BoneColor
-import com.example.musicfy.ui.component.Bone
-import com.example.musicfy.ui.component.BonesHost
-import com.example.musicfy.ui.component.GlassPillBackground
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ItemThumbnail
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.RoundedHighlight
-import com.example.musicfy.ui.component.ScrollAwayCover
-import com.example.musicfy.ui.component.containerTransformCover
-import com.example.musicfy.ui.component.containerTransformTarget
-import com.example.musicfy.ui.component.glassRoot
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.component.rememberCoverBlurAvailable
-import com.example.musicfy.ui.component.smoothstep
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.theme.rememberCoverThemeColor
-import com.example.musicfy.ui.utils.SoftBlurTransformation
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDetailAccentColor
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.BoneColor
+import com.mochyy.mochymusic.ui.component.Bone
+import com.mochyy.mochymusic.ui.component.BonesHost
+import com.mochyy.mochymusic.ui.component.GlassPillBackground
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ItemThumbnail
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.component.RoundedHighlight
+import com.mochyy.mochymusic.ui.component.ScrollAwayCover
+import com.mochyy.mochymusic.ui.component.containerTransformCover
+import com.mochyy.mochymusic.ui.component.containerTransformTarget
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.component.rememberCoverBlurAvailable
+import com.mochyy.mochymusic.ui.component.smoothstep
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.rememberCoverThemeColor
+import com.mochyy.mochymusic.ui.utils.SoftBlurTransformation
+import com.mochyy.mochymusic.ui.utils.resize
 import com.music.innertube.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -1237,7 +1237,7 @@ fun PlaylistTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        com.example.musicfy.ui.component.OnDeviceMarks(songId, modifier = Modifier.padding(end = 2.dp))
+        com.mochyy.mochymusic.ui.component.OnDeviceMarks(songId, modifier = Modifier.padding(end = 2.dp))
         if (trailing != null) {
             trailing()
         } else {

@@ -5,7 +5,7 @@
 // "Remove from cache" the cached songs (none ticked). All the same list with a search field and a
 // checkbox per song.
 
-package com.example.musicfy.ui.screens.library
+package com.mochyy.mochymusic.ui.screens.library
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -51,16 +51,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.ui.component.PopupSheetHandle
-import com.example.musicfy.ui.component.PopupSheetState
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.SheetSearchField
-import com.example.musicfy.ui.component.TopToaster
-import com.example.musicfy.ui.screens.search.SearchColors
-import com.example.musicfy.viewmodels.DeviceScan
-import com.example.musicfy.viewmodels.LibraryImportViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.ui.component.PopupSheetHandle
+import com.mochyy.mochymusic.ui.component.PopupSheetState
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.SheetSearchField
+import com.mochyy.mochymusic.ui.component.TopToaster
+import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.viewmodels.DeviceScan
+import com.mochyy.mochymusic.viewmodels.LibraryImportViewModel
 
 /** A song in a picker sheet. */
 @Immutable

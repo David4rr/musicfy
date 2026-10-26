@@ -1,12 +1,12 @@
 // TurntableWidgetReceiver.kt
 
-package com.example.musicfy.widget
+package com.mochyy.mochymusic.widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import com.example.musicfy.playback.MusicService
+import com.mochyy.mochymusic.playback.MusicService
 
 class TurntableWidgetReceiver : AppWidgetProvider() {
 
@@ -54,9 +54,9 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_TURNTABLE_PLAY_PAUSE = "com.example.musicfy.widget.TURNTABLE_PLAY_PAUSE"
-        const val ACTION_TURNTABLE_NEXT = "com.example.musicfy.widget.TURNTABLE_NEXT"
-        const val ACTION_TURNTABLE_PREVIOUS = "com.example.musicfy.widget.TURNTABLE_PREVIOUS"
-        const val ACTION_UPDATE_TURNTABLE_WIDGET = "com.example.musicfy.widget.UPDATE_TURNTABLE_WIDGET"
+        const val ACTION_TURNTABLE_PLAY_PAUSE = "com.mochyy.mochymusic.widget.TURNTABLE_PLAY_PAUSE"
+        const val ACTION_TURNTABLE_NEXT = "com.mochyy.mochymusic.widget.TURNTABLE_NEXT"
+        const val ACTION_TURNTABLE_PREVIOUS = "com.mochyy.mochymusic.widget.TURNTABLE_PREVIOUS"
+        const val ACTION_UPDATE_TURNTABLE_WIDGET = "com.mochyy.mochymusic.widget.UPDATE_TURNTABLE_WIDGET"
     }
 }

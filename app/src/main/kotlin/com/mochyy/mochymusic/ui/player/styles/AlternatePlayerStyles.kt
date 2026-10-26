@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.styles
+package com.mochyy.mochymusic.ui.player.styles
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -55,13 +55,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.PlayerStyle
-import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.ui.player.carouselText
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.PlayerStyle
+import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.ui.player.carouselText
 
 /** the player's alternate styles, drawn as they look on the player or, [preview], on a selector card */
 @Composable
@@ -93,8 +93,8 @@ private fun rememberStyleTrack(): StyleTrack {
  * The player's row of songs on the live player; a selector card shows the playing song, still.
  */
 @Composable
-private fun rememberStyleCarousel(preview: Boolean): com.example.musicfy.ui.player.SongCarousel? =
-    if (preview) null else com.example.musicfy.ui.player.LocalSongCarousel.current
+private fun rememberStyleCarousel(preview: Boolean): com.mochyy.mochymusic.ui.player.SongCarousel? =
+    if (preview) null else com.mochyy.mochymusic.ui.player.LocalSongCarousel.current
 
 /** a song's synced lines, and which song they're for */
 private class StyleLyrics(val mediaId: String?, val lines: List<LyricsEntry>)
@@ -110,7 +110,7 @@ private class StyleSong(val track: StyleTrack, val lines: List<LyricsEntry>)
  */
 @Composable
 private fun StyleSongs(
-    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    carousel: com.mochyy.mochymusic.ui.player.SongCarousel?,
     track: StyleTrack,
     lyrics: StyleLyrics,
     content: @Composable (song: StyleSong, slotModifier: Modifier) -> Unit,
@@ -119,7 +119,7 @@ private fun StyleSongs(
         content(StyleSong(track, lyrics.lines), Modifier)
         return
     }
-    for (slot in com.example.musicfy.ui.player.rememberTextSlots(carousel)) {
+    for (slot in com.mochyy.mochymusic.ui.player.rememberTextSlots(carousel)) {
         androidx.compose.runtime.key(slot.uid) {
             val playing = slot.step == carousel.step
             val held = remember { arrayOf(emptyList<LyricsEntry>()) }
@@ -178,7 +178,7 @@ private fun StyleFrame(
         ) {
             // Inter and nothing else, in every style
             androidx.compose.material3.ProvideTextStyle(
-                androidx.compose.ui.text.TextStyle(fontFamily = com.example.musicfy.ui.theme.InterFontFamily)
+                androidx.compose.ui.text.TextStyle(fontFamily = com.mochyy.mochymusic.ui.theme.InterFontFamily)
             ) {
                 content(landscape, menuOpen, { menuOpen = it }, rotated, setRotated)
             }
@@ -251,18 +251,18 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
     val lyrics = rememberStyleLyrics(readings = !preview)
     val carousel = rememberStyleCarousel(preview)
     val backgroundClock = rememberBackdropClock(running = !preview)
-    val backgroundStyle by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.PlayerBackgroundStyleKey,
-        com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT,
+    val backgroundStyle by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.PlayerBackgroundStyleKey,
+        com.mochyy.mochymusic.constants.PlayerBackgroundStyle.COVER_GRADIENT,
     )
-    val (visualizer) = com.example.musicfy.utils.rememberPreference(com.example.musicfy.constants.PosterVisualizerKey, defaultValue = false)
+    val (visualizer) = com.mochyy.mochymusic.utils.rememberPreference(com.mochyy.mochymusic.constants.PosterVisualizerKey, defaultValue = false)
     val ring = rememberCoverRingState()
     // The live player, not a selector card, whether open or not. Tied to the player being open, the
     // ring jumped to a fixed spot and lost its bars the moment a close began.
     val live = !preview
     val density = LocalDensity.current
     // the pills' column, and the room the words keep from it
-    val pillsWidth = com.example.musicfy.ui.player.TurntablePillWidth
+    val pillsWidth = com.mochyy.mochymusic.ui.player.TurntablePillWidth
     StyleFrame(
         PlayerStyle.POSTER, preview, modifier, tones,
         background = {
@@ -271,13 +271,13 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val w = maxWidth
                 val h = maxHeight
-                if (backgroundStyle == com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT) {
-                    com.example.musicfy.ui.player.CarouselCrossfade(
+                if (backgroundStyle == com.mochyy.mochymusic.constants.PlayerBackgroundStyle.COVER_GRADIENT) {
+                    com.mochyy.mochymusic.ui.player.CarouselCrossfade(
                         carousel = carousel,
                         fallbackUrl = track.artwork,
                         modifier = Modifier.fillMaxSize(),
                     ) { url ->
-                        com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+                        com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundPreview(
                             style = backgroundStyle,
                             thumbnailUrl = url,
                             width = w,
@@ -288,7 +288,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         )
                     }
                 } else {
-                    com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+                    com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundPreview(
                         style = backgroundStyle,
                         thumbnailUrl = track.artwork,
                         width = w,
@@ -351,7 +351,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         .align(Alignment.BottomEnd)
                         .padding(end = 22.dp, bottom = bottom),
                 ) {
-                    com.example.musicfy.ui.player.TurntablePills()
+                    com.mochyy.mochymusic.ui.player.TurntablePills()
                 }
                 // the menu at the top, opening down, clear of the transport
                 StyleMenu(
@@ -404,7 +404,7 @@ private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview
                         .align(Alignment.TopEnd)
                         .padding(top = 18.dp, end = 20.dp + insets.end + PosterChevron + 8.dp),
                 ) {
-                    com.example.musicfy.ui.player.TurntablePills(horizontal = true)
+                    com.mochyy.mochymusic.ui.player.TurntablePills(horizontal = true)
                 }
                 StyleMenu(
                     open = menuOpen, onOpenChange = setMenuOpen, tones = tones, actions = actions,
@@ -593,13 +593,13 @@ private fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
         val metadata by connection.mediaMetadata.collectAsState()
         // The flagship's bottom card is what asks for a song's lyrics; a style has no card, so it
         // asks itself. Without this the words only came once the flagship had been shown.
-        val loader: com.example.musicfy.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+        val loader: com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
         androidx.compose.runtime.LaunchedEffect(metadata?.id) {
             metadata?.let(loader::ensureLyricsLoaded)
         }
         if (all.isNotEmpty()) {
             // the whole song, background lines too, so a stored translation lines up with the lyrics page's
-            com.example.musicfy.ui.player.LyricsReadings(all, metadata?.id, com.example.musicfy.LocalDatabase.current, lyricsEntity)
+            com.mochyy.mochymusic.ui.player.LyricsReadings(all, metadata?.id, com.mochyy.mochymusic.LocalDatabase.current, lyricsEntity)
         }
     }
     val lines = remember(all) { all.filter { !it.isBackground && it.text.isNotBlank() } }
@@ -612,7 +612,7 @@ private fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
  */
 @Composable
 private fun CircleCover(
-    carousel: com.example.musicfy.ui.player.SongCarousel?,
+    carousel: com.mochyy.mochymusic.ui.player.SongCarousel?,
     url: String?,
     center: Offset,
     radius: Float,
@@ -660,7 +660,7 @@ private fun CircleCover(
                 },
         ) {
             // the songs' covers slide past under the circle, the next one coming in as this one goes
-            com.example.musicfy.ui.player.CarouselPictures(
+            com.mochyy.mochymusic.ui.player.CarouselPictures(
                 carousel = carousel,
                 fallbackUrl = url,
                 modifier = Modifier.fillMaxSize(),
@@ -711,7 +711,7 @@ private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, previ
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // the icon's covers and the words beside them ride the row of songs
-                com.example.musicfy.ui.player.CarouselPictures(
+                com.mochyy.mochymusic.ui.player.CarouselPictures(
                     carousel = carousel,
                     fallbackUrl = track.artwork,
                     modifier = Modifier

@@ -1,10 +1,10 @@
 // ShareExport.kt
 //
 // Turning the finished picture into a file: one in the cache for the share sheet, or one in
-// Pictures/Musicfy to keep. Also reads the cover's colours, which the backgrounds, the card and
+// Pictures/Mochy to keep. Also reads the cover's colours, which the backgrounds, the card and
 // the line picker are all tinted with.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import android.content.ContentValues
 import android.content.Context
@@ -43,7 +43,7 @@ internal suspend fun GraphicsLayer.toShareBitmap(): Bitmap {
 internal suspend fun cacheShareImage(context: Context, bitmap: Bitmap): Uri = withContext(Dispatchers.IO) {
     val dir = File(context.cacheDir, ShareDir).apply { mkdirs() }
     dir.listFiles()?.forEach { it.delete() }
-    val file = File(dir, "musicfy-lyrics-${System.currentTimeMillis()}.png")
+    val file = File(dir, "mochy-lyrics-${System.currentTimeMillis()}.png")
     file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", file)
 }
@@ -65,9 +65,9 @@ internal suspend fun saveShareImage(context: Context, bitmap: Bitmap): Boolean =
     if (!CanSaveToGallery) return@withContext false
     runCatching {
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "musicfy-lyrics-${System.currentTimeMillis()}.png")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "mochy-lyrics-${System.currentTimeMillis()}.png")
             put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Musicfy")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Mochy")
         }
         val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return@runCatching false
         context.contentResolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } != null

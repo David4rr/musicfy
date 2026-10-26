@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,41 +27,41 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.containerTransformSource
-import com.example.musicfy.ui.component.detail.FeaturedArtistUi
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.AlbumMenu
-import com.example.musicfy.ui.menu.ArtistMenu
-import com.example.musicfy.ui.menu.PlaylistMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.ui.menu.YouTubeArtistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
-import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.ui.screens.playlist.GeneratedNoResults
-import com.example.musicfy.ui.screens.playlist.GeneratedPlaylistPage
-import com.example.musicfy.ui.screens.playlist.generatedStats
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.viewmodels.HomeViewModel
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.containerTransformSource
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistUi
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.AlbumMenu
+import com.mochyy.mochymusic.ui.menu.ArtistMenu
+import com.mochyy.mochymusic.ui.menu.PlaylistMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeAlbumMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeArtistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubeSongMenu
+import com.mochyy.mochymusic.ui.screens.playlist.GeneratedNoResults
+import com.mochyy.mochymusic.ui.screens.playlist.GeneratedPlaylistPage
+import com.mochyy.mochymusic.ui.screens.playlist.generatedStats
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.viewmodels.HomeViewModel
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -252,7 +252,7 @@ fun SectionDetailScreen(
                     subtitle = sub,
                     isActive = id == mediaMetadata?.id || (item is AlbumItem && item.id == mediaMetadata?.album?.id),
                     isPlaying = isPlaying,
-                    coverShape = if (item is ArtistItem || item is Artist) CircleShape else com.example.musicfy.ui.component.detail.TrackShape,
+                    coverShape = if (item is ArtistItem || item is Artist) CircleShape else com.mochyy.mochymusic.ui.component.detail.TrackShape,
                     // albums and playlists open growing out of their cover, as from Home
                     coverModifier = Modifier.containerTransformSource(
                         key = when (item) {
@@ -317,7 +317,7 @@ fun SectionDetailScreen(
 }
 
 private fun rowKey(item: Any): String = when (item) {
-    is com.example.musicfy.db.entities.LocalItem -> item.id
+    is com.mochyy.mochymusic.db.entities.LocalItem -> item.id
     is SongItem -> item.id
     is AlbumItem -> item.id
     is ArtistItem -> item.id
@@ -331,7 +331,7 @@ private fun rowThumbnail(item: Any): String? = when (item) {
     is Album -> item.album.thumbnailUrl
     // a library playlist's own thumbnailUrl is always null; its covers live in thumbnails
     is Playlist -> item.thumbnails.firstOrNull()
-    is com.example.musicfy.db.entities.LocalItem -> item.thumbnailUrl
+    is com.mochyy.mochymusic.db.entities.LocalItem -> item.thumbnailUrl
     is AlbumItem -> item.thumbnail
     is ArtistItem -> item.thumbnail
     is PlaylistItem -> item.thumbnail

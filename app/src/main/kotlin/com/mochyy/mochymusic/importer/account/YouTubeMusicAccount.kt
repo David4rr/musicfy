@@ -1,9 +1,9 @@
 // YouTubeMusicAccount.kt
 
-package com.example.musicfy.importer.account
+package com.mochyy.mochymusic.importer.account
 
-import com.example.musicfy.importer.ImportedTrack
-import com.example.musicfy.importer.toImportedTrack
+import com.mochyy.mochymusic.importer.ImportedTrack
+import com.mochyy.mochymusic.importer.toImportedTrack
 import com.music.innertube.YouTube
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.utils.completed

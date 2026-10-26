@@ -1,6 +1,6 @@
-package com.example.musicfy.betterlyrics
+package com.mochyy.mochymusic.betterlyrics
 
-import com.example.musicfy.betterlyrics.models.TTMLResponse
+import com.mochyy.mochymusic.betterlyrics.models.TTMLResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -37,7 +37,7 @@ object BetterLyrics {
             }
 
             // says who's asking so the server owner can reach us instead of blocking us
-            install(UserAgent) { agent = "Musicfy (+https://github.com/realidkroo/musicfy)" }
+            install(UserAgent) { agent = "Mochy (+https://github.com/realidkroo/Mochy-Music)" }
 
             expectSuccess = false
         }

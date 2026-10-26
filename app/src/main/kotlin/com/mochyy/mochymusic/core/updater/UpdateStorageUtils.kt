@@ -1,11 +1,11 @@
-package com.example.musicfy.core.updater
+package com.mochyy.mochymusic.core.updater
 
 import android.content.Context
 import android.os.Environment
 import java.io.File
 
 fun getDownloadedApksDir(context: Context): File {
-    return File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "musicfy_updates")
+    return File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "mochy_updates")
 }
 
 fun getDownloadedApkCount(context: Context): Int {

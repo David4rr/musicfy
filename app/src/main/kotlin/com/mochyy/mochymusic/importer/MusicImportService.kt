@@ -1,12 +1,12 @@
 // MusicImportService.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportSession
-import com.example.musicfy.extensions.isUserLoggedIn
-import com.example.musicfy.importer.account.AccountImportException
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportSession
+import com.mochyy.mochymusic.extensions.isUserLoggedIn
+import com.mochyy.mochymusic.importer.account.AccountImportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler

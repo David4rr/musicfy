@@ -1,13 +1,13 @@
-package com.example.musicfy.eq
+package com.mochyy.mochymusic.eq
 
-import com.example.musicfy.eq.audio.ResponseCurve
-import com.example.musicfy.eq.autoeq.AutoEqFitter
-import com.example.musicfy.eq.autoeq.AutoEqMeasurement
-import com.example.musicfy.eq.autoeq.AutoEqRepository
-import com.example.musicfy.eq.autoeq.AutoEqTuning
-import com.example.musicfy.eq.autoeq.HeadphoneForm
-import com.example.musicfy.eq.autoeq.percentDecode
-import com.example.musicfy.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.audio.ResponseCurve
+import com.mochyy.mochymusic.eq.autoeq.AutoEqFitter
+import com.mochyy.mochymusic.eq.autoeq.AutoEqMeasurement
+import com.mochyy.mochymusic.eq.autoeq.AutoEqRepository
+import com.mochyy.mochymusic.eq.autoeq.AutoEqTuning
+import com.mochyy.mochymusic.eq.autoeq.HeadphoneForm
+import com.mochyy.mochymusic.eq.autoeq.percentDecode
+import com.mochyy.mochymusic.eq.data.ParametricEQ
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame

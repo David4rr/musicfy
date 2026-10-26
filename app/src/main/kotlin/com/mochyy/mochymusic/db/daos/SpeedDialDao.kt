@@ -1,10 +1,10 @@
-package com.example.musicfy.db.daos
+package com.mochyy.mochymusic.db.daos
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.musicfy.db.entities.SpeedDialItem
+import com.mochyy.mochymusic.db.entities.SpeedDialItem
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -32,7 +32,7 @@ interface SpeedDialDao {
          * Pinning is meant to surface a handful of things you reach for constantly, on a Library
          * home screen that only has room for a 3x3 grid — an unbounded list stops being a
          * shortcut and starts being a second, worse library. Enforced centrally in
-         * [com.example.musicfy.db.MusicDatabase.pinToSpeedDial] rather than in each menu that
+         * [com.mochyy.mochymusic.db.MusicDatabase.pinToSpeedDial] rather than in each menu that
          * offers "Pin to Speed dial", so every call site gets the cap automatically.
          */
         const val MaxPinned = 9

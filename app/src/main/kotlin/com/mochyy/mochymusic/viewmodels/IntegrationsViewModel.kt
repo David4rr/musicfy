@@ -1,13 +1,13 @@
 // IntegrationsViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.musicfy.scrobble.ScrobbleSite
-import com.example.musicfy.scrobble.Scrobbler
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.scrobble.ScrobbleSite
+import com.mochyy.mochymusic.scrobble.Scrobbler
+import com.mochyy.mochymusic.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,7 +55,7 @@ class IntegrationsViewModel @Inject constructor(
             _sendResult.value = if (scrobbler.send()) {
                 "All sent"
             } else {
-                "Couldn't send them yet. Musicfy keeps trying whenever you're online."
+                "Couldn't send them yet. Mochy keeps trying whenever you're online."
             }
         }
     }

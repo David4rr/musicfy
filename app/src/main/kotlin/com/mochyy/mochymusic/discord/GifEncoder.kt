@@ -1,6 +1,6 @@
 // GifEncoder.kt
 
-package com.example.musicfy.discord
+package com.mochyy.mochymusic.discord
 
 import java.io.ByteArrayOutputStream
 

@@ -1,6 +1,6 @@
 // KeyUtils.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import java.util.concurrent.atomic.AtomicLong
 

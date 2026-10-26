@@ -1,6 +1,6 @@
 // LocalPlaylistScreen.kt
 
-package com.example.musicfy.ui.screens.playlist
+package com.mochyy.mochymusic.ui.screens.playlist
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
@@ -95,61 +95,61 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.AccountNameKey
-import com.example.musicfy.constants.PlaylistEditLockKey
-import com.example.musicfy.constants.PlaylistSongSortDescendingKey
-import com.example.musicfy.constants.PlaylistSongSortType
-import com.example.musicfy.constants.PlaylistSongSortTypeKey
-import com.example.musicfy.constants.PlaylistSortType
-import com.example.musicfy.constants.ProfilePicUriKey
-import com.example.musicfy.db.entities.PlaylistEvent
-import com.example.musicfy.db.entities.PlaylistSongMap
-import com.example.musicfy.extensions.move
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.HomeCardHighlight
-import com.example.musicfy.ui.component.BoneColor
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.DraggableScrollbar
-import com.example.musicfy.ui.component.EmptyPlaceholder
-import com.example.musicfy.playlistcover.PlaylistCoverStore
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.showEditPlaylistSheet
-import com.example.musicfy.ui.component.SongSwipeBox
-import com.example.musicfy.ui.component.TextFieldDialog
-import com.example.musicfy.ui.component.librarySwipeAction
-import com.example.musicfy.ui.component.queueSwipeAction
-import com.example.musicfy.ui.component.removeFromPlaylistSwipeAction
-import com.example.musicfy.ui.component.detail.CreatorUi
-import com.example.musicfy.ui.component.detail.featuredArtistsOf
-import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
-import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
-import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
-import com.example.musicfy.ui.component.detail.PlaylistHeader
-import com.example.musicfy.ui.component.detail.PlaylistModeBar
-import com.example.musicfy.ui.component.detail.PlaylistSectionTitle
-import com.example.musicfy.ui.component.detail.PlaylistSelectTick
-import com.example.musicfy.ui.component.detail.PlaylistSortControl
-import com.example.musicfy.ui.component.detail.PlaylistTrackBones
-import com.example.musicfy.ui.component.detail.PlaylistTrackRow
-import com.example.musicfy.ui.component.detail.playlistCoverHeight
-import com.example.musicfy.ui.component.rememberRevealSeenState
-import com.example.musicfy.ui.component.revealOnAppear
-import com.example.musicfy.ui.menu.LocalPlaylistMenu
-import com.example.musicfy.ui.menu.SelectionSongMenu
-import com.example.musicfy.ui.menu.SongMenu
-import com.example.musicfy.ui.utils.backToMain
-import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.LocalPlaylistViewModel
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AccountNameKey
+import com.mochyy.mochymusic.constants.PlaylistEditLockKey
+import com.mochyy.mochymusic.constants.PlaylistSongSortDescendingKey
+import com.mochyy.mochymusic.constants.PlaylistSongSortType
+import com.mochyy.mochymusic.constants.PlaylistSongSortTypeKey
+import com.mochyy.mochymusic.constants.PlaylistSortType
+import com.mochyy.mochymusic.constants.ProfilePicUriKey
+import com.mochyy.mochymusic.db.entities.PlaylistEvent
+import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.extensions.move
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.HomeCardHighlight
+import com.mochyy.mochymusic.ui.component.BoneColor
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.DraggableScrollbar
+import com.mochyy.mochymusic.ui.component.EmptyPlaceholder
+import com.mochyy.mochymusic.playlistcover.PlaylistCoverStore
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.showEditPlaylistSheet
+import com.mochyy.mochymusic.ui.component.SongSwipeBox
+import com.mochyy.mochymusic.ui.component.TextFieldDialog
+import com.mochyy.mochymusic.ui.component.librarySwipeAction
+import com.mochyy.mochymusic.ui.component.queueSwipeAction
+import com.mochyy.mochymusic.ui.component.removeFromPlaylistSwipeAction
+import com.mochyy.mochymusic.ui.component.detail.CreatorUi
+import com.mochyy.mochymusic.ui.component.detail.featuredArtistsOf
+import com.mochyy.mochymusic.ui.component.detail.FeaturedArtistsRow
+import com.mochyy.mochymusic.ui.component.detail.PlaylistDetailScaffold
+import com.mochyy.mochymusic.ui.component.detail.PlaylistEndOfLine
+import com.mochyy.mochymusic.ui.component.detail.PlaylistHeader
+import com.mochyy.mochymusic.ui.component.detail.PlaylistModeBar
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSectionTitle
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
+import com.mochyy.mochymusic.ui.component.detail.PlaylistSortControl
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackBones
+import com.mochyy.mochymusic.ui.component.detail.PlaylistTrackRow
+import com.mochyy.mochymusic.ui.component.detail.playlistCoverHeight
+import com.mochyy.mochymusic.ui.component.rememberRevealSeenState
+import com.mochyy.mochymusic.ui.component.revealOnAppear
+import com.mochyy.mochymusic.ui.menu.LocalPlaylistMenu
+import com.mochyy.mochymusic.ui.menu.SelectionSongMenu
+import com.mochyy.mochymusic.ui.menu.SongMenu
+import com.mochyy.mochymusic.ui.utils.backToMain
+import com.mochyy.mochymusic.utils.makeTimeString
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.LocalPlaylistViewModel
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.utils.completed
@@ -178,7 +178,7 @@ fun LocalPlaylistScreen(
 
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.playlistSongs.collectAsState()
-    val mutableSongs = remember { mutableStateListOf<com.example.musicfy.db.entities.PlaylistSong>() }
+    val mutableSongs = remember { mutableStateListOf<com.mochyy.mochymusic.db.entities.PlaylistSong>() }
     val playlistLength = remember(songs) { songs.fastSumBy { it.song.song.duration } }
     val (sortType, onSortTypeChange) = rememberEnumPreference(PlaylistSongSortTypeKey, PlaylistSongSortType.CUSTOM)
     val (sortDescending, onSortDescendingChange) = rememberPreference(PlaylistSongSortDescendingKey, true)
@@ -396,7 +396,7 @@ fun LocalPlaylistScreen(
     }
     val creatorAvatar = profilePicUri.takeIf { it.isNotBlank() }?.let { if (it.contains("://")) it else "file://$it" }
 
-    fun play(items: List<com.example.musicfy.db.entities.PlaylistSong>, startIndex: Int = 0) {
+    fun play(items: List<com.mochyy.mochymusic.db.entities.PlaylistSong>, startIndex: Int = 0) {
         val current = playlist ?: return
         playerConnection.playQueue(
             ListQueue(
@@ -645,7 +645,7 @@ fun LocalPlaylistScreen(
                     val removed = currentItem
                     deleteFromPlaylist()
                     val browseId = playlist?.playlist?.browseId
-                    com.example.musicfy.ui.component.TopToaster.show(
+                    com.mochyy.mochymusic.ui.component.TopToaster.show(
                         text = "Removed ${removed.song.song.title} from ${playlist?.playlist?.name ?: "playlist"}",
                         thumbnail = removed.song.song.thumbnailUrl,
                         iconRes = R.drawable.playlist_add,

@@ -1,9 +1,9 @@
-package com.example.musicfy.eq.autoeq
+package com.mochyy.mochymusic.eq.autoeq
 
-import com.example.musicfy.eq.audio.Biquad
-import com.example.musicfy.eq.data.FilterType
-import com.example.musicfy.eq.data.ParametricEQ
-import com.example.musicfy.eq.data.ParametricEQBand
+import com.mochyy.mochymusic.eq.audio.Biquad
+import com.mochyy.mochymusic.eq.data.FilterType
+import com.mochyy.mochymusic.eq.data.ParametricEQ
+import com.mochyy.mochymusic.eq.data.ParametricEQBand
 import kotlinx.serialization.Serializable
 import kotlin.math.PI
 import kotlin.math.abs

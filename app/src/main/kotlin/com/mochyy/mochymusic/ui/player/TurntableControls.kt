@@ -1,6 +1,6 @@
 // TurntableControls.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -44,13 +44,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.ShowFormatBadgeKey
-import com.example.musicfy.constants.ShowFormatSampleRateKey
-import com.example.musicfy.extensions.togglePlayPause
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
+import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.utils.rememberPreference
 
 // The Turntable frame's controls, at its sizes: four pills stacked on the right (like, back,
 // play/pause, forward) above the title row - the chevron on the left, the title and its format

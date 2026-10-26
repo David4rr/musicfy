@@ -1,6 +1,6 @@
 // LocalFolders.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
 import android.content.Intent
@@ -12,7 +12,7 @@ import androidx.core.net.toUri
 import timber.log.Timber
 import java.io.File
 
-/** music folders the user picked themselves (like salt player), picking one keeps access to everything inside it so musicfy can read those songs without seeing all the music on the phone, re-scan reads them again */
+/** music folders the user picked themselves (like salt player), picking one keeps access to everything inside it so mochy can read those songs without seeing all the music on the phone, re-scan reads them again */
 object LocalFolders {
     private const val FILE_NAME = "local_music_folders.txt"
     private const val MAX_FILES = 5_000

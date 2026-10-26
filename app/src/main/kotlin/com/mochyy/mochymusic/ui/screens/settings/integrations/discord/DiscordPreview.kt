@@ -1,6 +1,6 @@
 // the top of the discord page: the switch and a preview of the status, built by PresenceActivity, the same code that sends it
 
-package com.example.musicfy.ui.screens.settings.integrations.discord
+package com.mochyy.mochymusic.ui.screens.settings.integrations.discord
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -55,15 +55,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.discord.DiscordProfile
-import com.example.musicfy.discord.NowPlaying
-import com.example.musicfy.discord.PresenceActivity
-import com.example.musicfy.discord.PresenceImages
-import com.example.musicfy.discord.PresenceKind
-import com.example.musicfy.discord.PresencePicture
-import com.example.musicfy.discord.PresenceSettings
-import com.example.musicfy.ui.component.AppSwitch
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.discord.DiscordProfile
+import com.mochyy.mochymusic.discord.NowPlaying
+import com.mochyy.mochymusic.discord.PresenceActivity
+import com.mochyy.mochymusic.discord.PresenceImages
+import com.mochyy.mochymusic.discord.PresenceKind
+import com.mochyy.mochymusic.discord.PresencePicture
+import com.mochyy.mochymusic.discord.PresenceSettings
+import com.mochyy.mochymusic.ui.component.AppSwitch
 import kotlinx.coroutines.delay
 
 private val BannerHeight = 104.dp
@@ -347,8 +347,8 @@ private fun PictureView(picture: PresencePicture) {
         is PresencePicture.Web -> AsyncImage(model = picture.url, contentDescription = null, contentScale = ContentScale.Crop, modifier = fill)
         PresencePicture.Logo -> Box(fill.background(Color(0xFF1A1A1A))) {
             Image(
-                painter = painterResource(R.mipmap.ic_launcher_foreground),
-                contentDescription = "Musicfy",
+                painter = painterResource(R.drawable.ic_launcher_mark),
+                contentDescription = "Mochy",
                 contentScale = ContentScale.Crop,
                 // the launcher picture has a safe margin around it, the github copy is cropped the same
                 modifier = fill.graphicsLayer {

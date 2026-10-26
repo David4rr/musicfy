@@ -1,6 +1,6 @@
 // the crossfade banner on the last one page
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border

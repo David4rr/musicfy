@@ -1,6 +1,6 @@
-// settings → modules: the sources musicfy plays from besides youtube, each with its account, switch, quality and a playback test
+// settings → modules: the sources mochy plays from besides youtube, each with its account, switch, quality and a playback test
 
-package com.example.musicfy.ui.screens.settings.modules
+package com.mochyy.mochymusic.ui.screens.settings.modules
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
@@ -36,23 +36,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.module.AccountState
-import com.example.musicfy.module.DiagnosticStep
-import com.example.musicfy.module.TrackQuery
-import com.example.musicfy.modules.ModuleEntry
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.screens.audiolab.LabCard
-import com.example.musicfy.ui.screens.audiolab.LabChip
-import com.example.musicfy.ui.screens.audiolab.LabChips
-import com.example.musicfy.ui.screens.audiolab.LabColors
-import com.example.musicfy.ui.screens.audiolab.LabSectionLabel
-import com.example.musicfy.ui.screens.audiolab.LabTextAction
-import com.example.musicfy.ui.screens.audiolab.LabToggleRow
-import com.example.musicfy.ui.screens.settings.importsync.CaptureWebView
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.viewmodels.ModulesViewModel
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.module.AccountState
+import com.mochyy.mochymusic.module.DiagnosticStep
+import com.mochyy.mochymusic.module.TrackQuery
+import com.mochyy.mochymusic.modules.ModuleEntry
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.screens.audiolab.LabCard
+import com.mochyy.mochymusic.ui.screens.audiolab.LabChip
+import com.mochyy.mochymusic.ui.screens.audiolab.LabChips
+import com.mochyy.mochymusic.ui.screens.audiolab.LabColors
+import com.mochyy.mochymusic.ui.screens.audiolab.LabSectionLabel
+import com.mochyy.mochymusic.ui.screens.audiolab.LabTextAction
+import com.mochyy.mochymusic.ui.screens.audiolab.LabToggleRow
+import com.mochyy.mochymusic.ui.screens.settings.importsync.CaptureWebView
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.viewmodels.ModulesViewModel
 
 const val ModulesRoute = "modules"
 const val ModuleRoutePattern = "module/{id}"
@@ -77,7 +77,7 @@ fun ModulesScreen(navController: NavController, viewModel: ModulesViewModel = hi
     val entries by viewModel.entries.collectAsState()
     SubSettingsScaffold(title = "Modules", onBack = { navController.navigateUp() }) {
         Text(
-            "Sources Musicfy can play from besides YouTube. Each one is its own module: built in for now, installable on its own later.",
+            "Sources Mochy can play from besides YouTube. Each one is its own module: built in for now, installable on its own later.",
             fontFamily = InterFontFamily, fontSize = 14.sp, lineHeight = 19.sp, color = LabColors.Secondary,
         )
         Spacer(Modifier.height(16.dp))

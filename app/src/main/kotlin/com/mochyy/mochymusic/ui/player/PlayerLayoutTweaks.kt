@@ -1,6 +1,6 @@
 // PlayerLayoutTweaks.kt
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,12 +14,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.PlayerCardGrowthKey
-import com.example.musicfy.constants.PlayerControlsShiftKey
-import com.example.musicfy.ui.player.customize.CoverRegionFraction
-import com.example.musicfy.ui.player.customize.MaxCoverRegionFraction
-import com.example.musicfy.ui.player.customize.MinCoverRegionFraction
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.PlayerCardGrowthKey
+import com.mochyy.mochymusic.constants.PlayerControlsShiftKey
+import com.mochyy.mochymusic.ui.player.customize.CoverRegionFraction
+import com.mochyy.mochymusic.ui.player.customize.MaxCoverRegionFraction
+import com.mochyy.mochymusic.ui.player.customize.MinCoverRegionFraction
+import com.mochyy.mochymusic.utils.rememberPreference
 
 /** How much taller than usual the card can be pulled: room for a reading, a translation and the next line. */
 internal val CardGrowthMax = 72.dp

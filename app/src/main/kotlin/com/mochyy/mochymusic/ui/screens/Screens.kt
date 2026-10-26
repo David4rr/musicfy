@@ -1,11 +1,11 @@
 // Screens.kt
 
-package com.example.musicfy.ui.screens
+package com.mochyy.mochymusic.ui.screens
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 
 @Immutable
 sealed class Screens(
@@ -37,8 +37,8 @@ sealed class Screens(
 
     object Settings : Screens(
         titleId = R.string.settings,
-        iconIdInactive = R.drawable.settings_outline,
-        iconIdActive = R.drawable.settings_filled,
+        iconIdInactive = R.drawable.nav_mochy_outline,
+        iconIdActive = R.drawable.nav_mochy_filled,
         route = "settings"
     )
 

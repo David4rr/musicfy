@@ -1,6 +1,6 @@
 // the pieces the discord page is built from, drawn to the user's mock: dark pill-shaped cards, pickers, a switch and a slider
 
-package com.example.musicfy.ui.screens.settings.integrations.discord
+package com.mochyy.mochymusic.ui.screens.settings.integrations.discord
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -65,14 +65,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.discord.PresenceButton
-import com.example.musicfy.discord.PresenceButtonTarget
-import com.example.musicfy.discord.PresenceImage
-import com.example.musicfy.discord.PresenceSettings
-import com.example.musicfy.discord.PresenceText
-import com.example.musicfy.discord.SpinStyle
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.discord.PresenceButton
+import com.mochyy.mochymusic.discord.PresenceButtonTarget
+import com.mochyy.mochymusic.discord.PresenceImage
+import com.mochyy.mochymusic.discord.PresenceSettings
+import com.mochyy.mochymusic.discord.PresenceText
+import com.mochyy.mochymusic.discord.SpinStyle
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -338,7 +338,7 @@ internal fun DiscordImageSourceCard(
                 onValueChange = { onSpinChange(spin.copy(fps = it)) },
             )
             Text(
-                text = "Turns forever. Discord can only show pictures from the web, so Musicfy makes a GIF of " +
+                text = "Turns forever. Discord can only show pictures from the web, so Mochy makes a GIF of " +
                     "the artwork and puts it on a free file host (uguu.se, which deletes it after three hours). " +
                     "Slower, smoother turns make a bigger GIF that takes a little longer to show up; the still " +
                     "artwork stands in meanwhile. 50 fps is as smooth as a GIF can play.",

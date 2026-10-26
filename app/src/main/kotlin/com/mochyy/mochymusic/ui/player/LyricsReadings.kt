@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -6,33 +6,33 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.example.musicfy.constants.AiProviderKey
-import com.example.musicfy.constants.DeeplApiKey
-import com.example.musicfy.constants.DeeplFormalityKey
-import com.example.musicfy.constants.LyricsRomanizeBelarusianKey
-import com.example.musicfy.constants.LyricsRomanizeBulgarianKey
-import com.example.musicfy.constants.LyricsRomanizeChineseKey
-import com.example.musicfy.constants.LyricsRomanizeHindiKey
-import com.example.musicfy.constants.LyricsRomanizeJapaneseKey
-import com.example.musicfy.constants.LyricsRomanizeKoreanKey
-import com.example.musicfy.constants.LyricsRomanizeKyrgyzKey
-import com.example.musicfy.constants.LyricsRomanizeMacedonianKey
-import com.example.musicfy.constants.LyricsRomanizePunjabiKey
-import com.example.musicfy.constants.LyricsRomanizeRussianKey
-import com.example.musicfy.constants.LyricsRomanizeSerbianKey
-import com.example.musicfy.constants.LyricsRomanizeUkrainianKey
-import com.example.musicfy.constants.OpenRouterApiKey
-import com.example.musicfy.constants.OpenRouterBaseUrlKey
-import com.example.musicfy.constants.OpenRouterModelKey
-import com.example.musicfy.constants.TranslateLanguageKey
-import com.example.musicfy.constants.TranslateLyricsKey
-import com.example.musicfy.constants.TranslateModeKey
-import com.example.musicfy.constants.TranslateSourceLanguageKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.lyrics.LyricsEntry
-import com.example.musicfy.lyrics.LyricsTranslationHelper
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.constants.AiProviderKey
+import com.mochyy.mochymusic.constants.DeeplApiKey
+import com.mochyy.mochymusic.constants.DeeplFormalityKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBelarusianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeBulgarianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeChineseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeHindiKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeJapaneseKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKoreanKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeKyrgyzKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeMacedonianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizePunjabiKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeRussianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeSerbianKey
+import com.mochyy.mochymusic.constants.LyricsRomanizeUkrainianKey
+import com.mochyy.mochymusic.constants.OpenRouterApiKey
+import com.mochyy.mochymusic.constants.OpenRouterBaseUrlKey
+import com.mochyy.mochymusic.constants.OpenRouterModelKey
+import com.mochyy.mochymusic.constants.TranslateLanguageKey
+import com.mochyy.mochymusic.constants.TranslateLyricsKey
+import com.mochyy.mochymusic.constants.TranslateModeKey
+import com.mochyy.mochymusic.constants.TranslateSourceLanguageKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.lyrics.LyricsEntry
+import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -51,7 +51,7 @@ fun LyricsReadings(
     songId: String?,
     database: MusicDatabase,
     /** the stored row, for a translation saved with it */
-    lyricsEntity: com.example.musicfy.db.entities.LyricsEntity?,
+    lyricsEntity: com.mochyy.mochymusic.db.entities.LyricsEntity?,
 ) {
     val context = LocalContext.current
     // Romanisation preferences. Every one of these keys existed already and none of them were

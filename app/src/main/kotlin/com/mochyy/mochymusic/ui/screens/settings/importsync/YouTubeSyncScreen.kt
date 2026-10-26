@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings.importsync
+package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,21 +22,21 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.AccountEmailKey
-import com.example.musicfy.constants.AccountNameKey
-import com.example.musicfy.constants.YtPullHistoryKey
-import com.example.musicfy.constants.YtReportPlaysKey
-import com.example.musicfy.constants.YtSyncNewPlaylistsKey
-import com.example.musicfy.constants.YtmSyncKey
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.viewmodels.ImportSyncViewModel
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AccountEmailKey
+import com.mochyy.mochymusic.constants.AccountNameKey
+import com.mochyy.mochymusic.constants.YtPullHistoryKey
+import com.mochyy.mochymusic.constants.YtReportPlaysKey
+import com.mochyy.mochymusic.constants.YtSyncNewPlaylistsKey
+import com.mochyy.mochymusic.constants.YtmSyncKey
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.utils.rememberPreference
+import com.mochyy.mochymusic.viewmodels.ImportSyncViewModel
 
 @Composable
 fun YouTubeSyncScreen(
@@ -117,7 +117,7 @@ fun YouTubeSyncScreen(
                 ),
                 toggleItem(
                     title = "Copy YouTube history here",
-                    description = "Plays from your other devices join Musicfy's history on each sync",
+                    description = "Plays from your other devices join Mochy's history on each sync",
                     icon = R.drawable.history,
                     checked = pullHistory,
                     enabled = signedIn,
@@ -142,7 +142,7 @@ fun YouTubeSyncScreen(
                 ),
                 SettingsItem(
                     title = { Text("Copy YouTube history now") },
-                    descriptionText = "Only adds plays Musicfy doesn't have yet",
+                    descriptionText = "Only adds plays Mochy doesn't have yet",
                     icon = painterResource(R.drawable.history),
                     iconShape = CircleShape,
                     enabled = signedIn && !state.running,
@@ -220,7 +220,7 @@ fun YouTubeSyncScreen(
             },
         ) {
             Text(
-                "Each playlist that only exists in Musicfy gets a private copy on your YouTube account. After that, changes go to both.",
+                "Each playlist that only exists in Mochy gets a private copy on your YouTube account. After that, changes go to both.",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

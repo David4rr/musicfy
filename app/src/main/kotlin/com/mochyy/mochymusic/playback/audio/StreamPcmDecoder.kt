@@ -1,6 +1,6 @@
 // StreamPcmDecoder.kt
 
-package com.example.musicfy.playback.audio
+package com.mochyy.mochymusic.playback.audio
 
 import android.media.MediaCodec
 import android.media.MediaDataSource

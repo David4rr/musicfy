@@ -1,6 +1,6 @@
 // ScrobbleQueue.kt
 
-package com.example.musicfy.scrobble
+package com.mochyy.mochymusic.scrobble
 
 import android.util.AtomicFile
 import com.music.lastfm.ScrobbleTrack

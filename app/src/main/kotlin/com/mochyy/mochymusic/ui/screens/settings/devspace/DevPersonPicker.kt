@@ -1,6 +1,6 @@
 // the capsule beside the back button that switches between people on dev spaces, its pill follows the pager while you swipe
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.util.lerp
-import com.example.musicfy.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.component.pressBounce
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor

@@ -1,6 +1,6 @@
 // the sign-in browser sheet that opens inside the onboarding sheet, the page behind it recedes like a covered popup sheet
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -43,8 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.importer.account.AccountService
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.account.AccountService
 import kotlinx.coroutines.launch
 
 /** one spring for the sheet and the page behind it so the two never drift apart */

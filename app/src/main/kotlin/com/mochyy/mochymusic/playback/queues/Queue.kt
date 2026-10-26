@@ -1,10 +1,10 @@
 // Queue.kt
 
-package com.example.musicfy.playback.queues
+package com.mochyy.mochymusic.playback.queues
 
 import androidx.media3.common.MediaItem
-import com.example.musicfy.extensions.metadata
-import com.example.musicfy.models.MediaMetadata
+import com.mochyy.mochymusic.extensions.metadata
+import com.mochyy.mochymusic.models.MediaMetadata
 
 interface Queue {
     val preloadItem: MediaMetadata?

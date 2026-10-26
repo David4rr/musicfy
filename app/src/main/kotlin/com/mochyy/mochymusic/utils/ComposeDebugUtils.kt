@@ -1,6 +1,6 @@
 // ComposeDebugUtils.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable

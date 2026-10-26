@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.settings
+package com.mochyy.mochymusic.ui.screens.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,7 +9,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import com.example.musicfy.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.AppSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -20,24 +20,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.constants.CrossmixTestToolsKey
-import com.example.musicfy.constants.ForcePlaybackKey
-import com.example.musicfy.constants.ShowStreamSourceToastKey
-import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
-import com.example.musicfy.constants.HapticFocus
-import com.example.musicfy.constants.HapticFocusKey
-import com.example.musicfy.constants.HapticSensitivity
-import com.example.musicfy.constants.MusicHapticsEnabledKey
-import com.example.musicfy.constants.MusicHapticsSensitivityKey
-import com.example.musicfy.constants.SetupCompletedKey
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SubSettingsScaffold
-import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CrossmixTestToolsKey
+import com.mochyy.mochymusic.constants.ForcePlaybackKey
+import com.mochyy.mochymusic.constants.ShowStreamSourceToastKey
+import com.mochyy.mochymusic.constants.ForceYtBackdropBlur1500Key
+import com.mochyy.mochymusic.constants.HapticFocus
+import com.mochyy.mochymusic.constants.HapticFocusKey
+import com.mochyy.mochymusic.constants.HapticSensitivity
+import com.mochyy.mochymusic.constants.MusicHapticsEnabledKey
+import com.mochyy.mochymusic.constants.MusicHapticsSensitivityKey
+import com.mochyy.mochymusic.constants.SetupCompletedKey
+import com.mochyy.mochymusic.ui.component.SettingsGroup
+import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
+import com.mochyy.mochymusic.ui.component.SubSettingsScaffold
+import com.mochyy.mochymusic.ui.component.SettingsItem
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.rememberEnumPreference
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,11 +47,11 @@ fun ExperimentalSettingsScreen(navController: NavController) {
     val (musicHapticsSensitivity, onMusicHapticsSensitivityChange) = rememberEnumPreference(MusicHapticsSensitivityKey, defaultValue = HapticSensitivity.MEDIUM)
     val (hapticFocus, onHapticFocusChange) = rememberEnumPreference(HapticFocusKey, defaultValue = HapticFocus.VIBE)
     val (showBigDiscStyles, onShowBigDiscStylesChange) = rememberPreference(
-        com.example.musicfy.constants.ShowBigDiscStylesKey,
+        com.mochyy.mochymusic.constants.ShowBigDiscStylesKey,
         defaultValue = false,
     )
     val (forceRecap, onForceRecapChange) = rememberPreference(
-        com.example.musicfy.constants.ForceMonthlyRecapKey,
+        com.mochyy.mochymusic.constants.ForceMonthlyRecapKey,
         defaultValue = false,
     )
     val (forceYtBackdropBlur1500, onForceYtBackdropBlur1500Change) = rememberPreference(
@@ -84,7 +84,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                             descriptionText = "Bring playlists from other services, sync with YouTube, export a backup",
                             icon = painterResource(R.drawable.sync),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { navController.navigate(com.example.musicfy.ui.screens.settings.importsync.ImportSyncRoute) }
+                            onClick = { navController.navigate(com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute) }
                         )
                     )
                     add(
@@ -154,7 +154,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                             title = { Text("Force show monthly recap") },
                             highlightKey = "Force show monthly recap",
                             descriptionText = "Unlock the recap early",
-                            detail = "Unlock the recap behind the Musicfy card now, before the 3rd or 10 songs",
+                            detail = "Unlock the recap behind the Mochy card now, before the 3rd or 10 songs",
                             icon = painterResource(R.drawable.history),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onForceRecapChange(!forceRecap) },

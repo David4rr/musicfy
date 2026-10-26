@@ -1,6 +1,6 @@
 // AudioFormatBadge.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.Image
@@ -12,11 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
-import com.example.musicfy.R
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.EnableSpatialAudioKey
-import com.example.musicfy.db.entities.FormatEntity
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.AudioQuality
+import com.mochyy.mochymusic.constants.EnableSpatialAudioKey
+import com.mochyy.mochymusic.db.entities.FormatEntity
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Composable
 fun AudioFormatBadge(

@@ -1,6 +1,6 @@
 // decides whether onboarding suggests turning blur off, by timing real frames on the hello page
 
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
 import android.app.ActivityManager
 import android.content.Context

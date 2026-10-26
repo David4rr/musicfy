@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.models
+package com.mochyy.mochymusic.ui.player.models
 
 import android.net.Uri
 import androidx.compose.runtime.Immutable

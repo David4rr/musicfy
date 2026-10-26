@@ -1,6 +1,6 @@
 // PlaylistScreenMenus.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import android.content.Context
 import android.content.Intent
@@ -26,15 +26,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.db.entities.PlaylistSong
-import com.example.musicfy.ui.component.Material3MenuGroup
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.SheetActionCard
-import com.example.musicfy.ui.component.SheetActionCardRow
-import com.example.musicfy.ui.component.SheetDownloadCard
-import com.example.musicfy.ui.component.SheetSearchLauncher
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.db.entities.PlaylistSong
+import com.mochyy.mochymusic.ui.component.Material3MenuGroup
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.SheetActionCard
+import com.mochyy.mochymusic.ui.component.SheetActionCardRow
+import com.mochyy.mochymusic.ui.component.SheetDownloadCard
+import com.mochyy.mochymusic.ui.component.SheetSearchLauncher
 
 /**
  * The menu behind a playlist screen's "more" button, laid out as in the mock: a search that opens

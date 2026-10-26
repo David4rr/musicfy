@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.screens.setup.onboarding
+package com.mochyy.mochymusic.ui.screens.setup.onboarding
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

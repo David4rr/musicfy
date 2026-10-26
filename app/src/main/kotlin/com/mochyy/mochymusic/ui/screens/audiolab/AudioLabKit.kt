@@ -1,6 +1,6 @@
 // shared pieces of every audio lab page (cards, stage, toggle rows, sliders, chips, segments) so the hub, equalizer and audio fx read as one set
 
-package com.example.musicfy.ui.screens.audiolab
+package com.mochyy.mochymusic.ui.screens.audiolab
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -67,13 +67,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.LocalAppContentObscured
-import com.example.musicfy.eq.audio.AudioTap
-import com.example.musicfy.ui.component.AppSwitch
-import com.example.musicfy.ui.component.DefaultPlayerSeekBarSlider
-import com.example.musicfy.ui.component.LocalNavAnimatedContentScope
-import com.example.musicfy.ui.component.damageBoundary
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.LocalAppContentObscured
+import com.mochyy.mochymusic.eq.audio.AudioTap
+import com.mochyy.mochymusic.ui.component.AppSwitch
+import com.mochyy.mochymusic.ui.component.DefaultPlayerSeekBarSlider
+import com.mochyy.mochymusic.ui.component.LocalNavAnimatedContentScope
+import com.mochyy.mochymusic.ui.component.damageBoundary
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.flow.first
 
 object LabColors {
@@ -88,7 +88,7 @@ object LabColors {
     val Faint = Color(0xFF5C5C63)
     val Ink = Color(0xFF8A8A92)
 
-    /** the equalizer's node colours, soft enough to sit on musicfy's greys and apart enough to tell */
+    /** the equalizer's node colours, soft enough to sit on mochy's greys and apart enough to tell */
     val Nodes = listOf(
         Color(0xFFF28BA8), Color(0xFFF2A46B), Color(0xFFF2D46B), Color(0xFF8FD98B),
         Color(0xFF6BD9C4), Color(0xFF6BBAF2), Color(0xFF8C9EF2), Color(0xFFB98CF2),
@@ -387,7 +387,7 @@ fun LabSegmented(
     }
 }
 
-/** the 32dp light circle with a dark glyph that musicfy's settings rows lead with */
+/** the 32dp light circle with a dark glyph that mochy's settings rows lead with */
 @Composable
 fun LabGlyph(iconRes: Int, modifier: Modifier = Modifier, size: Dp = 32.dp) {
     Box(

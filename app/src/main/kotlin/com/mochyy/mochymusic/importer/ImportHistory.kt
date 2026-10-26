@@ -1,14 +1,14 @@
 // ImportHistory.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.content.Context
 import android.net.Uri
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ImportSession
-import com.example.musicfy.db.entities.SongEntity
-import com.example.musicfy.extensions.isSyncEnabled
-import com.example.musicfy.utils.SyncUtils
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ImportSession
+import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.extensions.isSyncEnabled
+import com.mochyy.mochymusic.utils.SyncUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

@@ -1,6 +1,6 @@
 // Library.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -13,14 +13,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.WatchEndpoint
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.Album
-import com.example.musicfy.db.entities.Artist
-import com.example.musicfy.db.entities.Playlist
-import com.example.musicfy.ui.menu.AlbumMenu
-import com.example.musicfy.ui.menu.ArtistMenu
-import com.example.musicfy.ui.menu.PlaylistMenu
-import com.example.musicfy.ui.menu.YouTubePlaylistMenu
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.Album
+import com.mochyy.mochymusic.db.entities.Artist
+import com.mochyy.mochymusic.db.entities.Playlist
+import com.mochyy.mochymusic.ui.menu.AlbumMenu
+import com.mochyy.mochymusic.ui.menu.ArtistMenu
+import com.mochyy.mochymusic.ui.menu.PlaylistMenu
+import com.mochyy.mochymusic.ui.menu.YouTubePlaylistMenu
 import kotlinx.coroutines.CoroutineScope
 
 @Composable

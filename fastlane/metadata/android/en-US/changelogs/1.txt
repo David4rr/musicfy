@@ -1,4 +1,4 @@
-Musicfy Initial Release
+Mochy Initial Release
 
      Play music/videos from YouTube & YouTube Music (ad-free)
 

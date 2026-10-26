@@ -1,4 +1,4 @@
-package com.example.musicfy.ui.player.styles
+package com.mochyy.mochymusic.ui.player.styles
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -36,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.ui.player.LyricsHeaderArtSize
-import com.example.musicfy.ui.player.LyricsHeaderArtTopFromStatusBar
-import com.example.musicfy.ui.player.LyricsHeaderArtX
-import com.example.musicfy.ui.player.LyricsScreen
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.ui.player.LyricsHeaderArtSize
+import com.mochyy.mochymusic.ui.player.LyricsHeaderArtTopFromStatusBar
+import com.mochyy.mochymusic.ui.player.LyricsHeaderArtX
+import com.mochyy.mochymusic.ui.player.LyricsScreen
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 /**
  * The song's whole lyrics over a style, from its menu: the flagship's own lyrics page on the
@@ -75,9 +75,9 @@ fun StyleLyricsPage(
     val track by connection.uiState.trackInfo.collectAsState()
     val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
-    val backgroundStyle by com.example.musicfy.utils.rememberEnumPreference(
-        com.example.musicfy.constants.PlayerBackgroundStyleKey,
-        com.example.musicfy.constants.PlayerBackgroundStyle.COVER_GRADIENT,
+    val backgroundStyle by com.mochyy.mochymusic.utils.rememberEnumPreference(
+        com.mochyy.mochymusic.constants.PlayerBackgroundStyleKey,
+        com.mochyy.mochymusic.constants.PlayerBackgroundStyle.COVER_GRADIENT,
     )
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -89,7 +89,7 @@ fun StyleLyricsPage(
                 .fillMaxSize()
                 .graphicsLayer { alpha = shown.value.coerceIn(0f, 1f) },
         ) {
-            com.example.musicfy.ui.player.customize.PlayerBackgroundPreview(
+            com.mochyy.mochymusic.ui.player.customize.PlayerBackgroundPreview(
                 style = backgroundStyle,
                 thumbnailUrl = track.thumbnailUrl,
                 width = pageWidth,

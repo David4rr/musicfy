@@ -1,6 +1,6 @@
 // SearchDesign.kt
 
-package com.example.musicfy.ui.screens.search
+package com.mochyy.mochymusic.ui.screens.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,12 +73,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.utils.resize
-import com.example.musicfy.ui.component.containerTransformSource
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.ui.component.containerTransformSource
 
 val SearchHorizontalPadding = 24.dp
 

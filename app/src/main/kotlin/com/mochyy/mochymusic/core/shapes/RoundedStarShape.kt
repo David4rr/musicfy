@@ -1,4 +1,4 @@
-package com.example.musicfy.core.shapes
+package com.mochyy.mochymusic.core.shapes
 
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline

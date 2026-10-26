@@ -1,26 +1,26 @@
 // BackupRestoreViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
-import com.example.musicfy.MainActivity
-import com.example.musicfy.R
-import com.example.musicfy.db.InternalDatabase
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.db.entities.SongEntity
-import com.example.musicfy.extensions.div
-import com.example.musicfy.extensions.tryOrNull
-import com.example.musicfy.extensions.zipInputStream
-import com.example.musicfy.extensions.zipOutputStream
-import com.example.musicfy.playback.MusicService
-import com.example.musicfy.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.MainActivity
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.InternalDatabase
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.extensions.div
+import com.mochyy.mochymusic.extensions.tryOrNull
+import com.mochyy.mochymusic.extensions.zipInputStream
+import com.mochyy.mochymusic.extensions.zipOutputStream
+import com.mochyy.mochymusic.playback.MusicService
+import com.mochyy.mochymusic.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
+import com.mochyy.mochymusic.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -67,10 +67,10 @@ class BackupRestoreViewModel @Inject constructor(
                 }
             }
         }.onSuccess {
-            com.example.musicfy.ui.component.TopToaster.show(context.getString(R.string.backup_create_success), iconRes = R.drawable.backup)
+            com.mochyy.mochymusic.ui.component.TopToaster.show(context.getString(R.string.backup_create_success), iconRes = R.drawable.backup)
         }.onFailure {
             reportException(it)
-            com.example.musicfy.ui.component.TopToaster.error(context.getString(R.string.backup_create_failed))
+            com.mochyy.mochymusic.ui.component.TopToaster.error(context.getString(R.string.backup_create_failed))
         }
     }
 
@@ -126,7 +126,7 @@ class BackupRestoreViewModel @Inject constructor(
         }.onFailure {
             reportException(it)
             Timber.tag("RESTORE").e(it, "Restore failed")
-            com.example.musicfy.ui.component.TopToaster.error(context.getString(R.string.restore_failed))
+            com.mochyy.mochymusic.ui.component.TopToaster.error(context.getString(R.string.restore_failed))
         }
     }
 

@@ -11,7 +11,7 @@
 // same slot (same composition, picture already loaded) now in the middle, and the row just carries
 // on to it.
 
-package com.example.musicfy.ui.player
+package com.mochyy.mochymusic.ui.player
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -36,12 +36,15 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
-import com.example.musicfy.playback.PlayerConnection
-import com.example.musicfy.ui.player.models.QueueItemData
-import com.example.musicfy.ui.player.models.QueueState
-import com.example.musicfy.ui.player.models.TrackInfo
+import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.ui.player.models.QueueItemData
+import com.mochyy.mochymusic.ui.player.models.QueueState
+import com.mochyy.mochymusic.ui.player.models.TrackInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -442,9 +445,12 @@ fun CarouselPictures(
     fallbackUrl: String?,
     modifier: Modifier = Modifier,
     parallax: Float = 0.3f,
+    // with a shape each page is a card of its own that slides out whole, gap apart, instead of a picture moving inside one frame
+    cardShape: Shape? = null,
+    cardGap: Dp = 0.dp,
     picture: @Composable BoxScope.(url: String?, modifier: Modifier) -> Unit,
 ) {
-    Box(modifier = modifier.clipToBounds()) {
+    Box(modifier = if (cardShape == null) modifier.clipToBounds() else modifier) {
         val slots = carousel?.slots.orEmpty()
         if (carousel == null || slots.isEmpty()) {
             picture(fallbackUrl, Modifier.fillMaxSize())
@@ -459,8 +465,9 @@ fun CarouselPictures(
                             val o = carousel.offsetOf(slot)
                             // off the row's visible part: kept, not drawn
                             alpha = if (abs(o) >= 1f) 0f else 1f
-                            translationX = o * size.width
+                            translationX = o * (size.width + cardGap.toPx())
                             // each page shows only its own part of the row: unclipped, the parallax shift put a third of the next picture on screen the instant it came in
+                            if (cardShape != null) shape = cardShape
                             clip = true
                         }
                 ) {

@@ -1,6 +1,6 @@
 // CreatePlaylistDialog.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import android.widget.Toast
 import androidx.compose.runtime.Composable
@@ -13,16 +13,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.music.innertube.YouTube
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.constants.InnerTubeCookieKey
-import com.example.musicfy.constants.YtSyncNewPlaylistsKey
-import com.example.musicfy.db.entities.PlaylistEntity
-import com.example.musicfy.extensions.isSyncEnabled
-import com.example.musicfy.playlistcover.CoverChoice
-import com.example.musicfy.playlistcover.PlaylistCoverStyle
-import com.example.musicfy.playlistcover.PlaylistCovers
-import com.example.musicfy.utils.rememberPreference
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.InnerTubeCookieKey
+import com.mochyy.mochymusic.constants.YtSyncNewPlaylistsKey
+import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.extensions.isSyncEnabled
+import com.mochyy.mochymusic.playlistcover.CoverChoice
+import com.mochyy.mochymusic.playlistcover.PlaylistCoverStyle
+import com.mochyy.mochymusic.playlistcover.PlaylistCovers
+import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

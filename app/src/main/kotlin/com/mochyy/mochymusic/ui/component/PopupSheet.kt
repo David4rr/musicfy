@@ -37,7 +37,7 @@
 // transition, not one per pointer event.
 // -----------------------------------------------------------------------------------------------------
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
@@ -110,8 +110,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.player.menu.MenuSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.player.menu.MenuSurface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first

@@ -1,6 +1,6 @@
 // DetailCollapsingTopBar.kt
 
-package com.example.musicfy.ui.component.detail
+package com.mochyy.mochymusic.ui.component.detail
 
 import android.os.Build
 import androidx.compose.foundation.background
@@ -49,10 +49,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.BlurDirection
-import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.ProgressiveGlassBackground
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -257,7 +257,7 @@ fun DetailCollapsingTopBar(
                             // DECAL is API 31: read only behind the check, or Android 11 and
                             // older throw NoSuchFieldError here (no blur below 31 either way)
                             renderEffect = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                                com.example.musicfy.ui.component.BlurEffectCache.get(
+                                com.mochyy.mochymusic.ui.component.BlurEffectCache.get(
                                     motionBlurRadius,
                                     android.graphics.Shader.TileMode.DECAL
                                 )

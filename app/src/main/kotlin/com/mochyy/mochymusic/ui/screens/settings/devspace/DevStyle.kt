@@ -1,6 +1,6 @@
 // colours, type and small helpers shared by the dev spaces page
 
-package com.example.musicfy.ui.screens.settings.devspace
+package com.mochyy.mochymusic.ui.screens.settings.devspace
 
 import android.content.Context
 import android.content.Intent
@@ -13,7 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 
 // the mock's measures: 34dp page sides, 24dp cards
 internal val DevSideInset = 34.dp

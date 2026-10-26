@@ -1,6 +1,6 @@
 // OpenRouterStreamingService.kt
 
-package com.example.musicfy.api
+package com.mochyy.mochymusic.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -114,8 +114,8 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                     }
                 }
                 .addHeader("Content-Type", "application/json")
-                .addHeader("HTTP-Referer", "https://github.com/musicfy")
-                .addHeader("X-Title", "musicfy")
+                .addHeader("HTTP-Referer", "https://github.com/realidkroo/Mochy-Music")
+                .addHeader("X-Title", "mochy")
                 .post(jsonBody.toString().toRequestBody(JSON))
                 .build()
 

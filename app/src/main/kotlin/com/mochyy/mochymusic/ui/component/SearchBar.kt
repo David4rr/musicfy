@@ -1,6 +1,6 @@
 // SearchBar.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -59,7 +59,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.AppBarHeight
+import com.mochyy.mochymusic.constants.AppBarHeight
 
 @ExperimentalMaterial3Api
 @Composable

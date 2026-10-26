@@ -1,6 +1,6 @@
 // CastConnectionHandler.kt
 
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import android.content.Context
 import androidx.compose.runtime.Stable
@@ -44,7 +44,7 @@ class CastConnectionHandler(
     fun initialize(): Boolean = false
     fun disconnect() {}
     fun loadCurrentMedia() {}
-    fun loadMedia(metadata: com.example.musicfy.models.MediaMetadata) {}
+    fun loadMedia(metadata: com.mochyy.mochymusic.models.MediaMetadata) {}
     fun play() {}
     fun pause() {}
     fun seekTo(position: Long) {}

@@ -1,10 +1,10 @@
 // PlayerConnection.kt
 
-package com.example.musicfy.playback
+package com.mochyy.mochymusic.playback
 
 import android.content.Context
-import com.example.musicfy.ui.component.TopToaster
-import com.example.musicfy.R
+import com.mochyy.mochymusic.ui.component.TopToaster
+import com.mochyy.mochymusic.R
 import androidx.compose.runtime.Stable
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -18,17 +18,17 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.extensions.currentMetadata
-import com.example.musicfy.lyrics.LyricsUtils
-import com.example.musicfy.extensions.getCurrentQueueIndex
-import com.example.musicfy.extensions.getQueueWindows
-import com.example.musicfy.extensions.isAutoplay
-import com.example.musicfy.extensions.withAutoplay
-import com.example.musicfy.extensions.metadata
-import com.example.musicfy.playback.MusicService.MusicBinder
-import com.example.musicfy.playback.queues.Queue
-import com.example.musicfy.utils.reportException
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.extensions.currentMetadata
+import com.mochyy.mochymusic.lyrics.LyricsUtils
+import com.mochyy.mochymusic.extensions.getCurrentQueueIndex
+import com.mochyy.mochymusic.extensions.getQueueWindows
+import com.mochyy.mochymusic.extensions.isAutoplay
+import com.mochyy.mochymusic.extensions.withAutoplay
+import com.mochyy.mochymusic.extensions.metadata
+import com.mochyy.mochymusic.playback.MusicService.MusicBinder
+import com.mochyy.mochymusic.playback.queues.Queue
+import com.mochyy.mochymusic.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -188,7 +188,7 @@ class PlayerConnection(
     val currentMediaItemIndex = MutableStateFlow(-1)
     val currentWindowIndex = MutableStateFlow(-1)
 
-    val queueItems: kotlinx.coroutines.flow.StateFlow<List<com.example.musicfy.ui.player.models.QueueItemData>> = queueWindows.map { windows ->
+    val queueItems: kotlinx.coroutines.flow.StateFlow<List<com.mochyy.mochymusic.ui.player.models.QueueItemData>> = queueWindows.map { windows ->
         windows.map(::toQueueItem)
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, emptyList())
 
@@ -198,13 +198,13 @@ class PlayerConnection(
      * a map on another dispatcher), so a reader pairing them saw the new index against the old
      * list for a frame whenever both changed at once - clearing history, toggling shuffle.
      */
-    val queueSnapshot = MutableStateFlow(com.example.musicfy.ui.player.models.QueueState())
+    val queueSnapshot = MutableStateFlow(com.mochyy.mochymusic.ui.player.models.QueueState())
     private var snapshotWindows: List<Timeline.Window>? = null
-    private var snapshotItems: List<com.example.musicfy.ui.player.models.QueueItemData> = emptyList()
+    private var snapshotItems: List<com.mochyy.mochymusic.ui.player.models.QueueItemData> = emptyList()
 
-    private fun toQueueItem(window: Timeline.Window): com.example.musicfy.ui.player.models.QueueItemData {
+    private fun toQueueItem(window: Timeline.Window): com.mochyy.mochymusic.ui.player.models.QueueItemData {
         val mediaItem = window.mediaItem
-        return com.example.musicfy.ui.player.models.QueueItemData(
+        return com.mochyy.mochymusic.ui.player.models.QueueItemData(
             uid = window.uid.hashCode(),
             mediaId = mediaItem.mediaId,
             title = mediaItem.mediaMetadata.title?.toString() ?: "",
@@ -222,14 +222,14 @@ class PlayerConnection(
             snapshotItems = windows.map(::toQueueItem)
             snapshotWindows = windows
         }
-        queueSnapshot.value = com.example.musicfy.ui.player.models.QueueState(
+        queueSnapshot.value = com.mochyy.mochymusic.ui.player.models.QueueState(
             items = snapshotItems,
             currentIndex = currentWindowIndex.value,
             title = queueTitle.value.orEmpty(),
         )
     }
 
-    val progressState: kotlinx.coroutines.flow.StateFlow<com.example.musicfy.ui.player.models.ProgressState> =
+    val progressState: kotlinx.coroutines.flow.StateFlow<com.mochyy.mochymusic.ui.player.models.ProgressState> =
         kotlinx.coroutines.flow.callbackFlow {
             while (true) {
                 try {
@@ -238,7 +238,7 @@ class PlayerConnection(
                         val position = p.currentPosition.coerceAtLeast(0L)
                         val duration = p.duration.coerceAtLeast(0L)
                         trySend(
-                            com.example.musicfy.ui.player.models.ProgressState(
+                            com.mochyy.mochymusic.ui.player.models.ProgressState(
                                 position = position,
                                 duration = duration,
                                 percentage = if (duration > 0L) position.toFloat() / duration else 0f,
@@ -251,7 +251,7 @@ class PlayerConnection(
         }.distinctUntilChanged().stateIn(
             scope,
             SharingStarted.Lazily,
-            com.example.musicfy.ui.player.models.ProgressState(),
+            com.mochyy.mochymusic.ui.player.models.ProgressState(),
         )
 
     val shuffleModeEnabled = MutableStateFlow(false)
@@ -651,7 +651,7 @@ class PlayerConnection(
                 if (isLocal) {
                     database.query {
                         upsert(
-                            com.example.musicfy.db.entities.FormatEntity(
+                            com.mochyy.mochymusic.db.entities.FormatEntity(
                                 id = mediaItem.mediaId,
                                 itag = -1,
                                 mimeType = format.sampleMimeType?.split(";")?.get(0) ?: "audio/flac",
@@ -683,9 +683,9 @@ class PlayerConnection(
                 val thumbnailUrl = songEntity.song.thumbnailUrl
                 // a cover file that was cleared away counts as none, so playing the song brings it back
                 if (songEntity.song.isLocal &&
-                    (thumbnailUrl == null || com.example.musicfy.importer.LocalArtwork.needsRepair(context, thumbnailUrl))
+                    (thumbnailUrl == null || com.mochyy.mochymusic.importer.LocalArtwork.needsRepair(context, thumbnailUrl))
                 ) {
-                    val newThumbnailUrl = com.example.musicfy.importer.LocalArtwork.save(context, mediaItem.mediaId, artworkData)
+                    val newThumbnailUrl = com.mochyy.mochymusic.importer.LocalArtwork.save(context, mediaItem.mediaId, artworkData)
                         ?: return@launch
                     database.query {
                         upsert(songEntity.song.copy(thumbnailUrl = newThumbnailUrl))
@@ -751,7 +751,7 @@ class PlayerConnection(
         }
     }
 
-    val uiState: com.example.musicfy.ui.player.PlayerUiState by lazy { com.example.musicfy.ui.player.PlayerUiState(this) }
+    val uiState: com.mochyy.mochymusic.ui.player.PlayerUiState by lazy { com.mochyy.mochymusic.ui.player.PlayerUiState(this) }
 
     fun dispose() {
         try {

@@ -4,7 +4,7 @@
 // row's look (shared with the flying line so it lands on exactly that), the shake for a tap that
 // can't do anything, and the Share!/Save pair.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -53,11 +53,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
-import com.example.musicfy.ui.component.SheetPillButton
-import com.example.musicfy.ui.component.pressBounce
-import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.SheetPillButton
+import com.mochyy.mochymusic.ui.component.pressBounce
+import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -167,7 +167,7 @@ internal fun CoroutineScope.shake(offset: Animatable<Float, AnimationVector1D>) 
 
 /**
  * "Share!" makes the picture and opens the share sheet. The round button beside it keeps a copy
- * in Pictures/Musicfy and turns into a tick when it's saved (Android 10+ only).
+ * in Pictures/Mochy and turns into a tick when it's saved (Android 10+ only).
  */
 @Composable
 internal fun ShareActions(session: LyricsShareSession) {

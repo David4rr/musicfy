@@ -1,10 +1,10 @@
 #!/bin/zsh
 # records one perfetto trace while a scenario script drives the device
 # usage: tools/perf/run.sh <trace-name> <scenario>   (scenario = a file in tools/perf/scen without .sh)
-# traces land in $PERF_OUT (default: $TMPDIR/musicfy-perf)
+# traces land in $PERF_OUT (default: $TMPDIR/mochy-perf)
 HERE=${0:A:h}
-OUT=${PERF_OUT:-${TMPDIR:-/tmp}/musicfy-perf}
-PKG=${PERF_PKG:-com.example.musicfy.profileable}
+OUT=${PERF_OUT:-${TMPDIR:-/tmp}/mochy-perf}
+PKG=${PERF_PKG:-com.mochyy.mochymusic.profileable}
 mkdir -p $OUT
 adb push $HERE/trace.cfg /data/local/tmp/mtrace.cfg >/dev/null
 # compose tracing has to be switched on again after every app start

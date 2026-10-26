@@ -1,6 +1,6 @@
 // HideOnScrollFAB.kt
 
-package com.example.musicfy.ui.component
+package com.mochyy.mochymusic.ui.component
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -28,9 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.R
-import com.example.musicfy.ui.utils.isScrollingUp
+import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.utils.isScrollingUp
 
 @Composable
 fun BoxScope.HideOnScrollFAB(

@@ -1,6 +1,6 @@
 // SelectionSongsMenu.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
@@ -38,22 +38,22 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.music.innertube.YouTube
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.LocalSyncUtils
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.PlaylistSongMap
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.Material3MenuGroup
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.NewAction
-import com.example.musicfy.ui.component.NewActionGrid
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalSyncUtils
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.Material3MenuGroup
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.NewAction
+import com.mochyy.mochymusic.ui.component.NewActionGrid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime

@@ -1,6 +1,6 @@
 // ImportNotices.kt
 
-package com.example.musicfy.importer
+package com.mochyy.mochymusic.importer
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,7 +10,7 @@ import android.os.Looper
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 
 /** how a finished import or re-sync tells the user, wherever they are in the app by then */
 internal object ImportNotices {
@@ -31,7 +31,7 @@ internal object ImportNotices {
             return
         }
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.musicfy_notification)
+            .setSmallIcon(R.drawable.mochy_notification)
             .setContentTitle("Import finished")
             .setContentText("Matched $matched of $total songs")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

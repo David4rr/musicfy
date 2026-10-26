@@ -1,6 +1,6 @@
 // Scrobbler.kt
 
-package com.example.musicfy.scrobble
+package com.mochyy.mochymusic.scrobble
 
 import android.content.Context
 import android.os.Handler
@@ -13,10 +13,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.example.musicfy.constants.LastFMUseNowPlaying
-import com.example.musicfy.constants.LastFMUseSendLikes
-import com.example.musicfy.utils.OfflineMode
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.constants.LastFMUseNowPlaying
+import com.mochyy.mochymusic.constants.LastFMUseSendLikes
+import com.mochyy.mochymusic.utils.OfflineMode
+import com.mochyy.mochymusic.utils.dataStore
 import com.music.lastfm.Audioscrobbler
 import com.music.lastfm.AudioscrobblerException
 import com.music.lastfm.ScrobbleTrack
@@ -159,7 +159,7 @@ class Scrobbler @Inject constructor(
     /** The first step of signing in; the token goes into [ScrobbleSite.api]'s sign-in page. */
     suspend fun requestToken(site: ScrobbleSite): String = site.api.getToken()
 
-    /** The account's name once the user has allowed Musicfy on the sign-in page; null until then. */
+    /** The account's name once the user has allowed Mochy on the sign-in page; null until then. */
     suspend fun finishSignIn(site: ScrobbleSite, token: String): String? {
         val session = try {
             site.api.getSession(token)
@@ -184,10 +184,10 @@ class Scrobbler @Inject constructor(
         queue.forget(site)
     }
 
-    /** The service took back Musicfy's access, so the account is forgotten here too. */
+    /** The service took back Mochy's access, so the account is forgotten here too. */
     private suspend fun signedOut(site: ScrobbleSite) {
         signOut(site)
-        val message = "${site.label} signed Musicfy out. Sign in again in Settings → Integrations to keep scrobbling."
+        val message = "${site.label} signed Mochy out. Sign in again in Settings → Integrations to keep scrobbling."
         Handler(Looper.getMainLooper()).post { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
     }
 

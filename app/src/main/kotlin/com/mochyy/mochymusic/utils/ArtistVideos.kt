@@ -1,6 +1,6 @@
 // ArtistVideos.kt
 
-package com.example.musicfy.utils
+package com.mochyy.mochymusic.utils
 
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem

@@ -9,7 +9,7 @@
 // a queue doesn't count. Prompts never open over another sheet and never while the app is in the
 // background - a due prompt waits until the app is on screen and nothing else is showing.
 
-package com.example.musicfy.ui.screens.donate
+package com.mochyy.mochymusic.ui.screens.donate
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,15 +21,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.DonateFirstPromptShownKey
-import com.example.musicfy.constants.DonatePromptSlotsKey
-import com.example.musicfy.constants.DonatePromptWindowStartKey
-import com.example.musicfy.constants.DonateSongsPlayedKey
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.LocalZoomOutOverlayState
-import com.example.musicfy.utils.dataStore
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.DonateFirstPromptShownKey
+import com.mochyy.mochymusic.constants.DonatePromptSlotsKey
+import com.mochyy.mochymusic.constants.DonatePromptWindowStartKey
+import com.mochyy.mochymusic.constants.DonateSongsPlayedKey
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.LocalMenuState
+import com.mochyy.mochymusic.ui.component.LocalZoomOutOverlayState
+import com.mochyy.mochymusic.utils.dataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine

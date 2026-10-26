@@ -5,7 +5,7 @@
 // names it. Marks stay thin, the grid recedes, text keeps text colours, and the one accent colour
 // marks the peak. Press and drag to read any point.
 
-package com.example.musicfy.ui.screens.recap
+package com.mochyy.mochymusic.ui.screens.recap
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -60,8 +60,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.ui.theme.InterFontFamily
+import com.mochyy.mochymusic.ui.utils.resize
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt

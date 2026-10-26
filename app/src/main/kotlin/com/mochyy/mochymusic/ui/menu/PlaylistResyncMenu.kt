@@ -5,7 +5,7 @@
 // came from an account opens that service's sign-in page first, and an old import that never
 // saved where it came from asks for its link.
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import android.content.Context
 import android.widget.Toast
@@ -26,18 +26,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.R
-import com.example.musicfy.di.PlaylistResyncEntryPoint
-import com.example.musicfy.importer.ImportSource
-import com.example.musicfy.importer.PlaylistResync
-import com.example.musicfy.importer.ResyncAllStart
-import com.example.musicfy.importer.ResyncStart
-import com.example.musicfy.importer.resyncSourceOf
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.TextFieldDialog
-import com.example.musicfy.ui.screens.settings.importsync.accountResyncAllRoute
-import com.example.musicfy.ui.screens.settings.importsync.accountResyncRoute
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.di.PlaylistResyncEntryPoint
+import com.mochyy.mochymusic.importer.ImportSource
+import com.mochyy.mochymusic.importer.PlaylistResync
+import com.mochyy.mochymusic.importer.ResyncAllStart
+import com.mochyy.mochymusic.importer.ResyncStart
+import com.mochyy.mochymusic.importer.resyncSourceOf
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.TextFieldDialog
+import com.mochyy.mochymusic.ui.screens.settings.importsync.accountResyncAllRoute
+import com.mochyy.mochymusic.ui.screens.settings.importsync.accountResyncRoute
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -183,7 +183,7 @@ fun ResyncLinkDialog(sourceLabel: String, onDismiss: () -> Unit, onDone: (String
         onDismiss = onDismiss,
         extraContent = {
             Text(
-                "This playlist was imported before Musicfy saved where it came from. Its link is how Re-sync finds it again.",
+                "This playlist was imported before Mochy saved where it came from. Its link is how Re-sync finds it again.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 12.dp),

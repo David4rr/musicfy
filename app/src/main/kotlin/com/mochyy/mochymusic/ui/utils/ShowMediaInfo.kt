@@ -1,6 +1,6 @@
 // ShowMediaInfo.kt
 
-package com.example.musicfy.ui.utils
+package com.mochyy.mochymusic.ui.utils
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -48,14 +48,14 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.music.innertube.YouTube
 import com.music.innertube.models.MediaInfo
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.db.entities.FormatEntity
-import com.example.musicfy.db.entities.Song
-import com.example.musicfy.ui.component.LocalBottomSheetPageState
-import com.example.musicfy.ui.component.shimmer.ShimmerHost
-import com.example.musicfy.ui.component.shimmer.TextPlaceholder
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.db.entities.FormatEntity
+import com.mochyy.mochymusic.db.entities.Song
+import com.mochyy.mochymusic.ui.component.LocalBottomSheetPageState
+import com.mochyy.mochymusic.ui.component.shimmer.ShimmerHost
+import com.mochyy.mochymusic.ui.component.shimmer.TextPlaceholder
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

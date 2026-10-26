@@ -1,6 +1,6 @@
 // YouTubeSelectionSongMenu.kt
 
-package com.example.musicfy.ui.menu
+package com.mochyy.mochymusic.ui.menu
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -35,20 +35,20 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalDownloadUtil
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.LocalSyncUtils
-import com.example.musicfy.R
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import com.example.musicfy.playback.ExoDownloadService
-import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.ui.component.DefaultDialog
-import com.example.musicfy.ui.component.Material3MenuGroup
-import com.example.musicfy.ui.component.Material3MenuItemData
-import com.example.musicfy.ui.component.SheetActionCard
-import com.example.musicfy.ui.component.SheetActionCardRow
+import com.mochyy.mochymusic.LocalDatabase
+import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.LocalSyncUtils
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.extensions.toMediaItem
+import com.mochyy.mochymusic.models.toMediaMetadata
+import com.mochyy.mochymusic.playback.ExoDownloadService
+import com.mochyy.mochymusic.playback.queues.ListQueue
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.ui.component.Material3MenuGroup
+import com.mochyy.mochymusic.ui.component.Material3MenuItemData
+import com.mochyy.mochymusic.ui.component.SheetActionCard
+import com.mochyy.mochymusic.ui.component.SheetActionCardRow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -121,8 +121,8 @@ fun YouTubeSelectionSongMenu(
             songSelection.map { song ->
 
                 val metadata = song.toMediaMetadata()
-                com.example.musicfy.db.entities.Song(
-                    song = com.example.musicfy.db.entities.SongEntity(
+                com.mochyy.mochymusic.db.entities.Song(
+                    song = com.mochyy.mochymusic.db.entities.SongEntity(
                         id = metadata.id,
                         title = metadata.title,
                         duration = metadata.duration,
@@ -137,13 +137,13 @@ fun YouTubeSelectionSongMenu(
                         libraryRemoveToken = metadata.libraryRemoveToken
                     ),
                     artists = metadata.artists.map { artist ->
-                        com.example.musicfy.db.entities.ArtistEntity(
+                        com.mochyy.mochymusic.db.entities.ArtistEntity(
                             id = artist.id ?: "",
                             name = artist.name
                         )
                     },
                     album = metadata.album?.let { album ->
-                        com.example.musicfy.db.entities.AlbumEntity(
+                        com.mochyy.mochymusic.db.entities.AlbumEntity(
                             id = album.id,
                             title = album.title,
                             thumbnailUrl = metadata.thumbnailUrl,
@@ -395,7 +395,7 @@ fun YouTubeSelectionSongMenu(
 
                                         insert(metadata)
 
-                                        val songEntity = com.example.musicfy.db.entities.SongEntity(
+                                        val songEntity = com.mochyy.mochymusic.db.entities.SongEntity(
                                             id = metadata.id,
                                             title = metadata.title,
                                             duration = metadata.duration,

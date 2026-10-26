@@ -1,11 +1,11 @@
 // PlayerCoverLayout.kt
 
-package com.example.musicfy.ui.player.customize
+package com.mochyy.mochymusic.ui.player.customize
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.musicfy.constants.PlayerCoverStyle
+import com.mochyy.mochymusic.constants.PlayerCoverStyle
 
 const val CoverRegionFraction = 0.63f
 

@@ -4,7 +4,7 @@
 // picked, the style, the background and how each word looks. Every sheet reads and writes the
 // same session, so stepping back and forth between them never loses a choice.
 
-package com.example.musicfy.ui.player.share
+package com.mochyy.mochymusic.ui.player.share
 
 import android.net.Uri
 import androidx.compose.runtime.Stable
@@ -19,8 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.TextStyle
-import com.example.musicfy.ui.player.LyricsAlignment
-import com.example.musicfy.ui.player.LyricsLineInsets
+import com.mochyy.mochymusic.ui.player.LyricsAlignment
+import com.mochyy.mochymusic.ui.player.LyricsLineInsets
 
 internal data class ShareSong(val title: String, val artist: String, val thumbnailUrl: String?)
 

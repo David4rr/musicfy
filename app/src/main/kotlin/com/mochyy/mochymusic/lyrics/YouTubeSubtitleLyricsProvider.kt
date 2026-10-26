@@ -1,6 +1,6 @@
 // YouTubeSubtitleLyricsProvider.kt
 
-package com.example.musicfy.lyrics
+package com.mochyy.mochymusic.lyrics
 
 import android.content.Context
 import com.music.innertube.YouTube

@@ -1,6 +1,6 @@
 // HistorySource.kt
 
-package com.example.musicfy.constants
+package com.mochyy.mochymusic.constants
 
 enum class HistorySource {
     LOCAL, REMOTE

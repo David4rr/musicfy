@@ -1,6 +1,6 @@
 // ArtistViewModel.kt
 
-package com.example.musicfy.viewmodels
+package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
@@ -13,23 +13,23 @@ import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.models.filterYoutubeShorts
 import com.music.innertube.pages.ArtistPage
-import com.example.musicfy.canvas.AppleArtistEditorial
-import com.example.musicfy.canvas.AppleMusicArtistBackgroundProvider
-import com.example.musicfy.canvas.appleArtworkUrl
-import com.example.musicfy.constants.HideExplicitKey
-import com.example.musicfy.constants.HideVideoSongsKey
-import com.example.musicfy.constants.HideYoutubeShortsKey
-import com.example.musicfy.constants.ShowArtistVideoKey
-import com.example.musicfy.db.MusicDatabase
-import com.example.musicfy.db.entities.ArtistEntity
-import com.example.musicfy.extensions.filterExplicit
-import com.example.musicfy.extensions.filterExplicitAlbums
-import com.example.musicfy.utils.ArtistHeader
-import com.example.musicfy.utils.ArtistPageCache
-import com.example.musicfy.utils.dataStore
-import com.example.musicfy.utils.get
-import com.example.musicfy.utils.reportException
-import com.example.musicfy.ui.utils.resize
+import com.mochyy.mochymusic.canvas.AppleArtistEditorial
+import com.mochyy.mochymusic.canvas.AppleMusicArtistBackgroundProvider
+import com.mochyy.mochymusic.canvas.appleArtworkUrl
+import com.mochyy.mochymusic.constants.HideExplicitKey
+import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.HideYoutubeShortsKey
+import com.mochyy.mochymusic.constants.ShowArtistVideoKey
+import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.db.entities.ArtistEntity
+import com.mochyy.mochymusic.extensions.filterExplicit
+import com.mochyy.mochymusic.extensions.filterExplicitAlbums
+import com.mochyy.mochymusic.utils.ArtistHeader
+import com.mochyy.mochymusic.utils.ArtistPageCache
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
+import com.mochyy.mochymusic.utils.reportException
+import com.mochyy.mochymusic.ui.utils.resize
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -52,8 +52,8 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import javax.inject.Inject
-import com.example.musicfy.artistvideo.ArtistVideoCanvasProvider
-import com.example.musicfy.extensions.filterVideoSongs as filterVideoSongsLocal
+import com.mochyy.mochymusic.artistvideo.ArtistVideoCanvasProvider
+import com.mochyy.mochymusic.extensions.filterVideoSongs as filterVideoSongsLocal
 
 /**
  * the card under the artist's buttons: their newest release, or, for an artist with none listed,

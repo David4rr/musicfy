@@ -1,8 +1,8 @@
-package com.example.musicfy.core.updater.downloadmanager
+package com.mochyy.mochymusic.core.updater.downloadmanager
 
 import android.content.Context
 import android.os.Environment
-import com.example.musicfy.R
+import com.mochyy.mochymusic.R
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
@@ -44,13 +44,13 @@ class CustomDownloadManager {
 
                 val downloadDir = File(
                     context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                    "musicfy_updates"
+                    "mochy_updates"
                 )
                 if (!downloadDir.exists()) {
                     downloadDir.mkdirs()
                 }
 
-                val outputFile = File(downloadDir, "musicfy.apk")
+                val outputFile = File(downloadDir, "mochy.apk")
                 val outputStream = FileOutputStream(outputFile)
 
                 val buffer = ByteArray(8192)

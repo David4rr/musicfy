@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
-package com.example.musicfy.core
+package com.mochyy.mochymusic.core
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -40,7 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.key
-import com.example.musicfy.core.shapes.RoundedStarShape
+import com.mochyy.mochymusic.core.shapes.RoundedStarShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,11 +125,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.musicfy.R
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.AudioQualityKey
-import com.example.musicfy.utils.rememberEnumPreference
+import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.LocalPlayerConnection
+import com.mochyy.mochymusic.constants.AudioQuality
+import com.mochyy.mochymusic.constants.AudioQualityKey
+import com.mochyy.mochymusic.utils.rememberEnumPreference
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 

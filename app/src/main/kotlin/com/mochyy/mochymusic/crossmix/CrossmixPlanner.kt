@@ -1,6 +1,6 @@
-package com.example.musicfy.crossmix
+package com.mochyy.mochymusic.crossmix
 
-import com.example.musicfy.lyrics.LyricsUtils
+import com.mochyy.mochymusic.lyrics.LyricsUtils
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.max

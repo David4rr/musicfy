@@ -1,9 +1,9 @@
 // DeviceDecoders.kt
 
-package com.example.musicfy.modules
+package com.mochyy.mochymusic.modules
 
 import android.media.MediaCodecList
-import com.example.musicfy.module.SourceStream
+import com.mochyy.mochymusic.module.SourceStream
 import java.util.concurrent.ConcurrentHashMap
 
 /**
