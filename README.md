@@ -1,5 +1,9 @@
 <img width="1799" height="927" alt="i" src="https://github.com/user-attachments/assets/1ecb7a39-2114-40ba-9306-51ebf385780a" />
 
+
+> [!WARNING]
+> Were rebranding Musicfy into Mochy (music). when 8.1.2 released, please go ahead and install that. this repo will be renamed to Mochy in 10 November 2026.
+
 ---
 <div align="center">
 
