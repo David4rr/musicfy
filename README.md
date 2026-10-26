@@ -5,31 +5,31 @@
   <sub>Sleek modern cool music player for android, open source, packed with features and doesn’t collect ur data >_< oh and, still in beta!</sub>
   <br/>
 <p align="center">
-  <a href="https://github.com/realidkroo/musicfy/releases">
-    <img src="https://shieldcn.dev/github/downloads/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=fab387" alt="Downloads">
+  <a href="https://github.com/realidkroo/mochy-music/releases">
+    <img src="https://shieldcn.dev/github/downloads/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=fab387" alt="Downloads">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/stargazers">
-    <img src="https://shieldcn.dev/github/stars/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f9e2af" alt="Stars">
+  <a href="https://github.com/realidkroo/mochy-music/stargazers">
+    <img src="https://shieldcn.dev/github/stars/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f9e2af" alt="Stars">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/network/members">
-    <img src="https://shieldcn.dev/github/forks/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=89b4fa" alt="Forks">
-      <a href="https://github.com/realidkroo/musicfy/releases">
+  <a href="https://github.com/realidkroo/mochy-music/network/members">
+    <img src="https://shieldcn.dev/github/forks/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=89b4fa" alt="Forks">
+      <a href="https://github.com/realidkroo/mochy-music/releases">
     <img src="https://shieldcn.dev/badge/Android-8.0%2B-313244.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logo=android&logoColor=94e2d5" alt="Android 8.0+">
   </a>
   </a>
-  <a href="https://github.com/realidkroo/musicfy/commits">
-    <img src="https://shieldcn.dev/github/commits/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=a6e3a1" alt="Commits">
+  <a href="https://github.com/realidkroo/mochy-music/commits">
+    <img src="https://shieldcn.dev/github/commits/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=a6e3a1" alt="Commits">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/releases/latest">
-    <img src="https://shieldcn.dev/github/release/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=cba6f7" alt="Release">
+  <a href="https://github.com/realidkroo/mochy-music/releases/latest">
+    <img src="https://shieldcn.dev/github/release/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=cba6f7" alt="Release">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/issues">
-    <img src="https://shieldcn.dev/github/issues/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f38ba8" alt="Issues">
+  <a href="https://github.com/realidkroo/mochy-music/issues">
+    <img src="https://shieldcn.dev/github/issues/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f38ba8" alt="Issues">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/blob/main/LICENSE">
-    <img src="https://shieldcn.dev/github/license/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="License">
+  <a href="https://github.com/realidkroo/mochy-music/blob/main/LICENSE">
+    <img src="https://shieldcn.dev/github/license/realidkroo/mochy-music.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="License">
   </a>
-  <a href="https://github.com/realidkroo/musicfy/blob/main/Roadmap.md">
+  <a href="https://github.com/realidkroo/mochy-music/blob/main/Roadmap.md">
     <img src="https://shieldcn.dev/badge/Roadmap-View-313244.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="Roadmap">
   </a>
 </p>
@@ -43,7 +43,7 @@
 
 ## Hhhh-how to install? :3
 
-1. On your phone, open the [latest release](https://github.com/realidkroo/musicfy/releases/latest).
+1. On your phone, open the [latest release](https://github.com/realidkroo/mochy-music/releases/latest).
 2. Download the `.apk` that matches your phone. If you are not sure, pick **arm64**, that is almost every phone from the last 8 years. The **universal** one works everywhere but is bigger.
 3. Open the downloaded file. Android will ask you to allow installs from your browser or file manager, say yes (you can turn it off again after).
 4. Open Mochy. You are done, no account needed to start listening.
@@ -67,8 +67,8 @@ You only need this if you want to change the code. If you just want to use the a
 
 ### Steps
 ```bash
-git clone https://github.com/realidkroo/musicfy.git
-cd mochy
+git clone https://github.com/realidkroo/mochy-music.git
+cd mochy-music
 ```
 
 1. Open the folder in Android Studio once and let it finish syncing. This also creates `local.properties` with your SDK path.
@@ -109,7 +109,7 @@ Never commit your keys. Libre.fm works without any key.
 - `Unresolved reference` or Hilt errors that make no sense: delete the `build/` folders and `.gradle/` and build again.
 - Stuck or weird Gradle: `./build.sh -k`, then try again.
 - Wrong Java: make sure Gradle uses JDK 21 (Android Studio → Settings → Build Tools → Gradle → Gradle JDK).
-- Still stuck? Open an [issue](https://github.com/realidkroo/musicfy/issues) with the error text.
+- Still stuck? Open an [issue](https://github.com/realidkroo/mochy-music/issues) with the error text.
 
 Want to send a fix? Read [CONTRIBUTING](.github/CONTRIBUTING.md) first.
 ---
@@ -192,11 +192,11 @@ These are the open source apis and server we get gets its lyrics, streams and da
 ---
 ## Star History
 
-<a href="https://www.star-history.com/?repos=realidkroo%2Fmusicfy&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=realidkroo%2Fmochy-music&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=realidkroo/musicfy&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=realidkroo/mochy-music&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=realidkroo/mochy-music&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=realidkroo/mochy-music&type=date&legend=top-left" />
  </picture>
 </a>
 
