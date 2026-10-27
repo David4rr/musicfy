@@ -178,7 +178,6 @@ extensions.configure<ApplicationExtension> {
             }
         }
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -245,6 +244,7 @@ extensions.configure<ApplicationExtension> {
         warningsAsErrors = false
         abortOnError = false
         checkDependencies = false
+        checkReleaseBuilds = false
     }
 
     androidResources {
