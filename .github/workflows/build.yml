@@ -1,4 +1,4 @@
-name: CI & Debug Build
+name: CI & Release Build
 
 on:
   workflow_dispatch:
@@ -12,13 +12,18 @@ on:
   pull_request:
     branches: [ '**' ]
 
+permissions:
+  contents: write
+
 jobs:
-  build_debug:
-    name: Build Universal GMS Debug
+  build_release:
+    name: Build Universal Release APK
     runs-on: ubuntu-latest
     if: github.actor != 'dependabot[bot]'
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -47,7 +52,7 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Build Debug APK
+      - name: Build Release APK
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
@@ -55,10 +60,57 @@ jobs:
           LIBREFM_SECRET: ${{ secrets.LIBREFM_SECRET }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
         run: |
-          ./gradlew assembleUniversalGmsDebug --no-configuration-cache --console=plain --warning-mode summary
+          ./gradlew assembleUniversalFossRelease assembleUniversalGmsRelease --no-configuration-cache --console=plain --warning-mode summary
 
-      - name: Upload Debug APK
+      - name: Prepare Direct Release APKs
+        run: |
+          mkdir -p release-apks
+          foss_apk=$(find app/build/outputs/apk -path "*universal*foss*release*" -name "*.apk" | head -n 1)
+          gms_apk=$(find app/build/outputs/apk -path "*universal*gms*release*" -name "*.apk" | head -n 1)
+
+          if [ -n "$foss_apk" ] && [ -f "$foss_apk" ]; then
+            echo "Found FOSS Release APK: $foss_apk"
+            cp "$foss_apk" release-apks/mochy-v8.3.1-universal-foss-release.apk
+            cp "$foss_apk" release-apks/mochy-v8.3.1-release.apk
+          else
+            echo "ERROR: FOSS Release APK not found!"
+            find app/build/outputs/apk -name "*.apk"
+            exit 1
+          fi
+
+          if [ -n "$gms_apk" ] && [ -f "$gms_apk" ]; then
+            echo "Found GMS Release APK: $gms_apk"
+            cp "$gms_apk" release-apks/mochy-v8.3.1-universal-gms-release.apk
+          fi
+
+          ls -lh release-apks/
+
+      - name: Upload Release APKs (Artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: app-universal-gms-debug
-          path: app/build/outputs/apk/universalGms/debug/*.apk
+          name: mochy-universal-release-apks
+          path: release-apks/*.apk
+
+      - name: Publish Direct APK to GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v8.3.1"
+          RELEASE_TITLE="Mochy Music v8.3.1 (Release)"
+          RELEASE_NOTES="### Mochy Music v8.3.1 (Release Build)
+          - Updated with upstream Mochy Music fixes (lyric de-duplication, lyric blur performance enhancements, badges, module handling updates).
+          - Optimized broadcast loudness pipeline (+6 dB boost, 50% dynamic range compression, -0.5 dBFS soft-knee peak limiter).
+          - AudioFlinger headroom penalty release when normalization is disabled.
+          - Single canonical application ID: \`com.mochyy.mochymusic\`.
+          - Direct APK downloads below (no zip extraction needed)."
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists, uploading APKs..."
+            gh release upload "$TAG_NAME" release-apks/*.apk --clobber
+          else
+            echo "Creating new release $TAG_NAME..."
+            gh release create "$TAG_NAME" release-apks/*.apk \
+              --title "$RELEASE_TITLE" \
+              --notes "$RELEASE_NOTES"
+          fi
